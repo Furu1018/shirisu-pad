@@ -37,10 +37,10 @@
         }
         return out;
     }
-    /** 報告の無い凸 (割当) の鍵: 配信の id + 人 + レベル + ボス + 時刻。「凸していない」の印 (段階 4) に使う */
+    /** 報告の無い凸 (割当) の鍵: 配信の id + 人 + レベル + ボス + 時刻 + 編成枠。「凸していない」の印 (段階 4) に使う (編成枠が無いと同じ時刻の編成①②を区別できない: Codex指摘) */
     function missingKey(planId, m) {
         if (planId == null || !m) return null;
-        return [planId, m.memberId, m.level == null ? '' : m.level, m.bossNumber, m.hourIdx == null ? '' : m.hourIdx].join('|');
+        return [planId, m.memberId, m.level == null ? '' : m.level, m.bossNumber, m.hourIdx == null ? '' : m.hourIdx, Number(m.loadoutSlot) || 1].join('|');
     }
     /**
      * @param {{ attacks: Array<Object>, plan: Object|null, nowMs: number, lowRatio?: number, timeGapH?: number, sinceMs?: number|null, planId?: *, skips?: Set<string>|null }} a

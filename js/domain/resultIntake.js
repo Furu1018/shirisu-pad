@@ -54,12 +54,14 @@
      * @param {Object|null} plan  配信プラン (blockScope で絞ったもの)
      * @param {*} memberId
      * @param {number} bossNumber
-     * @param {number} doneOnBoss その人がそのボスにもう入れた凸の数 (この配信の算出のあと)
+     * @param {number} doneOnBoss その人がそのボスにもう入れた凸の数 (この配信の算出のあと・同じレベル)
+     * @param {number|null} level  そのレベルの割当だけを見る (省略 = すべて)。同じボスの別レベルを混ぜない (Codex指摘)
      * @returns {number|null}
      */
-    function plannedSlotFor(plan, memberId, bossNumber, doneOnBoss = 0) {
+    function plannedSlotFor(plan, memberId, bossNumber, doneOnBoss = 0, level = null) {
         const mine = [];
         for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
+            if (level != null && lv.level != null && Number(lv.level) !== Number(level)) continue;
             for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
                 if (Number(b.bossNumber) !== Number(bossNumber)) continue;
                 for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {

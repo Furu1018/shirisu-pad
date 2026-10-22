@@ -12529,19 +12529,21 @@ console.log('\ngrowthDomain:');
         const r = dom.buildRows({ attacks, plan, nowMs: Date.parse(at(21, 0)), sinceMs: at(18, 0), planId: 77 });
         assert.equal(r.rows[0].unchecked, 'いまの配信より前の凸', '算出より前の凸を照合している');
         assert.deepEqual(r.rows[0].flags, []);
-        assert.deepEqual(r.missing.map(m => [m.memberId, m.bossNumber, m.loadoutSlot, m.key]), [['A', 1, 2, '77|A|1|1|13'], ['B', 2, 1, '77|B|1|2|14']], 'A の割当が食われた / 鍵・編成枠が無い');
+        assert.deepEqual(r.missing.map(m => [m.memberId, m.bossNumber, m.loadoutSlot, m.key]), [['A', 1, 2, '77|A|1|1|13|2'], ['B', 2, 1, '77|B|1|2|14|1']], 'A の割当が食われた / 鍵・編成枠が無い');
         // 算出のあとの凸は今までどおり照合する
         const r1 = dom.buildRows({ attacks: [{ ...attacks[0], reported_at: at(18, 30) }], plan, nowMs: Date.parse(at(21, 0)), sinceMs: at(18, 0), planId: 77 });
         assert.equal(r1.rows[0].unchecked, null); assert.equal(r1.rows[0].planned.bossNumber, 1);
         assert.deepEqual(r1.missing.map(m => m.memberId), ['B']);
         // 「凸していない」: 鍵が当たる割当は missing から skipped へ (数えない)
-        const r2 = dom.buildRows({ attacks: [], plan, nowMs: Date.parse(at(21, 0)), planId: 77, skips: new Set(['77|B|1|2|14']) });
+        const r2 = dom.buildRows({ attacks: [], plan, nowMs: Date.parse(at(21, 0)), planId: 77, skips: new Set(['77|B|1|2|14|1']) });
         assert.deepEqual(r2.missing.map(m => m.memberId), ['A']); assert.deepEqual(r2.skipped.map(m => m.memberId), ['B']);
         assert.equal(r2.counts.missing, 1); assert.equal(r2.counts.skipped, 1);
         assert.equal(dom.summary(r2), '確認 0 / 0 · 結果がまだ 1 · 凸していない 1');
         // 配信の id が無い (旧データ) は鍵を作らない = 印を付けられない
         assert.equal(dom.missingKey(null, { memberId: 'A', level: 1, bossNumber: 1, hourIdx: 3 }), null);
-        assert.equal(dom.missingKey(5, { memberId: 'A', level: null, bossNumber: 1, hourIdx: null }), '5|A||1|');
+        assert.equal(dom.missingKey(5, { memberId: 'A', level: null, bossNumber: 1, hourIdx: null }), '5|A||1||1');
+        // 同じ人・レベル・ボス・時刻の編成①②は別の鍵 (片方だけ「凸していない」にできる: Codex指摘 1901a8a)
+        assert.notEqual(dom.missingKey(5, { memberId: 'A', level: 1, bossNumber: 1, hourIdx: 3, loadoutSlot: 1 }), dom.missingKey(5, { memberId: 'A', level: 1, bossNumber: 1, hourIdx: 3, loadoutSlot: 2 }));
     });
     test('★ 🧱 段階 4 resultIntake: ボスの照合 / 配信の割当の編成枠 / 使った編成 (キャラ → 割当 → 使っていない編成) / 登録の前の注意 / Discord の聞き方 / ブロックの配信の通知', () => {
         const d = globalThis.resultIntakeDomain;
@@ -12560,6 +12562,10 @@ console.log('\ngrowthDomain:');
         const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 3, attacks: [{ memberId: 7, hourIdx: 15, loadoutSlot: 2 }, { memberId: 7, hourIdx: 13, loadoutSlot: 1 }, { memberId: 8, hourIdx: 13, loadoutSlot: 2 }] }] }] };
         assert.equal(d.plannedSlotFor(plan, 7, 3, 0), 1); assert.equal(d.plannedSlotFor(plan, 7, 3, 1), 2); assert.equal(d.plannedSlotFor(plan, 7, 3, 2), null);
         assert.equal(d.plannedSlotFor(plan, '7', 1, 0), null); assert.equal(d.plannedSlotFor(null, 7, 3), null);
+        // レベルで絞る: Lv1 の割当 (編成①) と Lv2 の割当 (編成②) を混ぜない (Codex指摘 1901a8a)
+        const plan12 = { levels: [{ level: 1, bosses: [{ bossNumber: 3, attacks: [{ memberId: 7, hourIdx: 13, loadoutSlot: 1 }] }] }, { level: 2, bosses: [{ bossNumber: 3, attacks: [{ memberId: 7, hourIdx: 14, loadoutSlot: 2 }] }] }] };
+        assert.equal(d.plannedSlotFor(plan12, 7, 3, 0, 2), 2, 'Lv2 の取り込みに Lv1 の割当の編成を使った');
+        assert.equal(d.plannedSlotFor(plan12, 7, 3, 0, 1), 1); assert.equal(d.plannedSlotFor(plan12, 7, 3, 1), 2, 'レベルを渡さなければ従来どおり (全レベル)');
         // pickLoadout
         const player = { id: 7, name: 'あお', attacks: [{ boss_number: 1, characters: ['X1'] }],
             loadoutsByAttr: { fire: [{ slot: 2, team: ['F1', 'F2', 'F3', 'F4', 'F5'], dmgB: 30 }, { slot: 1, team: ['X1', 'G2', 'G3', 'G4', 'G5'], dmgB: 33 }] } };
@@ -12606,7 +12612,9 @@ console.log('\ngrowthDomain:');
         assert.ok(/\{ isProxy: true, actorName: me\?\.name \|\| null, reservationId: rid, skipHpDecrement: hpAbs \? true : !d\.hpDecrement \}/.test(save), '代理凸の印 / 予約 / 残HP の扱いが違う');
         assert.ok(/window\.supabaseSetAttackConfirmed\(res\.id, true, me\?\.name \|\| '運営'\)/.test(save), '取り込んだ凸を ✓ にしていない');
         assert.ok(save.indexOf('_checkRaidEvents()') > 0 && save.indexOf('_checkRaidEvents()') < save.indexOf('opsStore.invalidate()') && save.indexOf('opsStore.invalidate()') < save.indexOf('_opsReloadBoardCards()'), '撃破の検知を invalidate の前に呼んでいない / 取り直していない');
-        assert.ok(/if \(!_opsMode \|\| !d \|\| !dom \|\| _resultIntake\.busy\) return;/.test(save) && /_resultIntake\.busy = false;/.test(save), '二重押しを止めていない');
+        assert.ok(/if \(!_opsMode \|\| !live \|\| !dom \|\| _resultIntake\.busy\) return;/.test(save) && /_resultIntake\.busy = false;/.test(save), '二重押しを止めていない');
+        assert.ok(/const d = \{ \.\.\.live, hint: live\.hint \? \{ \.\.\.live\.hint \} : null, hpAbs: live\.hpAbs \? \{ \.\.\.live\.hpAbs \} : null, ocrChars: \(live\.ocrChars \|\| \[\]\)\.slice\(\) \};/.test(save), '押した時点の写しで登録していない (登録中の変更が混ざる)');
+        assert.ok(/try \{ await window\.supabaseSetAttackConfirmed\(res\.id, true, me\?\.name \|\| '運営'\); \}/.test(save), '✓ を待たずに取り直している / 失敗を黙って捨てる');
         // 凸していない: 置き場は raid_event_notices (新しい表を作らない) / 読めなければ null
         const loadSkips = client.match(/window\.supabaseLoadAttackSkips = async function \(seasonId\) \{[\s\S]*?\n\};\n/)?.[0] || '';
         assert.ok(/\.eq\('kind', 'atk_skip'\)/.test(loadSkips) && /catch \(e\) \{[^}]*return null;\s*\}/.test(loadSkips), '凸していない の読み出しが違う / 読めないときに空 (= 印なし) と偽る');
@@ -12614,14 +12622,15 @@ console.log('\ngrowthDomain:');
         // 組むの片付け: 結果がまだの凸があるときだけ (止めない)
         assert.ok(/<div id="opsPlanTidy" class="plan-cue" style="display:none;"><\/div>\s*\n\s*<div id="opsPlanCue"/.test(html), '片付けの案内が組むの頭に無い');
         // ブロックの配信の通知: 配信 1 回につき 1 度 (block_publish) / 同じブロックの配信し直しは変わった人だけ / 通知した人に L4 を重ねない
-        const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds, onlyIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/supabaseClaimRaidNotice\(seasonId, 'block_publish', String\(pub\.id\), me\?\.id \|\| null\)/.test(notify) && /if \(st !== 'claimed'\) return none;/.test(notify), '二重送信よけが無い');
-        assert.ok(/supabaseReleaseRaidNotice\?\.\(seasonId, 'block_publish', String\(pub\.id\)\)/.test(notify) && /supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', String\(pub\.id\)\)/.test(notify), '送れなかったときに確保を戻していない');
+        const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        // ★ 二重送信よけは人ごと・中身ごと (配信 1 回ぶんにすると、送れなかった人に二度と届かない: Codex指摘 1901a8a)
+        assert.ok(/const ref = `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|\$\{n\.lines\.join\(' \/ '\)\}`;/.test(notify) && /await claim\(seasonId, 'block_publish', ref, me\?\.id \|\| null\)/.test(notify), '二重送信よけが人ごと・中身ごとでない');
+        assert.ok(/supabaseReleaseRaidNotice\?\.\(seasonId, 'block_publish', ref\)/.test(notify) && /supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', ref\)/.test(notify), '送れなかったときに確保を戻していない');
         const pubFn = html.match(/async function handleOpsPublishPlan\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const sameBlock = !!\(prevScope && Number\(prevScope\.from\) === Number\(published\.blockScope\.from\) && Number\(prevScope\.to\) === Number\(published\.blockScope\.to\)\);/.test(pubFn)
-            && /onlyIds: sameBlock \? changedAll : null/.test(pubFn) && /targets = targets\.filter\(id => !blockSent\.has\(Number\(id\)\)\);/.test(pubFn), '同じブロックの配信し直し / L4 の重ね送りの扱いが違う');
+            && /targets = targets\.filter\(id => !r\.covered\.has\(Number\(id\)\)\);/.test(pubFn), '同じブロックの配信し直し / L4 の重ね送りの扱いが違う');
         assert.ok(pubFn.indexOf('_notifyBlockPublish(') < pubFn.indexOf('if (targets.length > 0) {'), 'L4 を送ってからブロックの通知をしている (重ねて送る)');
-        assert.ok(/if \(!sameBlock\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている');
+        assert.ok(/if \(!sameBlock && !\(r\.sent === 0 && r\.failed > 0\)\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている / 通知が全部失敗したのに L4 にも任せない');
     });
     test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');

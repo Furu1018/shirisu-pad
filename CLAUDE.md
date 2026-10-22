@@ -1172,17 +1172,23 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `pickLoadout` (使った編成 = その人の模擬のうちボスの弱点属性。読み取ったキャラが 2 人以上当たる編成 → 配信の割当 (`plannedSlotFor`) → きょう使っていない編成)・`check` (止める: 誰か / 3 凸済み / ボス / ダメージ / Lv4 でボス 5 以外。知らせる: 同じボスに登録済み / キャラ使用済み / 模擬なし)。
   ★ 登録は**代理凸と同じ経路** (`supabaseAddAttack` に `isProxy: true, actorName`・予約は `_reservationIdForAttack`)。押した時点の DB (`supabaseLoadMyAttacks`) で確かめ直し、同じボスは confirm。
   スクショに残 HP があればその値に (`skipHpDecrement` + `supabaseUpdateBossHp`)、無ければダメージぶん減らす (外せる)。登録した凸は **✓ 確認済み** (`supabaseSetAttackConfirmed`・運営の登録で確定 = 決定 c)。
-  `_checkRaidEvents()` は invalidate の**前** (撃破の検知)、そのあと `_opsReloadBoardCards()`。解析中に「誰の凸か」を選び直したら古い読み取りで下書きを作らない。
+  `_checkRaidEvents()` は invalidate の**前** (撃破の検知)、そのあと `_opsReloadBoardCards()`。✓ は**待ってから**取り直す (失敗は知らせる)。
+  ★ **登録中 (busy) は下書きを動かさない**: 押した時点の写し (`const d = { ...live, … }`) で登録し、やめる・Lv・ボス・編成・別の下書き (取り込む / 手で入力 / 読み取り) は受け付けない (Codex指摘 1901a8a)。
+  ★ 読み取り (OCR) は世代 `_resultIntake.ocrSeq` — 選び直し・手で入力・取り込む・やめる・次の読み取り で進み、await のあとの 1 か所で見る (追い越された古い読み取りで新しい下書きを上書きしない)。
+  ★ 「⏰ 結果がまだの凸」から入った下書きは、その割当の**レベル**と編成を既定にする (`hint`)。割当の編成 (`plannedSlotFor`) と「そのボスに入れた凸の数」は**レベルで見る**。Lv を変えたら編成を選び直す。
   ★ **報告の無い凸** (`#opsAtkCheckMissing`・「⏰ 結果がまだの凸」): 行ごとに「📥 取り込む」(その人・そのボス・割当の編成の下書きをすぐ出す。ファイル選択は開かない) /「📋 聞く」(`askText` をコピー) /「凸していない」。
-  **「凸していない」の置き場は `raid_event_notices` の kind `atk_skip` / ref = `attackCheckDomain.missingKey` (配信 id|人|レベル|ボス|時刻)** — 疎通確認と同じく新しい表を作らない (**設計案の SQL 55 は要らなくなった**)。
+  **「凸していない」の置き場は `raid_event_notices` の kind `atk_skip` / ref = `attackCheckDomain.missingKey` (配信 id|人|レベル|ボス|時刻|編成枠)** — 疎通確認と同じく新しい表を作らない (**設計案の SQL 55 は要らなくなった**)。
+  読み直しは盤面の世代 (`skipsGen`) と画面で付けた・外した版 (`skipsVer`) を見て、追い越された古い読み直しで印を消さない。
   `supabaseLoadAttackSkips` (読めなければ null) / `supabaseSetAttackSkip`。盤面には触れない (次のブロックの残り凸に戻る、を明示するだけ)。行の操作は配列の添字で渡す (名前を onclick に埋めない)。
   ★ **突き合わせは配信のそのブロックのぶんだけ** (`scopePlan(plan, plan.blockScope)`) で、**配信を算出した時刻 (`conditions.computedAt`) より前の凸は照合しない** (`buildRows` の `sinceMs` → unchecked「いまの配信より前の凸」)。
   時刻でブロックを決めないこと — 運営があとから取り込む凸の `reported_at` は「登録した時刻」。配信は同じシーズンの `_opsPublishedPlan` だけ使う。
   🧱 組む のタブの頭 (`#opsPlanTidy`・`_renderOpsPlanTidy`): 結果がまだの凸があれば「次のブロックを組む前に取り込むか『凸していない』に」+ 結果の取り込みへ (止めない)。
   ★ **ブロックの配信の通知** (`_notifyBlockPublish`・決定 h): 🧱 ブロックで組んだ配信は、そのブロックに割当のある人へ自分の凸を 1 通 (`publishNotices`: 「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)。
-  同じブロックの配信し直し (前の配信と from / to が同じ) は**割当が変わった人だけ** (`planDiff.changedIds`)・「変わりました」。二重送信よけは `raid_event_notices` の kind `block_publish` / ref = 配信の id (確保 → 送信 → 送信済み / 1 通も送れなければ確保を戻す)。
-  通知した人には L4「割当が変わりました」を重ねない (`targets` から外す)。ブロックでない配信 (1 日ぶん) は従来どおり通知しない。練習のメンバー編の「夜」の配信も本物の関数で同じ通知を送る。
-  練習の運営編・当日の課題 `check` は「⚔️ 前のブロックの結果を取り込む」(「📥 取り込む」→ ダメージ → 登録。✓ でも済む)。実行テスト `tests/result-intake.mjs`
+  ★ 二重送信よけは**人ごと・中身ごと** (`raid_event_notices` の kind `block_publish` / ref = `ブロック from-to|人|凸の文`)。同じブロックを配信し直しても凸が変わらない人は送信済み (done) で送らず、
+  変わった人には新しい中身で「変わりました」(同じブロック = 前の配信と from / to が同じ・`planDiff.changedIds`)。送れなかった人は確保を戻す (次の配信で送り直す)。配信 1 回ぶんの確保は、失敗した人に二度と届かないのでやめた (Codex指摘 1901a8a)。
+  通知した人・同じ中身をもう送ってある人には L4「割当が変わりました」を重ねない (`r.covered`)。新しいブロックの初回の配信は L4 を送らない (前の配信のこのブロックは仮) — ただし通知が 1 通も送れなかったときは L4 に任せる。
+  ブロックでない配信 (1 日ぶん) は従来どおり通知しない。練習のメンバー編の「夜」の配信も本物の関数で同じ通知を送る。
+  練習の運営編・当日の課題 `check` は「⚔️ 前のブロックの結果を取り込む」(「📥 取り込む」→ ダメージ → 登録。済んだ判定は**当日の盤面を作ったあとに登録されて ✓ が付いた凸** — 既存の凸の ✓ だけでは済まない)。実行テスト `tests/result-intake.mjs`
   ★ **🧱 段階 5: ボス 5 の 2 編成** (2026-10-23・ユーザー決定 i「遅い時間に出られる人はボス 5 の弱点の模擬を 2 編成」): ソルバーの入力 `secondB5Lv4Only` —
   ボス 5 の弱点属性に 2 編成ある人の**編成② (slot 2 以上) は Lv4 (HP 無限) だけで使う** (`lv4Only` の印 → `listCandidatesFor` と前回どおりの置き直しで外す。Lv4 の `assignLv4` は使う)。
   1 編成しか無い人・ボス 5 以外の属性は制限しない。**渡さなければ出力は不変** (指紋 120 盤面)。画面は算出と承認の影響の 2 か所で `secondB5Lv4Only: true` (段階 2b の `excludeTimeUnknown` の隣)。

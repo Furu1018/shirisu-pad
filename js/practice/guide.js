@@ -400,8 +400,11 @@
                             real: '凸の登録がまだのぶん、ここの残HPはゲームと食い違います。古い HP で組むと、無駄凸や取りこぼしが出ます。', target: pick('bossHpOpen') });
                 } },
             { key: 'check', title: '⚔️ 前のブロックの結果を取り込む',
-                // 取り込んだ凸は ✓ 確認済みになる (段階 4)。結果がまだの凸が無い盤面では、登録済みの凸を ✓ するだけでも済む
-                done: function (c) { return c.T.attacks.some(function (a) { return a.confirmed_at; }); },
+                // 取り込んだ凸 = 当日の盤面を作ったあと (setupAt より後) に登録されて ✓ が付いた凸。既存の凸を ✓ するだけでは済まない (Codex指摘 1901a8a)
+                done: function (c) {
+                    var at = store.get('ops-day:setupAt');
+                    return !!at && c.T.attacks.some(function (a) { return a.confirmed_at && a.reported_at && a.reported_at > at; });
+                },
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('battle')) return stray(c, []) || opsTab('battle');
@@ -414,10 +417,7 @@
                     var take = pick('resultTake');
                     if (take) return stray(c, []) || { text: '「📥 結果の取り込み」の「⏰ 結果がまだの凸」に、配信の時刻を過ぎても結果が入っていない凸が並んでいます。1 つ目の「📥 取り込む」を押します。',
                         real: 'メンバーは凸したら結果のスクショを Discord に貼ります。それを見て運営が取り込みます。凸していなかった人は「凸していない」にすると、次のブロックで組み直します。', target: take };
-                    var btn = pick('atkConfirm');
-                    if (!btn) return stray(c, []) || { text: '「📥 結果の取り込み」が描かれるのを待ちます…' };
-                    return stray(c, []) || { text: '「✅ 凸報告の確認」に、ここまでの凸が配信と突き合わせて並んでいます。問題なければ「✓ 確認」を押します (練習では 1 件で構いません)。',
-                        real: '印 (計画にない・予定より低い・時刻のずれ) と「予定を過ぎた未報告」を見て、報告の無い人には Discord で声をかけます。片付けてから次のブロックを組みます。', target: btn };
+                    return stray(c, []) || { text: '「📥 結果の取り込み」の「⏰ 結果がまだの凸」が出るのを待ちます…' };
                 } },
             { key: 'compute', title: '🧱 夕方のブロックを組む',
                 done: function () { return store.get('ops-day:computed') === '1'; },

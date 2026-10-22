@@ -76,7 +76,7 @@ const SRC = [
         '        function _opsResultSetHp(on) {',
         '        function _opsResultCancel() {',
         '        async function handleOpsResultSave() {',
-        '        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds, onlyIds }) {',
+        '        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds }) {',
     ].map(cutFn),
 ].join('\n');
 
@@ -129,13 +129,13 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         window: {
             raidBlocksDomain: globalThis.raidBlocksDomain, attackCheckDomain: globalThis.attackCheckDomain, resultIntakeDomain: globalThis.resultIntakeDomain,
             ocrDomain: { detectBossCode: () => null },
-            supabaseLoadAttackSkips: async () => { calls.push(['loadSkips']); return env._skipsDb; },
+            supabaseLoadAttackSkips: async () => { calls.push(['loadSkips']); const snapDb = new Set(env._skipsDb); const gate = env._skipsGate || env._skipsGates.shift(); if (gate) await gate; return snapDb; },
             supabaseSetAttackSkip: async (sid, key, on, by) => { calls.push(['setSkip', sid, key, on, by]); if (on) env._skipsDb.add(key); else env._skipsDb.delete(key); return on; },
-            supabaseLoadMyAttacks: async (pid) => { calls.push(['loadMyAttacks', pid]); return freshAttacks ? freshAttacks(pid) : (store?.players.find(p => p.id === pid)?.attacks || []); },
+            supabaseLoadMyAttacks: async (pid) => { calls.push(['loadMyAttacks', pid]); if (env._attacksGate) await env._attacksGate; return freshAttacks ? freshAttacks(pid) : (store?.players.find(p => p.id === pid)?.attacks || []); },
             supabaseAddAttack: async (row, opts) => { calls.push(['addAttack', row, opts]); return { id: 9001, attack_number: 1 }; },
             supabaseUpdateBossHp: async (...a) => { calls.push(['updateBossHp', ...a]); },
-            supabaseSetAttackConfirmed: async (...a) => { calls.push(['setConfirmed', ...a]); return {}; },
-            supabaseClaimRaidNotice: async (...a) => { calls.push(['claim', ...a]); return env._claim; },
+            supabaseSetAttackConfirmed: async (...a) => { calls.push(['setConfirmed', ...a]); if (env._confirmFail) throw new Error('通信断'); return {}; },
+            supabaseClaimRaidNotice: async (...a) => { calls.push(['claim', ...a]); return typeof env._claim === 'function' ? env._claim(a[2]) : env._claim; },
             supabaseMarkRaidNoticeSent: async (...a) => { calls.push(['markSent', ...a]); },
             supabaseReleaseRaidNotice: async (...a) => { calls.push(['release', ...a]); },
             sendPushNotification: async (payload) => { calls.push(['push', payload]); if (env._pushFail) throw new Error('通信断'); return { sent: 1 }; },
@@ -159,7 +159,7 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         getCurrentIdentity: () => ({ id: 1, name: 'ふるり' }),
         ensureActiveSeasonLoaded: async () => ({ season: snap.season, bosses: BOSSES }),
         _reservationIdForAttack: async (...a) => { calls.push(['resvId', ...a]); return 77; },
-        _ocrAttackMultiAndMerge: async () => { calls.push(['ocr']); if (env._beforeOcrReturn) env._beforeOcrReturn(); return ocr; },
+        _ocrAttackMultiAndMerge: async () => { calls.push(['ocr']); if (env._beforeOcrReturn) env._beforeOcrReturn(); if (env._ocrQueue.length) return env._ocrQueue.shift()(); return ocr; },
         getNikkeCharsCache: async () => [],
         fuzzyResolveCharacter: (n) => n,
         _checkRaidEvents: () => { calls.push(['checkRaidEvents']); return Promise.resolve(); },
@@ -167,10 +167,10 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         renderOpsMemberStatus: () => { },
         _renderOpsCockpitSoon: () => { },
         _opsJump: () => { },
-        _skipsDb: new Set(), _claim: 'claimed', _pushFail: false, _beforeOcrReturn: null,
+        _skipsDb: new Set(), _claim: 'claimed', _pushFail: false, _beforeOcrReturn: null, _skipsGate: null, _skipsGates: [], _attacksGate: null, _confirmFail: false, _ocrQueue: [],
         el, calls, setStore: (s) => { store = s; gen++; },
     };
-    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore', '_skipsDb', '_claim', '_pushFail', '_beforeOcrReturn'].includes(k));
+    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore'].includes(k) && !k.startsWith('_') || ['_opsMode', '_opsPublishedPlan', '_opsHm', '_reservationIdForAttack', '_ocrAttackMultiAndMerge', '_checkRaidEvents', '_opsReloadBoardCards', '_renderOpsCockpitSoon', '_opsJump'].includes(k));
     const names = ['renderOpsAttackCheck', 'handleOpsAtkSkip', '_opsAtkAsk', '_renderOpsPlanTidy', '_opsResultPick', '_renderOpsResultPlayers', '_opsResultFromMissing',
         '_opsResultManual', 'handleOpsResultUpload', '_renderOpsResultDraft', '_opsResultSetBoss', '_opsResultSetSlot', '_opsResultSetDamage', '_opsResultSetLevel',
         '_opsResultSetHp', '_opsResultCancel', 'handleOpsResultSave', '_notifyBlockPublish', '_opsResultWarnings'];
@@ -310,7 +310,7 @@ await test('★ 「凸していない」: 印を付けると未報告と片付�
     const t = makeEnv();
     await t.renderOpsAttackCheck(); await flush();
     await t.handleOpsAtkSkip(1, true);   // きい 19時 B3
-    assert.deepEqual(t.calls.find(c => c[0] === 'setSkip').slice(1), [45, '501|8|1|3|14', true, 1], '鍵・押した人が違う');
+    assert.deepEqual(t.calls.find(c => c[0] === 'setSkip').slice(1), [45, '501|8|1|3|14|1', true, 1], '鍵・押した人が違う');
     let st = t.state().atk;
     assert.deepEqual(st.missing.map(m => m.memberId), [7]); assert.deepEqual(st.skipped.map(m => m.memberId), [8]);
     assert.ok(/凸していない 1/.test(t.el('opsAtkCheckMissing').innerHTML) && /handleOpsAtkSkip\(0, false\)/.test(t.el('opsAtkCheckMissing').innerHTML));
@@ -328,33 +328,124 @@ await test('★ 「凸していない」: 印を付けると未報告と片付�
     assert.ok(t.calls.some(c => c[0] === 'copy' && /あお さん、18時の B3 \(灼熱PT\)/.test(c[1])), '聞く文が違う');
 });
 
-await test('★ ブロックの配信の通知: 配信 1 回につき 1 度 / 人ごとに自分の凸 (夕方のぶんだけ) / 確保できなければ送らない / 全部失敗したら確保を戻す', async () => {
+await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 度 / 自分の凸 (夕方のぶんだけ) / 同じ中身は送り直さない / 送れなかった人は確保を戻して次の配信で送る', async () => {
     const t = makeEnv();
-    const sent = await t._notifyBlockPublish({ pub: { id: 501 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]), onlyIds: null });
-    assert.deepEqual([...sent], [7, 8]);
-    assert.deepEqual(t.calls.find(c => c[0] === 'claim').slice(1), [45, 'block_publish', '501', 1]);
+    const r = await t._notifyBlockPublish({ pub: { id: 501 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
+    assert.deepEqual([[...r.covered], r.sent, r.failed], [[7, 8], 2, 0]);
+    assert.deepEqual(t.calls.filter(c => c[0] === 'claim').map(c => c.slice(1)), [
+        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない');
     const pushes = t.calls.filter(c => c[0] === 'push').map(c => c[1]);
     assert.deepEqual(pushes.map(p => [p.playerIds, p.title, p.body]), [
         [[7], '🧱 夕方 18〜20時 のあなたの凸が決まりました', '18時 B3 灼熱PT 編成② — ホームで確認してください'],
         [[8], '🔄 夕方 18〜20時 のあなたの凸が変わりました', '19時 B3 灼熱PT 編成① — ホームで確認してください'],
     ], '夜の割当まで書いている / 文が違う');
-    assert.ok(t.calls.some(c => c[0] === 'markSent'));
-    // 同じブロックの配信し直し: 変わった人だけ
-    const only = makeEnv();
-    const s2 = await only._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]), onlyIds: new Set([8]) });
-    assert.deepEqual([...s2], [8]); assert.equal(only.calls.filter(c => c[0] === 'push').length, 1);
-    // 誰かが送信中 / 送信済み → 送らない
+    assert.equal(t.calls.filter(c => c[0] === 'markSent').length, 2);
+    // 配信し直し: 同じ中身をもう送ってある人 (done) には送らないが、L4 の重ね送りからは外す (covered)
+    const again = makeEnv(); again._claim = (ref) => (ref.startsWith('18-20|7|') ? 'done' : 'claimed');
+    const r2 = await again._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set() });
+    assert.deepEqual([[...r2.covered], r2.sent], [[7, 8], 1]); assert.deepEqual(again.calls.filter(c => c[0] === 'push').map(c => c[1].playerIds[0]), [8]);
+    // 誰かが送信中 (held) → 送らない・covered にも入れない
     const held = makeEnv(); held._claim = 'held';
-    assert.equal((await held._notifyBlockPublish({ pub: { id: 503 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } })).size, 0);
-    assert.ok(!held.calls.some(c => c[0] === 'push'), '確保できないのに送った');
-    // 全部失敗 → 確保を戻して空を返す (L4 に任せる)
+    const r3 = await held._notifyBlockPublish({ pub: { id: 503 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
+    assert.equal(r3.covered.size, 0); assert.ok(!held.calls.some(c => c[0] === 'push'), '確保できないのに送った');
+    // 送れなかった → その人の確保を戻す (次の配信で送り直せる)・送信済みにしない
     const bad = makeEnv(); bad._pushFail = true;
-    assert.equal((await bad._notifyBlockPublish({ pub: { id: 504 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } })).size, 0);
-    assert.ok(bad.calls.some(c => c[0] === 'release') && !bad.calls.some(c => c[0] === 'markSent'), '送れなかったのに送信済みにした');
+    const r4 = await bad._notifyBlockPublish({ pub: { id: 504 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
+    assert.deepEqual([r4.covered.size, r4.sent, r4.failed], [0, 0, 2]);
+    assert.deepEqual(bad.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|19時 B3 灼熱PT 編成①'], '送れなかった人の確保を戻していない');
+    assert.ok(!bad.calls.some(c => c[0] === 'markSent'), '送れなかったのに送信済みにした');
     // ブロックで組んでいない配信は通知しない
     const whole = makeEnv();
-    assert.equal((await whole._notifyBlockPublish({ pub: { id: 505 }, plan: { ...PUB.plan, blockScope: null }, seasonId: 45, me: { id: 1 } })).size, 0);
+    assert.equal((await whole._notifyBlockPublish({ pub: { id: 505 }, plan: { ...PUB.plan, blockScope: null }, seasonId: 45, me: { id: 1 } })).covered.size, 0);
     assert.ok(!whole.calls.some(c => c[0] === 'claim'));
+});
+
+await test('★ 登録中は下書きを動かさない: やめる・Lv の変更・別の下書きを受け付けず、押した時点の写しで登録する (Codex指摘 1901a8a)', async () => {
+    const t = makeEnv({ ocr: { bossName: 'アネモイ', totalDamage: 30e9 } });
+    await t.renderOpsAttackCheck(); await flush();
+    t._opsResultPick('7');
+    await t.handleOpsResultUpload({ target: { files: [{}], value: '' } });
+    let open; t._attacksGate = new Promise(r => { open = r; });
+    const p = t.handleOpsResultSave();
+    await flush();
+    assert.equal(t.state().ri.busy, true);
+    assert.ok(/登録中…/.test(t.el('opsResultDraft').innerHTML) && / disabled onclick="_opsResultCancel\(\)"/.test(t.el('opsResultDraft').innerHTML), '登録中に入力を止めていない');
+    t._opsResultSetLevel('4');      // 無視される
+    assert.equal(t.state().ri.draft.level, 1, '登録中に Lv を変えられた');
+    t._opsResultCancel();           // 無視される
+    assert.ok(t.state().ri.draft, '登録中に「やめる」で下書きが消えた');
+    t._opsResultManual();           // 「登録中です」
+    assert.ok(/登録中です/.test(t.el('opsResultStatus').textContent));
+    open(); await p;
+    const add = t.calls.find(c => c[0] === 'addAttack');
+    assert.ok(add, 'やめるで登録が止まった (登録中は受け付けないはず)');
+    assert.equal(add[1].level, 1, '登録中に変えた Lv が混ざった');
+    assert.equal(t.state().ri.draft, null); assert.equal(t.state().ri.busy, false);
+});
+
+await test('★ 読み取りの世代: 先に始めた読み取りが後から返っても、新しい下書きを上書きしない / ✓ の保存に失敗したら知らせる', async () => {
+    const t = makeEnv();
+    await t.renderOpsAttackCheck(); await flush();
+    t._opsResultPick('7');
+    let late; const slow = new Promise(r => { late = r; });
+    t._ocrQueue.push(() => slow, () => ({ bossName: 'ゼウス', totalDamage: 20e9 }));
+    const p1 = t.handleOpsResultUpload({ target: { files: [{}], value: '' } });   // 1 回目 (遅い)
+    await flush();
+    await t.handleOpsResultUpload({ target: { files: [{}], value: '' } });         // 2 回目 (すぐ返る)
+    assert.equal(t.state().ri.draft.bossNumber, 1);
+    late({ bossName: 'アネモイ', totalDamage: 30e9 }); await p1;
+    assert.equal(t.state().ri.draft.bossNumber, 1, '古い読み取りで新しい下書きを上書きした');
+    // ✓ の保存が失敗 → 凸は登録したまま知らせる
+    t._confirmFail = true;
+    t._opsResultSetDamage('20');
+    await t.handleOpsResultSave();
+    assert.ok(t.calls.some(c => c[0] === 'addAttack'));
+    assert.ok(t.calls.some(c => c[0] === 'notice' && /✓ を付けられませんでした/.test(c[1])), '✓ の失敗を知らせていない');
+    // ✓ を待ってから取り直す
+    const order = t.calls.map(c => c[0]);
+    assert.ok(order.indexOf('setConfirmed') < order.indexOf('reload'), '✓ の前に取り直している');
+});
+
+await test('★ 当たり (⏰ の行) のレベルで下書きを作る / 割当の編成はそのレベルで見る (Codex指摘 1901a8a)', async () => {
+    const snap = board(); snap.season = { ...snap.season, current_level: 3 };
+    const pubLv2 = { ...PUB, plan: { ...PUB.plan, levels: [{ level: 2, bosses: [{ bossNumber: 3, weakness: 'fire', attacks: [{ memberId: 7, hourIdx: 13, dmgB: 28, loadoutSlot: 2 }] }] }] } };
+    const t = makeEnv({ snap, pub: pubLv2 });
+    await t.renderOpsAttackCheck(); await flush();
+    t._opsResultFromMissing(0);
+    const d = t.state().ri.draft;
+    assert.deepEqual([d.bossNumber, d.level, d.slot], [3, 2, 2], 'いまのレベル (Lv3) で下書きを作った');
+    assert.ok(/ボスは「⏰ 結果がまだの凸」\(18時 B3\) から/.test(t.el('opsResultDraft').innerHTML), '当たりのボスだと分かる一言が無い');
+    // 手で入力: Lv3 のまま B3 (Lv3 の割当なし) → Lv2 にすると Lv2 の割当の編成② (Lv1 の B3 の凸は数えない)
+    const snap2 = board({ attacksA: [{ id: 3, player_id: 7, boss_number: 3, damage_raw: 25e9, reported_at: at(18, 30), level: 1, characters: ['X'] }] });
+    snap2.season = { ...snap2.season, current_level: 3 };
+    const w = makeEnv({ snap: snap2, pub: pubLv2 });
+    await w.renderOpsAttackCheck(); await flush();
+    w._opsResultPick('7'); w._opsResultManual(); w._opsResultSetBoss(3);
+    assert.equal(w.state().ri.draft.slot, 1, '前提: Lv3 には割当が無いので 1 つ目');
+    w._opsResultSetLevel('2');
+    assert.equal(w.state().ri.draft.slot, 2, 'Lv を変えても割当の編成を選び直さない / 別のレベルの凸を数えた');
+});
+
+await test('★ 「凸していない」の読み直し: 画面で印を付けたあとに古い読み直しが返っても、印を消さない (Codex指摘 1901a8a)', async () => {
+    const t = makeEnv();
+    let open; t._skipsGate = new Promise(r => { open = r; });
+    t.renderOpsAttackCheck();          // 読み直しが待っている (印なしの写し)
+    await flush();
+    t._skipsGate = null;
+    await t.handleOpsAtkSkip(1, true); // 画面で きい の 19時 を「凸していない」に
+    assert.deepEqual(t.state().atk.skipped.map(m => m.memberId), [8]);
+    open(); await flush(); await flush();
+    assert.deepEqual(t.state().atk.skipped.map(m => m.memberId), [8], '古い読み直しで画面の印を消した');
+    // 世代: 盤面の取り直し 1 (別の端末の印より前) → 取り直し 2 (印のあと)。2 が先に返り、1 があとから返っても 2 のまま
+    const u = makeEnv();
+    let a1, a2; u._skipsGates.push(new Promise(r => { a1 = r; }), new Promise(r => { a2 = r; }));
+    u.renderOpsAttackCheck(); await flush();                       // 読み直し 1 (印なしの写し)
+    u._skipsDb.add('501|8|1|3|14|1');                              // 別の端末が「凸していない」を付けた
+    u.setStore(board()); u.renderOpsAttackCheck(); await flush(); // 盤面の取り直し → 読み直し 2 (印ありの写し)
+    a2(); await flush(); await flush();
+    assert.deepEqual(u.state().atk.skipped.map(m => m.memberId), [8]);
+    a1(); await flush(); await flush();
+    assert.deepEqual(u.state().atk.skipped.map(m => m.memberId), [8], '古い世代の読み直しで新しい印を消した');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
