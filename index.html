@@ -1021,7 +1021,7 @@
         body.ops-mode [data-ops-off-only] { display: none !important; }
         /* 🧱 ③-d メンバーの入力を最低限に (既定): 模擬タブと申請の導線を CSS で隠す (消さない — 戻すのは ✏️ シーズン編集のスイッチ 1 つ)。
            body.member-lite は _applyMemberLite が付ける (運営モードの人には付かない)。[data-member-input-lite] は隠しているときだけ出す案内 */
-        body.member-lite [data-tab="mock"] { display: none !important; }
+        body.mock-tab-hidden [data-tab="mock"] { display: none !important; }   /* 運営モードでも隠す (2026-10-22)。出すのは member_input=full だけ */
         body.member-lite [data-member-input] { display: none !important; }
         body:not(.member-lite) [data-member-input-lite] { display: none !important; }
         /* 🧱 段階 1 (2026-10-22 決定 a): メンバーは「いつ・どの PT で凸するか」だけ — ボスの状況 (帯・カード)・オンライン/模擬中/戦闘中の状態ボタン・
@@ -4067,6 +4067,8 @@
                                 <span style="opacity:0.65;" data-sp-icon="pencil" data-sp-size="10"></span>
                             </div>
                         </div>
+                        <!-- 👑 マスター運営だけ: メンバーの見え方 ⇄ 運営の画面 (2026-10-22 ユーザー要望「デバッグしやすく」)。🛠 と同じ切替 (端末ごとに記憶)。文字は _applyOpsMode が合わせる -->
+                        <button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode()" style="margin-top:8px;border:none;border-radius:999px;padding:6px 11px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;"></button>
                         <div style="margin-top:12px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                 <div style="font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);">得意属性</div>
@@ -7546,9 +7548,9 @@
                 //    active 解除後に return すると「表示中タブが消えて画面が空になる」壊れ方をする
                 //    (旧実装は途中で例外 = 同じ壊れた中間状態で止まっていた — ここで構造的に解消)
                 // 🧱 ③-d: メンバーの入力を最低限にしているとき、模擬タブは開かない (ホームへ)。運営モードの人は開ける
-                if (tabName === 'mock' && typeof _memberLite === 'function' && _memberLite()) {
-                    showNotification('模擬は Discord にスクショを貼ってください。運営が PAD に登録します');
-                    tabName = 'mypage';
+                if (tabName === 'mock' && typeof _mockTabHidden === 'function' && _mockTabHidden()) {
+                    showNotification(_opsMode ? '模擬は 戦況タブの「📸 模擬の取り込み」で登録します (自分のぶんも同じ)' : '模擬は Discord にスクショを貼ってください。運営が PAD に登録します');
+                    tabName = _opsMode ? 'ops' : 'mypage';
                 }
                 const target = document.getElementById('tab-' + tabName);
                 if (!target) { console.warn('[TabController] 未知のタブ名:', tabName); return; }
@@ -8074,8 +8076,10 @@
             //   代わりに「Discord にスクショを貼る」を添え、押せる先は 出られる時間 (こちらは PAD で聞く)
             const lite = typeof _memberLite === 'function' && _memberLite();
             const liteNote = lite ? ' 模擬は Discord にスクショを貼ってください。運営が PAD に登録します。' : '';
+            const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 運営モードでも模擬タブは隠れる → 📸 模擬の取り込みへ (2026-10-22)
             const mockCta = (label, soft = false) => lite
                 ? (soft ? softBtn : heroBtn)('openMyAvailModal()', '⏰ 出られる時間を確認する')
+                : mockHidden ? (soft ? softBtn : heroBtn)('_gotoOpsMockIntake()', '📸 模擬の取り込み (戦況タブ) で登録する')
                 : (soft ? softBtn : heroBtn)("switchTab('mock')", label);
             const maxPick = _maxDisjointSquads(squads);
             const canForm3 = maxPick >= 3;
@@ -27476,7 +27480,8 @@
             if (tab && document.getElementById(`tab-${tab}`)) {
                 // 🧱 ③-d: ?tab=mock は シーズンの member_input を読んでから判定する。起動直後は seasonStore が未ロード = 既定の「隠す」に倒れ、
                 //   full の設定でも通知やブックマークからの ?tab=mock がホームへ戻されていた (Codex指摘 b8f9d94)。運営モードの人は待たない
-                if (tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore.get()?.season && typeof ensureActiveSeasonLoaded === 'function') {
+                //   運営モードでも待つ — 隠すかはシーズンの設定 (member_input) で決まる (2026-10-22)
+                if (tab === 'mock' && typeof seasonStore !== 'undefined' && !seasonStore.get()?.season && typeof ensureActiveSeasonLoaded === 'function') {
                     const activeAtStart = document.querySelector('.tab-content.active')?.id || null;
                     ensureActiveSeasonLoaded().catch(() => null).then(() => {
                         // 待っている間に別の誘導 (後着の通知・pending-nav・URL と SW の二重到着) や本人のタブ操作があれば、古い待ちは何もしない (Codex指摘 02867c5)
@@ -28495,11 +28500,23 @@
         //   編成編集モーダルと OCR は運営の「模擬の取り込み」で使い続けるので腐らない
         const _memberInputFull = () => (typeof seasonStore !== 'undefined' && seasonStore.get()?.season?.metadata?.member_input === 'full');
         const _memberLite = () => !_opsMode && !_memberInputFull();
+        // 🧱 模擬タブは member_input=full のときだけ出す (2026-10-22 ユーザー要望「運営画面にも模擬タブは要らない」) — 運営モードでも隠す。
+        //   運営の登録は 戦況タブ「📸 模擬の取り込み」(自分のぶんも同じ)。ユニオン事前比較 (#mockCompareCard) も一緒に隠れる (必要なら戦況へ移す)
+        const _mockTabHidden = () => !_memberInputFull();
         function _applyMemberLite() {
             const lite = _memberLite();
             document.body.classList.toggle('member-lite', lite);
-            // 模擬タブを開いたまま隠されたらホームへ (TabController も入口で止める)
-            if (lite && document.getElementById('tab-mock')?.classList.contains('active')) TabController.activate('mypage');
+            const mockHidden = _mockTabHidden();
+            document.body.classList.toggle('mock-tab-hidden', mockHidden);
+            // 模擬タブを開いたまま隠されたら ホーム (運営モードなら戦況) へ (TabController も入口で止める)
+            if (mockHidden && document.getElementById('tab-mock')?.classList.contains('active')) TabController.activate(_opsMode ? 'ops' : 'mypage');
+        }
+        // 戦況タブの「📸 模擬の取り込み」カードを開いて位置を合わせる (運営モードで模擬タブが隠れているときのヒーローの導線)
+        function _gotoOpsMockIntake() {
+            if (typeof switchTab === 'function') switchTab('ops');
+            const card = document.getElementById('opsSecMockIntake');
+            if (card && typeof _setOpsCardOpen === 'function') _setOpsCardOpen(card, true);
+            if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecMockIntake');
         }
         function _applyOpsMode() {
             document.body.classList.toggle('ops-mode', _opsMode);
@@ -28519,6 +28536,12 @@
                 const lb = btn.querySelector('.nav-lb, .tab-lb');
                 if (lb) lb.textContent = navLabel;
             });
+            // 👑 ホームの切替チップ (マスター運営だけ・data-master-only): 言葉で「いまどちらを見ているか / 押すとどうなるか」
+            const h = document.getElementById('homeViewSwitch');
+            if (h) {
+                h.textContent = _opsMode ? '👤 メンバーの見え方で見る' : '🛠 運営の画面に戻す';
+                h.title = _opsMode ? 'メンバーがふだん見る画面 (模擬タブ・ボスの状況・凸報告が無い) を確かめる。🛠 OFF と同じ・この端末だけ' : '運営の画面 (🛠 ON) に戻す';
+            }
             // 設定タブ側のトグル (ops タブのナビチップとは地の色が違うので個別に塗る)
             const s = document.getElementById('settingsOpsModeBtn');
             if (s) {

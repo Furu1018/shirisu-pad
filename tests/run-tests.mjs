@@ -9403,16 +9403,23 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(typeof _applyMemberLite === 'function'\) _applyMemberLite\(\);   \/\/ 🧱 シーズンの member_input が読めたので/.test(html), 'シーズンを読んだときに決め直していない');
         // CSS: 隠す (消さない)。隠しているときだけ出す案内
         const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
-        assert.ok(/body\.member-lite \[data-tab="mock"\] \{ display: none !important; \}/.test(css), '模擬タブを隠していない');
+        assert.ok(/body\.mock-tab-hidden \[data-tab="mock"\] \{ display: none !important; \}/.test(css), '模擬タブを隠していない (運営モードでも隠す = body.mock-tab-hidden)');
+        assert.ok(!/body\.member-lite \[data-tab="mock"\]/.test(css), '模擬タブの隠しが lite だけ (運営モードでは出てしまう)');
+        assert.ok(/const _mockTabHidden = \(\) => !_memberInputFull\(\);/.test(html), '模擬タブの判定が無い');
+        assert.ok(/const mockHidden = _mockTabHidden\(\);\s*\n\s*document\.body\.classList\.toggle\('mock-tab-hidden', mockHidden\);/.test(html), 'body にクラスを付けていない');
         assert.ok(/body\.member-lite \[data-member-input\] \{ display: none !important; \}/.test(css) && /body:not\(\.member-lite\) \[data-member-input-lite\] \{ display: none !important; \}/.test(css), '申請の導線の出し分けが無い');
         assert.equal((html.slice(html.lastIndexOf('</style>')).match(/data-tab="mock"/g) || []).length, 3, '模擬タブの入口 (上のタブ・下のナビ・ドロワー) が 3 つでない');
         // 入口でも止める (模擬タブを開こうとしたらホームへ)
-        assert.ok(/if \(tabName === 'mock' && typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*showNotification\('模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = 'mypage';/.test(html), 'TabController で止めていない');
+        assert.ok(/if \(tabName === 'mock' && typeof _mockTabHidden === 'function' && _mockTabHidden\(\)\) \{\s*\n\s*showNotification\(_opsMode \? '模擬は 戦況タブの「📸 模擬の取り込み」で登録します \(自分のぶんも同じ\)' : '模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = _opsMode \? 'ops' : 'mypage';/.test(html), 'TabController で止めていない (運営は 戦況へ・メンバーはホームへ)');
         const nav = html.match(/\n        function _handleNavParams\(search\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const seq = \+\+_navSeq;/.test(nav) && /let _navSeq = 0;/.test(html), '画面誘導の世代が無い');
-        assert.ok(/if \(tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズンを読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5)');
+        assert.ok(/if \(tab === 'mock' && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズンを読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5)');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
-        assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
+        assert.ok(/if \(mockHidden && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\(_opsMode \? 'ops' : 'mypage'\);/.test(html), '開いたまま隠されたときに戻していない (運営は戦況へ)');
+        // 👑 ホームの切替チップ (マスター運営だけ): 🛠 と同じ toggleOpsMode・文字は _applyOpsMode が合わせる (2026-10-22 ユーザー要望)
+        assert.ok(/<button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode\(\)"/.test(html), 'ホームの切替チップが無い / マスターだけ (data-master-only) でない');
+        assert.ok(/h\.textContent = _opsMode \? '👤 メンバーの見え方で見る' : '🛠 運営の画面に戻す';/.test(html), '切替チップの文字を合わせていない');
+        assert.ok(/function _gotoOpsMockIntake\(\) \{[\s\S]*?switchTab\('ops'\)[\s\S]*?_setOpsCardOpen\(card, true\)[\s\S]*?_opsScrollSettled\('opsSecMockIntake'\)/.test(html), '📸 模擬の取り込みへ飛ぶ導線が無い');
         // 🧱 段階 1 (2026-10-22 決定 a/f): lite で ボスの状況・状態ボタン・戦闘ゲート・凸報告の入口 を隠す (消さない) / 読み取り専用の模擬カード
         for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions',
                            '#mypageBattleCloseBar', '#mypageBattleExpanded', '#mypageBattleLive', '#myAttackAddBtn', '#myAttackListWrap .blabla-pill', '[data-member-report]']) {   // Codex指摘: 展開部と交戦中の帯も (戦闘中のまま lite になると残る)
@@ -9443,7 +9450,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
         // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
         const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 出られる時間を確認する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い');
+        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 出られる時間を確認する'\)\s*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
+        assert.ok(/const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden\(\);/.test(hero), 'ヒーローが模擬タブの判定を見ていない');
         assert.ok(!/heroBtn\("switchTab\('mock'\)"/.test(hero) && !/softBtn\("switchTab\('mock'\)"/.test(hero), '模擬タブへの直の導線が残っている');
         assert.equal((hero.match(/mockCta\(/g) || []).length, 6, 'mockCta を使う場所が 6 か所 (B1 / C0 / C1 / B2 / C3 / C2) でない');
         assert.ok(/模擬戦のスクショを Discord に貼ってください。運営が PAD に登録すると/.test(hero) && /why \+= liteNote;/.test(hero), '隠しているときの文言が無い');
