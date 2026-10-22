@@ -114,6 +114,15 @@
         };
     }
     var nav = function (name, label) { return { text: 'メニューの「' + label + '」を開きます。', target: pick(name) }; };
+    // 🧱 段階 2.5: 運営タブは 👥 メンバー / 🧱 組む / ⚔️ 戦況 に分かれた。目的のカードが別のタブなら、まずそのタブを押させる
+    //   (練習モードは 2.5 のあとに作り直す — それまでの橋渡し)
+    var opsTab = function (want) {
+        var cur = document.querySelector('#opsSubTabs [aria-selected="true"]');
+        if (!cur || cur.getAttribute('data-ops-tab') === want) return null;
+        var btn = document.querySelector('#opsSubTabs [data-ops-tab="' + want + '"]');
+        var label = btn ? (btn.textContent || '').replace(/\d+$/, '').trim() : want;
+        return { text: '運営タブの上の「' + label + '」を押します。カードはいつも同じタブにあります。', target: btn };
+    };
     /** その課題に関係のないシートが開いていたら、まず閉じてもらう */
     var stray = function (c, allowed) {
         if (!c.modal || allowed.indexOf(c.modalId) >= 0) return null;
@@ -446,6 +455,7 @@
                 guide: function (c) {
                     if (typeof _opsLastPlan !== 'undefined' && _opsLastPlan && _opsLastPlan.conditions) { try { store.set('ops-eve:computed', '1'); } catch (_) { /* noop */ } }
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (typeof _opsPlanStartMode !== 'undefined' && _opsPlanStartMode !== 'day') return stray(c, []) || { text: '条件を選びます。前日に組むので「起点」を「朝5時から」にします (時間は「⏰ 厳守」のまま = 出られる時間に合わない凸は組みません)。', target: pick('planStartDay') };
                     return stray(c, []) || { text: '「🧮 この条件で算出」を押します。本物のソルバーが 31 人の 3 凸を組みます (数秒かかります)。', target: pick('planCompute') };
                 } },
@@ -455,6 +465,7 @@
                     // 3 凸ぶん割当のある人にピースを置くと「どれと入れ替えるか」の確認が出る → 練習では「算出に任せる」で固定だけ置く
                     if (c.modalId === 'planSwapModal') return { text: 'この人はもう 3 凸ぶんの割当があります。どれと入れ替えるかを選べますが、ここでは「外す凸は算出に任せる」を押します。', real: '「入れ替えて固定する」は、残す凸も 📌 で固定して算出で動かないようにします。', target: pick('swapAuto') };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
                     if (typeof _opsPlanViewMode !== 'undefined' && _opsPlanViewMode !== 'timetable') return stray(c, []) || { text: '「🗓 時間割」に切り替えます。📌 の固定は時間割で置きます。', target: pick('planTimetable') };
                     // ★ ピースは「置ける場所がある人」を指す (夜しか出られない人のピースは、昼で終わる時間割には置けない)
@@ -469,6 +480,7 @@
                     var req = c.allResv.filter(function (r) { return r.status === 'requested'; })[0];
                     if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「この時刻に・この編成で」の申請が届きます。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴り、運営タブの先頭に出ます。', assume: ['memberRequest', '⏩ メンバーから申請が来たことにする'] };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('resvApprove');
                     if (!btn) return stray(c, []) || { text: '申請が届いています。運営タブの「🔒 予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve [onclick]') };
                     return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を固定して組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認は本人への約束です。見送るなら理由を添えます。約束を後から動かさないのがこのアプリの目的です。', target: btn };
@@ -477,6 +489,7 @@
                 done: function (c) { return !!(c.pub && c.pub.plan && Number(c.pub.plan.reservationCount) >= 1); },
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します (承認した予約が入ります)。', target: pick('planCompute') };
                     return stray(c, []) || { text: '「📤 このプランを配信」を押します。確認が出たら OK。押すまでメンバーには届きません。', real: '配信するとメンバー全員に通知が届き、ホームの「あなたの3凸」に割当が出ます。配信のあとに申請が来たら、承認 → 組み直し → もう一度配信です。', target: pick('planPublish') };
                 } },

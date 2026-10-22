@@ -35,35 +35,73 @@
      */
     const CARDS = [
         // 当日の最上部: コックピットの直下に帯として置く (幅12・常時開)
-        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 12 },
-        { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12 },
-        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7 },
-        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5 },
+        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 12, tab: null },
+        { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12, tab: 'members' },
+        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7, tab: 'battle' },
+        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5, tab: 'battle' },
         // 段階4 (2026-09-11): 交代して入った運営が 10 秒で状況を読むための2枚。純ロジックは js/domain/pace.js
-        { id: 'opsSecPace',      title: '消化のペース',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 7 },
-        { id: 'opsSecRecent',    title: '直近の動き',            group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 5 },
-        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 5 },
-        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12 },
+        { id: 'opsSecPace',      title: '消化のペース',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 7, tab: null },
+        { id: 'opsSecRecent',    title: '直近の動き',            group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 5, tab: null },
+        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 5, tab: null },
+        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12, tab: null },
         // ✅ 凸報告の確認 (🧱 ブロック制 ③-f・2026-10-18): 本人の凸報告を配信プランと突き合わせて ✓。当日は開く (当日の運営の主作業)、
         //   終了にも出す (BlaBlaLINK との突き合わせ・報告漏れの確認)。幅 12 で単独の行 (当日 = 残り12 の次、終了 = 先頭)
-        { id: 'opsSecAttackCheck', title: '凸報告の確認',        group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12 },
+        { id: 'opsSecAttackCheck', title: '凸報告の確認',        group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle' },
         // 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18): Discord に貼られたスクショを運営が本人の代わりに登録。準備〜当日 (当日は畳む)。
         //   幅 12 で単独の行 — 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭 (各行 12 のまま)
-        { id: 'opsSecMockIntake', title: '模擬の取り込み',        group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre', 'day'], span: 12 },
+        { id: 'opsSecMockIntake', title: '模擬の取り込み',        group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre', 'day'], span: 12, tab: 'members' },
         // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
         // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
-        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 7 },
+        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 12, tab: 'build' },
         // 前日 (告知) と終了 (結果報告) の両方で使う
-        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 5 },
-        { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12 },
-        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 7 },
+        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 5, tab: null },
+        { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12, tab: 'build' },
+        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12, tab: 'master' },
         // 一斉通知は準備段階の道具に (告知を出す段階。2026-09-11 ユーザー判断)
-        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: ['prep'], span: 5 },
+        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: ['prep'], span: 12, tab: 'members' },
         // 使われたキャラが確定するのはレイド後 (終了・2026-09-09)。準備段階にも出す — 新メンバーが入ったとき、その人のぶんを
         // 前のレイドの記録として取り直す (2026-09-15 ユーザー要望。相手は ② の絞り込みで決める)。準備の行は 7+5 / 12
-        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12 },
+        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12, tab: 'master' },
     ];
-    const STORAGE_KEY = 'shirisuko_ops_card_open_v1';
+    const STORAGE_KEY = 'shirisuko_ops_card_open_v2';   // v2 = 段階 2.5 のタブ (開閉の記憶を取り直す: タブの中は既定で開く)
+
+    /**
+     * 🧱 段階 2.5 (2026-10-22 ユーザー決定): 運営タブを 3 つ (+ マスター) に分ける。**カードはいつも同じタブ** (日付で動かさない)。
+     *   tab = 'members' (👥 人の準備) / 'build' (🧱 次のブロックを組んで配信) / 'battle' (⚔️ 当日ずっと) / 'master' (👑 ふるりだけ・準備と管理) /
+     *   null = 画面から外す (コードは残す: 運営アクション・オンライン・残り戦闘可能・直近の動き・Discord 告知・消化のペース — 戦況の見出しの 1 行に畳む)。
+     *   日によって変わるのは「開いたときのタブ」(defaultTab) と「いちばん急ぐこと」だけ。モック docs/運営タブ整理モック_2026-10-22.html
+     */
+    const TABS = [
+        { key: 'members', label: '👥 メンバー', sub: '模擬・出られる時間と凸数・通知の準備' },
+        { key: 'build',   label: '🧱 組む',     sub: '次のブロックを組んで配信' },
+        { key: 'battle',  label: '⚔️ 戦況',     sub: 'ボスの HP・凸の報告・締凸検索' },
+        { key: 'master',  label: '👑 マスター', sub: '準備と管理 (マスター運営だけ)', masterOnly: true },
+    ];
+    const TAB_KEYS = TABS.map(t => t.key);
+    const tabOf = (id) => { const c = cardById(id); return c ? (c.tab || null) : null; };
+    /** 開いたときのタブ: 当日・終了 = ⚔️ 戦況 / それより前 = 👥 メンバー */
+    const defaultTab = (stage) => (stage === 'day' || stage === 'end') ? 'battle' : 'members';
+    /**
+     * いま出すタブ。記憶 ({ tab, stage }) は**同じ段階のあいだだけ**効く (日が変わったら既定に戻す)。
+     * マスターでない人の 'master' と、知らないタブは既定へ
+     */
+    function resolveTab(stored, stage, isMaster) {
+        const t = stored && typeof stored === 'object' ? stored.tab : null;
+        const ok = TAB_KEYS.includes(t) && (t !== 'master' || !!isMaster) && stored.stage === stage;
+        return ok ? t : defaultTab(stage);
+    }
+    /**
+     * 各タブの名前の横に出す「手を打つべき数」(交代で入った運営がどこから手を付けるかを数字で決める)。未ロードは null (0 と混同させない)
+     * @param {{mbRows?: Object[]|null, reservations?: {pending:number, expired?:number}|null, attackCounts?: {total:number, confirmed:number, missing:number}|null}} a
+     */
+    function tabCounts({ mbRows, reservations, attackCounts } = {}) {
+        return {
+            members: Array.isArray(mbRows) ? mbRows.filter(r => r && r.todo).length : null,
+            build: reservations ? (Number(reservations.pending) || 0) + (Number(reservations.expired) || 0) : null,
+            battle: attackCounts ? Math.max(0, (Number(attackCounts.total) || 0) - (Number(attackCounts.confirmed) || 0)) + (Number(attackCounts.missing) || 0) : null,
+            master: null,
+        };
+    }
 
     const cardById = (id) => CARDS.find(c => c.id === id) || null;
 
@@ -71,13 +109,14 @@
      * カードを開くべきか。always → 常に true。記憶 (stored[phase][id]) があればそれ、無ければ既定。
      * opsMode=false (メンバー) は常に全開 — 一般メンバーの操作を増やさない
      */
-    function resolveOpen(id, phase, stored, opsMode = true) {
+    function resolveOpen(id, phase, stored, opsMode = true, tabbed = false) {
         const c = cardById(id);
         if (!c) return true;
         if (!opsMode || c.always) return true;
         const ph = phase === 'day' ? 'day' : 'pre';
         const v = stored && stored[ph] && typeof stored[ph][id] === 'boolean' ? stored[ph][id] : undefined;
-        return v !== undefined ? v : !!(c.open && c.open[ph]);
+        // 🧱 段階 2.5: タブに分けたので、タブの中のカードは既定で開く (畳むのは運営が自分で畳んだときだけ)
+        return v !== undefined ? v : (tabbed ? true : !!(c.open && c.open[ph]));
     }
 
     /** 記憶を更新した新しいオブジェクトを返す (元は変えない) */
@@ -178,5 +217,5 @@
         return { summaries, cockpit };
     }
 
-    root.opsLayoutDomain = { CARDS, STORAGE_KEY, cardById, resolveOpen, withStored, parseStored, summarize, hpFreshnessMin };
+    root.opsLayoutDomain = { CARDS, STORAGE_KEY, cardById, resolveOpen, withStored, parseStored, summarize, hpFreshnessMin, TABS, TAB_KEYS, tabOf, defaultTab, resolveTab, tabCounts };
 })(typeof window !== 'undefined' ? window : globalThis);

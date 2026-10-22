@@ -1021,7 +1021,24 @@
         body.ops-mode [data-ops-off-only] { display: none !important; }
         /* 🧱 ③-d メンバーの入力を最低限に (既定): 模擬タブと申請の導線を CSS で隠す (消さない — 戻すのは ✏️ シーズン編集のスイッチ 1 つ)。
            body.member-lite は _applyMemberLite が付ける (運営モードの人には付かない)。[data-member-input-lite] は隠しているときだけ出す案内 */
-        body.mock-tab-hidden [data-tab="mock"] { display: none !important; }   /* 運営モードでも隠す (2026-10-22)。出すのは member_input=full だけ */
+        body.mock-tab-hidden [data-tab="mock"] { display: none !important; }
+        /* 🧱 段階 2.5 (2026-10-22): メンバー (lite) の下メニューは ホーム · 分析 · 設定。戦況タブはなくす (運営は「運営」として出る) */
+        body.member-lite [data-tab="ops"] { display: none !important; }
+        /* 運営タブのサブタブ (👥 メンバー / 🧱 組む / ⚔️ 戦況 / 👑 マスター)。段階のチェックリスト・コックピット・グループ見出しは出さない */
+        body.ops-mode #opsStageList, body.ops-mode #opsCockpit, body.ops-mode #opsOverviewChips, body.ops-mode #tab-ops .ops-group-label { display: none !important; }
+        .ops-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 6px; }
+        .ops-subtabs button { font: inherit; font-size: 13px; font-weight: 800; border: 1.5px solid var(--line); background: var(--card); color: var(--t-strong);
+            border-radius: 999px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .ops-subtabs button[aria-selected="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
+        .ops-subtabs .n { font-size: 11px; font-weight: 900; min-width: 18px; text-align: center; border-radius: 999px; padding: 1px 6px; background: var(--s2); color: var(--t-muted); }
+        .ops-subtabs .n.bad { background: var(--bad-bg); color: var(--bad-deep); }
+        .ops-subtabs button[aria-selected="true"] .n:not(.bad) { background: rgba(var(--paper-rgb), .2); color: inherit; }
+        .ops-subtabs button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+        .ops-tab-line { font-size: 12px; font-weight: 700; color: var(--t-muted); margin: 0 0 8px; }
+        #opsTabHold { display: none !important; }
+        /* 👑 マスターのタブでは「その他」を見出しなしで開いたまま (メンテナンスだけ) */
+        #opsEtc.as-master .ops-etc-head, #opsEtc.as-master .ops-etc-label:first-child, #opsEtc.as-master #opsEtcCards { display: none !important; }
+        #opsEtc.as-master #opsEtcBody { display: block !important; }   /* 運営モードでも隠す (2026-10-22)。出すのは member_input=full だけ */
         body.member-lite [data-member-input] { display: none !important; }
         body:not(.member-lite) [data-member-input-lite] { display: none !important; }
         /* 🧱 段階 1 (2026-10-22 決定 a): メンバーは「いつ・どの PT で凸するか」だけ — ボスの状況 (帯・カード)・オンライン/模擬中/戦闘中の状態ボタン・
@@ -4388,7 +4405,7 @@
             <!-- ヘッダー: アクティブシーズン + 同期インジ -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
-                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">戦況</div>
+                    <div id="opsPageTitle" style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">戦況</div>
                     <div style="font-size:11px;color:var(--t-muted);margin-top:3px;letter-spacing:0.2px;">アクティブ: <strong id="opsSeasonLabel" style="font-weight:800;color:var(--t-ink);">読み込み中...</strong></div>
                 </div>
                 <div onclick="reloadOpsDashboard()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
@@ -7542,6 +7559,8 @@
                     showNotification(_opsMode ? '模擬は 戦況タブの「📸 模擬の取り込み」で登録します (自分のぶんも同じ)' : '模擬は Discord にスクショを貼ってください。運営が PAD に登録します');
                     tabName = _opsMode ? 'ops' : 'mypage';
                 }
+                // 🧱 段階 2.5: メンバー (lite) の戦況タブはなくした (状況は BlaBlaLINK で見る・2026-10-22 ユーザー決定)。古い導線はホームへ
+                if (tabName === 'ops' && typeof _opsTabHiddenForMember === 'function' && _opsTabHiddenForMember()) tabName = 'mypage';
                 const target = document.getElementById('tab-' + tabName);
                 if (!target) { console.warn('[TabController] 未知のタブ名:', tabName); return; }
 
@@ -17518,6 +17537,8 @@
             const plan = _opsPublishedPlan?.plan || null;
             const attacks = _opsFlatAttacks(snap).map(a => { const l = _atkCheck.local.get(Number(a.id)); return l ? { ...a, ...l } : a; });
             const res = dom.buildRows({ attacks, plan, nowMs: Date.now() });
+            _atkCheck.counts = res.counts ? { ...res.counts, missing: res.missing.length } : null;   // ⚔️ 戦況のタブの数 (段階 2.5)
+            if (typeof _renderOpsCockpitSoon === 'function') _renderOpsCockpitSoon();
             if (cnt) cnt.textContent = dom.summary(res) + (res.hasPlan || !res.rows.length ? '' : ' · 配信プランなし (食い違いは見られません)');
             const canConfirm = snap.attackConfirm !== false;
             const f = _atkCheck.filter;
@@ -27930,6 +27951,9 @@
         // インライン style 走査にも引っかからなかった) — クラスごと除外に追加
         const _SWIPE_EXCLUDE_SEL = 'input, textarea, select, .player-select-modal.open, [data-no-swipe], .data-table, .dc-table-wrap, .chart-container, .help-toc, .bottom-nav, header.header';
         const _findTabEl = (key) => document.getElementById('tab-' + key);
+        // いま見えているタブだけ (模擬タブを隠したとき / メンバー (lite) の戦況タブ — 段階 2.5)
+        const _swipeTabsNow = () => _SWIPE_TABS.filter(t => !(t === 'mock' && typeof _mockTabHidden === 'function' && _mockTabHidden())
+            && !(t === 'ops' && typeof _opsTabHiddenForMember === 'function' && _opsTabHiddenForMember()));
         const _resetTabTransform = (el) => {
             if (!el) return;
             el.style.transition = '';
@@ -27982,14 +28006,15 @@
             if (e.touches.length !== 1) return;
             const active = document.querySelector('.tab-content.active');
             const tabName = active?.id?.replace('tab-', '');
-            const idx = _SWIPE_TABS.indexOf(tabName);
+            const tabs = _swipeTabsNow();   // 隠したタブ (模擬・メンバーの戦況) は飛ばす (段階 2.5)
+            const idx = tabs.indexOf(tabName);
             if (idx < 0) return;
             _swipe.startX = e.touches[0].clientX;
             _swipe.startY = e.touches[0].clientY;
             _swipe.startTime = (typeof performance !== 'undefined' ? performance.now() : 0);
             _swipe.curEl = active;
-            _swipe.prevEl = idx > 0 ? _findTabEl(_SWIPE_TABS[idx - 1]) : null;
-            _swipe.nextEl = idx < _SWIPE_TABS.length - 1 ? _findTabEl(_SWIPE_TABS[idx + 1]) : null;
+            _swipe.prevEl = idx > 0 ? _findTabEl(tabs[idx - 1]) : null;
+            _swipe.nextEl = idx < tabs.length - 1 ? _findTabEl(tabs[idx + 1]) : null;
             _swipe.dir = null;
             _swipe.active = true;
             _swipe.tracking = false;
@@ -28547,6 +28572,9 @@
             renderSettingsRoles();
         }
         function _opsJump(id) {
+            // 🧱 段階 2.5: カードのタブへ切り替える (外したカードはそのタブがない → 今のタブのまま)
+            const t = window.opsLayoutDomain?.tabOf(id);
+            if (_opsMode && t && (typeof _opsStage !== 'object' || !_opsStage || _opsTabNow(_opsStage.stage) !== t)) setOpsTab(t);
             const card = document.getElementById(id);
             if (card && card.closest('#opsEtcBody') && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);   // 「その他」に畳まれていたら開く
             expandOpsCard(id);   // 畳まれていたら開く (display:none のままだと座標が取れない)
@@ -28577,9 +28605,8 @@
             // 運営 OFF (メンバーの見え方) で押されたら戦況へ飛ばない — 切替チップで OFF にしたあとの古い導線 (Codex指摘 2026-10-22)
             if (!_opsMode) { showNotification('模擬の登録は運営の画面 (🛠 ON) で行います'); return; }
             if (typeof switchTab === 'function') switchTab('ops');
+            if (typeof setOpsTab === 'function') setOpsTab('members');   // 段階 2.5: 模擬の取り込みは 👥 メンバーのタブ
             const card = document.getElementById('opsSecMockIntake');
-            // 段階外 (当日以外) は「その他」へ移されている — 親が閉じていると開いても見えない (Codex指摘 2026-10-22)
-            if (card && card.closest('#opsEtcCards') && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);
             if (card && typeof _setOpsCardOpen === 'function') _setOpsCardOpen(card, true);
             if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecMockIntake');
         }
@@ -28595,6 +28622,8 @@
             // ナビの「戦況」⇄「運営」(2026-09-11 ユーザー要望)。文字と title はここで、アイコンは CSS (body.ops-mode) で。
             // ★ ON/OFF と名乗り直しの両方がここを通る (唯一の場所)
             const navLabel = _opsMode ? '運営' : '戦況';
+            const pt = document.getElementById('opsPageTitle');
+            if (pt) pt.textContent = navLabel;   // 段階 2.5: 運営の画面の見出しは「運営」
             document.querySelectorAll('.tab-button[data-tab="ops"], .bottom-nav-btn[data-tab="ops"]').forEach(btn => {
                 btn.title = navLabel;
                 btn.setAttribute('aria-label', navLabel);
@@ -28814,11 +28843,14 @@
             bar.innerHTML = _opsStageBarHtml(st, season);
             heroEl.innerHTML = _opsStageHeroHtml(h, st.stage);
             listEl.innerHTML = _opsStageListHtml(rows, st.stage);
-            if (_opsStageApplied !== st.stage) {
-                _opsStageApplied = st.stage;
-                _applyOpsStageCards(st.stage);
+            // 🧱 段階 2.5: カードは段階ではなくタブで出し入れする (いつも同じタブ)。開いたときのタブだけ段階で決める
+            const tab = _opsTabNow(st.stage);
+            if (_opsStageApplied !== `${st.stage}|${tab}`) {
+                _opsStageApplied = `${st.stage}|${tab}`;
+                _applyOpsTabCards(tab);
                 _applyOpsCardStates();
             }
+            _renderOpsSubTabs(st.stage, tab, { mbRows, reservations });
             // 段階つきの部品 (シーズン制御のボタン等): data-stage="prep end" のように空白区切り
             document.querySelectorAll('#tab-ops [data-stage]').forEach(el => {
                 el.style.display = String(el.dataset.stage || '').split(/\s+/).includes(st.stage) ? '' : 'none';
@@ -28859,6 +28891,70 @@
                 return `<div class="row ${cls}"><span class="dot">${mark}</span><button type="button" class="lbl"${open}>${esc(r.label)}</button><span class="cnt">${val}</span>${nudge}</div>`;
             }).join('');
             return `<div class="ops-stage-list"><div class="tt">${title}</div>${li}</div>`;
+        }
+        // ===== 🧱 段階 2.5: 運営タブのサブタブ (👥 メンバー / 🧱 組む / ⚔️ 戦況 / 👑 マスター・2026-10-22 ユーザー決定) =====
+        // メンバー (lite = 運営 OFF で模擬タブなし) には戦況タブを出さない (状況は BlaBlaLINK で見る)
+        const _opsTabHiddenForMember = () => typeof _memberLite === 'function' && _memberLite();
+        const _OPS_TAB_KEY = 'shirisuko_ops_subtab_v1';
+        let _opsTabStored = null;
+        const _opsIsMasterNow = () => (typeof _opsRoleForCurrent === 'function' && _opsRoleForCurrent() === 'master');
+        function _opsTabNow(stage) {
+            const lay = window.opsLayoutDomain;
+            if (!lay) return 'members';
+            if (_opsTabStored === null) { try { _opsTabStored = JSON.parse(localStorage.getItem(_OPS_TAB_KEY) || 'null') || {}; } catch { _opsTabStored = {}; } }
+            return lay.resolveTab(_opsTabStored, stage, _opsIsMasterNow());
+        }
+        /** サブタブを押した (自分で選んだら同じ段階のあいだそのまま・端末ごと) */
+        function setOpsTab(tab) {
+            const lay = window.opsLayoutDomain;
+            if (!lay || !lay.TAB_KEYS.includes(tab)) return;
+            if (tab === 'master' && !_opsIsMasterNow()) return;
+            const stage = (typeof _opsStage === 'object' && _opsStage) ? _opsStage.stage : null;
+            _opsTabStored = { tab, stage };
+            try { localStorage.setItem(_OPS_TAB_KEY, JSON.stringify(_opsTabStored)); } catch { /* 覚えられなくても動く */ }
+            _renderOpsStage();
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+        // そのタブのカードを本文へ (CARDS の順)、ほかは置き場へ。👑 マスターのタブだけ「その他」(メンテナンス) を開いて出す
+        function _applyOpsTabCards(tab) {
+            const lay = window.opsLayoutDomain;
+            const hold = document.getElementById('opsTabHold'), anchor = document.getElementById('opsEtc');
+            if (!lay || !hold || !anchor) return;
+            for (const def of lay.CARDS) {
+                const card = document.getElementById(def.id);
+                if (!card) continue;
+                if (def.tab && def.tab === tab) anchor.insertAdjacentElement('beforebegin', card);
+                else hold.appendChild(card);
+            }
+            const master = tab === 'master';
+            anchor.classList.toggle('as-master', master);
+            anchor.style.display = master ? '' : 'none';
+            if (master && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);
+            const link = document.getElementById('opsHomeCrosslink');
+            if (link) hold.appendChild(link);
+        }
+        function _renderOpsSubTabs(stage, tab, { mbRows, reservations } = {}) {
+            const lay = window.opsLayoutDomain;
+            const el = document.getElementById('opsSubTabs'), line = document.getElementById('opsTabLine');
+            if (!lay || !el) return;
+            const counts = lay.tabCounts({ mbRows, reservations, attackCounts: (typeof _atkCheck !== 'undefined' && _atkCheck.counts) ? _atkCheck.counts : null });
+            const isMaster = _opsIsMasterNow();
+            el.innerHTML = lay.TABS.filter(t => !t.masterOnly || isMaster).map(t => {
+                const n = counts[t.key];
+                const badge = n == null ? '' : `<span class="n${n > 0 ? ' bad' : ''}">${n}</span>`;
+                return `<button type="button" role="tab" data-ops-tab="${t.key}" aria-selected="${t.key === tab}" onclick="setOpsTab('${t.key}')" title="${escapeHtml(t.sub)}">${escapeHtml(t.label)}${badge}</button>`;
+            }).join('');
+            if (line) {
+                const def = lay.TABS.find(t => t.key === tab);
+                let txt = def ? def.sub : '';
+                if (tab === 'battle') {
+                    // 消化のペースは見出しの 1 行に畳む (カードは外した)
+                    const snap = opsStore.get();
+                    const sm = snap ? lay.summarize({ season: snap.season, bosses: snap.bosses || [], players: snap.players || [] }).summaries : null;
+                    if (sm && snap.season) txt = [sm.opsSecBoss.text, sm.opsSecPace.text ? `使った凸 ${sm.opsSecPace.text}` : ''].filter(Boolean).join(' · ');
+                }
+                line.textContent = txt;
+            }
         }
         // 段階外のカードを「その他」へ / 段階内のカードを本文へ (CARDS の順に並べ直す)。stage=null は運営OFF の並び
         function _applyOpsStageCards(stage) {
@@ -28931,6 +29027,7 @@
             _setOpsEtcOpen(!body || body.style.display === 'none');
         }
         function _opsJumpEtc(elId) {
+            if (_opsMode && _opsIsMasterNow()) setOpsTab('master');   // 段階 2.5: メンテナンスは 👑 マスターのタブ
             _setOpsEtcOpen(true);
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 const el = document.getElementById(elId);
@@ -28951,7 +29048,7 @@
                 case 'pushcheck': openOpsPushCheckModal(); break;
                 case 'plan': _opsJump('opsSecPlan'); break;
                 case 'hp': openOpsBossHpModal(); break;
-                case 'remaining': _opsJump('opsSecRemaining'); break;
+                case 'remaining': setOpsTab('battle'); break;   // 段階 2.5: 残り戦闘可能のカードは外した → 戦況の見出しの 1 行
                 case 'end': handleOpsEndSeason(); break;
                 case 'backup': _opsJumpEtc('opsMaintBackup'); break;
                 case 'reset': handleOpsResetDamages(); break;
@@ -28991,7 +29088,7 @@
             const stored = _loadOpsCardStored();
             for (const def of dom.CARDS) {
                 const card = document.getElementById(def.id);
-                if (card) _setOpsCardOpen(card, dom.resolveOpen(def.id, phase, stored, _opsMode));
+                if (card) _setOpsCardOpen(card, dom.resolveOpen(def.id, phase, stored, _opsMode, true));   // 段階 2.5: タブの中は既定で開く
             }
         }
         // 自動展開 (締め凸検索・プラン算出・コックピットのタップ)。記憶にも「開」を残す
@@ -29136,6 +29233,8 @@
                 // 運営ON: 🛠トグル → 段階ヘッダ → ヒーロー (いちばん急ぐ1つ) → チェックリスト (前日/終了) → コックピット (当日)
                 top.innerHTML = `<div class="ops-topbar-row"><button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()"></button></div>
                     <div id="opsStageBar" data-ops-only></div>
+                    <div id="opsSubTabs" class="ops-subtabs" data-ops-only role="tablist" aria-label="運営のタブ"></div>
+                    <div id="opsTabLine" class="ops-tab-line" data-ops-only></div>
                     <div id="opsStageHero" data-ops-only></div>
                     <div id="opsStageList" data-ops-only></div>
                     <div id="opsCockpit" class="ops-cockpit" data-ops-only></div>`;
@@ -29156,7 +29255,14 @@
                 link.innerHTML = `✍️ 自分の凸報告・戦闘開始は<b style="margin:0 3px;">ホーム</b>から<span style="font-weight:900;">→</span>`;
                 rem.insertAdjacentElement('afterend', link);
             }
-            _initOpsEtc();           // 「その他」(段階外のカード + 設定タブから移した運営ブロック)
+            _initOpsEtc();           // 「その他」(段階外のカード + 設定タブから移した運営ブロック)。段階 2.5 からは 👑 マスターのタブのメンテナンス
+            if (container && !document.getElementById('opsTabHold')) {
+                // 🧱 段階 2.5: 画面から外したカード (tab: null) と、いま開いていないタブのカードの置き場 (いつも隠す・中身は残す)
+                const hold = document.createElement('div');
+                hold.id = 'opsTabHold';
+                hold.setAttribute('aria-hidden', 'true');
+                container.appendChild(hold);
+            }
             // ★ 名乗っている人の記憶を当てる (2026-09-10)。名乗っていなければ OFF のまま
             _opsMode = _opsModeForCurrent();
             _applyOpsMode();

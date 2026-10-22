@@ -1129,6 +1129,15 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **🔒 レベルを持たない約束は、プランの予想レベルとずれても「報告する ▶」** (`_planMineHtml` の `lvFree` = kind fixed かつ**配信に入っている** (`inPlan`) かつ `promise` かつ `raidLevel` null。`homeSlots` が予約の `raidLevel` / `promise` を渡す)。
   予想より踏破が遅れて Lv1 のまま約束の時刻が来ると「Lv2になったら」のまま報告できなかった (練習の通し確認で発覚)。消し込みの `matchForAttack` もレベルを持たない予約のレベルは見ない。
   レベル付きの約束 (締め凸の了承) と 📣 お願い中の 📌 は従来どおり。実行テスト `tests/avail-save.mjs` (凸数 4 本)・`tests/avail-strip.mjs`・`tests/home-slots.mjs`
+  ★ **🧱 段階 2.5 (その 1): 運営タブを 👥 メンバー / 🧱 組む / ⚔️ 戦況 (+ 👑 マスター) のサブタブに** (2026-10-22 ユーザー決定・モック `docs/運営タブ整理モック_2026-10-22.html`):
+  **カードはいつも同じタブ** (`opsLayout.CARDS[].tab`。null = 画面から外す: 運営アクション・オンライン・残り戦闘可能・直近の動き・Discord 告知・消化のペース — 置き場 `#opsTabHold` に移すだけでコードは残す)。
+  members = メンバー状況・📸 模擬の取り込み・一斉通知 (運営も使う・ユーザー決定) / build = 凸の予約・最適凸プラン / battle = ボス状況・締凸検索 (残す・ユーザー決定)・凸報告の確認 / master = シーズン制御・育成 + 「その他」のメンテナンス (`#opsEtc.as-master`)。
+  日によって変わるのは**開いたときのタブ** (`resolveTab`: 当日・終了 = 戦況 / それより前 = メンバー・自分で選んだら同じ段階のあいだだけ覚える `shirisuko_ops_subtab_v1`・マスターでない人に 👑 は出さない) と「いちばん急ぐこと」(段階のヒーローをそのまま) だけ。
+  `_renderOpsStage` が `_opsTabNow` → `_applyOpsTabCards` → `_renderOpsSubTabs` (タブの横に手を打つべき数 `tabCounts`: メンバー = 未完 / 組む = 承認待ち + 期限切れ / 戦況 = 未確認の凸報告 + 報告の無い凸。未ロードは出さない)。
+  戦況の見出しの 1 行に 消化のペース (Lv · 残り · HP 更新 · 使った凸)。段階のチェックリスト・コックピット・グループ見出しは CSS で隠す。タブの中のカードは既定で開く (`resolveOpen(..., tabbed=true)`・記憶の鍵は v2)。
+  `_opsJump(id)` はカードのタブへ切り替えてから開く。運営の見出しは「運営」(`#opsPageTitle`)。
+  ★ **メンバー (lite) の戦況タブはなくした** (状況は BlaBlaLINK で見る): `body.member-lite [data-tab="ops"]` を隠す・TabController が `ops` をホームへ・スワイプは見えているタブだけ (`_swipeTabsNow`・模擬タブを隠したときも)。
+  練習モードの案内は目的のカードのタブを先に押させる (`opsTab(want)`・練習は 2.5 のあとに作り直す)
   ★ **🧱 段階 2b: 凸数をソルバーの上限に + 時間未登録を候補にしない** (2026-10-22): 入力 `players[].blockCaps = [{ fromIdx, toIdx, max }]` と `excludeTimeUnknown`。
   **どちらも渡さなければ出力は 1 バイトも変わらない** (指紋 120 盤面・テストが JSON 比較で見張る)。画面は算出 (`computeOptimalPlan`) と承認の影響 (`_reservationImpact`) の 2 つの呼び出し口で
   `_playersWithBlockCaps(players, season)` (= `raidBlocksDomain.capsOf(blockCounts, 区切り, 済んだ凸の時)`。済んだ凸の時は `reported_at` を `attackCheckDomain.hourIdxOfMs` で JST にしたもの) と

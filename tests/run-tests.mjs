@@ -4020,7 +4020,8 @@ console.log('\nopsStageDomain:');
         assert.ok(/opsMaintBackup/.test(etc) && /opsMaintNotify/.test(etc), '移した運営ブロックに id を付けていない (ジャンプできない)');
         const st = html.match(/function _renderOpsStage\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/dom\.detect\(\{ season, now: Date\.now\(\), override:/.test(html) && /dom\.checklist\(/.test(st) && /dom\.hero\(/.test(st), '判定・チェックリスト・ヒーローをドメインで組んでいない');
-        assert.ok(/_applyOpsStageCards\(st\.stage\)/.test(st), '段階でカードを出し入れしていない');
+        // 🧱 段階 2.5 (2026-10-22): カードは段階ではなくタブで出し入れする (開いたときのタブだけ段階で決める)
+        assert.ok(/const tab = _opsTabNow\(st\.stage\);/.test(st) && /_applyOpsTabCards\(tab\)/.test(st) && /_renderOpsSubTabs\(st\.stage, tab,/.test(st), 'タブでカードを出し入れしていない');
         assert.ok(/if \(!_opsMode\)/.test(st) && /_applyOpsStageCards\(null\)/.test(st), '運営OFF (メンバー) でカードを元の並びに戻していない');
         assert.ok(/\[data-stage\]/.test(st), '[data-stage] の出し分けを段階の描画でやっていない');
         const ck = html.match(/function _renderOpsCockpit\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -9655,7 +9656,8 @@ console.log('\ngrowthDomain:');
         // 起動で役割の読み込みを _opsRolePending に持ち、読めたら null に (コールド起動の任命済み運営が ?tab=mock で戦況へ流れる)
         assert.ok(/let _opsRolePending = null;/.test(html) && /_opsRolePending = _syncOpsRole\(\)\.catch\(\(\) => null\)\.finally\(\(\) => \{ _opsRolePending = null; \}\);/.test(html), '起動の役割の読み込みを ?tab=mock が待てない');
         // 📸 模擬の取り込みへの導線: 「その他」の中へ移されたカードは親を開く / 予約未対応の空き枠の導線も同じ (Codex指摘 7cbfa94)
-        assert.ok(/if \(card && card\.closest\('#opsEtcCards'\) && typeof _setOpsEtcOpen === 'function'\) _setOpsEtcOpen\(true\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '「その他」の中の取り込みカードを開けない');
+        // 段階 2.5: 取り込みカードはいつも 👥 メンバーのタブ (「その他」には入らない) → タブを切り替えてから開く
+        assert.ok(/if \(typeof setOpsTab === 'function'\) setOpsTab\('members'\);[^\n]*\n\s*const card = document\.getElementById\('opsSecMockIntake'\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '取り込みカードのタブへ切り替えていない');
         assert.ok(/onclick="\$\{canAsk \? 'openMyResvRequest\(\)' : \(mockHidden \? '_gotoOpsMockIntake\(\)' : "switchTab\('mock'\)"\)\}"/.test(html), '予約未対応の空き枠の導線が隠れた模擬タブへ飛ぶ');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(mockHidden && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\(_opsMode \? 'ops' : 'mypage'\);/.test(html), '開いたまま隠されたときに戻していない (運営は戦況へ)');
@@ -10261,6 +10263,44 @@ console.log('\ngrowthDomain:');
             for (const [name, bg] of Object.entries(onLight)) assert.ok(contrast(light[k], bg) >= 4.5, `${k} (ライト) が黒いヒーローの「${name}」の地で読めない: ${contrast(light[k], bg).toFixed(2)} on ${bg}`);
             for (const [name, bg] of Object.entries(onDark)) assert.ok(contrast(dark[k], bg) >= 4.5, `${k} (ダーク) が白いヒーローの「${name}」の地で読めない: ${contrast(dark[k], bg).toFixed(2)} on ${bg}`);
         }
+    });
+    test('🧱 2.5: 運営タブのサブタブ — カードはいつも同じタブ / 外すカード / 開いたときのタブ / 件数', () => {
+        const L = globalThis.opsLayoutDomain;
+        const byTab = (t) => L.CARDS.filter(c => c.tab === t).map(c => c.id);
+        assert.deepEqual(L.TAB_KEYS, ['members', 'build', 'battle', 'master']);
+        assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く');
+        assert.deepEqual(byTab('build'), ['opsSecReserve', 'opsSecPlan']);
+        assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackCheck'], '締凸検索は戦況に残す (ユーザー決定)');
+        assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecGrowth']);
+        assert.deepEqual(L.CARDS.filter(c => c.tab === null).map(c => c.id).sort(),
+            ['opsSecActions', 'opsSecCoord', 'opsSecDiscord', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining'], '画面から外すカードが違う');
+        assert.ok(L.CARDS.every(c => c.tab === null || L.TAB_KEYS.includes(c.tab)), '知らないタブのカードがある');
+        // 開いたときのタブ: 当日・終了 = 戦況 / それより前 = メンバー。記憶は同じ段階のあいだだけ・マスターでない人の 👑 は既定へ
+        assert.deepEqual(['prep', 'pre', 'day', 'end'].map(L.defaultTab), ['members', 'members', 'battle', 'battle']);
+        assert.equal(L.resolveTab(null, 'day', false), 'battle');
+        assert.equal(L.resolveTab({ tab: 'build', stage: 'day' }, 'day', false), 'build');
+        assert.equal(L.resolveTab({ tab: 'build', stage: 'pre' }, 'day', false), 'battle', '前日に選んだタブが当日も残る');
+        assert.equal(L.resolveTab({ tab: 'master', stage: 'pre' }, 'pre', false), 'members', 'マスターでない人に 👑 を出した');
+        assert.equal(L.resolveTab({ tab: 'master', stage: 'pre' }, 'pre', true), 'master');
+        assert.equal(L.resolveTab({ tab: 'nope', stage: 'pre' }, 'pre', true), 'members');
+        // タブの中のカードは既定で開く (自分で畳んだときだけ畳む)。従来の呼び方 (tabbed なし) は段階の既定のまま
+        assert.equal(L.resolveOpen('opsSecPlan', 'day', {}, true, true), true);
+        assert.equal(L.resolveOpen('opsSecPlan', 'day', { day: { opsSecPlan: false } }, true, true), false);
+        assert.equal(L.resolveOpen('opsSecPlan', 'day', {}, true), false);
+        assert.equal(L.STORAGE_KEY, 'shirisuko_ops_card_open_v2', '開閉の記憶を取り直していない (前の段階の畳みが残る)');
+        // 件数: 未ロードは null (0 と混同させない)
+        assert.deepEqual(L.tabCounts({}), { members: null, build: null, battle: null, master: null });
+        assert.deepEqual(L.tabCounts({ mbRows: [{ todo: true }, { todo: false }, { todo: true }], reservations: { pending: 1, expired: 2 }, attackCounts: { total: 5, confirmed: 3, missing: 2 } }),
+            { members: 2, build: 3, battle: 4, master: null });
+    });
+    test('★ 配線 (2.5): メンバー (lite) の戦況タブを隠す — 下メニュー・上のタブ・ドロワー (CSS) / 古い導線はホームへ / スワイプも飛ばす', () => {
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(html.includes('body.member-lite [data-tab="ops"] { display: none !important; }'), '下メニューの戦況を隠していない');
+        assert.ok(/if \(tabName === 'ops' && typeof _opsTabHiddenForMember === 'function' && _opsTabHiddenForMember\(\)\) tabName = 'mypage';/.test(html), 'TabController がメンバーを戦況へ入れる');
+        assert.ok(/const _opsTabHiddenForMember = \(\) => typeof _memberLite === 'function' && _memberLite\(\);/.test(html));
+        assert.ok(/const tabs = _swipeTabsNow\(\);/.test(html) && /_swipe\.nextEl = idx < tabs\.length - 1 \? _findTabEl\(tabs\[idx \+ 1\]\) : null;/.test(html), 'スワイプが隠したタブへ入る');
+        assert.ok(/<div id="opsSubTabs" class="ops-subtabs" data-ops-only role="tablist"/.test(html), 'サブタブの置き場が無い');
+        assert.ok(/body\.ops-mode #opsStageList, body\.ops-mode #opsCockpit/.test(html), 'チェックリスト・コックピットを隠していない');
     });
     test('★ PC版: カードの幅は opsLayout.CARDS が決め、CSS に受け皿がある', () => {
         // ★ 幅を index.html 側に書き足さない (カードを足すたびに2箇所直すことになる)。
@@ -11561,11 +11601,12 @@ console.log('\ngrowthDomain:');
             return out;
         };
         assert.deepEqual(rows([7, 12, 5]), [[7], [12], [5]], 'この検査自体が効いていること (改行をなぞれていない)');
+        // 🧱 段階 2.5: 運営の画面はタブで出し分ける (段階では出し入れしない) → タブごとに見る
         const views = {
-            '準備': lay.CARDS.filter(c => st.visibleIn(c, 'prep')),
-            '前日': lay.CARDS.filter(c => st.visibleIn(c, 'pre')),
-            '当日': lay.CARDS.filter(c => st.visibleIn(c, 'day')),
-            '終了': lay.CARDS.filter(c => st.visibleIn(c, 'end')),
+            '👥 メンバー': lay.CARDS.filter(c => c.tab === 'members'),
+            '🧱 組む': lay.CARDS.filter(c => c.tab === 'build'),
+            '⚔️ 戦況': lay.CARDS.filter(c => c.tab === 'battle'),
+            '👑 マスター': lay.CARDS.filter(c => c.tab === 'master'),
             'メンバー (運営OFF)': lay.CARDS.filter(c => !c.opsOnly),
         };
         for (const [name, cards] of Object.entries(views)) {
