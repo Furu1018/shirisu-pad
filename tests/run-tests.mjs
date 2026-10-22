@@ -9356,7 +9356,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/<div class="dc-card" data-span="6" id="myTodayBlocksCard" style="display:none;">/.test(html), 'カードが無い (data-span 付き)');
         assert.ok(html.indexOf('id="myPublishedPlanCard"') < html.indexOf('id="myTodayBlocksCard"') && html.indexOf('id="myTodayBlocksCard"') < html.indexOf('id="myPushCheckCard"'), 'カードの位置が配信プランの直後でない');
         const pub = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(!identity\?\.id\) \{ card\.style\.display = 'none'; renderMyTodayBlocks\(null\); return; \}/.test(pub), '名乗りなしで消していない');
+        assert.ok(/if \(!identity\?\.id\) \{ card\.style\.display = 'none'; renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\); return; \}/.test(pub), '名乗りなしで消していない (きょうの凸 + 登録された模擬)');
         assert.ok(/if \(!pub\?\.plan\) \{\s*\n\s*card\.style\.display = 'none';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信なしでも描いていない');
         assert.ok(/_renderMyPubBody\(\);\s*\n\s*card\.style\.display = '';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信ありで描いていない');
         assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows \};/.test(pub), 'その日の凸の行を使い回していない');
@@ -9369,13 +9369,29 @@ console.log('\ngrowthDomain:');
         // Codex指摘: 消す経路でも世代を進める / 完了時に名乗っている人も照合 / 互換ゲートで読めない配信のときも消す
         assert.ok(/const seq = \+\+_todayBlocksSeq;\s*\n\s*if \(!identity\?\.id \|\| !rbd\) \{ card\.style\.display = 'none'; return; \}/.test(fn), '名乗りなしの経路で世代を進めていない (前の人の遅れた描画が出る)');
         assert.ok(/if \(seq !== _todayBlocksSeq \|\| String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(fn), '完了時に名乗っている人を照合していない');
-        assert.ok(/renderMyNextAction\(identity\);\s*\n\s*\}\s*\n\s*renderMyTodayBlocks\(null\);   \/\/ 📅 古い指示を残さない/.test(pub), '互換ゲートで読めない配信のときに消していない');
+        assert.ok(/renderMyNextAction\(identity\);\s*\n\s*\}\s*\n\s*renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\);   \/\/ 📅 古い指示を残さない/.test(pub), '互換ゲートで読めない配信のときに消していない (きょうの凸 + 登録された模擬)');
         assert.ok(/まだ決まっていません \(運営がこのブロックの前に配信します\)/.test(fn) && /このブロックに割当はありません/.test(fn) && /凸なし/.test(fn), '3 つの空の言い方が無い');
         assert.ok(/outline:2px solid var\(--ops-solid\)/.test(fn), 'いまのブロックの枠が無い');
         assert.ok(/時刻の分からない凸 \$\{t\.unknownTime\.length\} 件は行に出ません/.test(fn), '時刻の分からない凸を黙って消している');
         assert.ok(!/#[0-9A-Fa-f]{6}/.test(fn.replace(/'#7A7C81'/g, '')), '色の直値 (灰色の既定以外) がある');
     });
 
+    test('📘 readonlyRows (🧱 段階 1・2026-10-22): 属性ごとに 編成① / ② を並べ、無い属性は missing / 大文字の属性も読む / 空の行は無視 / damageOf で代表値', () => {
+        const d = globalThis.mockIntakeDomain;
+        const rows = [
+            { attribute: 'wind', slot: 2, characters: ['a', 'b'], damage_b: 21.4 },
+            { attribute: 'WIND', slot: 1, characters: ['c', 'd', 'e', 'f', 'g'], damage_b: 28.1 },
+            { attribute: 'fire', slot: 1, characters: [], damage_b: 0 },        // 空 = 無いのと同じ
+            { attribute: 'water', slot: 1, characters: null, damage_b: 19.8 },  // 編成なし・ダメージだけ
+        ];
+        const out = d.readonlyRows(rows);
+        assert.deepEqual(out.map(r => [r.key, r.name, r.missing, r.teams.map(x => [x.slot, x.team.length, x.dmgB])]), [
+            ['fire', '灼熱', true, []], ['water', '水冷', false, [[1, 0, 19.8]]], ['electric', '電撃', true, []], ['iron', '鉄甲', true, []], ['wind', '風圧', false, [[1, 5, 28.1], [2, 2, 21.4]]],
+        ], '属性ごとの行が違う');
+        assert.equal(d.readonlyRows(rows, { damageOf: () => 7 })[4].teams[0].dmgB, 7, 'damageOf を使っていない');
+        assert.deepEqual(d.readonlyRows(null).map(r => r.missing), [true, true, true, true, true]);
+        assert.deepEqual(d.readonlyRows([{ attribute: 'iron', slot: 1, characters: ['x', null, 'y'], damage_b: 3 }])[3].teams[0].team, ['x', 'y'], '空のキャラを落としていない');
+    });
     test('★ 配線: 🧱 ③-d メンバーの入力を最低限に — 既定は模擬の提出シートと凸の申請を隠す (CSS で・消さない) / シーズンの member_input=full で出す / 運営モードは常に見える', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
@@ -9397,6 +9413,25 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズンを読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5)');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
+        // 🧱 段階 1 (2026-10-22 決定 a/f): lite で ボスの状況・状態ボタン・戦闘ゲート・凸報告の入口 を隠す (消さない) / 読み取り専用の模擬カード
+        for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions', '#mypageBattleCloseBar', '#myAttackAddBtn', '#myAttackListWrap .blabla-pill', '[data-member-report]']) {
+            assert.ok(new RegExp(`body\\.member-lite ${sel.replace(/[.[\]]/g, '\\$&')}[^{]*\\{ display: none !important; \\}`).test(css), `lite で隠していない: ${sel}`);
+        }
+        const dom = html.slice(html.lastIndexOf('</style>'));
+        assert.equal((dom.match(/\bid="(mypageBossStrip|myBossBoardCard|mypageStatusSwitcher|mypageStatusTiles|mypageBattleGate|mypageBattleActions|myAttackAddBtn)"/g) || []).length, 7, '隠す要素の id が DOM から消えている (CSS で隠す約束 = 運営モードと full では出る)');
+        assert.ok(/else if \(reportable\) right = `<button data-member-report onclick="_planReportBoss\(\$\{bn\}\)"/.test(html), '「報告する ▶」に印が無い');
+        assert.ok(/<div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">/.test(html), '登録された模擬のカードが無い (幅 6 できょうの凸と対)');
+        assert.ok(html.indexOf('id="myTodayBlocksCard"') < html.indexOf('id="myMocksCard"') && html.indexOf('id="myMocksCard"') < html.indexOf('id="myPushCheckCard"'), 'カードの並び (きょうの凸 → 登録された模擬 → 疎通確認) が違う');
+        const rm = html.match(/\n        async function renderMyMocksReadonly\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(rm, 'renderMyMocksReadonly が無い');
+        assert.ok(/const seq = \+\+_myMocksSeq;/.test(rm) && /if \(seq !== _myMocksSeq \|\| String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(rm), '世代と名乗りの守りが無い');
+        assert.ok(/typeof _memberLite !== 'function' \|\| !_memberLite\(\)\) \{ card\.style\.display = 'none'; return; \}/.test(rm), '模擬タブがあるとき (full / 運営) にも出してしまう');
+        assert.ok(/if \(!Array\.isArray\(rows\)\) \{ card\.style\.display = 'none'; return; \}/.test(rm), '取れなかったときに「未登録」に偽装する');
+        assert.ok(/dom\.readonlyRows\(rows, \{ damageOf: mockDamageOf \}\)/.test(rm), '属性ごとの行をドメインで組んでいない / 代表値 (mockDamageOf) を渡していない');
+        assert.equal((html.match(/renderMyTodayBlocks\(identity\); renderMyMocksReadonly\(identity\);/g) || []).length, 2, 'きょうの凸と同じ場所で描いていない');
+        assert.equal((html.match(/renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\);/g) || []).length, 2, '隠す経路で隠していない');
+        assert.ok(html.includes('<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。'), 'きょうの凸にスクショの案内が無い');
+        assert.ok(html.includes('<script defer src="./js/domain/mockIntake.js"></script>'), 'mockIntake.js を読んでいない');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
         assert.ok(/<div data-member-input style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
         assert.ok(/<p data-member-input-lite [^>]*>凸の割当は運営がブロックごとに配信で決めます。/.test(html), '隠しているときの一文が無い');

@@ -1024,6 +1024,12 @@
         body.member-lite [data-tab="mock"] { display: none !important; }
         body.member-lite [data-member-input] { display: none !important; }
         body:not(.member-lite) [data-member-input-lite] { display: none !important; }
+        /* 🧱 段階 1 (2026-10-22 決定 a): メンバーは「いつ・どの PT で凸するか」だけ — ボスの状況 (帯・カード)・オンライン/模擬中/戦闘中の状態ボタン・
+           戦闘に入るゲート・本人の凸報告の入口 (戦闘カード・3枠・わたしの凸・BlaBlaLINK 3凸) をメンバー画面から外す。凸の済は運営の登録で確定する。
+           ★ 消さずに CSS で隠す (運営モードと member_input=full では出る)。DOM と描画はそのまま動く */
+        body.member-lite #mypageBossStrip, body.member-lite #myBossBoardCard, body.member-lite #mypageStatusSwitcher, body.member-lite #mypageStatusHint,
+        body.member-lite #mypageStatusTiles, body.member-lite #mypageBattleGate, body.member-lite #mypageBattleInProgressBar, body.member-lite #mypageBattleActions,
+        body.member-lite #mypageBattleCloseBar, body.member-lite #myAttackAddBtn, body.member-lite #myAttackListWrap .blabla-pill, body.member-lite [data-member-report] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(var(--ink-rgb), 0.14)}
@@ -4192,6 +4198,17 @@
                     <span id="myTodayBlocksMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <div id="myTodayBlocksBody"></div>
+            </div>
+
+            <!-- 📘 登録された模擬 (🧱 段階 1・2026-10-22 決定 f): 運営が Discord のスクショから登録した模擬を、本人に読み取り専用で。
+                 模擬タブを隠しているとき (member-lite) だけ renderMyMocksReadonly が描く。直すのは Discord で (本人の編集は無い) -->
+            <div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">登録された模擬</div>
+                    <span id="myMocksMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                </div>
+                <div id="myMocksBody"></div>
+                <p style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">運営が Discord の模擬のスクショから登録したものです。直したいときは Discord に模擬のスクショを出し直してください。</p>
             </div>
 
             <!-- 🔔 通知の疎通確認 (2026-10-07)。運営が確認の通知を送ったあと、まだ「届いた」と伝えていない人にだけ出る。
@@ -9556,6 +9573,36 @@
         // 材料: ブロック (シーズンの区切り)・配信プラン (_myPubState.plan = 範囲に絞ったもの)・その日の自分の凸 (_myPubState.myAttackRows・無ければ読む)。
         // ★ 判定は raidBlocksDomain.todayRows が唯一。ここは描くだけ
         let _todayBlocksSeq = 0;
+        // 📘 登録された模擬 (🧱 段階 1・2026-10-22 決定 f): 模擬タブを隠しているメンバーに、運営が登録した模擬を読み取り専用で出す。
+        //   属性ごとの行は mockIntakeDomain.readonlyRows が唯一。運営モード・member_input=full (模擬タブがある) では出さない。
+        //   取れなかった (null) ときは隠す — 「未登録」に偽装しない。待っている間に名乗り直されたら書かない (世代 + いまの名乗り)
+        let _myMocksSeq = 0;
+        async function renderMyMocksReadonly(identity) {
+            const card = document.getElementById('myMocksCard');
+            const body = document.getElementById('myMocksBody');
+            const meta = document.getElementById('myMocksMeta');
+            if (!card || !body) return;
+            const seq = ++_myMocksSeq;   // 名乗りなし / 隠す経路でも世代を進める (遅れて着いた前の人の描画を出さない)
+            const dom = window.mockIntakeDomain;
+            if (!identity?.id || !dom || typeof _memberLite !== 'function' || !_memberLite()) { card.style.display = 'none'; return; }
+            let rows = null;
+            try { rows = window.supabaseLoadPlayerDamages ? await window.supabaseLoadPlayerDamages(identity.id) : null; }
+            catch (e) { console.warn('[登録された模擬] 取得skip:', e?.message || e); rows = null; }
+            if (seq !== _myMocksSeq || String(getCurrentIdentity()?.id ?? '') !== String(identity.id)) return;
+            if (!Array.isArray(rows)) { card.style.display = 'none'; return; }
+            const list = dom.readonlyRows(rows, { damageOf: mockDamageOf });
+            const esc = escapeHtml;
+            body.innerHTML = list.map(r => {
+                const c = DC_ATTR_COLORS[r.key] || 'var(--dim)';
+                const head = `<span style="flex:none;min-width:52px;font-size:10.5px;font-weight:900;border-radius:999px;padding:3px 8px;text-align:center;color:var(--on-fill);background:${c};${r.missing ? 'opacity:0.45;' : ''}">${esc(r.name)}PT</span>`;
+                const teams = r.missing
+                    ? '<span style="font-size:11.5px;font-weight:700;color:var(--t-muted);">未登録</span>'
+                    : r.teams.map(t => `<div style="display:flex;align-items:center;gap:6px;min-width:0;">${t.team.length ? renderTeamSnippet(t.team, { size: 22 }) : '<span style="font-size:11px;font-weight:700;color:var(--t-muted);">編成なし</span>'}<span style="margin-left:auto;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${t.dmgB.toFixed(1)}<span style="font-size:9px;color:var(--t-muted);">B</span></span><span style="font-size:10px;font-weight:800;color:var(--t-muted);">編成${SLOT_JP[t.slot] || '①'}</span></div>`).join('');
+                return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-top:1px solid var(--line);">${head}<div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px;">${teams}</div></div>`;
+            }).join('');
+            if (meta) meta.textContent = `${list.filter(r => !r.missing).length} / 5 属性`;
+            card.style.display = '';
+        }
         async function renderMyTodayBlocks(identity) {
             const card = document.getElementById('myTodayBlocksCard');
             const body = document.getElementById('myTodayBlocksBody');
@@ -9606,6 +9653,7 @@
                     </div>`;
                 }).join('');
                 body.innerHTML = html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
+                body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
                 if (meta) meta.textContent = `${t.total} / 3 凸 済み${st?.plan?.blockScope ? ` · 配信は ${st.plan.blockScope.name} のぶん` : ''}`;
                 card.style.display = '';
             } catch (e) {
@@ -9620,7 +9668,7 @@
             if (!card) return;
             const body = document.getElementById('myPublishedPlanBody');
             const metaEl = document.getElementById('myPublishedPlanMeta');
-            if (!identity?.id) { card.style.display = 'none'; renderMyTodayBlocks(null); return; }
+            if (!identity?.id) { card.style.display = 'none'; renderMyTodayBlocks(null); renderMyMocksReadonly(null); return; }
             let pub = null;
             try {
                 pub = await window.supabaseGetPublishedPlan();
@@ -9646,7 +9694,7 @@
                     _heroPlanKey = '';
                     renderMyNextAction(identity);
                 }
-                renderMyTodayBlocks(null);   // 📅 古い指示を残さない (ゲートが閉じた配信の割当をきょうの凸にも出さない)
+                renderMyTodayBlocks(null); renderMyMocksReadonly(null);   // 📅 古い指示を残さない (ゲートが閉じた配信の割当をきょうの凸にも出さない)
                 card.style.display = 'block';
                 if (metaEl) metaEl.textContent = '';
                 if (body) {
@@ -9660,7 +9708,7 @@
             }
             if (!pub?.plan) {
                 card.style.display = 'none';
-                renderMyTodayBlocks(identity);   // 📅 配信が無くても、済んだ凸とブロックの並びは出す
+                renderMyTodayBlocks(identity); renderMyMocksReadonly(identity);   // 📅 配信が無くても、済んだ凸とブロックの並びは出す
                 // 配信が取り下げられた/シーズンが変わった → 提出カードの採用マークも消す
                 if (_setMyPlanPicks(null, identity.id) && typeof renderMyDamagePanels === 'function') {
                     renderMyDamagePanels(identity);
@@ -9777,7 +9825,7 @@
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら降りる
             _renderMyPubBody();
             card.style.display = '';
-            renderMyTodayBlocks(identity);   // 📅 きょうの凸 (配信・済んだ凸・ブロックの並びがそろった)
+            renderMyTodayBlocks(identity); renderMyMocksReadonly(identity);   // 📅 きょうの凸 (配信・済んだ凸・ブロックの並びがそろった)
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
             // 内容が変わったときだけヒーローを描き直す (毎回だと二重フェッチになる)
             try {
@@ -10468,7 +10516,7 @@
                 const reportable = !done && a.level != null && Number(a.level) === curLevel;   // 報告は現在開いているLvの割当だけ
                 let right;
                 if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;
-                else if (reportable) right = `<button onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:var(--on-fill);background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));border:none;border-radius:999px;padding:8px 12px;font-family:inherit;cursor:pointer;">報告する ▶</button>`;
+                else if (reportable) right = `<button data-member-report onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:var(--on-fill);background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));border:none;border-radius:999px;padding:8px 12px;font-family:inherit;cursor:pointer;">報告する ▶</button>`;
                 else right = `<div style="flex:none;text-align:right;">${dmgHtml}${a.level != null ? `<div style="font-size:8.5px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}になったら</div>` : ''}</div>`;
                 let status = '';
                 if (a.kind === 'fixed') {

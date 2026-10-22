@@ -53,5 +53,24 @@
         return n === 0 ? (m > 0 ? '全員そろっています' : '') : `届いていない人 ${n} / ${m}`;
     }
 
-    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary };
+    /**
+     * 📘 本人のホームに出す読み取り専用の模擬 (🧱 段階 1・2026-10-22 決定 f「模擬は Discord → 運営が登録 → 本人には読むだけ」)。
+     * 属性ごとに 編成① / ② を並べ、無い属性も行として返す (画面は薄く「未登録」と出す)。
+     * @param {Array<{attribute:string, slot?:number, characters?:string[]}>} rows  player_damages の行 (supabaseLoadPlayerDamages)
+     * @param {{ damageOf?: (row:Object) => number }} o  ダメージの読み方 (画面は mockDamageOf を渡す。無ければ damage_b)
+     * @returns {Array<{ key:string, name:string, teams: Array<{ slot:number, team:string[], dmgB:number }>, missing:boolean }>}
+     */
+    function readonlyRows(rows, o = {}) {
+        const damageOf = (o && typeof o.damageOf === 'function') ? o.damageOf : (r) => Number(r && r.damage_b) || 0;
+        const list = Array.isArray(rows) ? rows : [];
+        return ATTR_KEYS.map(key => {
+            const teams = list.filter(r => r && String(r.attribute || '').toLowerCase() === key)
+                .map(r => ({ slot: Number(r.slot) || 1, team: Array.isArray(r.characters) ? r.characters.filter(Boolean).map(String) : [], dmgB: Number(damageOf(r)) || 0 }))
+                .filter(t => t.team.length > 0 || t.dmgB > 0)   // 空の行 (編成もダメージも無い) は無いのと同じ
+                .sort((a, b) => a.slot - b.slot);
+            return { key, name: ATTR_JP[key], teams, missing: teams.length === 0 };
+        });
+    }
+
+    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows };
 })(typeof window !== 'undefined' ? window : globalThis);
