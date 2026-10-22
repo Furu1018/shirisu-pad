@@ -335,6 +335,14 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         // 時間を見ないモードでは窓を見ない (従来どおり いま出てくる最初のレベル)
         const nt = compute({ ...makeInput([boss(1, 'fire', { remainingB: 150 })], ps), reservations: [r] });
         assert.equal(nt.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.reservationId === 7))).length, 1);
+        // Codex指摘 (f19bba2): 有限レベルを全部踏破したあと (Lv3 を 5時に踏破) のブロックの B5 予約は Lv4 に置く
+        const easy = [1, 2, 3, 4].map(n => boss(n, ['water', 'electric', 'iron', 'wind'][n - 1], { remainingB: 1, totalB: 1 })).concat([boss(5, 'fire', { remainingB: 1, totalB: 1, tier: 'tyrant' })]);
+        const all = { water: 900, electric: 900, iron: 900, wind: 900, fire: 900 };
+        const r5 = { reservationId: 55, memberId: 'P5', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: null, window: { fromIdx: 5, toIdx: 7 }, team: [], expectedB: 0 };
+        const p5 = compute({ ...timeInput(easy, [player('S1', all, { availableSlots: ['h05'] }), player('S2', all, { availableSlots: ['h05'] }), player('P5', { fire: 10 }, { availableSlots: ['h10', 'h11', 'h12'] })], { currentSlot: 'h05', currentLevel: 3 }), reservations: [r5] });
+        const lv4 = p5.levels.find(lv => lv.infinite);
+        assert.ok(lv4 && lv4.bosses[0].attacks.some(a => a.reservationId === 55 && a.hourLabel === '10時'), `Lv4 の 10時に置いていない: ${JSON.stringify(p5.unmetReservations)}`);
+        assert.deepEqual(p5.unmetReservations, []);
         // 窓の形が壊れていれば窓なし (時刻なし) として扱う (落とさない)
         const bad = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), reservations: [{ ...r, window: { fromIdx: 15, toIdx: 13 } }] });
         assert.ok(bad, '壊れた窓で落ちた');
@@ -370,6 +378,9 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const d = rv.buildRequestDraft({ boss: bossRow, loadout: lo, block: { from: 18, to: 20 } });
         assert.deepEqual([d.ok, d.draft.timeSlot, d.draft.flex, d.draft.block], [true, null, false, { from: 18, to: 20 }]);
         assert.deepEqual(rv.buildRequestDraft({ boss: bossRow, loadout: lo }).missing, ['time']);
+        // ブロックは隙間・時刻より強い (古い状態が残っていても、ブロックで申請する)
+        const d2 = rv.buildRequestDraft({ boss: bossRow, loadout: lo, block: { from: 18, to: 20 }, flex: true, timeSlot: 'h21' });
+        assert.deepEqual([d2.draft.flex, d2.draft.timeSlot, d2.draft.block], [false, null, { from: 18, to: 20 }]);
         // ホームの枠: ブロックの言い方と、配信で決まった時刻
         const hs = rv.homeSlots({ plan: { levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: 3, reservationId: 9, hourIdx: 14, loadoutSlot: 1, dmgB: 30 }] }] }] }, viewerId: 3, reservations: [blk] });
         assert.deepEqual([hs.slots[0].kind, hs.slots[0].blockLabel, hs.slots[0].placedHourIdx, hs.slots[0].timeSlot], ['fixed', '18〜20時', 14, null]);
@@ -379,12 +390,14 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.ok(/ADD COLUMN IF NOT EXISTS block_from SMALLINT/.test(sql) && /ADD COLUMN IF NOT EXISTS block_to SMALLINT/.test(sql));
         assert.ok(/CHECK \(time_mode IN \('fixed', 'flex', 'block'\)\)/.test(sql));
         assert.ok(/time_mode = 'block' AND time_slot IS NULL AND block_from BETWEEN 0 AND 23 AND block_to BETWEEN 0 AND 23/.test(sql));
+        assert.ok(/AND \(block_from \+ 19\) % 24 <= \(block_to \+ 19\) % 24\)\);/.test(sql), '5時始まりで from <= to を縛っていない (逆のブロックを DB が通す: Codex指摘)');
         assert.ok(/OR NEW\.block_from IS DISTINCT FROM OLD\.block_from\s*\n\s*OR NEW\.block_to IS DISTINCT FROM OLD\.block_to/.test(sql), '承認後の凍結にブロックの時が無い');
         const chk = _fs2b.readFileSync(new URL('../supabase/99_check_applied.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/UNION ALL SELECT '54_reservation_blocks',/.test(chk), '99 に 54 の判定が無い');
+        assert.ok(/to_regprocedure\('public\.plan_reservations_status_via_rpc\(\)'\)/.test(chk) && !/'public\.plan_reservations_status_via_rpc'::regproc/.test(chk), '関数が無い環境で 99 全体が止まる (Codex指摘)');
         const server = _fs2b.readFileSync(new URL('../js/practice/server.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/block_from: null, block_to: null/.test(server) && /'time_slot', 'block_from', 'block_to', 'loadout_slot'/.test(server), '練習の偽サーバが 54 と違う');
-        assert.ok(/NEW\.time_mode === 'block' \? \(NEW\.time_slot == null && hour\(NEW\.block_from\) && hour\(NEW\.block_to\)\)/.test(server));
+        assert.ok(/NEW\.time_mode === 'block' \? \(NEW\.time_slot == null && hour\(NEW\.block_from\) && hour\(NEW\.block_to\) && \(NEW\.block_from \+ 19\) % 24 <= \(NEW\.block_to \+ 19\) % 24\)/.test(server), '偽サーバが 5時始まりの順を縛っていない');
         const client = _fs2b.readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/time_mode: blk \? 'block' : \(flex \? 'flex' : 'fixed'\),/.test(client) && /\.\.\.\(blk \? \{ block_from: blk\.from, block_to: blk\.to \} : \{\}\),/.test(client));
         assert.ok(/if \(blk && \(_isMissingBlockCols\(error\) \|\| \/time_mode_check\|chk_plan_reservations_time\/\.test/.test(client), '54 未適用の申請で 54 を案内しない');
@@ -393,6 +406,11 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.ok(!/_resvReqPick\('flex'\)/.test(html), '⏳ 時刻は約束しない が残っている (隙間型は撤廃)');
         assert.ok(/const _resvReqByBlock = \(\) => !\(typeof window\.supabaseReservationBlockColsMissing === 'function' && window\.supabaseReservationBlockColsMissing\(\) === true\);/.test(html), '54 未適用で「何時に」に戻らない');
         assert.ok(/block: st\.block, loadout: st\.lo, currentLevel: cur \}\);/.test(html), '申請の下書きにブロックを渡していない');
+        // Codex指摘 (f19bba2): 詳細カード・運営のピース箱・活動ログもブロックの言い方 / lite で模擬が無いときは Discord の案内
+        assert.ok(/a\.blockLabel \? \(a\.placedHourIdx != null \? hourJp\(a\.placedHourIdx\) : `\$\{a\.blockLabel\}のどこか`\)/.test(html), '「あなたの3凸」の詳細カードがブロックの予約で — になる');
+        assert.ok(/お願いを引き受け: \$\{window\.reservationsDomain\?\.whenOf\(row\)/.test(html));
+        assert.ok(/まだ模擬が登録されていません。模擬のスクショを Discord に貼ると運営が登録します。/.test(html), 'lite で模擬が無いときの案内が模擬タブを指す');
+        assert.ok(/r\.time_mode === 'block' \? \(\(root\.reservationsDomain && root\.reservationsDomain\.whenOf\(r\)\) \|\| null\)/.test(_fs2b.readFileSync(new URL('../js/domain/planBoard.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')), 'ピース箱がブロックの予約の時刻を空にする');
     });
     // ---- 変異テストで生き残った壊し方を捕まえる (2026-10-22) ----
     const LO = (list) => list.map((dmgB, j) => ({ dmgB, team: [`c${dmgB}_${j}`], slot: j + 1, level: null, levels: null }));

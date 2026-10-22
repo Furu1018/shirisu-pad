@@ -133,7 +133,7 @@
             if (!w) return;
             const k = `${r.player_id}:${w}:${Number(r.loadout_slot) || 1}`;
             placedKey.add(k);
-            if (!where.has(k)) where.set(k, { bossNumber: Number(r.boss_number), hourIdx: null, hourLabel: r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : null, pinned: r.status === 'pinned', promise: r.status !== 'pinned' });
+            if (!where.has(k)) where.set(k, { bossNumber: Number(r.boss_number), hourIdx: null, hourLabel: r.time_mode === 'block' ? ((root.reservationsDomain && root.reservationsDomain.whenOf(r)) || null) : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : null), pinned: r.status === 'pinned', promise: r.status !== 'pinned' });
         });
         const out = [];
         for (const p of Array.isArray(players) ? players : []) {

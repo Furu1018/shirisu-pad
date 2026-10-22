@@ -7,7 +7,7 @@
 -- 適用: Supabase Dashboard → SQL Editor でこのファイルを実行 (何度実行しても同じ結果)
 -- ============================================================================
 
--- 1) ブロックの時 (0〜23)。from > to (例: 22〜1 時) もあるので大小は縛らない
+-- 1) ブロックの時 (0〜23)。from > to (例: 22〜1 時) もあるので数の大小では縛らない (5時始まりの順は下の CHECK で縛る)
 ALTER TABLE plan_reservations ADD COLUMN IF NOT EXISTS block_from SMALLINT;
 ALTER TABLE plan_reservations ADD COLUMN IF NOT EXISTS block_to SMALLINT;
 
@@ -21,7 +21,9 @@ ALTER TABLE plan_reservations DROP CONSTRAINT IF EXISTS chk_plan_reservations_ti
 ALTER TABLE plan_reservations ADD CONSTRAINT chk_plan_reservations_time
     CHECK ((time_mode = 'fixed' AND time_slot ~ '^h(0[0-9]|1[0-9]|2[0-3])$' AND block_from IS NULL AND block_to IS NULL)
         OR (time_mode = 'flex'  AND time_slot IS NULL AND block_from IS NULL AND block_to IS NULL)
-        OR (time_mode = 'block' AND time_slot IS NULL AND block_from BETWEEN 0 AND 23 AND block_to BETWEEN 0 AND 23));
+        OR (time_mode = 'block' AND time_slot IS NULL AND block_from BETWEEN 0 AND 23 AND block_to BETWEEN 0 AND 23
+            -- レイド日は 5時始まり: from は to より前 (22〜翌1時 は順・20〜18時 は逆なので弾く: Codex指摘)
+            AND (block_from + 19) % 24 <= (block_to + 19) % 24));
 
 -- 4) 承認済みの予約の中身を動かさない (39 の守り) に、ブロックの時も足す
 CREATE OR REPLACE FUNCTION plan_reservations_status_via_rpc()

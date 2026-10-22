@@ -1387,9 +1387,12 @@
                 const order = [];
                 for (let t = from; t <= to; t++) if (mine.has(t)) order.push(t);
                 for (let t = from; t <= to; t++) if (!mine.has(t)) order.push(t);
+                const last = wins.length ? wins[wins.length - 1] : null;
                 for (const t of order) {
                     const w = wins.find(x => t >= x.open && t < x.clear) || null;
                     if (w && !(w.level === startLevel && !bossAliveNow(r.bossNumber))) return { t };
+                    // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) だけ。B5 の予約はそこに置ける (assign が Lv4 に解決する: Codex指摘 f19bba2)
+                    if (!w && Number(r.bossNumber) === 5 && last && last.cleared && t >= last.clear) return { t };
                 }
                 return { reason: 'no_boss_at_time' };
             };

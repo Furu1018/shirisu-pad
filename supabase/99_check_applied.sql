@@ -346,7 +346,8 @@ SELECT * FROM (
         (SELECT COUNT(*) = 2 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'plan_reservations' AND column_name IN ('block_from', 'block_to'))
         AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'plan_reservations_time_mode_check' AND pg_get_constraintdef(oid) LIKE '%block%')
         AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_plan_reservations_time' AND pg_get_constraintdef(oid) LIKE '%block_from%')
-        AND position('block_from' IN pg_get_functiondef('public.plan_reservations_status_via_rpc'::regproc)) > 0,
+        -- ★ 関数が無い環境でも名前解決エラーで 99 全体を止めない (to_regprocedure は無ければ NULL: Codex指摘)
+        AND COALESCE((SELECT pg_get_functiondef(f) LIKE '%block_from%' FROM to_regprocedure('public.plan_reservations_status_via_rpc()') AS f WHERE f IS NOT NULL), false),
         '🧱 予約をブロックで (time_mode block + block_from / block_to・承認後の凍結)。未適用だとメンバーはブロックで申請できない (従来の時刻の予約は動く)'
 
     UNION ALL SELECT '(storage bucket)',

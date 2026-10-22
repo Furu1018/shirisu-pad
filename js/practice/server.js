@@ -166,7 +166,7 @@ export function createPracticeClient(opts = {}) {
         const noBlock = NEW.block_from == null && NEW.block_to == null;
         const okTime = NEW.time_mode === 'fixed' ? (HOLD_RE.test(String(NEW.time_slot || '')) && noBlock)
             : NEW.time_mode === 'flex' ? (NEW.time_slot == null && noBlock)
-            : NEW.time_mode === 'block' ? (NEW.time_slot == null && hour(NEW.block_from) && hour(NEW.block_to))
+            : NEW.time_mode === 'block' ? (NEW.time_slot == null && hour(NEW.block_from) && hour(NEW.block_to) && (NEW.block_from + 19) % 24 <= (NEW.block_to + 19) % 24)
             : false;
         if (!okTime) throw check('時刻の形が違います (fixed は hXX / flex は時刻なし / block はブロックの時だけ)');
         // 39 capacity (BEFORE INSERT OR UPDATE OF status, player_id, season_id)

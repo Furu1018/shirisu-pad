@@ -10160,7 +10160,7 @@
                     }
                     await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
                         characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
-                    window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
+                    window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${window.reservationsDomain?.whenOf(row) || row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
                     showNotification('🔒 引き受けました。運営が組み直したプランに固定で入ります');
                     _notifyOps({ title: '🔒 お願いを引き受けました', body: `${me.name || '#' + me.id}: ${_resvRowJp(row)}`, tag: 'ops-pin-answer', except: me.id });
                 } else {
@@ -10335,7 +10335,9 @@
             const los = st.loadouts.filter(l => bossOrder.has(l.attribute))
                 .sort((a, b) => (bossOrder.get(a.attribute) - bossOrder.get(b.attribute)) || (a.slot - b.slot));
             const loHtml = los.length === 0
-                ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">模擬を提出すると、その編成で申請できます。</p>'
+                ? ((typeof _memberLite === 'function' && _memberLite())
+                    ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">まだ模擬が登録されていません。模擬のスクショを Discord に貼ると運営が登録します。登録されると、その編成で申請できます。</p>'
+                    : '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">模擬を提出すると、その編成で申請できます。</p>')
                 : los.map(l => {
                     const on = st.lo && st.lo.attribute === l.attribute && st.lo.slot === l.slot;
                     const ac = DC_ATTR_COLORS[l.attribute] || '#7A7C81';
@@ -10519,8 +10521,10 @@
                 const loBadge = `<span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:var(--ops-deep);background:rgba(108,66,240,0.13);">編成${SLOT_JP[loSlot] || '①'}</span>`;
                 const team = a.team && a.team.length ? renderTeamSnippet(a.team, { size: 26 }) : '';
                 const dmgHtml = `<span style="font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:9px;color:var(--t-muted);">B</span></span>`;
+                const hourJp = (i) => (typeof HOUR_ORDER !== 'undefined' && HOUR_ORDER[i] != null) ? `${HOUR_ORDER[i] <= 4 ? '翌' : ''}${HOUR_ORDER[i]}時` : null;
                 const timeStr = a.kind === 'fixed'
-                    ? (a.flex ? null : (a.timeSlot ? `${Number(String(a.timeSlot).slice(1))}時` : null))
+                    ? (a.flex ? null : a.blockLabel ? (a.placedHourIdx != null ? hourJp(a.placedHourIdx) : `${a.blockLabel}のどこか`)   // 🧱 段階 3 (Codex指摘 f19bba2)
+                        : (a.timeSlot ? `${Number(String(a.timeSlot).slice(1))}時` : null))
                     : (a.flex ? null : (a.hourLabel ? String(a.hourLabel) : null));
                 const timeHtml = (a.kind === 'fixed' || a.kind === 'plan') && a.flex
                     ? '<span style="font-size:12px;font-weight:900;color:var(--warn-deep);">⏳隙間</span>'
