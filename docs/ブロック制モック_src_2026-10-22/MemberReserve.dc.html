@@ -31,12 +31,7 @@ a { color: #6b3df5; } a:hover { color: #4f2bc4; }
           <button type="button" aria-pressed="{{b.pressed}}" style="font: inherit; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 7px 2px; border: 2px solid {{b.border}}; background: {{b.bg}}; color: {{b.fg}}; cursor: pointer">{{b.name}}</button>
         </sc-for>
       </div>
-      <div style="display: flex; gap: 6px; align-items: center">
-        <span style="font-size: 11.5px; font-weight: 800; color: #6a717b; flex: none">夕方の中で</span>
-        <sc-for list="{{hours}}" as="h" hint-placeholder-count="4">
-          <button type="button" aria-pressed="{{h.pressed}}" style="font: inherit; flex: 1; font-size: 12px; font-weight: 900; border-radius: 999px; padding: 7px 0; border: 1.5px solid {{h.border}}; background: {{h.bg}}; color: {{h.fg}}; cursor: pointer">{{h.label}}</button>
-        </sc-for>
-      </div>
+      <div style="font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.5">時刻はブロックの中で運営が決めます (1 時間単位の指定はしません)</div>
     </div>
 
     <!-- ② どの PT -->
@@ -55,7 +50,7 @@ a { color: #6b3df5; } a:hover { color: #4f2bc4; }
 
     <!-- まとめ -->
     <div style="border-radius: 12px; background: #f1edff; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
-      <div style="font-size: 13.5px; font-weight: 900; color: #4f2bc4">20時 に 風圧PT 編成① で B3 ベヒモス へ (模擬 28.1B)</div>
+      <div style="font-size: 13.5px; font-weight: 900; color: #4f2bc4">夕方 (18〜20時) に 風圧PT 編成① で B3 ベヒモス へ (模擬 28.1B)</div>
       <div style="font-size: 11.5px; font-weight: 700; color: #4f2bc4; line-height: 1.5">夕方の 2 凸のうち 1 凸をこれに使います。承認されるまでは運営の割当のままです。</div>
     </div>
 
@@ -72,14 +67,11 @@ class Component extends DCLogic {
       border: st === 'sel' ? '#6b3df5' : st === 'on' ? '#c9b8ff' : '#eef0f3',
       bg: st === 'sel' ? '#6b3df5' : '#fff', fg: st === 'sel' ? '#fff' : st === 'on' ? '#4f2bc4' : '#c2c7cf',
     }));
-    const hours = [['どこでも', false], ['18時', false], ['19時', false], ['20時', true]].map(([label, sel]) => ({
-      label, pressed: sel ? 'true' : 'false', border: sel ? '#6b3df5' : '#e3e6eb', bg: sel ? '#6b3df5' : '#fff', fg: sel ? '#fff' : '#3a3f46',
-    }));
     const mocks = [
       ['灼熱PT', '#e5484d', '25.0B', 'B1 撃破済', false], ['水冷PT', '#2f80ed', '19.8B', '→ B4', false], ['電撃PT', '#8b5cf6', '22.4B', 'B2 撃破済', false],
       ['鉄甲PT', '#d97706', '16.2B', '→ B5', false], ['風圧PT', '#18c26b', '28.1B', '→ B3', true],
     ].map(([pt, color, dmg, boss, sel]) => ({ pt, color, dmg, boss, checked: sel ? 'true' : 'false', border: sel ? '#6b3df5' : '#e3e6eb', bg: sel ? '#f1edff' : '#fff' }));
-    return { blocks, hours, mocks };
+    return { blocks, mocks };
   }
 }
 </script>
