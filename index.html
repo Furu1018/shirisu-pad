@@ -3181,6 +3181,62 @@
         .ops-result-draft .go { background: var(--t-ink); color: var(--card); }
         .ops-result-draft .go:disabled { opacity: 0.45; cursor: not-allowed; }
         .ops-result-draft .cancel { background: var(--s2); color: var(--t-strong); }
+        /* 🧱 段階 6 ブロック盤: ボスの行 = 枠 (残り HP) + ピース (幅 = ダメージ) + 時刻のマス + 候補。色はトークンだけ */
+        .bb { display: flex; flex-direction: column; gap: 10px; }
+        .bb-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.5; }
+        .bb-key { padding: 1px 7px; border-radius: 999px; font-weight: 800; background: var(--s2); color: var(--t-body); }
+        .bb-key.pin { box-shadow: inset 0 0 0 1.5px var(--t-ink); }
+        .bb-key.promise { box-shadow: inset 0 0 0 1.5px var(--warn-solid); }
+        .bb-key.mine { box-shadow: inset 0 0 0 1.5px var(--ops-solid); }
+        .bb-row { display: flex; flex-direction: column; gap: 6px; padding: 9px 10px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
+        .bb-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12px; font-weight: 800; color: var(--t-strong); }
+        .bb-head .b { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 900; color: var(--on-fill); }
+        .bb-head .nm { flex: 1 1 140px; min-width: 0; color: var(--t-ink); }
+        .bb-head .nm small { margin-left: 6px; font-weight: 700; color: var(--t-muted); }
+        .bb-head .st { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 900; }
+        .bb-head .st.ok { background: var(--ok-bg); color: var(--ok-on); }
+        .bb-head .st.gap { background: var(--warn-bg); color: var(--warn-on); }
+        .bb-head .st.inf { background: var(--ops-bg); color: var(--ops-deep); }
+        .bb-head .rm { flex: none; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .bb-bar { position: relative; min-height: 38px; }
+        .bb-frame { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; border: 1.5px dashed var(--dim); background: var(--card); }
+        .bb-pieces { position: relative; display: flex; align-items: stretch; min-height: 38px; gap: 0; }
+        .bb-piece { position: relative; flex: none; min-width: 26px; display: flex; flex-direction: column; justify-content: center; padding: 3px 4px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); font-size: 9.5px; font-weight: 800; line-height: 1.2; cursor: default; }
+        .bb-piece[data-member] { cursor: pointer; }
+        .bb-piece .h { font-size: 8.5px; opacity: 0.85; }
+        .bb-piece .n, .bb-piece .d { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bb-piece.bb-pin { box-shadow: inset 0 0 0 2.5px var(--t-ink); }
+        .bb-piece.bb-promise { box-shadow: inset 0 0 0 2.5px var(--warn-solid); }
+        .bb-piece.mine { box-shadow: inset 0 0 0 2.5px var(--ops-solid); }
+        .bb-piece.focus { outline: 2px solid var(--ops-solid); outline-offset: 1px; z-index: 1; }
+        .bb-gap { flex: none; display: flex; align-items: center; justify-content: center; min-width: 52px; border-radius: 6px; font-size: 10.5px; font-weight: 900; color: var(--warn-on); background: repeating-linear-gradient(-45deg, var(--warn-bg) 0 6px, transparent 6px 12px); }
+        .bb-inf { display: flex; flex-wrap: wrap; gap: 4px; }
+        .bb-inf .bb-piece { min-width: 72px; }
+        .bb-none { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .bb-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 4px; }
+        .bb-cell { display: flex; flex-direction: column; gap: 1px; padding: 4px 6px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); font-size: 10px; font-weight: 700; color: var(--t-muted); min-width: 0; cursor: pointer; }
+        .bb-cell b { font-size: 10.5px; color: var(--t-strong); font-variant-numeric: tabular-nums; }
+        .bb-cell span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bb-cell.can { outline: 1.5px dashed var(--ops-solid); outline-offset: -2px; background: var(--ops-bg); }
+        .bb-cands { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+        .bb-cands .k { font-size: 10.5px; font-weight: 900; color: var(--t-muted); }
+        .bb-cand { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 5px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--t-strong); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; text-align: left; }
+        .bb-cand small { font-size: 10px; font-weight: 700; color: var(--t-muted); }
+        .bb-cand.kill small { color: var(--ok-on); }
+        /* ③ 1 ブロックの手順 (🧱 組む の頭) */
+        .bs { margin: 0 0 10px; padding: 10px 11px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
+        .bs-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 12.5px; font-weight: 900; color: var(--t-ink); margin-bottom: 8px; }
+        .bs-h small { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .bs-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+        .bs-step { display: flex; align-items: flex-start; gap: 7px; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font: inherit; text-align: left; cursor: pointer; }
+        .bs-step .i { flex: none; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 900; background: var(--s2); color: var(--t-strong); }
+        .bs-step .l { display: flex; flex-direction: column; gap: 1px; font-size: 11.5px; font-weight: 800; color: var(--t-strong); line-height: 1.35; }
+        .bs-step .l small { font-size: 10px; font-weight: 700; color: var(--t-muted); }
+        .bs-step.done { opacity: 0.7; }
+        .bs-step.done .i { background: var(--ok-solid); color: var(--ok-ink); }
+        .bs-step.cur { border-color: var(--ops-solid); box-shadow: 0 0 0 2px var(--ops-bg); }
+        .bs-step.cur .i { background: var(--ops-solid); color: var(--ops-ink); }
+        .bs-step.opt { border-style: dashed; }
         .ops-recent-row .d.bad { color: var(--bad-deep); }
         .ops-recent-row .v { flex: none; font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .ops-recent-empty { margin: 0; font-size: 11.5px; color: var(--t-muted); }
@@ -4663,6 +4719,8 @@
                 </div>
                 <!-- 最終配信の状況 (L5 運営ガード・2026-09-07)。運営3人が別々に組み直していた第44回は、
                      いま誰の配信が生きているのかが画面から分からなかった。配信が無いまま時間が経つのも警告する -->
+                <!-- 🧱 段階 6 ③ 1 ブロックの手順 (引き継ぎ用・_renderOpsBlockSteps が描く): HP → 結果の取り込み → 組む → 配信 → 締凸検索 -->
+                <div id="opsBlockSteps" class="bs" data-ops-only style="display:none;"></div>
                 <div id="opsPlanPubStatus" data-ops-only style="display:none;margin:0 0 6px 0;padding:8px 11px;border-radius:10px;font-size:11px;font-weight:800;line-height:1.55;"></div>
                 <div style="display:flex;justify-content:flex-end;margin:0 0 10px 0;">
                     <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
@@ -9911,10 +9969,16 @@
         // ===== メンバー向け配信プラン: 3モード (🙋わたしの凸 / 🗺全体 / 🗓時間割) =====
         let _myPlanViewMode = 'mine';
         try { _myPlanViewMode = localStorage.getItem('shirisuko_myplan_view') || 'mine'; } catch { /* storage無効環境でも動くように */ }
-        if (!['mine', 'overview', 'timetable'].includes(_myPlanViewMode)) _myPlanViewMode = 'mine';
+        if (!['mine', 'overview', 'timetable', 'board'].includes(_myPlanViewMode)) _myPlanViewMode = 'mine';
         let _myPubState = null;   // { plan, viewerId, doneCounts:Map, stale, liveLevel }
         let _myPubRenderSeq = 0;  // 並行 render の競合ガード (古い取得結果で上書きしない)
 
+        // 🧱 段階 6 ④ メンバーの「🧱 盤」: 運営が組んだ盤を読み取り専用で (あなたの凸は縁が青)。どう組まれたかを知りたい人だけが開く
+        function _myPlanBoardHtml(plan, viewerId) {
+            const label = plan?.blockScope?.label || '';
+            return `<p style="margin:0 0 10px;font-size:11.5px;font-weight:700;color:var(--t-body);line-height:1.6;">${escapeHtml(label)} に出られる人の模擬を、ボスの残り HP に合うように運営が組んだ割当です。枠の長さ = 残り HP、ピースの幅 = ダメージの目安。<b>青い縁があなたの凸</b>です。盤は組んだ時点の予想で、凸の結果や HP の更新で変わります。</p>`
+                + _planBlockBoardHtml(plan, { ops: false, highlightPlayerId: viewerId });
+        }
         function setMyPlanViewMode(mode) {
             _myPlanViewMode = mode;
             try { localStorage.setItem('shirisuko_myplan_view', mode); } catch { /* noop */ }
@@ -9935,10 +9999,11 @@
             if (!body || !_myPubState) return;
             const { plan, viewerId, doneCounts, stale, liveLevel, ack, frozen, frozenBy, myChange } = _myPubState;
             const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:var(--card);color:var(--t-ink);box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:var(--t-muted);'}">${icon} ${label}</button>`;
-            const tabs = `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}</div>`;
+            const tabs = `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}${plan?.blockScope ? tab('board', '🧱', '盤') : ''}</div>`;
             let inner;
             try {
                 if (_myPlanViewMode === 'overview') inner = _planOverviewHtml(plan, viewerId);
+                else if (_myPlanViewMode === 'board' && plan?.blockScope) inner = _myPlanBoardHtml(plan, viewerId);
                 else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { season: _myPubState.doneSeason, highlightPlayerId: viewerId, filterKey: 'my' });
                 else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
             } catch (e) {
@@ -17720,6 +17785,7 @@
             }
             _renderOpsResultWarn();   // 盤面が変わった (3 凸済み・同じボス) — 下書きの注意だけ描き直す (入力中の欄は作り直さない)
             _renderOpsPlanTidy();
+            _renderOpsBlockSteps();
         }
         async function handleOpsAttackConfirm(attackId, on) {
             const id = Number(attackId);
@@ -21984,6 +22050,7 @@
             const n = Number(v);
             _opsPlanBlockIdx = Number.isInteger(n) && n >= 0 ? n : null;
             _syncOpsPlanCondUi();
+            _renderOpsBlockSteps();
         }
         // 条件パネルの3つのセグメントを状態に合わせる (どれを押しても、ここが唯一の描き直し)
         function _syncOpsPlanCondUi() {
@@ -22725,7 +22792,7 @@
             _opsPlanViewMode = localStorage.getItem('shirisuko_plan_view') || 'list';
             _opsPlanShowTeams = localStorage.getItem('shirisuko_plan_teams') === '1';   // 時間割チップに編成5キャラ
         } catch { /* 既定値のまま */ }
-        if (!['list', 'timetable'].includes(_opsPlanViewMode)) _opsPlanViewMode = 'timetable';   // 旧 gantt/shift モードからの移行
+        if (!['list', 'timetable', 'board'].includes(_opsPlanViewMode)) _opsPlanViewMode = 'timetable';   // 旧 gantt/shift モードからの移行
         function setOpsPlanViewMode(mode) {
             _opsPlanViewMode = mode;
             try { localStorage.setItem('shirisuko_plan_view', mode); } catch { /* noop */ }
@@ -22744,6 +22811,133 @@
             // ★ 選んでいた駒は捨てる (Codex指摘 2026-09-12): 絞り込みで消えたチップが選ばれたままだと、空に見えるマスをタップして見えない凸を置ける
             _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
             if (_opsLastPlan) renderOpsPlanView();
+        }
+
+        // ===== 🧱 段階 6 ブロック盤 (モック docs/ブロック盤モック_2026-10-21.html) =====
+        // ① 盤: ボスの行ごとに「枠 = このブロックの頭の残り HP」へ、ブロックの凸を「幅 = ダメージ」のピースで並べる。埋まれば撃破 ✓ (はみ出しは余り)。
+        //   ピースは時間割のチップと同じ札 (data-member / data-slot / data-attr / data-resv / data-pinned / data-promise / draggable) を持つので、
+        //   選ぶ・つかむ・置き直すは時間割と同じ関数 (_opsPlanSelectChip / _opsPlanPlace)。置く先は行の時刻のマス ([data-boss][data-h])。
+        // ② 候補: 「あと ◯B」の行に、置ける模擬ピースを 撃破 / 余り / 時刻 / 入れ替え つきで並べる (押すとそこへ置いて 📌)。
+        // 判定は js/domain/planBoard.js (blockBoardRows / boardCandidates)。メンバーの「🧱 盤」タブも同じ描画を読み取り専用で使う (opts.ops = false)
+        let _opsBoardCands = [];   // 描いた候補 (行 → 候補の配列)。ボタンは添字で渡す (名前を onclick に埋めない)
+        // ピースの塗りと上の文字 (属性ごとのトークン。明るい塗り (鉄甲・風圧) の上に白い文字を置かない)
+        const _BB_FILL = { fire: ['var(--attr-fire-solid)', 'var(--attr-fire-ink)'], water: ['var(--attr-water-solid)', 'var(--attr-water-ink)'],
+            electric: ['var(--attr-electric-solid)', 'var(--attr-electric-ink)'], iron: ['var(--attr-iron-solid)', 'var(--attr-iron-ink)'], wind: ['var(--attr-wind-solid)', 'var(--attr-wind-ink)'] };
+        function _planBlockBoardHtml(plan, opts = {}) {
+            const esc = escapeHtml, dom = window.planBoardDomain;
+            if (!dom || !plan) return '';
+            const ops = !!opts.ops;
+            const scope = plan.blockScope || null;
+            const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
+            const fromIdx = scope ? idxOfHour(scope.from) : null, toIdx = scope ? idxOfHour(scope.to) : null;
+            const rows = dom.blockBoardRows(plan, { fromIdx, toIdx });
+            if (ops) _opsBoardCands = [];
+            if (!rows.length) return '<p class="ops-recent-empty">盤に出すボスがありません (このブロックに凸が無い / ボスがもう倒れている)。</p>';
+            const finite = rows.filter(r => !r.infinite);
+            const scaleMax = Math.max(1, ...finite.map(r => Math.max(r.remainB, r.sumB)));
+            const pct = (b) => `${Math.max(0, Math.min(100, (Number(b) || 0) / scaleMax * 100)).toFixed(2)}%`;
+            const nowIdx = Math.max(0, _planNowIdx(plan));
+            const railHours = (Number.isInteger(fromIdx) && Number.isInteger(toIdx) && fromIdx >= 0 && toIdx >= fromIdx)
+                ? Array.from({ length: toIdx - fromIdx + 1 }, (_, k) => fromIdx + k).filter(i => i >= nowIdx) : [];
+            const snap = opsStore.get();
+            const sel = ops ? _opsPlanSel : null;
+            const selPlayer = sel ? (snap?.players || []).find(p => String(p.id) === String(sel.memberId)) : null;
+            const hl = opts.highlightPlayerId;
+            // ② 候補の材料 = 🧩 模擬ピースの箱と同じ (未配置のピース・予約で固定したカードは置いた扱い)
+            const rv = window.reservationsDomain;
+            const trayPieces = (ops && snap) ? dom.piecesOf({ players: snap.players || [], plan, reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) ? _resv.rows : [], isFixed: rv ? rv.isFixed : null }) : [];
+            const KIND_JP = { auto: '', pin: '📌 ', promise: '🔒 ' };
+            const piece = (a, b, w) => {
+                const kind = a.kind || 'auto';
+                const mine = hl != null && String(a.memberId) === String(hl);
+                const promise = kind === 'promise';
+                const attrs = ops
+                    ? ` data-member="${esc(String(a.memberId ?? ''))}" data-slot="${Number(a.loadoutSlot) || 1}" data-attr="${esc(String(b.weakness || ''))}" data-resv="${esc(String(a.reservationId ?? ''))}" data-pinned="${kind === 'pin' ? 1 : 0}" data-promise="${promise ? 1 : 0}" draggable="${_opsPlanDragOk() && !promise ? 'true' : 'false'}"`
+                    : '';
+                const focused = ops && _opsPlanFocus != null && String(a.memberId) === String(_opsPlanFocus);
+                const tip = `${a.memberName} ${Number(a.dmgB).toFixed(1)}B${a.hourLabel ? ' · ' + a.hourLabel : ''}${kind === 'pin' ? ' · 📌 運営が固定' : promise ? ' · 🔒 本人の約束' : ''}`;
+                return `<div class="bb-piece bb-${kind}${mine ? ' mine' : ''}${focused ? ' focus' : ''}"${attrs} title="${esc(tip)}" style="${w ? `width:${w};` : ''}background:${(_BB_FILL[b.weakness] || _BB_FILL.iron)[0]};color:${(_BB_FILL[b.weakness] || _BB_FILL.iron)[1]};">`
+                    + `<span class="h">${esc(a.hourLabel || '')}</span><span class="n">${KIND_JP[kind]}${esc(a.memberName || '')}</span><span class="d">${Number(a.dmgB).toFixed(1)}B</span></div>`;
+            };
+            const html = rows.map((r, ri) => {
+                const pt = PT_ATTRS.find(x => x.key === r.weakness);
+                const head = `<div class="bb-head"><span class="b" style="background:${DC_ATTR_COLORS[r.attribute] || 'var(--dim)'};">B${r.bossNumber}</span>`
+                    + `<span class="nm">${esc(r.name)}<small>Lv${r.level}${pt ? ` · ${esc(pt.name)}PT` : ''}</small></span>`
+                    + `<span class="st ${r.infinite ? 'inf' : r.killed ? 'ok' : 'gap'}">${r.infinite ? '♾️ 無限 — 入れた凸はすべてスコア'
+                        : r.killed ? `撃破 ✓${r.killHourIdx != null ? ' ' + esc(_planHourHeadLabel(r.killHourIdx)) : ''}${r.overB > 0.05 ? ` · 余り ${r.overB.toFixed(1)}B` : ''}`
+                        : `あと ${r.gapB.toFixed(1)}B`}</span>`
+                    + `<span class="rm">${r.infinite ? '' : `残 ${r.remainB.toFixed(1)}B`}</span></div>`;
+                const bar = r.infinite
+                    ? `<div class="bb-inf">${r.pieces.map(a => piece(a, r, null)).join('') || '<span class="bb-none">このブロックの凸はまだありません</span>'}</div>`
+                    : `<div class="bb-bar"><div class="bb-frame" style="width:${pct(r.remainB)};"></div><div class="bb-pieces">${r.pieces.map(a => piece(a, r, pct(a.dmgB))).join('')}`
+                        + `${r.gapB > 0.05 ? `<div class="bb-gap" style="width:${pct(r.gapB)};">あと ${r.gapB.toFixed(1)}B</div>` : ''}</div></div>`;
+                // 時刻のマス (運営だけ・置く先): このブロックのいまより後の時刻。選んだ駒が置けるマスに印
+                const rail = (ops && railHours.length) ? `<div class="bb-rail">${railHours.map(h => {
+                    const names = r.pieces.filter(a => a.hourIdx === h).map(a => a.memberName).join('・');
+                    const can = !!(sel && selPlayer && dom.canPlace({ player: selPlayer, attr: sel.attr, boss: (snap?.bosses || []).find(b => Number(b.boss_number) === r.bossNumber), hourIdx: h, hourOrder: HOUR_ORDER }).ok);
+                    return `<div class="bb-cell${can ? ' can' : ''}" data-boss="${r.bossNumber}" data-h="${h}" data-can="${can ? 1 : 0}"><b>${esc(_planHourHeadLabel(h))}</b><span>${esc(names || '—')}</span></div>`;
+                }).join('')}</div>` : '';
+                // ② 候補: 置ける未配置の模擬ピース (上位 3 つ)
+                let cands = '';
+                if (ops && !r.infinite && r.gapB > 0.05 && !opts.noCandidates) {
+                    const list = dom.boardCandidates(r, { pieces: trayPieces, players: snap?.players || [], hourIdxs: railHours, hourOrder: HOUR_ORDER, plan }).slice(0, 3);
+                    _opsBoardCands[ri] = list.map(c => ({ ...c, bossNumber: r.bossNumber }));
+                    if (list.length) {
+                        cands = `<div class="bb-cands"><span class="k">候補</span>${list.map((c, k) => `<button type="button" class="bb-cand${c.killed ? ' kill' : ''}" onclick="_opsBoardCandPlace(${ri}, ${k})" title="押すとこの時刻に置いて 📌 で固定します (置く前に残凸・キャラ被り・🔒 約束を確かめます)">`
+                            + `${esc(c.piece.name)} ${esc(pt?.name || '')} ${Number(c.piece.dmgB).toFixed(1)}B · ${esc(_planHourHeadLabel(c.hourIdx))}`
+                            + `<small>${c.killed ? `撃破 ✓ · 余り ${c.overB.toFixed(1)}B` : `あと ${c.gapAfterB.toFixed(1)}B`} · 残凸 ${Number(c.piece.remaining)}${c.needsSwap ? ' · 入れ替えが要る' : ''}</small></button>`).join('')}</div>`;
+                    }
+                }
+                return `<div class="bb-row${r.infinite ? ' inf' : ''}">${head}${bar}${rail}${cands}</div>`;
+            }).join('');
+            const legend = `<div class="bb-legend">枠の長さ = 残り HP · ピースの幅 = 模擬ダメージの目安 · 角の数字 = 時刻 · <span class="bb-key auto">自動で置いた</span><span class="bb-key pin">📌 運営が固定</span><span class="bb-key promise">🔒 本人の約束</span>${hl != null ? '<span class="bb-key mine">あなた</span>' : ''}</div>`;
+            return `<div class="bb">${legend}${html}</div>`;
+        }
+        // ② 候補を押す = その模擬ピースを選んで、その時刻に置く (置く関数は時間割と同じ _opsPlanPlace: 残凸・キャラ被り・約束を押した時点で確かめる)
+        function _opsBoardCandPlace(ri, k) {
+            const c = ((_opsBoardCands[Number(ri)] || [])[Number(k)]) || null;
+            if (!c || !_opsMode) return;
+            _opsPlanSel = { kind: 'piece', memberId: c.piece.memberId, loadoutSlot: Number(c.piece.slot) || 1, attr: c.piece.attr, reservationId: null, pinned: false };
+            _opsPlanFocus = c.piece.memberId;
+            _opsPlanPlace(c.bossNumber, c.hourIdx);
+        }
+
+        // ③ 1 ブロックの手順 (引き継ぎ用・🧱 組む のタブの頭)。判定は planBoardDomain.blockSteps。押すとその作業へ
+        function _renderOpsBlockSteps() {
+            const el = document.getElementById('opsBlockSteps');
+            if (!el) return;
+            const dom = window.planBoardDomain, snap = opsStore.get();
+            const blk = (typeof _opsPlanBlock === 'function') ? _opsPlanBlock() : null;
+            if (!_opsMode || !dom || !snap?.season || !blk) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            const same = (sc) => !!(sc && Number(sc.from) === Number(blk.from) && Number(sc.to) === Number(blk.to));
+            const lay = window.opsLayoutDomain;
+            const hpFreshMin = lay ? lay.hpFreshnessMin(snap.bosses) : null;
+            const c = _atkCheck.counts;
+            const missing = (c && Number(c.seasonId) === Number(snap.season.id)) ? (Number(c.missing) || 0) : null;
+            const lastPlan = (_opsLastPlan && Number(_opsLastPlan.seasonId ?? snap.season.id) === Number(snap.season.id)) ? _opsLastPlan : null;
+            const pub = (_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null;
+            const steps = dom.blockSteps({ hpFreshMin, missing, built: same(lastPlan?.blockScope), published: same(pub?.plan?.blockScope) });
+            // 未解決 = いま組んでいるこのブロックの「あと ◯B」(盤と同じ計算)
+            let open = '';
+            if (lastPlan && same(lastPlan.blockScope)) {
+                const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
+                const gaps = dom.blockBoardRows(lastPlan, { fromIdx: idxOfHour(blk.from), toIdx: idxOfHour(blk.to) }).filter(r => !r.infinite && r.gapB > 0.05);
+                open = gaps.length ? `未解決: ${gaps.map(r => `B${r.bossNumber} あと ${r.gapB.toFixed(1)}B`).join(' · ')}` : '未解決なし (このブロックで倒し切れる見込み)';
+            }
+            const by = pub ? `最終配信 ${_hhmm(pub.published_at)}${pub.published_by_name ? ' · ' + escapeHtml(pub.published_by_name) : ''}${pub.plan?.blockScope ? ` (${escapeHtml(pub.plan.blockScope.name)})` : ''}` : 'まだ配信していません';
+            const GO = { hp: "_opsBlockStepGo('hp')", result: "_opsBlockStepGo('result')", build: "_opsBlockStepGo('build')", publish: "_opsBlockStepGo('publish')", finish: "_opsBlockStepGo('finish')" };
+            el.style.display = '';
+            el.innerHTML = `<div class="bs-h">🧱 ${escapeHtml(blk.label || blk.name)} の手順<small>${open ? escapeHtml(open) + ' · ' : ''}${by}</small></div>`
+                + `<div class="bs-steps">${steps.map((s, i) => `<button type="button" class="bs-step${s.done ? ' done' : ''}${s.current ? ' cur' : ''}${s.optional ? ' opt' : ''}" onclick="${GO[s.key]}">`
+                    + `<span class="i">${s.done ? '✓' : i + 1}</span><span class="l">${escapeHtml(s.label)}<small>${escapeHtml(s.sub)}</small></span></button>`).join('')}</div>`;
+        }
+        function _opsBlockStepGo(key) {
+            if (!_opsMode) return;
+            if (key === 'hp') { if (typeof _opsStageAct === 'function') _opsStageAct('hp'); return; }
+            if (key === 'result') { _opsJump('opsSecAttackCheck'); return; }
+            if (key === 'finish') { _opsJump('opsSecFinish'); return; }
+            _opsJump('opsSecPlan');
+            if (key === 'publish') requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('opsPlanPublishBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
         }
 
         function renderOpsPlanView() {
@@ -23011,7 +23205,7 @@
             const chipFilter = (_opsPlanViewMode === 'timetable' && _opsMode)
                 ? `<div class="plan-chipfilt" style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:-6px 0 10px;"><span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">表示</span>${filtBtn('all', 'すべて')}${filtBtn('promise', `🔒 約束 ${cc.promise}`)}${filtBtn('pinned', `📌 固定 ${cc.pinned}`)}${filtBtn('fixed', '🔒📌 両方')}</div>`
                 : '';
-            const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>${chipFilter}`;
+            const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${viewBtn('board', '🧱', '盤')}${teamsBtn}</div>${chipFilter}`;
             // ② 時間割の読みやすさ (運営だけ): 選んだ人の戦闘可能時間を光らせ、チップに「硬い / 狭い」を出す
             const pbd = window.planBoardDomain;
             const playersById = new Map((opsStore.get()?.players || []).map(p => [String(p.id), p]));
@@ -23026,7 +23220,11 @@
             } : null;
             // ③ 盤の上で手を打つ: 選んでいる駒 (チップ / 模擬ピース) の属性で置ける列を光らせ、PC は掴める
             const sel = _opsPlanSel;
-            const bodyHtml = _opsPlanViewMode === 'timetable'
+            // 🧱 段階 6 ① 盤: 置く・つかむ・置き直すは時間割と同じ (行の時刻のマス = [data-boss][data-h])。右に 🧩 模擬ピースの箱
+            const bodyHtml = _opsPlanViewMode === 'board'
+                ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}"><div>${_planBlockBoardHtml(plan, { ops: _opsMode, highlightPlayerId: _myId })}`
+                    + `<div id="opsPlanFocusBar">${_opsPlanFocusBarHtml(plan)}</div></div>` + _opsPlanTrayHtml(plan) + '</div>'
+                : _opsPlanViewMode === 'timetable'
                 ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}" data-chipfilter="${_opsPlanChipFilter}"><div>`
                     + _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
                         focusMemberId: _opsPlanFocus, focusWindow, stiffOf, placeAttr: sel ? sel.attr : null, draggable: _opsPlanDragOk() })
@@ -23058,6 +23256,7 @@
             }
             summary = _planCondStampHtml(plan.conditions) + summary;   // 🧮 「この条件で組みました」を結果の頭に (パズル盤 ①)
             el.innerHTML = summary + stickyHtml + viewToggle + bodyHtml + warnHtml;
+            _renderOpsBlockSteps();
             // 算出したあとの操作 (配信 / 共有画像) は結果の下に
             const next = document.getElementById('opsPlanNext');
             if (next) next.style.display = '';

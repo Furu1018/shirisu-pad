@@ -765,6 +765,7 @@ node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カ�
 node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのスタンプ / 自動で効くもの / きっかけ / 動かせる幅 の実行テスト
 node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) の実行テスト — 本番の 2026-09 のデータで描く
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
+node tests/block-board.mjs    # 🧱 ブロック盤 (段階 6): 盤・候補・手順の帯・メンバーの盤 の実行テスト
 node tests/result-intake.mjs  # 📥 結果の取り込み (段階 4): 下書き → 登録 (代理凸の経路・✓・残 HP・撃破の検知) / 凸していない / 組むの片付け / ブロックの配信の通知 の実行テスト
 node tests/practice-e2e.mjs   # 🎮 練習モードの通し確認 — 本物のブラウザで案内の枠だけを押して最後まで (Chrome が要る・1〜2分。PC=1 で PC 幅も)
 node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの実験 (第44回の実データ)。ほかに carry-over / boss5-two-teams / boss5-why / left-attacks — 使い方と結論は同じフォルダの README (単体テストではない)
@@ -1198,6 +1199,17 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   「18 時以降に出られる人」は `mockIntakeDomain.b5SecondOf` が唯一 (h18〜翌 h04 に 1 時間でもある人)。📸 模擬の取り込みの「届いていない人」(5 属性そろっていても 2 編成目が足りなければ入る) と
   👥 メンバー状況 (前日の列「B5×2」/「B5 1/2」) に出す。Discord で「夕方以降に出られる人はボス 5 の模擬を 2 編成」と周知するのは運営。
   ★ 📸 模擬の取り込みは**保存先 (編成① / ②) を選べる** (`#myDmgPreviewSlot`・既定は `mockIntakeDomain.defaultSlot`: 同じ編成 (3 人以上重なる) → その枠 / ①が空き → 1 / ②が空き → 2 / 両方 → ダメージの低いほう)。常に編成①だと 2 編成目が 1 つ目を上書きしていた (Codex指摘 2c264a5)。本人の提出は従来どおり編成①
+  ★ **🧱 段階 6: ブロック盤** (2026-10-23・見本 `docs/ブロック盤モック_2026-10-21.html`): 最適凸プランの表示に「🧱 盤」(`_opsPlanViewMode = 'board'`・時間割とリストの隣)。
+  ① 盤 (`_planBlockBoardHtml`): ボスの行ごとに「枠 = このブロックの頭の残り HP (`targetHpB`)」へ、ブロックの凸を「幅 = ダメージ」のピースで並べる (幅は全ての行で同じ目盛り)。
+  埋まれば「撃破 ✓ 19時 · 余り 5.0B」、足りなければ「あと ◯B」。★ 撃破の時刻は**時刻の順に足して残り HP に届いた凸の時刻** (最後のピースではない)。倒れているボス・凸の無いレベルは出さない (始まりのレベルは出す)。
+  ピースは時間割のチップと**同じ札** (data-member / data-slot / data-attr / data-resv / data-pinned / data-promise / draggable・🔒 はつかめない) なので、選ぶ・つかむ・置き直すは時間割と同じ関数
+  (`_opsPlanSelectChip` / `_opsPlanPlace` / `_opsPlanPaintTargets`)。置く先は行の**時刻のマス** (`[data-boss][data-h]`・ブロックのいまより後の時刻)。右に 🧩 模擬ピースの箱。色は属性のトークン (`_BB_FILL`)。
+  ② 候補 (`boardCandidates`): 「あと ◯B」の行に、置ける未配置の模擬ピース (属性と出られる時間は `canPlace`) を 撃破 / 余り / 時刻 / 残凸 / 入れ替えが要る つきで上位 3 つ。
+  押すと `_opsBoardCandPlace` = そのピースを選んでその時刻に `_opsPlanPlace` (残凸・キャラ被り・🔒 約束は押した時点で確かめる・入れ替えの確認も同じ)。ボタンは添字で渡す。
+  ③ 手順の帯 (`#opsBlockSteps`・`_renderOpsBlockSteps`・判定は `blockSteps`): 選んでいるブロック (`_opsPlanBlock`) の ⚔️ HP (30 分以内) → 📥 結果 (結果がまだ 0) → 🧱 組む (このブロックで算出) → 📤 配信 (このブロックを配信) → 🏁 締凸検索 (任意)。
+  いま = 済んでいない最初。見出しに未解決の「あと ◯B」と最終配信 (だれ・いつ・どのブロック)。押すとその作業へ (`_opsBlockStepGo`)。プランを描いたとき・結果の取り込みを描いたとき・ブロックを選び直したときに描き直す。
+  ④ メンバー: 配信カードに「🧱 盤」タブ (ブロックのぶんの配信だけ・`_myPlanBoardHtml`)。同じ描画を読み取り専用 (`ops: false`・札も時刻のマスも候補も無い)・あなたの凸は青い縁。
+  純ロジック `planBoardDomain.blockBoardRows / boardCandidates / blockSteps`。実行テスト `tests/block-board.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

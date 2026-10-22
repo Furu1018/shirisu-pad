@@ -12632,6 +12632,72 @@ console.log('\ngrowthDomain:');
         assert.ok(pubFn.indexOf('_notifyBlockPublish(') < pubFn.indexOf('if (targets.length > 0) {'), 'L4 を送ってからブロックの通知をしている (重ねて送る)');
         assert.ok(/if \(!sameBlock && !\(r\.sent === 0 && r\.failed > 0\)\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている / 通知が全部失敗したのに L4 にも任せない');
     });
+    test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
+        const d = globalThis.planBoardDomain;
+        // 夕方 (18〜20時 = idx 13〜15) のぶん。Lv2 の B3 は 60B・B4 は 50B (B1 はもう倒れている)。Lv3 は B3 にだけ 20時の凸
+        const plan = { startLevel: 2, levels: [
+            { level: 2, bosses: [
+                { bossNumber: 1, name: 'B1', weakness: 'iron', targetHpB: 0, attacks: [] },
+                { bossNumber: 3, name: 'B3', attribute: 'wind', weakness: 'fire', targetHpB: 60, attacks: [
+                    { memberId: 7, memberName: 'あお', dmgB: 30, hourIdx: 14, loadoutSlot: 1 },
+                    { memberId: 8, memberName: 'きい', dmgB: 35, hourIdx: 13, loadoutSlot: 1, pinned: true, fromReservation: true },
+                    { memberId: 9, memberName: 'あか', dmgB: 25, hourIdx: 16, loadoutSlot: 1 },   // 21時 = ブロックの外
+                    { memberId: 11, memberName: 'くろ', dmgB: 10, hourIdx: 15, loadoutSlot: 1 }] },   // 撃破のあとの凸 (撃破の時刻はこれにしない)
+                { bossNumber: 4, name: 'B4', attribute: 'electric', weakness: 'iron', targetHpB: 50, attacks: [
+                    { memberId: 9, memberName: 'あか', dmgB: 20, hourIdx: 15, loadoutSlot: 2, fromReservation: true }] }] },
+            { level: 3, bosses: [{ bossNumber: 3, name: 'B3', weakness: 'fire', targetHpB: 200, attacks: [{ memberId: 10, memberName: 'しろ', dmgB: 40, hourIdx: 15, loadoutSlot: 1 }] }] },
+            { level: 4, infinite: true, bosses: [{ bossNumber: 5, name: 'B5', weakness: 'water', infinite: true, targetHpB: 0, attacks: [] }] },
+        ] };
+        const rows = d.blockBoardRows(plan, { fromIdx: 13, toIdx: 15 });
+        assert.deepEqual(rows.map(r => [r.level, r.bossNumber]), [[2, 3], [2, 4], [3, 3]], '倒れたボス / 凸の無いレベル (Lv4) を出した / ブロックの凸があるレベルを出していない');
+        const b3 = rows[0];
+        assert.deepEqual(b3.pieces.map(p => [p.memberName, p.kind]), [['きい', 'pin'], ['あお', 'auto'], ['くろ', 'auto']], 'ブロックの外の凸を入れた / 時刻の順でない / 種類 (📌) が違う');
+        assert.deepEqual([b3.remainB, b3.sumB, b3.gapB, b3.overB, b3.killed, b3.killHourIdx], [60, 75, 0, 15, true, 14], '撃破の時刻は時刻の順に足して届いた凸 (あおの 19時・あとの くろ ではない)');
+        const b4 = rows[1];
+        assert.deepEqual([b4.pieces[0].kind, b4.gapB, b4.killed, b4.killHourIdx], ['promise', 30, false, null]);
+        // ブロックの範囲を渡さなければ全部 (Lv4 の無限の行も・凸が無くても始まりのレベルではないので出さない)
+        assert.equal(d.blockBoardRows(plan).find(r => r.bossNumber === 3 && r.level === 2).pieces.length, 4);
+        const withInf = d.blockBoardRows({ startLevel: 4, levels: [{ level: 4, infinite: true, bosses: [{ bossNumber: 5, weakness: 'water', infinite: true, targetHpB: 0, attacks: [{ memberId: 1, memberName: 'x', dmgB: 50, hourIdx: 14 }] }] }] }, { fromIdx: 13, toIdx: 15 });
+        assert.deepEqual(withInf.map(r => [r.infinite, r.gapB, r.killed, r.pieces.length]), [[true, 0, false, 1]], '無限のボスの行');
+        assert.deepEqual(d.blockBoardRows(null), []);
+        // 候補: あと 30B の B4 (鉄甲) に置ける未配置のピース
+        const players = [
+            { id: 1, name: 'ひ', availableSlots: ['h18', 'h19'] }, { id: 2, name: 'ふ', availableSlots: ['h20'] },
+            { id: 3, name: 'み', availableSlots: ['h22'] }, { id: 4, name: 'よ', availableSlots: ['h18'] }, { id: 5, name: 'い', availableSlots: ['h18'] }, { id: 9, name: 'あか', availableSlots: ['h18', 'h19', 'h20'] }];
+        const pieces = [
+            { memberId: 5, name: 'い', attr: 'iron', slot: 2, dmgB: 12, remaining: 3, placed: false },    // 埋まらない候補を先に (並べ替えが効いているか)
+            { memberId: 1, name: 'ひ', attr: 'iron', slot: 1, dmgB: 34, remaining: 3, placed: false },
+            { memberId: 2, name: 'ふ', attr: 'iron', slot: 1, dmgB: 31, remaining: 1, placed: false },
+            { memberId: 3, name: 'み', attr: 'iron', slot: 1, dmgB: 40, remaining: 3, placed: false },    // 22時しか出られない = ブロックの外
+            { memberId: 4, name: 'よ', attr: 'fire', slot: 1, dmgB: 50, remaining: 3, placed: false },    // 属性が違う
+            { memberId: 9, name: 'あか', attr: 'iron', slot: 2, dmgB: 20, remaining: 2, placed: true },  // 置いてある
+            { memberId: 1, name: 'ひ', attr: 'iron', slot: 2, dmgB: 9, remaining: 0, placed: false },     // 残凸なし
+        ];
+        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
+        const cands = d.boardCandidates(b4, { pieces, players, hourIdxs: [15, 13, 14], hourOrder: HO, plan: { levels: [{ bosses: [{ attacks: [{ memberId: 2 }] }] }] } });
+        assert.deepEqual(cands.map(c => [c.piece.name, c.hourIdx, c.killed, Number(c.overB.toFixed(1)), Number(c.gapAfterB.toFixed(1)), c.needsSwap]), [
+            ['ふ', 15, true, 1, 0, true], ['ひ', 13, true, 4, 0, false], ['い', 13, false, 0, 18, false]],
+            '並び (埋まる → 余りの小さい順 → 埋まらない) / 時刻 (出られる最初の時刻) / 入れ替えが要る (置いてある数 >= 残凸)');
+        assert.deepEqual(d.boardCandidates(b3, { pieces, players, hourIdxs: [13], hourOrder: HO }), [], '埋まっている行に候補を出した');
+        assert.deepEqual(d.boardCandidates(rows[2], { pieces, players, hourIdxs: [13], hourOrder: HO }).map(c => c.piece.name), ['よ'], 'Lv3 の B3 (灼熱が弱点) に灼熱のピースだけを出していない');
+        // 手順: いま = 済んでいない最初 (締凸検索は任意で数えない)
+        const st = (o) => d.blockSteps(o).map(x => (x.done ? '✓' : x.current ? '▶' : '·') + x.key);
+        assert.deepEqual(st({ hpFreshMin: 50, missing: 2 }), ['▶hp', '·result', '·build', '·publish', '·finish']);
+        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true }), ['✓hp', '✓result', '✓build', '▶publish', '·finish']);
+        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true, published: true }), ['✓hp', '✓result', '✓build', '✓publish', '·finish'], '全部済んだのに任意の締凸検索を「いま」にした');
+        assert.deepEqual(st({ hpFreshMin: null, missing: null }), ['▶hp', '·result', '·build', '·publish', '·finish'], '分からないのを済んだにした');
+    });
+    test('★ 配線: 🧱 段階 6 ブロック盤 — 最適凸プランに「🧱 盤」(時間割と同じ置き方) / 🧱 組むの頭に手順の帯 / メンバーの配信カードに「🧱 盤」タブ', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(html.includes("${viewBtn('board', '🧱', '盤')}") && /if \(!\['list', 'timetable', 'board'\]\.includes\(_opsPlanViewMode\)\)/.test(html), '「🧱 盤」の切り替えが無い');
+        assert.ok(/const bodyHtml = _opsPlanViewMode === 'board'\s*\n\s*\? `<div class="plan-board\$\{_opsPlanTrayOpen \? ' with-tray' : ''\}"><div>\$\{_planBlockBoardHtml\(plan, \{ ops: _opsMode, highlightPlayerId: _myId \}\)\}/.test(html), '盤の本文が無い / 模擬ピースの箱が無い');
+        const board = html.match(/function _planBlockBoardHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/data-boss="\$\{r\.bossNumber\}" data-h="\$\{h\}"/.test(board), '置く先 (時刻のマス) に時間割と同じ札が無い');
+        assert.ok(/data-member="\$\{esc\(String\(a\.memberId \?\? ''\)\)\}" data-slot=/.test(board) && /data-promise="\$\{promise \? 1 : 0\}" draggable="\$\{_opsPlanDragOk\(\) && !promise \? 'true' : 'false'\}"/.test(board), 'ピースに時間割のチップと同じ札が無い (🔒 をつかめないこと)');
+        assert.ok(/<div id="opsBlockSteps" class="bs" data-ops-only style="display:none;"><\/div>\s*\n\s*<div id="opsPlanPubStatus"/.test(html), '手順の帯の置き場が無い');
+        assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;\s*\n\s*_renderOpsBlockSteps\(\);/.test(html) && /_renderOpsPlanTidy\(\);\s*\n\s*_renderOpsBlockSteps\(\);/.test(html), '手順の帯を描き直していない');
+        assert.ok(html.includes("${plan?.blockScope ? tab('board', '🧱', '盤') : ''}") && /else if \(_myPlanViewMode === 'board' && plan\?\.blockScope\) inner = _myPlanBoardHtml\(plan, viewerId\);/.test(html), 'メンバーの「🧱 盤」タブが無い');
+    });
     test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js'), sql = rd('supabase', '52_attacks_confirmed.sql');

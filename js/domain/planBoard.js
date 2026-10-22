@@ -175,6 +175,107 @@
     }
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
 
+    /**
+     * 🧱 段階 6 ① ブロック盤 (モック docs/ブロック盤モック_2026-10-21.html)。ボスの行ごとに「枠 = このブロックの頭の残り HP」へ、
+     * そのブロックの凸を「幅 = ダメージ」のピースで並べる。盤は量を決め、時刻は行の時刻のマスと時間割で確かめる (2 層)。
+     * ★ 撃破の時刻は「時刻の順に足して残り HP に届いた凸の時刻」(並べた最後のピースの時刻ではない)
+     * @param {Object} plan  算出結果 (levels[].bosses[] の targetHpB / attacks)
+     * @param {{ fromIdx?: number|null, toIdx?: number|null }} o  ブロックの範囲 (hourIdx・含む)。無ければ全部
+     * @returns {Array<{ level:number, infinite:boolean, bossNumber:number, name:string, attribute:string|null, weakness:string|null,
+     *   remainB:number, pieces:Object[], sumB:number, gapB:number, overB:number, killed:boolean, killHourIdx:number|null }>}
+     *   pieces = 凸 (PlanAttack) に kind ('auto' 算出が置いた / 'pin' 📌 運営が固定 / 'promise' 🔒 本人の約束) を足したもの・時刻の順
+     */
+    function blockBoardRows(plan, { fromIdx = null, toIdx = null } = {}) {
+        const levels = Array.isArray(plan && plan.levels) ? plan.levels : [];
+        const ranged = Number.isInteger(fromIdx) && Number.isInteger(toIdx);
+        const inRange = (a) => !ranged || (Number.isInteger(a.hourIdx) && a.hourIdx >= fromIdx && a.hourIdx <= toIdx);
+        const startLevel = Number(plan && plan.startLevel) || (levels[0] ? Number(levels[0].level) : 1);
+        const hourKey = (a) => (Number.isInteger(a.hourIdx) ? a.hourIdx : 99);
+        const rows = [];
+        for (const lv of levels) {
+            const bosses = Array.isArray(lv.bosses) ? lv.bosses : [];
+            const has = bosses.some(b => (Array.isArray(b.attacks) ? b.attacks : []).some(a => a && inRange(a)));
+            if (!has && Number(lv.level) !== startLevel) continue;   // このブロックに凸の無いレベルは出さない (始まりのレベルは残りを見せる)
+            for (const b of bosses) {
+                const infinite = !!(lv.infinite || b.infinite);
+                const remainB = infinite ? 0 : Math.max(0, Number(b.targetHpB) || 0);
+                const pieces = (Array.isArray(b.attacks) ? b.attacks : []).filter(a => a && inRange(a))
+                    .map(a => ({ ...a, kind: a.pinned ? 'pin' : (a.fromReservation ? 'promise' : 'auto') }))
+                    .sort((x, y) => (hourKey(x) - hourKey(y)) || ((Number(y.dmgB) || 0) - (Number(x.dmgB) || 0)));
+                if (!infinite && remainB <= 0.05 && pieces.length === 0) continue;   // もう倒れているボス
+                const sumB = pieces.reduce((t, a) => t + (Number(a.dmgB) || 0), 0);
+                let acc = 0, killHourIdx = null, killed = false;
+                if (!infinite) {
+                    for (const a of pieces) {
+                        acc += Number(a.dmgB) || 0;
+                        if (!killed && acc >= remainB - 0.05) { killed = true; killHourIdx = Number.isInteger(a.hourIdx) ? a.hourIdx : null; }
+                    }
+                }
+                rows.push({
+                    level: Number(lv.level), infinite, bossNumber: Number(b.bossNumber), name: b.name || `B${b.bossNumber}`,
+                    attribute: b.attribute || null, weakness: b.weakness || null, remainB, pieces, sumB,
+                    gapB: infinite ? 0 : Math.max(0, remainB - sumB), overB: infinite ? 0 : Math.max(0, sumB - remainB), killed, killHourIdx,
+                });
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * 🧱 段階 6 ② 候補: 「あと ◯B」が残る行に置ける模擬ピース。押す前に 撃破 / 余り / 時刻 / 入れ替え を見せる。
+     * @param {Object} row  blockBoardRows の行 (有限のボス・gapB > 0)
+     * @param {{ pieces: Object[], players: Object[], hourIdxs: number[], hourOrder: number[], plan?: Object|null }} a
+     *   pieces = piecesOf の結果 (placed のものは使わない) / hourIdxs = このブロックの時刻 (いまより後) / plan = いまのプラン (その人がもう置かれている数)
+     * @returns {Array<{ piece:Object, hourIdx:number, killed:boolean, overB:number, gapAfterB:number, needsSwap:boolean }>}
+     *   並び: 埋まる (撃破) → 余りの小さい順 / 埋まらない → ダメージの大きい順 → 早い時刻 → 人の id
+     */
+    function boardCandidates(row, { pieces, players, hourIdxs, hourOrder, plan = null } = {}) {
+        if (!row || row.infinite || !(row.gapB > 0.05)) return [];
+        const byId = new Map((Array.isArray(players) ? players : []).map(p => [String(p.id), p]));
+        const placedCount = new Map();
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+            if (a && a.memberId != null) placedCount.set(String(a.memberId), (placedCount.get(String(a.memberId)) || 0) + 1);
+        })));
+        const hours = (Array.isArray(hourIdxs) ? hourIdxs : []).filter(Number.isInteger).slice().sort((x, y) => x - y);
+        const out = [];
+        for (const pc of Array.isArray(pieces) ? pieces : []) {
+            if (!pc || pc.placed || !(Number(pc.remaining) > 0)) continue;   // 属性と出られる時間は下の canPlace が見る
+            const player = byId.get(String(pc.memberId));
+            if (!player) continue;
+            const h = hours.find(i => canPlace({ player, attr: pc.attr, boss: { weakness: row.weakness }, hourIdx: i, hourOrder }).ok);
+            if (h == null) continue;
+            const dmg = Number(pc.dmgB) || 0;
+            const killed = dmg >= row.gapB - 0.05;
+            out.push({ piece: pc, hourIdx: h, killed, overB: Math.max(0, dmg - row.gapB), gapAfterB: Math.max(0, row.gapB - dmg),
+                needsSwap: (placedCount.get(String(pc.memberId)) || 0) >= Number(pc.remaining) });
+        }
+        out.sort((a, b) => (Number(b.killed) - Number(a.killed))
+            || (a.killed ? (a.overB - b.overB) : ((Number(b.piece.dmgB) || 0) - (Number(a.piece.dmgB) || 0)))
+            || (Number(a.needsSwap) - Number(b.needsSwap))
+            || (a.hourIdx - b.hourIdx)
+            || (String(a.piece.memberId) < String(b.piece.memberId) ? -1 : String(a.piece.memberId) > String(b.piece.memberId) ? 1 : 0));
+        return out;
+    }
+
+    /**
+     * 🧱 段階 6 ③ 1 ブロックの手順 (引き継ぎ用)。上から順に済ませる 5 つ。いまの手順 = 済んでいない最初のもの (締凸検索は任意なので数えない)。
+     * @param {{ hpFreshMin: number|null, missing: number|null, built: boolean, published: boolean }} a
+     *   hpFreshMin = ボスの HP を直してからの分 (分からなければ null) / missing = 結果がまだの凸 (分からなければ null)
+     *   built = このブロックで組んだ / published = このブロックのぶんを配信した
+     * @returns {Array<{ key:string, label:string, sub:string, done:boolean, current:boolean, optional:boolean }>}
+     */
+    function blockSteps({ hpFreshMin = null, missing = null, built = false, published = false } = {}) {
+        const steps = [
+            { key: 'hp', label: '⚔️ ボスの HP を直す', sub: hpFreshMin == null ? 'ゲームの画面と合わせる' : `${Math.round(hpFreshMin)} 分前に更新`, done: hpFreshMin != null && hpFreshMin <= 30 },
+            { key: 'result', label: '📥 前のブロックの結果を取り込む', sub: missing == null ? '⚔️ 戦況の結果の取り込み' : (missing > 0 ? `結果がまだ ${missing} 凸` : '結果は入っています'), done: missing === 0 },
+            { key: 'build', label: '🧱 このブロックを組む', sub: built ? '組みました' : '対象を「🧱 ブロックの人」にして算出', done: !!built },
+            { key: 'publish', label: '📤 配信する', sub: published ? '配信しました (割当のある人に通知)' : '組んだら配信', done: !!published },
+            { key: 'finish', label: '🏁 締凸検索で声をかける', sub: '任意 — 倒し切れないボスがあるとき', done: false, optional: true },
+        ];
+        const cur = steps.find(s => !s.done && !s.optional);
+        return steps.map(s => ({ ...s, optional: !!s.optional, current: s === cur }));
+    }
+
     // キャラの突き合わせ (reservationsDomain と同じ正規化: 全角/半角・前後の空白・大文字小文字を揃える)
     const charKeys = (list) => (Array.isArray(list) ? list : [])
         .filter(c => typeof c === 'string')
@@ -249,5 +350,6 @@
     }
     const CHIP_FILTERS = ['all', 'promise', 'pinned', 'fixed'];
 
-    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, chipCounts, CHIP_FILTERS, WHO, FROM, PREV, ATTR_JP, SWAP_JP };
+    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, chipCounts, CHIP_FILTERS, WHO, FROM, PREV, ATTR_JP, SWAP_JP,
+        blockBoardRows, boardCandidates, blockSteps };
 })(typeof window !== 'undefined' ? window : globalThis);
