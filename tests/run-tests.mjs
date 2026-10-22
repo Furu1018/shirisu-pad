@@ -535,6 +535,12 @@ test('🧱 ブロックに出られる人だけで組む (availableAtSlots): そ
     const resvDone = [{ ...resvNight[0], memberId: '夕方の人', timeSlot: 'h19' }];
     const d = compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], done, { currentSlot: 'h18', onlyAvailableNow: true }), availableAtSlots: evening, reservations: resvDone });
     assert.deepEqual(d.unmetReservations.map(u => u.reason), ['attacks_done']); assert.ok(!('outOfScopeReservations' in d));
+    // 「今回は難しい」の人は参加対象から外れている (memberState にも居ない) → member_gone。対象外 (out_of_scope) にはしない (Codex指摘 2026-10-22)
+    const hard = players.map(p => p.name === '夜の人' ? { ...p, unavailableThisSeason: true } : p);
+    for (const extra of [{ availableAtSlots: evening }, {}]) {
+        const u = compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], hard, { currentSlot: 'h18', onlyAvailableNow: !!extra.availableAtSlots }), ...extra, reservations: resvNight });
+        assert.deepEqual(u.unmetReservations.map(x => x.reason), ['member_gone'], `今回は難しい人の予約: ${JSON.stringify(u.unmetReservations)}`); assert.ok(!('outOfScopeReservations' in u));
+    }
 });
 
 test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順・名前・個数) / どのブロックか / 出られるか / ブロック⇄時間の変換', () => {
@@ -5563,17 +5569,42 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(h.slots[0].unmetText, 'ほかの凸とキャラが被るため置けません');
             assert.equal(rv.pendingRepublish(resv, plan).count, 0, '置けない予約を「配信後の予約」に数えている');
         });
+        const _htmlB = (await import('node:fs')).default.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         test('★ 🧱 ブロックのぶんの配信 (2026-10-22): 対象外の人の予約は「配信後の予約」に数えない / 空き枠は「次のブロック以降で組みます」', () => {
             const scope = { idx: 0, name: '朝', label: '朝 5〜8時', from: 5, to: 8, slots: ['h05', 'h06', 'h07', 'h08'] };
             const plan = { ...mkPlan([]), blockScope: scope };   // 朝のぶんの配信 (p1 の割当なし)
             // ① ソルバーが「対象外」と返した予約 (ブロックの時間の中でも = 本人の時間の外に運営が置いた等) → 催促しない
             const inTime = [{ ...res({ id: 5, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            plan.outOfScopeReservations = [{ reservationId: 5, memberId: 'p1', reason: 'out_of_scope', timeSlot: 'h06', flex: false }];
+            plan.outOfScopeReservations = [{ reservationId: 5, memberId: 'p1', bossNumber: 3, loadoutSlot: 1, reason: 'out_of_scope', timeSlot: 'h06', flex: false }];   // ソルバーの出力と同じ形 (人・ボス・編成枠・時刻)
             assert.equal(rv.pendingRepublish(inTime, plan).count, 0, '対象外の人の予約を「配信後の予約」に数えている');
+            // ★ id だけで見ない (Codex指摘): 同じ id のまま置き直した 📌 (時刻が変わった) は対象外のままにしない = 催促する
+            const moved = [{ ...inTime[0], time_slot: 'h07' }];
+            assert.equal(rv.pendingRepublish(moved, plan).count, 1, '置き直した 📌 が配信時の対象外のままになっている');
+            assert.equal(rv.pendingRepublish([{ ...inTime[0], boss_number: 4 }], plan).count, 1);
+            assert.equal(rv.matchesOutOfScope(plan, inTime[0]), true); assert.equal(rv.matchesOutOfScope(plan, moved[0]), false);
+            assert.equal(rv.matchesOutOfScope(plan, { ...inTime[0], time_mode: 'flex', time_slot: null }), false, '⏳隙間型を時刻つきの対象外と同じにしている');
+            // ホーム 3 枠: 範囲の中で対象外の人 → 中立 (組み直し待ちにしない・stale にしない)
+            const ho = rv.homeSlots({ plan, viewerId: 'p1', reservations: inTime, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(ho.stale, false, '対象外の予約を組み直し待ちにしている'); assert.equal(ho.slots[0].kind, 'fixed'); assert.equal(ho.slots[0].outOfScope, true); assert.equal(ho.slots[0].laterBlock, false);
+            // 置き直した 📌 は従来どおり組み直し待ち
+            const hm = rv.homeSlots({ plan, viewerId: 'p1', reservations: moved, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(hm.stale, true); assert.equal(hm.slots[0].outOfScope, false);
             delete plan.outOfScopeReservations;
             // ② 配信のあとに承認された (配信は知らない) が、ブロックの時間の外 → 数えない
             const resv = [{ ...res({ id: 8, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
             assert.equal(rv.pendingRepublish(resv, plan).count, 0, 'ブロックの時間の外の予約を「配信後の予約」に数えている');
+            // ★ Codex指摘 (高): ホーム 3 枠は 1 日ぶんの予約を受けるので、あとのブロックの約束を「🔒 予約 (組み直し待ち)」+ 帯「運営が組み直し中」にしていた
+            const hl = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(hl.stale, false, 'あとのブロックの約束を組み直し待ちにしている');
+            assert.deepEqual(hl.slots.map(s => [s.kind, s.laterBlock ?? null, s.outOfScope ?? null, s.inPlan ?? null]), [['fixed', true, false, false], ['empty', null, null, null], ['empty', null, null, null]], '後ろのブロックの約束は 🔒 (あとのブロック) として残す');
+            assert.equal(hl.slots[0].timeSlot, 'h21');
+            assert.equal(rv.inBlockTime(plan, resv[0]), false); assert.equal(rv.inBlockTime(plan, { ...resv[0], time_mode: 'flex', time_slot: null }), true); assert.equal(rv.inBlockTime(mkPlan([]), resv[0]), true);
+            // 1 日ぶんの配信で入っていなければ従来どおり組み直し待ち
+            assert.equal(rv.homeSlots({ plan: mkPlan([]), viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 }).stale, true);
+            // 画面: 3 枠のカードと「わたしの凸」が印を読む
+            assert.ok(_htmlB.includes(": slot.laterBlock ? '🔒 予約 (あとのブロック)' : slot.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'"), '3 枠のカードが印を読まない');
+            assert.ok(_htmlB.includes(": a.laterBlock ? '🔒 予約で固定 (あとのブロック)' : a.outOfScope ? '🔒 予約で固定 (この配信の計算に入っていません)'"), '「わたしの凸」が印を読まない');
+            assert.ok(_htmlB.includes(':${x.laterBlock ? 1 : 0}:${x.outOfScope ? 1 : 0}`).join(\'|\')'), '3 枠の鍵に印が無い (変わっても描き直さない)');
             // ③ ブロックの時間の中なのに入っていない → 従来どおり数える / ⏳隙間型 (時刻なし) も数える
             assert.equal(rv.pendingRepublish([{ ...res({ id: 6, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
             assert.equal(rv.pendingRepublish([{ ...res({ id: 7, status: 'approved', boss: 3, flex: true, lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
@@ -7311,8 +7342,8 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示
         const optsSrc = html.match(/const _recomputeOptsAfterApproval = \(\) => \([^\n]*\);/)?.[0] || '';
         assert.ok(optsSrc, '_recomputeOptsAfterApproval が無い');
-        const optsOf = (who) => new Function('_opsPlanWho', `${optsSrc}\nreturn _recomputeOptsAfterApproval();`)(who);
-        assert.deepEqual(optsOf('block'), {}, 'ブロックで運用中なのに全員で組み直す');
+        const optsOf = (who) => new Function('_opsPlanWho', '_opsPlanBlock', `${optsSrc}\nreturn _recomputeOptsAfterApproval();`)(who, () => ({ idx: 2, name: '昼' }));
+        assert.deepEqual(optsOf('block'), { who: 'block', block: { idx: 2, name: '昼' } }, 'ブロックで運用中なのに全員で組み直す / 承認時のブロックを固定していない');
         assert.deepEqual(optsOf('now'), { onlyAvailableNow: false }, '「今動ける人だけ」のまま承認の組み直しをしている');
         assert.deepEqual(optsOf('all'), { onlyAvailableNow: false });
         // 運営のプランカード: 対象外の人の予約は赤い警告でなく中立の案内 (時刻つき)
@@ -10936,12 +10967,18 @@ console.log('\ngrowthDomain:');
         assert.ok(/id="opsPlanNext" class="plan-next"[\s\S]*?id="opsPlanPublishBtn"[\s\S]*?id="opsPlanShareBtn"/.test(card), '配信 / 共有画像 が結果の下にない');
         // 対象は状態 (_opsPlanWho)。呼び出し側が明示したときはそちら (承認後の組み直しは「全員」)
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const who = options\.onlyAvailableNow != null \? \(options\.onlyAvailableNow \? 'now' : 'all'\) : _opsPlanWho;\s*\n\s*const blk = who === 'block' \? _opsPlanBlock\(\) : null;\s*\n\s*const onlyNow = who !== 'all';/.test(fn), '対象を条件パネルから取っていない');
+        assert.ok(/const who = options\.who === 'block' \? 'block' : \(options\.onlyAvailableNow != null \? \(options\.onlyAvailableNow \? 'now' : 'all'\) : _opsPlanWho\);\s*\n\s*const blk = who === 'block' \? \(options\.block \|\| _opsPlanBlock\(\)\) : null;\s*\n\s*const onlyNow = who !== 'all';/.test(fn), '対象を条件パネルから取っていない (または承認時のブロックを固定して受けていない)');
         // ★ 決めた対象を options に畳んでから、固定された呼び出し行に渡す (Codex指摘 2026-09-11: 畳む行を見ていなかった)
         assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null, blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations/.test(fn),
             '対象を options に畳んでから算出に渡していない (画面の選択が効かない / 明示した対象が上書きされる)');
         // 優先順位を式で固定: 明示 (null でない) が勝ち、無ければ画面の選択。ここを実行で確かめる
-        const WHO_EXPR = "options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;";
+        const WHO_EXPR = "options.who === 'block' ? 'block' : (options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho);";
+        // 承認後の組み直し (ブロック) は承認時の対象とブロックを options で固定して渡す — 画面の選択より強い (Codex指摘 2026-10-22: await の間の切り替え)
+        const BLK_EXPR = "const blk = who === 'block' ? (options.block || _opsPlanBlock()) : null;";
+        assert.ok(fn.includes(BLK_EXPR), 'ブロックを options から受けていない');
+        const blkOf = (options, who) => new Function('options', 'who', '_opsPlanBlock', `${BLK_EXPR} return blk;`)(options, who, () => ({ idx: 9, name: '画面' }));
+        assert.deepEqual(blkOf({ who: 'block', block: { idx: 2, name: '昼' } }, 'block'), { idx: 2, name: '昼' }, '承認時のブロックより画面の選択を使っている');
+        assert.deepEqual(blkOf({}, 'block'), { idx: 9, name: '画面' }); assert.equal(blkOf({ block: { idx: 2 } }, 'all'), null);
         const pick = new Function('options', '_opsPlanWho', `const who = ${WHO_EXPR} return { who, onlyNow: who !== 'all' };`);
         assert.deepEqual(pick({}, 'now'), { who: 'now', onlyNow: true }, '画面で「今動ける人だけ」を選んでいるのに全員になる');
         assert.deepEqual(pick({}, 'all'), { who: 'all', onlyNow: false });
@@ -10949,6 +10986,8 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(pick({ onlyAvailableNow: false }, 'now'), { who: 'all', onlyNow: false }, '承認後の組み直し (全員を明示) が画面の選択に負けている');
         assert.deepEqual(pick({ onlyAvailableNow: false }, 'block'), { who: 'all', onlyNow: false }, '明示した全員がブロックに負けている');
         assert.deepEqual(pick({ onlyAvailableNow: true }, 'all'), { who: 'now', onlyNow: true });
+        assert.deepEqual(pick({ who: 'block', block: { idx: 1 } }, 'all'), { who: 'block', onlyNow: true }, '承認時のブロックの条件が画面の「全員」に負けている');
+        assert.deepEqual(pick({ who: 'block' }, 'now'), { who: 'block', onlyNow: true });
         assert.ok(fn.includes(`const who = ${WHO_EXPR}`), '上の式が本体と同じでない');
         // 焼き込み: planBoardDomain.conditionsOf で作り、_opsLastPlan に入れる前に付ける
         assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n(\s*\/\/[^\n]*\n)*\s*if \(blk\) plan\.blockScope = [^\n]*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');

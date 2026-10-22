@@ -8239,7 +8239,7 @@
         }
         function _homeSlotsKey(h) {
             if (!h) return '';
-            return h.slots.map(x => `${x.kind}:${x.reservationId ?? ''}:${x.bossNumber ?? ''}:${x.loadoutSlot ?? ''}:${x.done ? 1 : 0}:${x.status ?? ''}:${x.inPlan ? 1 : 0}`).join('|')
+            return h.slots.map(x => `${x.kind}:${x.reservationId ?? ''}:${x.bossNumber ?? ''}:${x.loadoutSlot ?? ''}:${x.done ? 1 : 0}:${x.status ?? ''}:${x.inPlan ? 1 : 0}:${x.laterBlock ? 1 : 0}:${x.outOfScope ? 1 : 0}`).join('|')
                 + (h.stale ? '|stale' : '');
         }
         // 「運営が組み直し中」: 配信が予約を知らない (承認のあとに配信し直していない) 間だけ出す
@@ -8306,10 +8306,13 @@
             if (slot.kind === 'fixed') {
                 const pending = slot.status === 'cancel_requested';
                 // 置けていない予約 (キャラ被り等) は「組み直し待ち」ではなく ⚠ で出す (2026-09-08 実機FB)
+                // 🧱 あとのブロックの約束 / この配信の計算に入っていない人 は「組み直し待ち」ではない (Codex指摘 2026-10-22)
                 const lock = slot.status === 'pinned' ? '📣 運営からのお願い (返事してください)'
-                    : slot.unmet ? '⚠ 置けていません' : pending ? '取り消し希望中' : (slot.inPlan ? '🔒 予約' : '🔒 予約 (組み直し待ち)');
+                    : slot.unmet ? '⚠ 置けていません' : pending ? '取り消し希望中'
+                    : slot.laterBlock ? '🔒 予約 (あとのブロック)' : slot.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'
+                    : (slot.inPlan ? '🔒 予約' : '🔒 予約 (組み直し待ち)');
                 return `
-                <button type="button" onclick="_homeGotoResvCard()" class="dc-plan-card fixed${pending ? ' pending' : ''}${slot.unmet ? ' unmet' : (slot.inPlan ? '' : ' notin')}${slot.done ? ' done' : ''}${on}"
+                <button type="button" onclick="_homeGotoResvCard()" class="dc-plan-card fixed${pending ? ' pending' : ''}${slot.unmet ? ' unmet' : ((slot.inPlan || slot.laterBlock) ? '' : ' notin')}${slot.done ? ' done' : ''}${on}"
                         title="予約で固定された凸 — タップで予約の状態へ">
                     <span class="dc-plan-lock">${lock}</span>
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
@@ -10471,7 +10474,9 @@
                 if (a.kind === 'fixed') {
                     const jp = a.status === 'pinned' ? `📣 運営からのお願い${a.pinnedBy ? ` (${esc(String(a.pinnedBy))})` : ''} — 「引き受けた凸」から返事してください`
                         : a.unmet ? `⚠ 置けていません — ${esc(a.unmetText || '')}`
-                        : a.status === 'cancel_requested' ? '取り消し希望中' : (a.inPlan ? '🔒 予約で固定' : '🔒 予約で固定 (運営が組み直し中)');
+                        : a.status === 'cancel_requested' ? '取り消し希望中'
+                        : a.laterBlock ? '🔒 予約で固定 (あとのブロック)' : a.outOfScope ? '🔒 予約で固定 (この配信の計算に入っていません)'
+                        : (a.inPlan ? '🔒 予約で固定' : '🔒 予約で固定 (運営が組み直し中)');
                     const col = (a.unmet || a.status === 'cancel_requested' || a.status === 'pinned') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
@@ -18054,7 +18059,7 @@
         // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
         //   1 日ぶん (全員) で組み直すと「次のブロックだけを約束する」が崩れ、配信の確認も 1 日ぶんになる。
         //   それ以外は従来どおり全員を明示する (「今動ける人だけ」のまま承認の組み直しをしない・2026-09-08)
-        const _recomputeOptsAfterApproval = () => (_opsPlanWho === 'block' ? {} : { onlyAvailableNow: false });
+        const _recomputeOptsAfterApproval = () => (_opsPlanWho === 'block' ? { who: 'block', block: _opsPlanBlock() } : { onlyAvailableNow: false });
         // 承認のたびの組み直し (配信の確認は出さない)。失敗しても承認は成立している
         async function _recomputeOnly() {
             try { await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval()); }
@@ -21543,8 +21548,9 @@
             //   見ないと、待っている間に押し直された新しい算出を古い結果が上書きする
             if (seq !== _opsPlanSeq) return;
             // 対象は条件パネル (_opsPlanWho)。承認後の組み直しなど、呼び出し側が明示したときはそちら (画面の選択は変えない)
-            const who = options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;
-            const blk = who === 'block' ? _opsPlanBlock() : null;
+            // 🧱 承認後の組み直しは、承認した時点の対象とブロックを options で固定して渡す (await の間に運営が条件を切り替えても、承認時の条件で組む — Codex指摘 2026-10-22)
+            const who = options.who === 'block' ? 'block' : (options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho);
+            const blk = who === 'block' ? (options.block || _opsPlanBlock()) : null;
             const onlyNow = who !== 'all';
             options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null, blockStartSlot: blk ? _hourKey(blk.from) : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
@@ -22160,7 +22166,7 @@
                     </div>
                     ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を固定して計算しました。固定した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
                     ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:var(--bad-deep);line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
-                    ${Array.isArray(plan.outOfScopeReservations) && plan.outOfScopeReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。<br>${plan.outOfScopeReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} B${Number(u.bossNumber)}${u.flex ? ' ⏳隙間' : (u.timeSlot ? ` ${Number(String(u.timeSlot).slice(1))}時` : '')}`).join('<br>')}<br>その人が出られるブロックで組むときに置きます。</div>` : ''}
+                    ${Array.isArray(plan.outOfScopeReservations) && plan.outOfScopeReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。<br>${plan.outOfScopeReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} B${Number(u.bossNumber)}${u.flex ? ' ⏳隙間' : (/^h\d\d$/.test(String(u.timeSlot || '')) ? ` ${Number(String(u.timeSlot).slice(1))}時` : '')}`).join('<br>')}<br>その人が出られるブロックで組むときに置きます。</div>` : ''}
                 </div>`;
 
             const levelSections = plan.levels.map(lv => {

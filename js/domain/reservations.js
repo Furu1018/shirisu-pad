@@ -617,7 +617,11 @@
                     && rowHonorsTime(a, r))));
             const a = idx >= 0 ? rows[idx] : null;
             const um = unmetById.get(String(r.id)) || null;
-            if (a) usedRow.add(idx); else if (plan && !um) stale = true;   // 配信がこの予約を知らない (置けなかったのは別)
+            // 🧱 ブロックのぶんの配信: ブロックの時間の外の約束は、この配信が知らなくて当然 (あとのブロックで組むときに置く) → 組み直し待ちにしない。
+            //   範囲の中でも「この条件の対象外」(出られる時間と合っていない人) は置けないのではなく計算に入っていない → 中立の印 (Codex指摘 2026-10-22)
+            const later = !!a ? false : !inBlockTime(plan, r);
+            const oos = (!a && !later) ? matchesOutOfScope(plan, r) : false;
+            if (a) usedRow.add(idx); else if (plan && !um && !later && !oos) stale = true;   // 配信がこの予約を知らない (置けなかったのは別)
             slots.push({
                 kind: 'fixed', reservationId: r.id, status: r.status,
                 bossNumber: Number(r.boss_number), loadoutSlot: Number(r.loadout_slot) || 1,
@@ -629,6 +633,7 @@
                 approvedBy: r.approved_by || null,
                 pinnedBy: r.pinned_by || null, askDeadlineAt: r.ask_deadline_at || null,   // 📣 運営からのお願い (status = 'pinned')
                 unmet: um ? um.reason : null, unmetText: um ? unmetText(um) : '',
+                laterBlock: later, outOfScope: oos,   // 🧱 あとのブロックの約束 / この配信の計算に入っていない (どちらも組み直し待ちではない)
             });
         }
         // ② 配信の割当 (予約と重ならないもの)。3枠を超える分は配信が古い証拠 = 出さない
@@ -666,6 +671,26 @@
      * 配信のあとに固定された (= 配信に入っていない) 予約。運営のホームで「配信後の予約があります」を出す根拠
      * @returns {{count:number, items:Object[]}}
      */
+    /**
+     * 🧱 配信のときに「この条件の対象外」だった予約 (plan.outOfScopeReservations) と、行の中身 (人・ボス・編成枠・時刻) が一致するか。
+     * ★ id だけで見ない — 📌 は同じ id のまま置き直せる (時刻やボスが変わる) ので、配信時に対象外だった 📌 を範囲の中へ動かしても
+     *   対象外のままに見える (Codex指摘 2026-10-22)
+     */
+    function matchesOutOfScope(plan, r) {
+        if (!r) return false;
+        const list = Array.isArray(plan && plan.outOfScopeReservations) ? plan.outOfScopeReservations : [];
+        return list.some(u => String(u.reservationId) === String(r.id)
+            && String(u.memberId) === String(r.player_id)
+            && Number(u.bossNumber) === Number(r.boss_number)
+            && (Number(u.loadoutSlot) || 1) === (Number(r.loadout_slot) || 1)
+            && (u.flex ? r.time_mode === 'flex' : (r.time_mode !== 'flex' && String(u.timeSlot || '') === String(r.time_slot || ''))));
+    }
+    /** 🧱 ブロックのぶんの配信 (plan.blockScope.slots) の時間の中か。⏳隙間型・時刻の読めない行は中 (raidBlocksDomain.scopeReservations と同じ読み方)。1 日ぶんの配信は全部中 */
+    function inBlockTime(plan, r) {
+        const slots = (plan && plan.blockScope && Array.isArray(plan.blockScope.slots)) ? plan.blockScope.slots : null;
+        if (!slots || !r || r.time_mode === 'flex' || !r.time_slot) return true;
+        return slots.some(s => String(s) === String(r.time_slot));
+    }
     function pendingRepublish(rows, plan) {
         const fixed = (Array.isArray(rows) ? rows : []).filter(isFixed);
         if (fixed.length === 0) return { count: 0, items: [] };
@@ -680,11 +705,8 @@
             })));
         // reservationId が無い古い配信は、誰が・ボス・編成枠・**時刻** が揃うときだけ「入っている」とみなす
         // 🧱 ブロックのぶんの配信は、そのブロックの外の約束を知らなくて当然 (その人が出られるブロックで組むときに置く) — 催促しない (2026-10-22)。
-        //   ソルバーが「対象外」と返した予約 (plan.outOfScopeReservations) と、配信のあとに承認されたブロックの時間の外の予約の両方
-        const outOfScope = new Set((Array.isArray(plan && plan.outOfScopeReservations) ? plan.outOfScopeReservations : []).map(u => String(u.reservationId)));
-        const scopeSlots = (plan && plan.blockScope && Array.isArray(plan.blockScope.slots)) ? new Set(plan.blockScope.slots.map(String)) : null;
-        const inScopeTime = (r) => !scopeSlots || r.time_mode === 'flex' || !r.time_slot || scopeSlots.has(String(r.time_slot));
-        const items = fixed.filter(r => !inPlan.has(String(r.id)) && !unmet.has(String(r.id)) && !outOfScope.has(String(r.id)) && inScopeTime(r)
+        //   ソルバーが「対象外」と返した予約 (plan.outOfScopeReservations・中身で突き合わせる) と、配信のあとに承認されたブロックの時間の外の予約の両方
+        const items = fixed.filter(r => !inPlan.has(String(r.id)) && !unmet.has(String(r.id)) && !matchesOutOfScope(plan, r) && inBlockTime(plan, r)
             && !planRows.some(a => String(a.memberId) === String(r.player_id)
                 && Number(a.bossNumber) === Number(r.boss_number)
                 && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
@@ -693,7 +715,7 @@
     }
 
     root.reservationsDomain = {
-        STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
+        STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP, matchesOutOfScope, inBlockTime,
         unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
         isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, isExpiredPin, expiredPins, pinFor, canPin, canApprove, fingerprint, canTransition,
         toSolverConstraints,

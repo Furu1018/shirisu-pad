@@ -1267,6 +1267,7 @@
                 if (!p) reason = 'member_gone';                // 参加対象から外れた (退会・今回は難しい)
                 // 🧱 この条件 (ブロックの人 / 今動ける人) の対象外 = 置けないのではなく、この計算に居ない (2026-10-22 実機: 朝で組むと夜の人の予約が
                 //   「キャラ被り」と出た — 置く処理は memberState に居ない人を黙って飛ばし、理由は外す前の名簿で引くので既定の conflict に落ちていた)
+                else if (p.unavailableThisSeason) reason = 'member_gone';   // 今回は難しい = 参加対象から外れている (memberState にも居ない。Codex指摘 2026-10-22)
                 else if (!inScope(p)) reason = 'out_of_scope';
                 else if ((p.attackCount || 0) >= 3) reason = 'attacks_done';
                 else if (!b) reason = 'boss_gone';
