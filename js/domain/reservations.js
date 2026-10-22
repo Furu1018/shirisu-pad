@@ -618,7 +618,8 @@
             const a = idx >= 0 ? rows[idx] : null;
             const um = unmetById.get(String(r.id)) || null;
             // 🧱 ブロックのぶんの配信: ブロックの時間の外の約束は、この配信が知らなくて当然 (あとのブロックで組むときに置く) → 組み直し待ちにしない。
-            //   範囲の中でも「この条件の対象外」(出られる時間と合っていない人) は置けないのではなく計算に入っていない → 中立の印 (Codex指摘 2026-10-22)
+            //   範囲の中でも「この条件の対象外」(出られる時間と合っていない人) は置けないのではなく計算に入っていない → 中立の印 (Codex指摘 2026-10-22)。
+            //   ★ blockScope の無い配信 (「今動ける人だけ」で組んだもの) でも同じ — 以前は誤って「⚠ 置けていません (キャラ被り)」だったので、中立が正しい (意図・テストで固定)
             const later = !!a ? false : !inBlockTime(plan, r);
             const oos = (!a && !later) ? matchesOutOfScope(plan, r) : false;
             if (a) usedRow.add(idx); else if (plan && !um && !later && !oos) stale = true;   // 配信がこの予約を知らない (置けなかったのは別)

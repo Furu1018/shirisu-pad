@@ -5601,6 +5601,12 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(rv.inBlockTime(plan, resv[0]), false); assert.equal(rv.inBlockTime(plan, { ...resv[0], time_mode: 'flex', time_slot: null }), true); assert.equal(rv.inBlockTime(mkPlan([]), resv[0]), true);
             // 1 日ぶんの配信で入っていなければ従来どおり組み直し待ち
             assert.equal(rv.homeSlots({ plan: mkPlan([]), viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 }).stale, true);
+            // ★ Codex指摘 (3a0ced5): blockScope の無い配信 (「今動ける人だけ」で組んだもの) でも、対象外の予約は中立 (以前は誤って「⚠ キャラ被り」) = 意図
+            const nowPlan = { ...mkPlan([]), outOfScopeReservations: [{ reservationId: 5, memberId: 'p1', bossNumber: 3, loadoutSlot: 1, reason: 'out_of_scope', timeSlot: 'h06', flex: false }] };
+            const hn = rv.homeSlots({ plan: nowPlan, viewerId: 'p1', reservations: inTime, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(hn.stale, false); assert.equal(hn.slots[0].outOfScope, true); assert.equal(hn.slots[0].laterBlock, false); assert.equal(hn.slots[0].unmet, null);
+            assert.equal(rv.pendingRepublish(inTime, nowPlan).count, 0, '「今動ける人だけ」の配信で対象外の予約を催促している');
+            assert.equal(rv.pendingRepublish([{ ...inTime[0], time_slot: 'h07' }], nowPlan).count, 1, '置き直した 📌 は催促する');
             // 画面: 3 枠のカードと「わたしの凸」が印を読む
             assert.ok(_htmlB.includes(": slot.laterBlock ? '🔒 予約 (あとのブロック)' : slot.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'"), '3 枠のカードが印を読まない');
             assert.ok(_htmlB.includes(": a.laterBlock ? '🔒 予約で固定 (あとのブロック)' : a.outOfScope ? '🔒 予約で固定 (この配信の計算に入っていません)'"), '「わたしの凸」が印を読まない');
