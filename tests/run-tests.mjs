@@ -314,6 +314,89 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const b = compute({ ...timeInput(three(), solo({ blockCaps: [] }), { currentSlot: 'h05' }), excludeTimeUnknown: false });
         assert.equal(JSON.stringify(a), JSON.stringify(b));
     });
+    // ---- 変異テストで生き残った壊し方を捕まえる (2026-10-22) ----
+    const LO = (list) => list.map((dmgB, j) => ({ dmgB, team: [`c${dmgB}_${j}`], slot: j + 1, level: null, levels: null }));
+    const capPlayer = (id, lo, slots, caps) => ({ id, name: id, attackCount: 0, syncLevel: 500, syncLevelEstimated: false, teamsByAttr: {}, attacks: [], flexTime: false, strong_attributes: [],
+        loadoutsByAttr: Object.fromEntries(Object.entries(lo).map(([k, v]) => [k, LO(v)])),
+        damagesByAttr: Object.fromEntries(Object.entries(lo).map(([k, v]) => [k, Math.max(...v)])), availableSlots: slots, blockCaps: caps });
+    const HRS = (a, b) => { const o = []; for (let h = a; h <= b; h++) o.push(`h${String(h % 24).padStart(2, '0')}`); return o; };
+    const placedBy = (plan) => { const s = {}; plan.levels.forEach(l => l.bosses.forEach(b => b.attacks.forEach(a => { (s[a.memberId] ||= []).push(a); }))); return s; };
+    test('🧱 2b: 乱数の盤面 300 個で、上限つきのブロックに置いた凸 (予約以外) が上限を超えない (Lv1〜4・2 編成・厳守 ON/OFF)', () => {
+        let seed = 11; const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647; const ri = (n) => Math.floor(rnd() * n);
+        const W = ['fire', 'water', 'iron', 'wind', 'electric'];
+        const BLK = [[0, 3, HRS(5, 8)], [13, 15, HRS(18, 20)], [16, 18, HRS(21, 23)]];
+        let checked = 0;
+        for (let it = 0; it < 300; it++) {
+            const lvl = 1 + ri(4);
+            const bosses = (lvl === 4 ? [5] : [1, 2, 3, 4, 5]).map(n => boss(n, W[n - 1], { tier: (n === 3 || n === 5) ? 'tyrant' : 'lord', totalB: 20 + ri(80), remainingB: 5 + ri(60) }));
+            const ps = [];
+            for (let i = 0; i < 3 + ri(6); i++) {
+                const bl = BLK.filter(() => rnd() < 0.6); if (!bl.length) bl.push(BLK[ri(3)]);
+                const lo = {}; for (const w of W) if (rnd() < 0.6) lo[w] = Array.from({ length: 1 + ri(2) }, () => 3 + ri(30));
+                if (!Object.keys(lo).length) lo.fire = [10];
+                ps.push(capPlayer(`p${i}`, lo, bl.flatMap(b => b[2]), bl.filter(() => rnd() < 0.7).map(b => ({ fromIdx: b[0], toIdx: b[1], max: ri(3) }))));
+            }
+            const plan = compute({ season: { current_level: lvl }, bosses, players: ps, currentSlot: ['h05', 'h07', 'h18', 'h21'][ri(4)], timeAware: true, timeStrict: rnd() < 0.5 });
+            const by = placedBy(plan);
+            for (const p of ps) for (const c of p.blockCaps) {
+                const n = (by[p.id] || []).filter(a => !a.fromReservation && a.hourIdx >= c.fromIdx && a.hourIdx <= c.toIdx).length;
+                assert.ok(n <= c.max, `盤面 ${it}: ${p.id} がブロック ${c.fromIdx}-${c.toIdx} に ${n} 凸 (上限 ${c.max})`);
+                checked++;
+            }
+        }
+        assert.ok(checked > 300, '確かめた上限が少なすぎる (盤面の作り方が壊れた)');
+    });
+    test('🧱 2b: 乱数で見つけた盤面の割り当てを固定 (凸を外すときに数を戻す / 埋まった人を時間外に回さない)', () => {
+        const ps = [
+            capPlayer('p0', { fire: [31], wind: [8], electric: [23] }, HRS(18, 20), [{ fromIdx: 13, toIdx: 15, max: 2 }]),
+            capPlayer('p1', { fire: [7], water: [13, 25], electric: [25, 31] }, [...HRS(5, 8), ...HRS(18, 23)], [{ fromIdx: 0, toIdx: 3, max: 2 }, { fromIdx: 13, toIdx: 15, max: 0 }, { fromIdx: 16, toIdx: 18, max: 2 }]),
+            capPlayer('p2', { fire: [11], wind: [23, 22] }, HRS(18, 20), [{ fromIdx: 13, toIdx: 15, max: 1 }]),
+            capPlayer('p3', { water: [19, 22], iron: [12, 23] }, [...HRS(5, 8), ...HRS(18, 20)], []),
+            capPlayer('p4', { fire: [25], water: [20], iron: [26], wind: [3], electric: [20, 12] }, HRS(21, 23), [{ fromIdx: 16, toIdx: 18, max: 1 }]),
+            capPlayer('p5', { iron: [28, 13], wind: [12, 12], electric: [3, 7] }, HRS(21, 23), [{ fromIdx: 16, toIdx: 18, max: 1 }]),
+        ];
+        const bs = [boss(1, 'fire', { remainingB: 53 }), boss(2, 'water', { remainingB: 49 }), boss(3, 'iron', { tier: 'tyrant', remainingB: 12 }), boss(4, 'wind', { remainingB: 11 }), boss(5, 'electric', { tier: 'tyrant', remainingB: 47 })];
+        const plan = compute({ season: { current_level: 1 }, bosses: bs, players: ps, currentSlot: 'h18', timeAware: true, timeStrict: false });
+        const by = placedBy(plan);
+        const got = Object.fromEntries(Object.keys(by).sort().map(k => [k, by[k].map(a => `B${a.bossNumber ?? ''}@${a.hourIdx}${a.flex ? '~' : ''}`).sort()]));
+        const want = { p0: ['@13', '@13'], p1: ['@16', '@16'], p2: ['@13'], p3: ['@13', '@13', '@13'], p4: ['@16'], p5: ['@16'] };
+        assert.deepEqual(Object.fromEntries(Object.entries(got).map(([k, v]) => [k, v.map(x => x.replace(/^B\d*/, ''))])), want);
+    });
+    test('🧱 2b: 境目 — Lv4 の 2 編成目も上限で止める / 開放時刻が埋まったブロックなら時間外にも置かない / 時刻なしの予約は上限 0 でも置く', () => {
+        const b5 = [boss(5, 'fire', { tier: 'tyrant', remainingB: 1000 })];
+        const lv4 = compute({ season: { current_level: 4 }, bosses: b5, players: [capPlayer('P', { fire: [10, 9] }, HRS(18, 20), [{ fromIdx: 13, toIdx: 15, max: 1 }])], currentSlot: 'h18', timeAware: true });
+        assert.equal((placedBy(lv4).P || []).length, 1, 'Lv4 で上限を超えて 2 編成目を置いた');
+        // 7時に組む: 朝 (5〜8時) に出られた人の時間はもう過ぎた。朝の上限 0 なら、時間外のベストエフォート (7時) にも置かない
+        const late = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })], players: [capPlayer('P', { fire: [10] }, HRS(5, 6), [{ fromIdx: 0, toIdx: 3, max: 0 }])], currentSlot: 'h07', timeAware: true, timeStrict: false });
+        assert.deepEqual(placedBy(late).P || [], [], '上限 0 のブロックの中に ⚠時間外で置いた');
+        // 時刻なしの予約 (レベル付き) は上限 0 でも置く
+        const resv = [{ reservationId: 5, memberId: 'P', level: 1, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: null, team: ['c10_0'], expectedB: 10 }];
+        const r = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })], players: [capPlayer('P', { fire: [10] }, HRS(18, 20), [{ fromIdx: 13, toIdx: 15, max: 0 }])], currentSlot: 'h18', timeAware: true, reservations: resv });
+        assert.deepEqual((placedBy(r).P || []).map(a => [a.reservationId, a.hourLabel]), [[5, '18時']], '時刻なしの予約を上限で落とした');
+        // (時刻なしの固定予約は DB の制約で実際には作れない。この形では上限が無くても unmet に conflict が並ぶ = 既存の挙動なので見ない)
+    });
+    test('★ Codex指摘 (6ffdb6d) 高: 朝 1 を済ませた人を 18時から与ダメ優先で組み直しても、時間外に回さない', () => {
+        const p = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })],
+            players: [capPlayer('P', { fire: [10], water: [9] }, ['h05'], [{ fromIdx: 0, toIdx: 3, max: 0 }])], currentSlot: 'h18', timeAware: true, timeStrict: false });
+        assert.deepEqual(placedBy(p).P || [], [], '上限に達したブロックの人を ⚠時間外で置いた');
+        assert.equal(p.unusedDetail.find(d => d.name === 'P')?.key, 'cap');
+        // おまかせのブロック (上限なし) を持つ人は従来どおり時間外のベストエフォートに回る
+        const q = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })],
+            players: [capPlayer('Q', { fire: [10] }, ['h05', 'h09'], [{ fromIdx: 0, toIdx: 3, max: 0 }])], currentSlot: 'h18', timeAware: true, timeStrict: false });
+        assert.equal((placedBy(q).Q || []).length, 1, 'おまかせのブロックがある人まで止めた');
+    });
+    test('★ Codex指摘 (6ffdb6d) 中: 時間未登録で外した人は 対象人数に数えない / 模擬が無くても名指し / 未消化の理由は時間未登録が先 / 留意点の文', () => {
+        const ps = [player('未登録で模擬なし', {}), player('未登録で模擬あり', { fire: 10 }), player('夕方の人', { fire: 10 }, { availableSlots: ['h18'] })];
+        const p = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), excludeTimeUnknown: true });
+        assert.equal(p.candidateCount, 1);
+        assert.deepEqual(p.membersTimeUnknown.slice().sort(), ['未登録で模擬あり', '未登録で模擬なし']);
+        assert.deepEqual(p.unusedDetail.filter(d => d.name.startsWith('未登録')).map(d => d.key), ['timeUnknown', 'timeUnknown']);
+        const old = compute(timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }));
+        assert.equal(old.candidateCount, 3, '渡さないときの対象人数が変わった');
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(html.includes('時間が無い人は凸プランの候補にしていません。時間の登録を依頼してください'), '留意点が「いつでも可として計算中」のまま');
+        assert.ok(!html.includes('「いつでも可」として計算中'), '古い文が残っている');
+    });
     test('★ 配線 (2b): 算出と承認の影響の両方が _playersWithBlockCaps + excludeTimeUnknown: true を渡す / 済んだ凸の時は報告時刻 (JST) / メンバー表に凸数', () => {
         const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         const calls = [...html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)].map(m => m[0]);

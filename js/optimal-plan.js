@@ -303,6 +303,9 @@
             // ★ 出られる時間はあるが、凸数の希望ぶんを置き終えた = これ以上は置かない (時間外のベストエフォートにも回さない)
             if (capped) return null;
             if (useCaps && capFull(m, openIdx)) return null;
+            // ★ 出られる時間がもう過ぎた人でも、宣言した時間がすべて「上限に達したブロック」なら時間外にも回さない
+            //   (例: 朝 1 を済ませた人を 18時から与ダメ優先で組み直す — hourIdxs は今より前を落としているので上のループでは気づけない: Codex指摘 2026-10-22)
+            if (useCaps && Array.isArray(m.allHourIdxs) && m.allHourIdxs.length > 0 && m.allHourIdxs.every(i => capFull(m, i))) return null;
             if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
             // ⏰ 時間厳守: 宣言した時間に合わないレベルには組み込まない (本人が出られない時刻の凸を計画に乗せない)
             if (timeStrict) return null;
@@ -1839,8 +1842,9 @@
             .filter(p => Object.values(p.damagesByAttr || {}).every(v => !v || v === 0))
             .map(p => p.name);
         // ⏳隙間時間型は意図的な選択なので「時間未登録」の注意対象から外す
+        // 🧱 段階 2b: 候補から外したとき (excludeTimeUnknown) は模擬の有無に関係なく名指しする (外したのに数えないと運営が気づけない: Codex指摘)
         const membersTimeUnknown = timeAware
-            ? memberState.filter(m => m.timeUnknown && !m.flexTime && Object.keys(m.avail).length + (3 - m.remainingAttacks) > 0).map(m => m.name)
+            ? memberState.filter(m => m.timeUnknown && !m.flexTime && (m.timeExcluded || Object.keys(m.avail).length + (3 - m.remainingAttacks) > 0)).map(m => m.name)
             : [];
         const membersFlex = timeAware ? memberState.filter(m => m.flexTime).map(m => m.name) : [];
         // 完了凸の編成が未記録 = キャラ被り判定が不完全なメンバー (best-effort で候補には残す)。
@@ -1878,12 +1882,12 @@
             .map(m => {
                 const attrs = Object.keys(m.avail);
                 let reason, key;
-                if (m.noSubmission) {
-                    key = 'noSubmission';
-                    reason = '模擬未提出 (提出があれば候補に入る)';
-                } else if (m.timeExcluded) {
+                if (m.timeExcluded) {   // 時間未登録は模擬より先 (模擬を出しても時間が無ければ候補にならない: Codex指摘)
                     key = 'timeUnknown';
                     reason = '戦闘可能時間が未登録 (登録があれば候補に入る)';
+                } else if (m.noSubmission) {
+                    key = 'noSubmission';
+                    reason = '模擬未提出 (提出があれば候補に入る)';
                 } else if (m.caps && m.caps.length > 0 && m.caps.every(c => c.used >= c.max)
                     && Array.isArray(m.hourIdxs) && m.hourIdxs.every(i => capAt(m, i))) {
                     key = 'cap';
@@ -1955,7 +1959,7 @@
             return [...groups.values()].sort((a, b) => (b.attacks - a.attacks) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
         })();
 
-        const candidateCount = memberState.length;
+        const candidateCount = memberState.filter(m => !m.timeExcluded).length;   // 時間未登録で外した人は対象に数えない (渡さなければ従来どおり全員)
         // 「完了想定時刻」は最後の有限レベルから取る (Lv4 は無限なのでクリア時刻を持たない)
         const lastFinite = [...levels].reverse().find(lv => !lv.infinite);
         // 総与ダメ想定 (credited): 有限ボスは min(dmg, 残HP)、ボス5(無限) は全額

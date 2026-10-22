@@ -22402,7 +22402,7 @@
                 warnings.push('⏰ 火力はあるのに戦闘可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、戦闘可能時間の更新依頼を。');
             }
             if (plan.membersTimeUnknown.length > 0) {
-                warnings.push(`戦闘可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（「いつでも可」として計算中。時間の精度を上げるには登録依頼を）`);
+                warnings.push(`戦闘可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（時間が無い人は凸プランの候補にしていません。時間の登録を依頼してください）`);
             }
             if (plan.fullyClearedThrough < 3 && !plan.anyTimeConstrained) {
                 warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。'
