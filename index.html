@@ -17910,7 +17910,7 @@
         async function _recomputeAndOfferPublish(noteJp) {
             if (typeof switchTab === 'function') switchTab('ops');
             const before = _opsLastPlan;
-            await computeAndRenderOptimalPlan({ onlyAvailableNow: false });
+            await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval());
             if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecPlan');   // 算出結果の位置へ合わせる
             // 算出が途中で無効化された (後発の算出・ゲート・取得失敗) ときは古いプランを配信しない
             if (!_opsLastPlan || _opsLastPlan === before) {
@@ -18051,9 +18051,13 @@
             await _recomputeAndOfferPublish('承認した予約を固定して組み直しました');
         }
 
+        // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
+        //   1 日ぶん (全員) で組み直すと「次のブロックだけを約束する」が崩れ、配信の確認も 1 日ぶんになる。
+        //   それ以外は従来どおり全員を明示する (「今動ける人だけ」のまま承認の組み直しをしない・2026-09-08)
+        const _recomputeOptsAfterApproval = () => (_opsPlanWho === 'block' ? {} : { onlyAvailableNow: false });
         // 承認のたびの組み直し (配信の確認は出さない)。失敗しても承認は成立している
         async function _recomputeOnly() {
-            try { await computeAndRenderOptimalPlan({ onlyAvailableNow: false }); }
+            try { await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval()); }
             catch (e) { console.warn('[reservation] 承認後の組み直しに失敗:', e?.message || e); }
         }
 
@@ -22156,6 +22160,7 @@
                     </div>
                     ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を固定して計算しました。固定した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
                     ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:var(--bad-deep);line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
+                    ${Array.isArray(plan.outOfScopeReservations) && plan.outOfScopeReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。<br>${plan.outOfScopeReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} B${Number(u.bossNumber)}${u.flex ? ' ⏳隙間' : (u.timeSlot ? ` ${Number(String(u.timeSlot).slice(1))}時` : '')}`).join('<br>')}<br>その人が出られるブロックで組むときに置きます。</div>` : ''}
                 </div>`;
 
             const levelSections = plan.levels.map(lv => {

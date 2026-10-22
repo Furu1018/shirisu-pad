@@ -516,6 +516,25 @@ test('🧱 ブロックに出られる人だけで組む (availableAtSlots): そ
     assert.equal(all.candidateCount, 5);
     // 空配列は「渡していない」扱い (1 時間のフィルタに落ちる)
     assert.deepEqual(names(run({ availableAtSlot: 'h20', availableAtSlots: [] })), ['一瞬の人', '夕方の人']);
+    // ★ 2026-10-22 実機 (致命的): 夜の人の 21時の予約は、夕方のブロックで組むと「ほかの凸とキャラが被るため置けません」と出ていた。
+    //   置けないのではなく、この計算に居ないだけ → unmetReservations に入れず outOfScopeReservations に分ける (時刻つき)
+    const resvNight = [{ reservationId: 9, memberId: players[1].id, level: null, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: 'h21', team: [], expectedB: 0 }];
+    const withResv = run({ availableAtSlots: evening, availableAtLabel: '夕方 18〜20時', reservations: resvNight });
+    assert.deepEqual(withResv.unmetReservations, [], `対象外の人の予約を置けなかった扱いにしている: ${JSON.stringify(withResv.unmetReservations)}`);
+    assert.deepEqual((withResv.outOfScopeReservations || []).map(u => [u.reservationId, u.memberName, u.reason, u.timeSlot, u.flex]), [[9, '夜の人', 'out_of_scope', 'h21', false]]);
+    assert.equal(withResv.reservationCount, 1);
+    // 1 時間の「今動ける人だけ」でも同じ (今出られない人の予約は対象外)
+    const nowResv = run({ availableAtSlot: 'h20', reservations: resvNight });
+    assert.deepEqual(nowResv.unmetReservations, []); assert.equal((nowResv.outOfScopeReservations || []).length, 1);
+    // 全員で組めば置ける (対象外の鍵も出ない)
+    const allResv = compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], players, { currentSlot: 'h18' }), reservations: resvNight });
+    assert.deepEqual(allResv.unmetReservations, []); assert.ok(!('outOfScopeReservations' in allResv), '対象外が無いのに鍵が増えている (指紋が変わる)');
+    assert.ok(allResv.levels.some(lv => lv.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourLabel === '21時'))), '全員で組んだのに予約が置かれていない');
+    // 本当に置けない予約 (3 凸済み) は従来どおり unmet
+    const done = players.map(p => p.name === '夕方の人' ? { ...p, attackCount: 3 } : p);
+    const resvDone = [{ ...resvNight[0], memberId: '夕方の人', timeSlot: 'h19' }];
+    const d = compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], done, { currentSlot: 'h18', onlyAvailableNow: true }), availableAtSlots: evening, reservations: resvDone });
+    assert.deepEqual(d.unmetReservations.map(u => u.reason), ['attacks_done']); assert.ok(!('outOfScopeReservations' in d));
 });
 
 test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順・名前・個数) / どのブロックか / 出られるか / ブロック⇄時間の変換', () => {
@@ -5544,6 +5563,40 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(h.slots[0].unmetText, 'ほかの凸とキャラが被るため置けません');
             assert.equal(rv.pendingRepublish(resv, plan).count, 0, '置けない予約を「配信後の予約」に数えている');
         });
+        test('★ 🧱 ブロックのぶんの配信 (2026-10-22): 対象外の人の予約は「配信後の予約」に数えない / 空き枠は「次のブロック以降で組みます」', () => {
+            const scope = { idx: 0, name: '朝', label: '朝 5〜8時', from: 5, to: 8, slots: ['h05', 'h06', 'h07', 'h08'] };
+            const plan = { ...mkPlan([]), blockScope: scope };   // 朝のぶんの配信 (p1 の割当なし)
+            // ① ソルバーが「対象外」と返した予約 (ブロックの時間の中でも = 本人の時間の外に運営が置いた等) → 催促しない
+            const inTime = [{ ...res({ id: 5, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }];
+            plan.outOfScopeReservations = [{ reservationId: 5, memberId: 'p1', reason: 'out_of_scope', timeSlot: 'h06', flex: false }];
+            assert.equal(rv.pendingRepublish(inTime, plan).count, 0, '対象外の人の予約を「配信後の予約」に数えている');
+            delete plan.outOfScopeReservations;
+            // ② 配信のあとに承認された (配信は知らない) が、ブロックの時間の外 → 数えない
+            const resv = [{ ...res({ id: 8, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
+            assert.equal(rv.pendingRepublish(resv, plan).count, 0, 'ブロックの時間の外の予約を「配信後の予約」に数えている');
+            // ③ ブロックの時間の中なのに入っていない → 従来どおり数える / ⏳隙間型 (時刻なし) も数える
+            assert.equal(rv.pendingRepublish([{ ...res({ id: 6, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
+            assert.equal(rv.pendingRepublish([{ ...res({ id: 7, status: 'approved', boss: 3, flex: true, lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
+            // 1 日ぶんの配信 (blockScope 無し) は時間で絞らない
+            assert.equal(rv.pendingRepublish(resv, mkPlan([])).count, 1);
+            // ④ 空き枠の文: ブロックのぶんの配信では「出番なし」でなく次のブロック以降 (実機 2026-10-22: 朝+夕方の人の 3 凸目に「出番がありません」が出た)
+            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
+            assert.deepEqual(h.slots.map(s => [s.kind, s.reason]), [['empty', 'later_block'], ['empty', 'later_block'], ['empty', 'later_block']]);
+            assert.equal(h.slots[0].text, 'このブロック (朝) にはあなたの割当がありません。残りの凸は次のブロック以降で組みます');
+            const plan1 = { ...mkPlan([{ loadoutSlot: 1, hourIdx: 0, hourLabel: '5時' }], [{ memberId: 'p1', reason: 'not_needed' }]), blockScope: scope };
+            const h1 = rv.homeSlots({ plan: plan1, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(h1.slots[0].kind, 'plan');
+            assert.equal(h1.slots[1].text, 'このブロック (朝) の割当はここまでです。残りの凸は次のブロック以降で組みます');
+            // 本人の模擬に起因する理由はそのまま伝える
+            for (const r of ['no_loadout', 'cards_used_up']) {
+                const hp = rv.homeSlots({ plan: { ...mkPlan([], [{ memberId: 'p1', reason: r }]), blockScope: scope }, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
+                assert.equal(hp.slots[0].reason, r); assert.equal(hp.slots[0].text, rv.UNASSIGNED_JP[r]);
+            }
+            // 1 日ぶんの配信 (blockScope 無し) は従来どおり
+            const h0 = rv.homeSlots({ plan: mkPlan([], [{ memberId: 'p1', reason: 'no_target' }]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(h0.slots[0].reason, 'no_target'); assert.equal(h0.slots[0].text, rv.UNASSIGNED_JP.no_target);
+            assert.equal(rv.homeSlots({ plan: mkPlan([]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 }).slots[0].reason, 'not_needed');
+        });
         test('ホーム3枠: 配信が無ければ空きは「算出待ち」/ プラン外の実凸は枠を消費 / 取り消し希望中も固定', () => {
             const h0 = rv.homeSlots({ plan: null, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
             assert.deepEqual(h0.slots.map(x => x.kind), ['empty', 'empty', 'empty']);
@@ -7254,10 +7307,20 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
             '承認待ちが残っているのに配信の確認を出している');
         assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を固定して組み直しました')"), '順序が逆');
         const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/await computeAndRenderOptimalPlan\(\{ onlyAvailableNow: false \}\)/.test(ro), '組み直していない');
+        assert.ok(/await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(ro), '組み直していない (承認後の条件を通していない)');
+        // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示
+        const optsSrc = html.match(/const _recomputeOptsAfterApproval = \(\) => \([^\n]*\);/)?.[0] || '';
+        assert.ok(optsSrc, '_recomputeOptsAfterApproval が無い');
+        const optsOf = (who) => new Function('_opsPlanWho', `${optsSrc}\nreturn _recomputeOptsAfterApproval();`)(who);
+        assert.deepEqual(optsOf('block'), {}, 'ブロックで運用中なのに全員で組み直す');
+        assert.deepEqual(optsOf('now'), { onlyAvailableNow: false }, '「今動ける人だけ」のまま承認の組み直しをしている');
+        assert.deepEqual(optsOf('all'), { onlyAvailableNow: false });
+        // 運営のプランカード: 対象外の人の予約は赤い警告でなく中立の案内 (時刻つき)
+        assert.ok(html.includes('🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。'), 'プランカードに対象外の予約の案内が無い');
+        assert.ok(html.includes('その人が出られるブロックで組むときに置きます。</div>` : \'\'}'), '対象外の案内の結びが無い');
         assert.ok(!/handleOpsPublishPlan/.test(ro), '組み直しだけのはずが配信の確認を出している');
         const fl = html.match(/async function _recomputeAndOfferPublish\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(\{ onlyAvailableNow: false \}\)/.test(fl), '算出していない');
+        assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(fl), '算出していない');
         // ★ 算出が無効化されたら古いプランを配信しない
         assert.ok(/if \(!_opsLastPlan \|\| _opsLastPlan === before\)/.test(fl), '古いプランを配信してしまう');
         // 配信は handleOpsPublishPlan (差分・予約の照合・確認ダイアログ) を通す = 自動配信ではない

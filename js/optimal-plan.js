@@ -1265,6 +1265,9 @@
                     return (lv && lv.openHourIdx != null) ? lv.openHourIdx : null;
                 };
                 if (!p) reason = 'member_gone';                // 参加対象から外れた (退会・今回は難しい)
+                // 🧱 この条件 (ブロックの人 / 今動ける人) の対象外 = 置けないのではなく、この計算に居ない (2026-10-22 実機: 朝で組むと夜の人の予約が
+                //   「キャラ被り」と出た — 置く処理は memberState に居ない人を黙って飛ばし、理由は外す前の名簿で引くので既定の conflict に落ちていた)
+                else if (!inScope(p)) reason = 'out_of_scope';
                 else if ((p.attackCount || 0) >= 3) reason = 'attacks_done';
                 else if (!b) reason = 'boss_gone';
                 else if (r.level == null) {                    // 時間軸のどのレベルにもそのボスがいない見込み (resolveReservationLevels)
@@ -1286,7 +1289,9 @@
                     reason = 'loadout_gone';                   // 模擬の編成が消えた/差し替わった (写しも無い旧予約)
                 }
                 out.push({ reservationId: r.reservationId, memberId: r.memberId, memberName: p ? p.name : null,
-                           level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason, detail });
+                           level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason, detail,
+                           // 対象外の予約だけ時刻を添える (運営のカードで「21時 B3」と読む。ほかの理由には足さない = 出力を変えない)
+                           ...(reason === 'out_of_scope' ? { timeSlot: r.timeSlot ?? null, flex: !!r.flex } : {}) });
             }
             return out;
         };
@@ -1764,7 +1769,11 @@
         }
         const scenario = solved.scenario, optimization = solved.optimization, stability = solved.stability;
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
-        const unmetReservations = unmetOf(chosen, reservationList);
+        // 🧱 対象外の人の予約 (ブロックの人 / 今動ける人 の条件で計算に居ない人) は「置けなかった」ではない — 別の一覧に分ける (2026-10-22)。
+        //   置けなかった扱いのままだと、運営のカードに誤った警告・本人の模擬カードに「⚠ 置けていません」が出る
+        const unmetAll = unmetOf(chosen, reservationList);
+        const unmetReservations = unmetAll.filter(u => u.reason !== 'out_of_scope');
+        const outOfScopeReservations = unmetAll.filter(u => u.reason === 'out_of_scope');
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
         // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
         // memberId だけで判定すると、2編成持ちの「元からボス5行きだった方の編成」にも
@@ -1939,6 +1948,8 @@
             // L2: 承認済みの予約のうち、このプランに入らなかったもの。
             // **運営が解除しないとその人の枠を押さえたまま**になるので必ず出す
             unmetReservations,
+            // 🧱 この条件の対象外の人の予約 (その人が出られるブロックで組むときに置く)。あるときだけ載せる (従来の出力 = 指紋を変えない)
+            ...(outOfScopeReservations.length > 0 ? { outOfScopeReservations } : {}),
             reservationCount: reservationList.length,
             // 残り凸があるのに割当が無い人と、その理由 (コード。画面は reservationsDomain.UNASSIGNED_JP で日本語に)
             unassigned,

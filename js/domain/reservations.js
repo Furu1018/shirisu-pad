@@ -86,6 +86,7 @@
         time: '戦闘可能時間に合う枠がありません',
         not_needed: 'いまのプランでは出番がありません (残HPは足りる見込みです)',
         reserved: '予約のために残しています (その予約はまだ置けていません)',
+        later_block: '残りの凸は次のブロック以降で組みます',   // 🧱 ブロックのぶんの配信で、このブロックに置かれなかった残り凸 (homeSlots が文を組む)
     };
 
     /**
@@ -643,10 +644,20 @@
         // ④ 空き枠 = 理由つき
         const mine = Array.isArray(plan && plan.unassigned)
             ? plan.unassigned.find(u => String(u.memberId) === String(viewerId)) || null : null;
+        // 🧱 ブロックのぶんの配信 (plan.blockScope): このブロックに置かれなかった残り凸は「出番なし」ではなく、次のブロック以降で組む (2026-10-22)。
+        //   1 日ぶんの見込みの理由 (出番なし / 凸先なし / 時間) はブロックの人だけで組んだものなので本人には出さない。
+        //   本人の模擬に起因する理由 (未提出 / 編成の使い切り) だけはそのまま伝える
+        const scopeName = (plan && plan.blockScope) ? String(plan.blockScope.name || plan.blockScope.label || '') : '';
+        const ownReason = (r) => r === 'no_loadout' || r === 'cards_used_up';
+        const noneHere = slots.length === 0;
         while (slots.length < 3) {
-            const reason = !plan ? 'no_plan' : (mine ? mine.reason : 'not_needed');
-            slots.push({ kind: 'empty', reason,
-                         text: reason === 'no_plan' ? '運営の算出待ちです' : (UNASSIGNED_JP[reason] || UNASSIGNED_JP.not_needed) });
+            const base = !plan ? 'no_plan' : (mine ? mine.reason : 'not_needed');
+            const later = !!(plan && plan.blockScope) && !ownReason(base);
+            const reason = later ? 'later_block' : base;
+            const text = reason === 'no_plan' ? '運営の算出待ちです'
+                : later ? `${noneHere ? `このブロック (${scopeName}) にはあなたの割当がありません` : `このブロック (${scopeName}) の割当はここまでです`}。${UNASSIGNED_JP.later_block}`
+                : (UNASSIGNED_JP[reason] || UNASSIGNED_JP.not_needed);
+            slots.push({ kind: 'empty', reason, text });
         }
         return { slots: slots.slice(0, 3), stale, fixedCount: fixed.length };
     }
@@ -668,7 +679,12 @@
                 else planRows.push({ ...a, bossNumber: Number(b.bossNumber) });
             })));
         // reservationId が無い古い配信は、誰が・ボス・編成枠・**時刻** が揃うときだけ「入っている」とみなす
-        const items = fixed.filter(r => !inPlan.has(String(r.id)) && !unmet.has(String(r.id))
+        // 🧱 ブロックのぶんの配信は、そのブロックの外の約束を知らなくて当然 (その人が出られるブロックで組むときに置く) — 催促しない (2026-10-22)。
+        //   ソルバーが「対象外」と返した予約 (plan.outOfScopeReservations) と、配信のあとに承認されたブロックの時間の外の予約の両方
+        const outOfScope = new Set((Array.isArray(plan && plan.outOfScopeReservations) ? plan.outOfScopeReservations : []).map(u => String(u.reservationId)));
+        const scopeSlots = (plan && plan.blockScope && Array.isArray(plan.blockScope.slots)) ? new Set(plan.blockScope.slots.map(String)) : null;
+        const inScopeTime = (r) => !scopeSlots || r.time_mode === 'flex' || !r.time_slot || scopeSlots.has(String(r.time_slot));
+        const items = fixed.filter(r => !inPlan.has(String(r.id)) && !unmet.has(String(r.id)) && !outOfScope.has(String(r.id)) && inScopeTime(r)
             && !planRows.some(a => String(a.memberId) === String(r.player_id)
                 && Number(a.bossNumber) === Number(r.boss_number)
                 && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
