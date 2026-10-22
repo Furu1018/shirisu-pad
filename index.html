@@ -7547,7 +7547,7 @@
                 // 0) 存在確認は**一切の状態変更より前** (Codex レビュー指摘)。
                 //    active 解除後に return すると「表示中タブが消えて画面が空になる」壊れ方をする
                 //    (旧実装は途中で例外 = 同じ壊れた中間状態で止まっていた — ここで構造的に解消)
-                // 🧱 ③-d: メンバーの入力を最低限にしているとき、模擬タブは開かない (ホームへ)。運営モードの人は開ける
+                // 🧱 ③-d: 模擬タブはシーズンの member_input=full のときだけ開ける (運営モードでも隠す・2026-10-22)。運営は戦況の 📸 模擬の取り込みへ、メンバーはホームへ
                 if (tabName === 'mock' && typeof _mockTabHidden === 'function' && _mockTabHidden()) {
                     showNotification(_opsMode ? '模擬は 戦況タブの「📸 模擬の取り込み」で登録します (自分のぶんも同じ)' : '模擬は Discord にスクショを貼ってください。運営が PAD に登録します');
                     tabName = _opsMode ? 'ops' : 'mypage';
@@ -8306,11 +8306,12 @@
                 </div>`;
                 }
                 const canAsk = Array.isArray(_myResvRows);   // 39未適用なら申請の導線は出さない
+                const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 模擬タブが隠れていれば 📸 模擬の取り込みへ (Codex指摘 2026-10-22)
                 return `
-                <button type="button" onclick="${canAsk ? 'openMyResvRequest()' : "switchTab('mock')"}" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
+                <button type="button" onclick="${canAsk ? 'openMyResvRequest()' : (mockHidden ? '_gotoOpsMockIntake()' : "switchTab('mock')")}" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
                     <div class="dc-plan-empty-title">空き枠 ${i + 1}</div>
                     <div class="dc-plan-empty-why">${esc(slot.text || '')}</div>
-                    <div class="dc-plan-empty-cta">${canAsk ? '＋ 自分から申請する' : '📸 模擬を見る'}</div>
+                    <div class="dc-plan-empty-cta">${canAsk ? '＋ 自分から申請する' : (mockHidden ? '📸 模擬の取り込み' : '📸 模擬を見る')}</div>
                 </button>`;
             }
             if (slot.kind === 'done') {
@@ -27471,6 +27472,7 @@
         // 通知タップからの画面誘導: ?tab=xxx でタブ切替、&focus=finishreq で
         // 締め凸依頼の応答バナーへスクロール+ハイライト。
         // コールド起動 (URLクエリ) と、起動中のアプリへの SW postMessage の両方から呼ばれる。
+        let _opsRolePending = null;   // 起動直後の役割の読み込み (?tab=mock はこれも待つ)。読めたら null
         let _navSeq = 0;   // 画面誘導の世代 (?tab=mock のシーズン待ちが、後から来た遷移や本人のタブ操作を上書きしないため)
         function _handleNavParams(search) {
             let params;
@@ -27479,11 +27481,11 @@
             const tab = params.get('tab');
             if (tab && document.getElementById(`tab-${tab}`)) {
                 // 🧱 ③-d: ?tab=mock は シーズンの member_input を読んでから判定する。起動直後は seasonStore が未ロード = 既定の「隠す」に倒れ、
-                //   full の設定でも通知やブックマークからの ?tab=mock がホームへ戻されていた (Codex指摘 b8f9d94)。運営モードの人は待たない
-                //   運営モードでも待つ — 隠すかはシーズンの設定 (member_input) で決まる (2026-10-22)
-                if (tab === 'mock' && typeof seasonStore !== 'undefined' && !seasonStore.get()?.season && typeof ensureActiveSeasonLoaded === 'function') {
+                //   full の設定でも通知やブックマークからの ?tab=mock がホームへ戻されていた (Codex指摘 b8f9d94)。
+                //   運営モードでも待つ (隠すかはシーズンの設定で決まる)。着地 (運営は戦況・メンバーはホーム) は役割が読めてから = _opsRolePending も待つ (2026-10-22)
+                if (tab === 'mock' && typeof seasonStore !== 'undefined' && (!seasonStore.get()?.season || _opsRolePending) && typeof ensureActiveSeasonLoaded === 'function') {
                     const activeAtStart = document.querySelector('.tab-content.active')?.id || null;
-                    ensureActiveSeasonLoaded().catch(() => null).then(() => {
+                    Promise.all([ensureActiveSeasonLoaded().catch(() => null), _opsRolePending || Promise.resolve()]).then(() => {
                         // 待っている間に別の誘導 (後着の通知・pending-nav・URL と SW の二重到着) や本人のタブ操作があれば、古い待ちは何もしない (Codex指摘 02867c5)
                         if (seq !== _navSeq || (document.querySelector('.tab-content.active')?.id || null) !== activeAtStart) return;
                         try { switchTab('mock'); } catch { /* noop */ }
@@ -27589,7 +27591,8 @@
                 _bootLoadingEnd();   // 失敗経路でも必ず閉じる (エラー表示は既存バナーが担当)
             }
             updateIdentityHeader();
-            if (typeof _syncOpsRole === 'function') _syncOpsRole();   // 👑 名乗っている人の役割 (読めるまでは端末の記憶どおり)
+            // 👑 名乗っている人の役割 (読めるまでは端末の記憶どおり)。?tab=mock の着地 (運営は戦況・メンバーはホーム) は役割が読めてから決める (Codex指摘 2026-10-22)
+            if (typeof _syncOpsRole === 'function') _opsRolePending = _syncOpsRole().catch(() => null).finally(() => { _opsRolePending = null; });
             // 初期アクティブタブ (ホーム) のコンテンツを描画
             // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
             const initialTab = document.querySelector('.tab-content.active');
@@ -28495,7 +28498,7 @@
         }
         // ===== 🧱 ③-d メンバーの入力を最低限に (模擬の提出シート・凸の申請を隠す・2026-10-18) =====
         // 既定は隠す (旗振り役詰所の合意「メンバーの入力は最低限・模擬は Discord にスクショ・PAD への入力は運営」/ ふるりの判断 2026-10-17 ③)。
-        // シーズンの metadata.member_input = 'full' のときだけ出す (✏️ シーズン編集・SQL 51)。運営モード (body.ops-mode) の人は常に見える。
+        // シーズンの metadata.member_input = 'full' のときだけ出す (✏️ シーズン編集・SQL 51)。メンバーの入力の隠し (member-lite) は運営モードでは効かないが、模擬タブ (mock-tab-hidden) は運営モードでも隠す (2026-10-22)。
         // ★ 消すのではなく CSS で隠す (body.member-lite) — 戻すのはスイッチ 1 つ。コードと保存の形 (player_damages) は変えない。
         //   編成編集モーダルと OCR は運営の「模擬の取り込み」で使い続けるので腐らない
         const _memberInputFull = () => (typeof seasonStore !== 'undefined' && seasonStore.get()?.season?.metadata?.member_input === 'full');
@@ -28515,6 +28518,8 @@
         function _gotoOpsMockIntake() {
             if (typeof switchTab === 'function') switchTab('ops');
             const card = document.getElementById('opsSecMockIntake');
+            // 段階外 (当日以外) は「その他」へ移されている — 親が閉じていると開いても見えない (Codex指摘 2026-10-22)
+            if (card && card.closest('#opsEtcCards') && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);
             if (card && typeof _setOpsCardOpen === 'function') _setOpsCardOpen(card, true);
             if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecMockIntake');
         }

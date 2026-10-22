@@ -9413,7 +9413,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(tabName === 'mock' && typeof _mockTabHidden === 'function' && _mockTabHidden\(\)\) \{\s*\n\s*showNotification\(_opsMode \? '模擬は 戦況タブの「📸 模擬の取り込み」で登録します \(自分のぶんも同じ\)' : '模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = _opsMode \? 'ops' : 'mypage';/.test(html), 'TabController で止めていない (運営は 戦況へ・メンバーはホームへ)');
         const nav = html.match(/\n        function _handleNavParams\(search\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const seq = \+\+_navSeq;/.test(nav) && /let _navSeq = 0;/.test(html), '画面誘導の世代が無い');
-        assert.ok(/if \(tab === 'mock' && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズンを読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5)');
+        assert.ok(/if \(tab === 'mock' && typeof seasonStore !== 'undefined' && \(!seasonStore\.get\(\)\?\.season \|\| _opsRolePending\) && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*Promise\.all\(\[ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\), _opsRolePending \|\| Promise\.resolve\(\)\]\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズン・役割を読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5・7cbfa94)');
+        // 起動で役割の読み込みを _opsRolePending に持ち、読めたら null に (コールド起動の任命済み運営が ?tab=mock で戦況へ流れる)
+        assert.ok(/let _opsRolePending = null;/.test(html) && /_opsRolePending = _syncOpsRole\(\)\.catch\(\(\) => null\)\.finally\(\(\) => \{ _opsRolePending = null; \}\);/.test(html), '起動の役割の読み込みを ?tab=mock が待てない');
+        // 📸 模擬の取り込みへの導線: 「その他」の中へ移されたカードは親を開く / 予約未対応の空き枠の導線も同じ (Codex指摘 7cbfa94)
+        assert.ok(/if \(card && card\.closest\('#opsEtcCards'\) && typeof _setOpsEtcOpen === 'function'\) _setOpsEtcOpen\(true\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '「その他」の中の取り込みカードを開けない');
+        assert.ok(/onclick="\$\{canAsk \? 'openMyResvRequest\(\)' : \(mockHidden \? '_gotoOpsMockIntake\(\)' : "switchTab\('mock'\)"\)\}"/.test(html), '予約未対応の空き枠の導線が隠れた模擬タブへ飛ぶ');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(mockHidden && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\(_opsMode \? 'ops' : 'mypage'\);/.test(html), '開いたまま隠されたときに戻していない (運営は戦況へ)');
         // 👑 ホームの切替チップ (マスター運営だけ): 🛠 と同じ toggleOpsMode・文字は _applyOpsMode が合わせる (2026-10-22 ユーザー要望)
@@ -10214,7 +10219,7 @@ console.log('\ngrowthDomain:');
         const tog = html.match(/function toggleOpsMode\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/if \(typeof _opsCanToggle === 'function' && !_opsCanToggle\(\)\) \{[\s\S]*?return;\s*\}/.test(tog), 'master 以外がトグルで切り替えられる');
         // 読む場所: 名乗り直し / 起動 / 90 秒ごと。通信断で運営担当を落とさない
-        assert.ok((html.match(/_syncOpsRole\(\);/g) || []).length >= 3, '役割を読む場所が足りない (名乗り直し・起動・ティック)');
+        assert.ok((html.match(/(?<!function )_syncOpsRole\(\)/g) || []).length >= 3, '役割を読む場所が足りない (名乗り直し・起動・ティック)');   // 起動は _opsRolePending = _syncOpsRole().catch(…) の形 (2026-10-22)
         const sync = html.match(/async function _syncOpsRole\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/role = String\(_opsRole\.playerId\) === String\(me\.id\) \? _opsRole\.role : undefined;/.test(sync), '通信断で運営担当をメンバーに落としている');
         assert.ok(/if \(String\(getCurrentIdentity\(\)\?\.id\) !== String\(me\.id\)\) return;/.test(sync), '待っている間に名乗り直した人に前の人の役割を当てる');
