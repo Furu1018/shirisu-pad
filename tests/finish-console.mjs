@@ -56,9 +56,10 @@ const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
 const P = (id, name, dmg, slots, attackCount = 0) => ({ id, name, dmg, availableSlots: slots, attackCount });
 
 function run({ candidates = [], remHp = 60, curHour = 21, hours = null, shots = null, reqs = [],
-    boss = { boss_number: 3 }, pick = [], deadlineMin = 15, offerHtml = '' } = {}) {
+    boss = { boss_number: 3 }, pick = [], deadlineMin = 15, offerHtml = '', askOn = true } = {}) {
     const env = {
         window: { finishDomain: globalThis.finishDomain },
+        _finishAskOn: () => askOn,   // 段階 2.5: 本番は同時打診を外した (練習だけ残す)。下の古いテストは打診ありの見た目を見る
         _finishReqCache: reqs,
         _finishCurHour: () => curHour,
         _opsFinish: { shots, hours, pick: new Set(pick), deadlineMin, offerId: null },
@@ -170,9 +171,23 @@ test('★ 色を直値で焼き込んでいない (テーマを切り替えて�
     assert.deepEqual(lits, [], `色の直値がある: ${lits.join(', ')}`);
 });
 
+test('🏁 段階 2.5 (2026-10-22 ユーザー決定「探す機能だけ残す」): 本番では「同時打診に選ぶ」と「📣 同時に打診」を出さない (いま vs 待つ の比べは残す)', () => {
+    const cands = [P(1, 'A', 30, H(21)), P(2, 'B', 32, H(21)), P(3, 'C', 31, H(22))];
+    const off = run({ candidates: cands, remHp: 60, askOn: false, pick: ['now'] });
+    assert.ok(off.includes('いま打つか、待つか'), '比べが消えた');
+    assert.ok(!off.includes('同時打診に選ぶ') && !off.includes('📣 同時に打診'), '同時打診が残っている');
+    const on = run({ candidates: cands, remHp: 60, askOn: true });
+    assert.ok(on.includes('同時打診に選ぶ'), '練習では残す');
+});
+test('🏁 段階 2.5: プランのカードは本番では「📋 名前と文面をコピー」、練習では従来の 📣 依頼 (配線)', () => {
+    const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    assert.ok(/const _finishAskOn = \(\) => !!\(typeof window !== 'undefined' && window\.PAD_PRACTICE\);/.test(html), '同時打診を練習だけに絞っていない');
+    assert.ok(/\$\{_finishAskOn\(\) \? '' : `<button onclick="handleOpsFinishPlanCopy\('\$\{kind\}'\)"/.test(html) && /<button \$\{_finishAskOn\(\) \? '' : 'hidden '\}onclick="handleOpsFinishPlanPush/.test(html), 'プランのカードの切り替えが無い');
+    assert.ok(/async function handleOpsFinishPlanCopy\(kind\)/.test(html) && /navigator\.clipboard\.writeText\(text\)/.test(html));
+});
 test('★ 候補が0人でも落ちない / ドメインが読めていなくても落ちない', () => {
     assert.doesNotThrow(() => run({ candidates: [] }));
-    const env = { window: {}, _finishReqCache: [], _finishCurHour: () => 21,
+    const env = { window: {}, _finishAskOn: () => false, _finishReqCache: [], _finishCurHour: () => 21,
         _opsFinish: { pick: new Set(), deadlineMin: 15 }, _opsFinishOfferHtml: () => '', escapeHtml: String };
     const keys = Object.keys(env);
     const fn = new Function(...keys, `${SRC}\nreturn _opsFinishConsoleHtml;`)(...keys.map(k => env[k]));

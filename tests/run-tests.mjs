@@ -4034,8 +4034,11 @@ console.log('\nopsStageDomain:');
         assert.ok(!/renderSettingsNotifyStatus\(\)/.test(stg), '設定タブがまだ運営ブロックを描いている');
         const etcOpen = html.match(/function _setOpsEtcOpen\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/renderSettingsNotifyStatus\(\)/.test(etcOpen) && /renderSettingsActivity\(\)/.test(etcOpen) && /renderSettingsCharMaster\(\)/.test(etcOpen), 'その他 を開いたときに運営ブロックを描いていない');
-        // 👑 互換ゲート・運営担当・メンバー管理・復元は設定タブの master 区画 (2026-09-12・Codex と合意)。メンテナンスでは描かない
-        assert.ok(!/renderClientGateSettings\(\)/.test(etcOpen) && !/renderSettingsRoles\(\)/.test(etcOpen) && !/renderSettingsMemberCount\(\)/.test(etcOpen), 'master の区画をメンテナンスでも描いている');
+        // 🧱 段階 2.5 (2026-10-22): 👑 互換ゲート・運営担当・メンバー管理・復元も 👑 マスターのタブへ移した → マスターのときだけメンテナンスで描く
+        assert.ok(/if \(_opsIsMasterNow\(\)\) \{ renderSettingsMemberCount\(\); renderClientGateSettings\(\); renderSettingsRoles\(\); \}/.test(etcOpen), '移した 👑 の区画を描いていない (マスターだけ)');
+        const etcInit = html.match(/function _initOpsEtc\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/document\.querySelectorAll\('#tab-settings \.dc-card\[data-master-only\]'\)/.test(etcInit) && /maint\.prepend\(lab\)/.test(etcInit), '設定の 👑 を 👑 タブへ移していない');
+        assert.ok(/onclick="_opsGotoMasterTab\(\)"/.test(etcInit) && /function _opsGotoMasterTab\(\) \{\s*\n\s*if \(!_opsIsMasterNow\(\)\) return;/.test(html), '設定タブに移した先の案内が無い');
         assert.ok(/if \(typeof _opsRoleForCurrent === 'function' && _opsRoleForCurrent\(\) === 'master'\) \{\s*tasks\.push\(renderSettingsMemberCount\(\), renderClientGateSettings\(\), renderSettingsRoles\(\)\);/.test(stg), '設定タブが master の区画を役割で描いていない');
         assert.ok(/onclick="openOpsSeasonCreateModal\(\)" class="dc-ops-action" data-stage="prep"/.test(html), 'シーズン作成が準備段階に限られていない');
         assert.equal((html.match(/handleOpsQuickCreateTestSeason\('(fresh|midraid)'\)" class="dc-ops-testlink" data-stage="prep"/g) || []).length, 2, 'テスト作成が小リンクになっていない');

@@ -20676,6 +20676,7 @@
                     + (w.newFaces.length ? ` (${esc(w.newFaces.slice(0, 3).join('・'))} が出られるため)` : '') + '。';
             }
             const picked = _opsFinish.pick;
+            const askOn = _finishAskOn();   // 段階 2.5: 同時打診は外した (練習の運営編・当日だけ、作り直すまで残す)
             const rows = cmp.rows.map((r) => {
                 const on = r.hours === _opsFinish.hours || (r.hours == null && _opsFinish.hours == null);
                 const isBest = r.key === cmp.bestKey;
@@ -20704,7 +20705,7 @@
                 </button>`
                 // ★ 案を2つ選んで同時に打診できる。行そのものは「窓を絞る」ボタンなので、
                 //   選ぶほうは中に入れずに**隣に**置く (押し間違えると打診が飛ぶ)
-                + (r.plan ? `<button type="button" onclick="handleOpsFinishPick('${r.key}')"
+                + (r.plan && askOn ? `<button type="button" onclick="handleOpsFinishPick('${r.key}')"
                     style="display:block;width:100%;text-align:left;font-family:inherit;font-size:10.5px;font-weight:800;cursor:pointer;
                     margin:-4px 0 8px;padding:4px 11px;border:none;background:none;color:${picked.has(r.key) ? 'var(--ops)' : 'var(--t-muted)'};">
                     ${picked.has(r.key) ? '☑' : '☐'} 同時打診に選ぶ</button>` : '');
@@ -20718,7 +20719,7 @@
             const dlChip = (m) => `<button type="button" onclick="handleOpsFinishDeadline(${m})"
                 style="font-family:inherit;font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:999px;border:none;cursor:pointer;
                 background:${_opsFinish.deadlineMin === m ? 'var(--t-ink)' : 'var(--s2)'};color:${_opsFinish.deadlineMin === m ? 'var(--card)' : 'var(--t-strong)'};">${m}分</button>`;
-            const offerBar = picked.size > 0 ? `<div style="margin-top:2px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);">
+            const offerBar = (askOn && picked.size > 0) ? `<div style="margin-top:2px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <b style="font-size:11.5px;color:var(--ops-on);">${picked.size}案を選択中</b>
                     <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">返事の期限</span>
@@ -20774,7 +20775,8 @@
                         </div>
                         ${stepRows}
                         <div style="padding:8px 10px;background:var(--card);">
-                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:var(--card);color:${accent};font-size:12px;font-weight:700;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
+                            ${_finishAskOn() ? '' : `<button onclick="handleOpsFinishPlanCopy('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:var(--card);color:${accent};font-size:12px;font-weight:700;cursor:pointer;">📋 名前と文面をコピー (Discord で声かけ)</button>`}
+                            <button ${_finishAskOn() ? '' : 'hidden '}onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:var(--card);color:${accent};font-size:12px;font-weight:700;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
                         </div>
                     </div>`;
             };
@@ -20867,6 +20869,19 @@
             if (r) r(sel ? picked : !!confirmed);
         }
 
+        // ===== 🏁 締め凸は「探す」だけ (2026-10-22 ユーザー決定) =====
+        // 同時打診とメンバーの了承は画面から外す (コードは残す)。相手は運営が Discord で声をかけて決め、盤 (📌) に置く。
+        // ★ 練習の運営編・当日は同時打診を課題にしているので、練習を作り直すまでは練習の中だけ残す
+        const _finishAskOn = () => !!(typeof window !== 'undefined' && window.PAD_PRACTICE);
+        async function handleOpsFinishPlanCopy(kind) {
+            const ctx = _opsFinishPlanContext;
+            const plan = ctx && ctx.plans ? ctx.plans[kind] : null;
+            if (!plan || !plan.members.length) return;
+            const names = plan.members.map(m => `${m.name} (${Number(m.dmg).toFixed(1)}B)`).join('、');
+            const text = `🏁 ${ctx.boss.name || ctx.boss.boss_code} の締め凸 (${ctx.ptInfo?.name || ''}PT・残HP ${ctx.remHpB.toFixed(2)}B): ${names} さん、お願いできますか🙏`;
+            try { await navigator.clipboard.writeText(text); showNotification('📋 コピーしました (Discord に貼って声をかけてください)'); }
+            catch { prompt('コピーして Discord に貼ってください', text); }
+        }
         async function handleOpsFinishPlanPush(kind) {
             const ctx = _opsFinishPlanContext;
             if (!ctx) return;
@@ -29017,6 +29032,29 @@
                 card.id = card.id || id;
                 maint.appendChild(card);
             });
+            // 🧱 段階 2.5: 設定タブの 👑 マスター運営 (版のしめ切り・運営担当・復元・メンバー管理) も 👑 マスターのタブへ (先頭に)。
+            //   data-master-only のまま移すので、マスターでない人には今までどおり出ない。設定タブには「移しました」の案内だけ残す
+            const masterCards = Array.from(document.querySelectorAll('#tab-settings .dc-card[data-master-only]'));
+            if (masterCards.length) {
+                const lab = document.createElement('div');
+                lab.className = 'ops-etc-label';
+                lab.setAttribute('data-master-only', '');
+                lab.textContent = '👑 マスター運営';
+                maint.prepend(lab);
+                let after = lab;
+                for (const card of masterCards) { card.setAttribute('data-moved-master', ''); after.insertAdjacentElement('afterend', card); after = card; }
+                const old = document.querySelector('#tab-settings .ops-group-label[data-master-only]');
+                if (old) {
+                    old.textContent = '👑 マスター運営';
+                    const note = document.createElement('div');
+                    note.className = 'dc-card';
+                    note.setAttribute('data-master-only', '');
+                    note.setAttribute('data-span', '12');
+                    note.innerHTML = '<p style="margin:0 0 10px;font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;">版のしめ切り・運営担当の任命・復元・メンバー管理は「運営 › 👑 マスター」へ移しました (シーズン・育成・バックアップ・キャラマスタも同じ場所です)。</p>'
+                        + '<button type="button" onclick="_opsGotoMasterTab()" style="border:none;border-radius:999px;padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:900;background:var(--t-ink);color:var(--card);cursor:pointer;">👑 マスターのタブを開く</button>';
+                    old.insertAdjacentElement('afterend', note);
+                }
+            }
         }
         function _setOpsEtcOpen(open) {
             const body = document.getElementById('opsEtcBody'), head = document.getElementById('opsEtcHead');
@@ -29027,11 +29065,19 @@
                 // メンテナンスの中身は開いたときに1回だけ取りに行く (通知状況・アクティビティ・キャラマスタ。互換ゲート・運営担当・メンバー管理は設定タブの 👑 区画)
                 _opsEtcRendered = true;
                 try {
+                    if (_opsIsMasterNow()) { renderSettingsMemberCount(); renderClientGateSettings(); renderSettingsRoles(); }   // 段階 2.5: 設定から移した 👑 の 4 枚
                     renderSettingsNotifyStatus();
                     renderSettingsActivity();
                     renderSettingsCharMaster();
                 } catch (e) { console.warn('[ops] その他の描画:', e?.message || e); }
             }
+        }
+        // 設定タブの案内から 👑 マスターのタブへ (マスターがメンバーの見え方にしていたら運営の画面に戻す)
+        function _opsGotoMasterTab() {
+            if (!_opsIsMasterNow()) return;
+            if (!_opsMode) toggleOpsMode();
+            if (typeof switchTab === 'function') switchTab('ops');
+            setOpsTab('master');
         }
         function toggleOpsEtc() {
             const body = document.getElementById('opsEtcBody');

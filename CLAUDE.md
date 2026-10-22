@@ -1138,6 +1138,10 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `_opsJump(id)` はカードのタブへ切り替えてから開く。運営の見出しは「運営」(`#opsPageTitle`)。
   ★ **メンバー (lite) の戦況タブはなくした** (状況は BlaBlaLINK で見る): `body.member-lite [data-tab="ops"]` を隠す・TabController が `ops` をホームへ・スワイプは見えているタブだけ (`_swipeTabsNow`・模擬タブを隠したときも)。
   練習モードの案内は目的のカードのタブを先に押させる (`opsTab(want)`・練習は 2.5 のあとに作り直す)
+  ★ **🧱 段階 2.5 (その 2)**: 🏁 締め凸は**探すだけ** (ユーザー決定): 本番では「同時打診に選ぶ」「📣 同時に打診」とプランの「📣 依頼」を出さず、プランのカードに
+  「📋 名前と文面をコピー (Discord で声かけ)」(`handleOpsFinishPlanCopy`)。判定は `_finishAskOn()` = 練習中 (`window.PAD_PRACTICE`) だけ true — 練習の運営編・当日が同時打診を課題にしているので作り直すまで残す。
+  設定タブの 👑 マスター運営 4 枚 (版のしめ切り・運営担当・復元・メンバー管理) も `_initOpsEtc` が 👑 マスターのタブ (メンテナンスの先頭) へ移す (data-master-only のまま)。
+  設定タブには「移しました」の案内と `_opsGotoMasterTab()` (メンバーの見え方にしていたら運営の画面に戻して 👑 を開く)。描くのは `_setOpsEtcOpen` (マスターのときだけ 4 枚も)
   ★ **🧱 段階 2b: 凸数をソルバーの上限に + 時間未登録を候補にしない** (2026-10-22): 入力 `players[].blockCaps = [{ fromIdx, toIdx, max }]` と `excludeTimeUnknown`。
   **どちらも渡さなければ出力は 1 バイトも変わらない** (指紋 120 盤面・テストが JSON 比較で見張る)。画面は算出 (`computeOptimalPlan`) と承認の影響 (`_reservationImpact`) の 2 つの呼び出し口で
   `_playersWithBlockCaps(players, season)` (= `raidBlocksDomain.capsOf(blockCounts, 区切り, 済んだ凸の時)`。済んだ凸の時は `reported_at` を `attackCheckDomain.hourIdxOfMs` で JST にしたもの) と
