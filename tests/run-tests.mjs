@@ -12686,6 +12686,12 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true }), ['✓hp', '✓result', '✓build', '▶publish', '·finish']);
         assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true, published: true }), ['✓hp', '✓result', '✓build', '✓publish', '·finish'], '全部済んだのに任意の締凸検索を「いま」にした');
         assert.deepEqual(st({ hpFreshMin: null, missing: null }), ['▶hp', '·result', '·build', '·publish', '·finish'], '分からないのを済んだにした');
+        assert.deepEqual(st({ hpFreshMin: 30, missing: 0 }).slice(0, 2), ['▶hp', '✓result'], '30 分ちょうど (HP 更新のピルは ⚠) を済にした');
+        assert.deepEqual(st({ hpFreshMin: 29, missing: 0 }).slice(0, 2), ['✓hp', '✓result']);
+        // ⏳ (flex) の凸で届いたら、撃破の時刻は出さない (時刻を約束していない)
+        const flexRow = d.blockBoardRows({ startLevel: 1, levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'B1', targetHpB: 30, attacks: [
+            { memberId: 1, memberName: 'あ', dmgB: 20, hourIdx: 13, loadoutSlot: 1 }, { memberId: 2, memberName: 'い', dmgB: 15, hourIdx: 14, flex: true, loadoutSlot: 1 }] }] }] }, { fromIdx: 13, toIdx: 15 })[0];
+        assert.deepEqual([flexRow.killed, flexRow.killHourIdx], [true, null], '⏳ の凸の仮の時刻を撃破の時刻にした');
     });
     test('★ 配線: 🧱 段階 6 ブロック盤 — 最適凸プランに「🧱 盤」(時間割と同じ置き方) / 🧱 組むの頭に手順の帯 / メンバーの配信カードに「🧱 盤」タブ', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');

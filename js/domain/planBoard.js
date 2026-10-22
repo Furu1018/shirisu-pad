@@ -178,7 +178,9 @@
     /**
      * 🧱 段階 6 ① ブロック盤 (モック docs/ブロック盤モック_2026-10-21.html)。ボスの行ごとに「枠 = このブロックの頭の残り HP」へ、
      * そのブロックの凸を「幅 = ダメージ」のピースで並べる。盤は量を決め、時刻は行の時刻のマスと時間割で確かめる (2 層)。
-     * ★ 撃破の時刻は「時刻の順に足して残り HP に届いた凸の時刻」(並べた最後のピースの時刻ではない)
+     * ★ 撃破の時刻は「時刻の順に足して残り HP に届いた凸の時刻」(並べた最後のピースの時刻ではない)。
+     *   届いた凸が ⏳ (flex = 時刻を約束しない・⏰ 時間厳守を外したときの時間外) なら時刻は出さない (null)。
+     *   時刻の無い凸は並べない (メンバーに配る範囲 `raidBlocks.scopePlan` と同じ読み方)
      * @param {Object} plan  算出結果 (levels[].bosses[] の targetHpB / attacks)
      * @param {{ fromIdx?: number|null, toIdx?: number|null }} o  ブロックの範囲 (hourIdx・含む)。無ければ全部
      * @returns {Array<{ level:number, infinite:boolean, bossNumber:number, name:string, attribute:string|null, weakness:string|null,
@@ -208,7 +210,7 @@
                 if (!infinite) {
                     for (const a of pieces) {
                         acc += Number(a.dmgB) || 0;
-                        if (!killed && acc >= remainB - 0.05) { killed = true; killHourIdx = Number.isInteger(a.hourIdx) ? a.hourIdx : null; }
+                        if (!killed && acc >= remainB - 0.05) { killed = true; killHourIdx = Number.isInteger(a.hourIdx) && !a.flex ? a.hourIdx : null; }
                     }
                 }
                 rows.push({
@@ -266,7 +268,7 @@
      */
     function blockSteps({ hpFreshMin = null, missing = null, built = false, published = false } = {}) {
         const steps = [
-            { key: 'hp', label: '⚔️ ボスの HP を直す', sub: hpFreshMin == null ? 'ゲームの画面と合わせる' : `${Math.round(hpFreshMin)} 分前に更新`, done: hpFreshMin != null && hpFreshMin <= 30 },
+            { key: 'hp', label: '⚔️ ボスの HP を直す', sub: hpFreshMin == null ? 'ゲームの画面と合わせる' : `${Math.round(hpFreshMin)} 分前に更新`, done: hpFreshMin != null && hpFreshMin < 30 },
             { key: 'result', label: '📥 前のブロックの結果を取り込む', sub: missing == null ? '⚔️ 戦況の結果の取り込み' : (missing > 0 ? `結果がまだ ${missing} 凸` : '結果は入っています'), done: missing === 0 },
             { key: 'build', label: '🧱 このブロックを組む', sub: built ? '組みました' : '対象を「🧱 ブロックの人」にして算出', done: !!built },
             { key: 'publish', label: '📤 配信する', sub: published ? '配信しました (割当のある人に通知)' : '組んだら配信', done: !!published },
