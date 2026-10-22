@@ -10510,7 +10510,8 @@
                 // 報告は現在開いているLvの割当だけ。
                 // ★ ただしレベルを持たない約束 (メンバーの 🔒 予約 =「この時刻に・このボスへ・この編成で」) は、プランが予想したレベルとずれても報告できる
                 //   (予想より踏破が遅れて Lv1 のまま約束の時刻が来ると、「Lv2になったら」のまま報告できなかった。消し込みの matchForAttack もレベルを見ない)
-                const lvFree = a.kind === 'fixed' && a.promise && a.raidLevel == null;
+                //   広げるのは配信に入っている行だけ (組み直し待ち・置けていない・あとのブロック の行は従来どおり出さない: Codex 指摘で範囲を絞った)
+                const lvFree = a.kind === 'fixed' && a.inPlan && a.promise && a.raidLevel == null;
                 const reportable = !done && (lvFree || (a.level != null && Number(a.level) === curLevel));
                 let right;
                 if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;

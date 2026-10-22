@@ -710,6 +710,7 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **🧱 ブロックの区切りの保存 RPC** (`50_season_blocks_rpc.sql`・2026-10-18): `ops_set_season_blocks(p_season_id, p_blocks)`。未適用でも動く (同時編集に弱いだけ)。99 に判定行あり
 - **✅ 凸報告の確認** (`52_attacks_confirmed.sql`・2026-10-18): `attacks.confirmed_at / confirmed_by`。未適用でも一覧と印は出る (✓ だけ「52 を実行」と案内して止まる)。99 に判定行
 - **🧱 メンバーの入力を出すかの保存 RPC** (`51_season_member_input_rpc.sql`・2026-10-18): `ops_set_season_meta_key(p_season_id, 'member_input', '"full"' | null)`。未適用でも動く。99 に判定行あり
+- **🧱 ブロックごとの凸数** (`53_block_counts.sql`・2026-10-22): `availability_confirmations.block_counts` (JSONB)。未適用でも確認は通る (凸数だけ保存されず、本人に「凸数は Discord で」と出る)。99 に判定行あり
 - **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
   `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
   本人の端末がアプリを開いたときに `_reportMemberDevice` が報告する (`device_id` = ブラウザごとの localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き。
@@ -1113,7 +1114,21 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   TabController の入口は 運営なら戦況へ (「📸 模擬の取り込みで登録します (自分のぶんも同じ)」)・メンバーはホームへ。`?tab=mock` は運営モードでもシーズンを読んでから判定。
   ヒーローの `mockCta` は模擬タブが隠れていれば `_gotoOpsMockIntake()` (戦況へ → カードを開く → 位置を合わせる)。ユニオン事前比較 (`#mockCompareCard`) も一緒に隠れる (必要なら戦況へ移す)。
   ★ **👑 マスター運営のデバッグ**: ホームのプロフィールに `#homeViewSwitch` (`data-master-only`・「👤 メンバーの見え方で見る」⇄「🛠 運営の画面に戻す」)。
-  🛠 と同じ `toggleOpsMode()` (端末ごとに記憶)。文字は `_applyOpsMode` が合わせる。マスター以外には出ない (運営担当は常に運営・メンバーは常にメンバー)  ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
+  🛠 と同じ `toggleOpsMode()` (端末ごとに記憶)。文字は `_applyOpsMode` が合わせる。マスター以外には出ない (運営担当は常に運営・メンバーは常にメンバー)
+  ★ **🧱 段階 2a: 時間アンケートの凸数 + ⏳隙間時間型の撤廃** (2026-10-22 ユーザー決定「朝 1・夕方 2 を予約なしで通す」「確実に動ける時間だけを見る」):
+  時間のシート (`_renderAvailUI`) で ON のブロックごとに「何凸するか」を −/+ (`_availStepCount` → `raidBlocksDomain.stepCount`。合計 3 で + を止める・入れない = おまかせ)。
+  保存は確認の行 `availability_confirmations.block_counts` (**`53_block_counts.sql`**・JSONB `{"5-8":1,"18-20":2}`・鍵は `countKey` = `${from}-${to}`・NULL = おまかせ / 今回は難しい)。
+  判定は `raidBlocksDomain` の `normalizeCounts` (ON・一部 ON のブロックだけ・1 以上の整数・合計 3 までブロックの順で) / `countsLabel` (「朝 1 · 夕方 2」) / `capsOf` (段階 2b でソルバーに渡す上限 = 凸数 − そのブロックで済んだ凸・合計 3 も守る) が唯一。
+  ★ 確認 (`handleConfirmAvailability`) は**押した時点の凸数** (`countsAtPress`) を、**実際に保存した時間帯**で詰め直して送る (保存を待つ間の −/+ を混ぜない: Codex指摘)。
+  ★ 53 未適用は凸数だけ落として確認は通す (`blockCountsDropped`)。落ちた凸数は `_myAvailConfirm` に**持たない** (持つと「確認したあとに凸数を変えました」が出続ける)。
+  ★ シートを開いたら 1 回だけ確認の行から凸数を取り込む (`countsPending`)。本人が −/+ を押したら下ろす (遅れて届いた行で上書きしない: Codex指摘)。確認のあとに凸数を変えたら「確認しなおして」(`changedCounts`)。
+  ホームの時間の帯 (`renderMyAvailStrip`) に「凸数: 朝 1 · 夕方 2」(`[data-avail-counts]`)。盤面ローダは確認の行から `unavailable` と `blockCounts` を読む (全部の行を読むので `c.unavailable` を見る)。
+  ★ **⏳隙間時間型は撤廃**: スイッチと保存 (`supabaseUpdateAvailabilityPrefs` / `supabaseLoadAvailabilityPrefs` / `handleAvailPrefChange`) を削除。`players.flex_time` の列は残るが**読まない** —
+  ローダ (盤面・通知状況の一覧) は `flexTime: false` を返す (テストが列の指定に `flex_time` が無いことを見張る)。ソルバー・planDiff・締め凸の flexTime の分岐は残るが来ない (予約の ⏳flex は段階 3 で消す)。
+  ★ **🔒 レベルを持たない約束は、プランの予想レベルとずれても「報告する ▶」** (`_planMineHtml` の `lvFree` = kind fixed かつ**配信に入っている** (`inPlan`) かつ `promise` かつ `raidLevel` null。`homeSlots` が予約の `raidLevel` / `promise` を渡す)。
+  予想より踏破が遅れて Lv1 のまま約束の時刻が来ると「Lv2になったら」のまま報告できなかった (練習の通し確認で発覚)。消し込みの `matchForAttack` もレベルを持たない予約のレベルは見ない。
+  レベル付きの約束 (締め凸の了承) と 📣 お願い中の 📌 は従来どおり。実行テスト `tests/avail-save.mjs` (凸数 4 本)・`tests/avail-strip.mjs`・`tests/home-slots.mjs`
+  ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と
   保存後に戻る先 (このカード・`opsStore.invalidate()` → 届いていない人とメンバー状況を描き直す) だけ。活動ログは `actorName` で「(運営が代理で登録)」。

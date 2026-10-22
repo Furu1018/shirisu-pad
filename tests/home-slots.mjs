@@ -195,6 +195,11 @@ await test('★ レベルを持たない 🔒 予約は、プランの予想レ�
     assert.equal(count([resv({ id: 1 })]), 1, 'メンバーの予約 (レベルなし) で報告できない / 予約でない Lv2 の割当まで報告できる');
     assert.equal(count([{ ...resv({ id: 1 }), raid_level: 2 }]), 0, 'レベル付きの約束 (締め凸の了承) を別のレベルで報告させている');
     assert.equal(count([{ ...resv({ id: 1, status: 'pinned' }), asked_at: 'x', approved_at: null }]), 0, '📣 お願い中 (約束でない) の固定で報告させている');
+    // 配信に入っていない約束 (組み直し待ち) は広げない — 配信の割当は Lv2 の別の編成だけ
+    const p2 = plan([{ loadoutSlot: 2, team: ['f', 'g', 'h', 'i', 'j'] }]);
+    const out2 = run({ pub: p2, rows: [resv({ id: 9 })] }).mine(p2, 7, new Map(), 1);
+    assert.ok(/組み直し待ち|運営が組み直し中/.test(out2) || !/_planReportBoss/.test(out2), 'テストの前提が崩れた');
+    assert.equal((out2.match(/_planReportBoss\(3\)/g) || []).length, 0, '配信に入っていない約束の行で報告させている');
     const mine = run({ pub: p, rows: [resv({ id: 1 })] }).mine(p, 7, new Map(), 1);
     assert.ok(/Lv2になったら/.test(mine), '予約でない Lv2 の割当は「Lv2になったら」のまま');
 });
