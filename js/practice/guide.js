@@ -374,7 +374,7 @@
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します (承認した予約が入ります)。', target: pick('planCompute') };
-                    return stray(c, []) || { text: '「📤 朝のぶんを配信」を押します。確認が出たら OK。押すまでメンバーには届きません。', real: '朝に割当のある人に通知が届きます。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。', target: pick('planPublish') };
+                    return stray(c, []) || { text: '「📤 朝のぶんを配信」を押します。確認が出たら OK。押すまでメンバーには見えません。', real: '配信すると、朝に割当のある人のホームに割当が出ます (いまは配信だけでは通知を送りません。前の配信を「確認しました」した人の割当が変わったときだけ更新の通知が届きます)。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。', target: pick('planPublish') };
                 } },
         ],
         'ops-day': [
@@ -417,7 +417,7 @@
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
-                    return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人に通知が届きます。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
+                    return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人のホームに割当が出ます (いまは配信だけでは通知を送らないので、Discord でも「夕方 配信しました」と伝えます)。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
                 } },
             { key: 'finish', title: '⚔️ 締凸検索で候補を探して声をかける',
                 done: function () { return store.get('ops-day:copied') === '1'; },
@@ -435,7 +435,7 @@
         'member': { title: 'メンバー編', sub: '出られる時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
             diff: '練習では運営の配信と凸の登録を「〜したことにする」で進めました。本番では運営がブロックの前に配信し、スクショを見て凸を登録します。' },
         'ops-eve': { title: '運営編・前日', sub: '催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信', next: 'ops-day',
-            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人へ届きます。' },
+            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出ます (通知はまだ送らないので Discord でも伝えます)。' },
         'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締凸検索', next: 'member',
             diff: '本番ではこの手順をブロックごとに繰り返します。交代するときは、運営タブのタブの数字 (手を打つべき件数) と「いちばん急ぐこと」から続けます。' },
     };
