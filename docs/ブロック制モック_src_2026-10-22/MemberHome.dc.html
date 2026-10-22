@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>メンバー: ホーム</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="width: 390px; height: 1240px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; border-radius: 28px">
+
+  <!-- 上の帯 -->
+  <div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px">
+    <div style="font-size: 15px; font-weight: 900; color: #15171c">しりすこPAD</div>
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">あるちゃ <span style="color: #6a717b; font-weight: 700">· 19:40</span></div>
+  </div>
+
+  <div style="flex: 1 1 0; min-height: 0; overflow: hidden; padding: 4px 12px 0; display: flex; flex-direction: column; gap: 10px">
+
+    <!-- あなたの凸 きょう -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">あなたの凸 <span style="font-size: 11px; font-weight: 800; color: #6a717b">きょう · 2 / 3 済み</span></div>
+        <div style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 4px 9px">夕方 18〜20時 のぶん</div>
+      </div>
+
+      <sc-for list="{{done}}" as="d" hint-placeholder-count="2">
+        <div style="display: flex; gap: 10px; align-items: center; border-radius: 12px; padding: 8px 10px; background: #f3f4f6">
+          <div style="flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; height: 44px; border-radius: 10px; background: #e3e6eb; color: #6a717b">
+            <span style="font-size: 10px; font-weight: 800">{{d.time}}</span>
+            <span style="font-size: 14px; font-weight: 900">{{d.code}}</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #6a717b; text-decoration: line-through">{{d.title}}</div>
+            <div style="font-size: 11px; font-weight: 700; color: #6a717b">{{d.sub}}</div>
+          </div>
+          <span style="flex: none; font-size: 11px; font-weight: 900; color: #166534; background: #dcfce7; border-radius: 999px; padding: 3px 8px">済</span>
+        </div>
+      </sc-for>
+
+      <!-- 次の凸 (主役) -->
+      <div style="display: flex; flex-direction: column; gap: 8px; border: 2px solid #6b3df5; border-radius: 14px; padding: 12px; background: #faf8ff">
+        <div style="display: flex; gap: 10px; align-items: center">
+          <div style="flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 12px; background: #18c26b; color: #fff">
+            <span style="font-size: 10px; font-weight: 800; opacity: .9">20時</span>
+            <span style="font-size: 17px; font-weight: 900">B3</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <div style="font-size: 11px; font-weight: 900; color: #4f2bc4">次 · 20時になったら</div>
+            <div style="font-size: 15px; font-weight: 900; color: #15171c">ベヒモス に 風圧PT 編成①</div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">模擬 28.1B · 運営の配信で決まった割当</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 5px; align-items: center">
+          <span style="width: 34px; height: 34px; border-radius: 8px; background: #d7dbe3"></span><span style="width: 34px; height: 34px; border-radius: 8px; background: #d7dbe3"></span><span style="width: 34px; height: 34px; border-radius: 8px; background: #d7dbe3"></span><span style="width: 34px; height: 34px; border-radius: 8px; background: #d7dbe3"></span><span style="width: 34px; height: 34px; border-radius: 8px; background: #d7dbe3"></span>
+          <span style="margin-left: auto; font-size: 11px; font-weight: 800; color: #6a717b">登録された模擬の編成</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #fff; border: 1px solid #e3e6eb; padding: 8px 10px; font-size: 11.5px; font-weight: 800; color: #3a3f46; line-height: 1.5">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4f2bc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M4 7h3l2-2h6l2 2h3v12H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+          <span>凸したら、結果の画面のスクショを <b>Discord #凸報告</b> へ。運営が記録します (使った PT は模擬から分かります)</span>
+        </div>
+      </div>
+
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.5">夜・深夜の割当はありません (きょうの 3 凸はこれで全部)。ボスの残り HP は運営が見ています。</p>
+    </div>
+
+    <!-- 出られる時間と凸数 -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 13.5px; font-weight: 900; color: #15171c">出られる時間と凸数 <span style="font-size: 11px; font-weight: 800; color: #6a717b">前日に答えたもの</span></div>
+        <a href="MemberTime.dc.html" style="font-size: 12px; font-weight: 800; text-decoration: none">変更する ›</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+        <sc-for list="{{avail}}" as="a" hint-placeholder-count="7">
+          <div style="text-align: center; border-radius: 8px; padding: 6px 2px; background: {{a.bg}}; color: {{a.fg}}; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 10.5px; font-weight: 900">{{a.name}}</span>
+            <span style="font-size: 12px; font-weight: 900">{{a.n}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b">朝に 1 凸、夕方に 2 凸 (合計 3)。運営はこの希望どおりにブロックへ割り当てます。</div>
+    </div>
+
+    <!-- 登録された模擬 (読むだけ) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 13.5px; font-weight: 900; color: #15171c">登録された模擬 <span style="font-size: 11px; font-weight: 800; color: #6a717b">運営が Discord から登録</span></div>
+        <span style="font-size: 11px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 3px 8px">5 / 5 属性</span>
+      </div>
+      <sc-for list="{{mocks}}" as="m" hint-placeholder-count="5">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eef0f3">
+          <span style="flex: none; width: 58px; font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 3px 0; text-align: center; color: #fff; background: {{m.color}}">{{m.pt}}</span>
+          <span style="display: inline-flex; gap: 3px"><span style="width: 20px; height: 20px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 20px; height: 20px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 20px; height: 20px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 20px; height: 20px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 20px; height: 20px; border-radius: 6px; background: #d7dbe3"></span></span>
+          <span style="margin-left: auto; font-size: 13px; font-weight: 900; color: #15171c; font-variant-numeric: tabular-nums">{{m.dmg}}</span>
+          <span style="font-size: 10.5px; font-weight: 800; color: #6a717b">{{m.note}}</span>
+        </div>
+      </sc-for>
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b">登録 10/30 ふるり · 直したいときは Discord に模擬のスクショを出し直してください</div>
+    </div>
+
+    <!-- 予約 (希望がある人だけ) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+      <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13.5px; font-weight: 900; color: #15171c">予約 <span style="font-size: 11px; font-weight: 800; color: #6a717b">希望がある人だけ</span></div>
+        <div style="font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.5">「この時間にこのPTで凸したい」が先に決まっているときだけ。無ければ上の凸数どおりに運営が組みます。</div>
+      </div>
+      <a href="MemberReserve.dc.html" style="flex: none; font-size: 12px; font-weight: 900; text-decoration: none; border: 1.5px solid #e3e6eb; border-radius: 10px; padding: 9px 12px; color: #15171c; background: #fff">申請する ›</a>
+    </div>
+  </div>
+
+  <!-- 下のナビ -->
+  <div style="flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #fff; border-top: 1px solid #e3e6eb; padding: 8px 10px 14px">
+    <a href="#home" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 900; color: #15171c">ホーム</a>
+    <a href="#stats" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">分析</a>
+    <a href="#settings" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">設定</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const done = [
+      { time: '7時', code: 'B1', title: 'ドリアン · 灼熱PT 編成①', sub: '結果 25.0B · Discord に出した' },
+      { time: '18時', code: 'B2', title: 'サイレン · 電撃PT 編成①', sub: '結果 22.4B · 運営が記録した' },
+    ];
+    const avail = [['朝', 1], ['午前', 0], ['昼', 0], ['午後', 0], ['夕方', 2], ['夜', 0], ['深夜', 0]].map(([name, n]) => ({
+      name, n: n ? `${n} 凸` : '—', bg: n ? '#6b3df5' : '#eef0f3', fg: n ? '#fff' : '#9aa1ab',
+    }));
+    const mocks = [
+      { pt: '灼熱PT', color: '#e5484d', dmg: '25.0B', note: '編成①' },
+      { pt: '水冷PT', color: '#2f80ed', dmg: '19.8B', note: '編成①' },
+      { pt: '電撃PT', color: '#8b5cf6', dmg: '22.4B', note: '編成①' },
+      { pt: '鉄甲PT', color: '#d97706', dmg: '16.2B', note: '編成①' },
+      { pt: '風圧PT', color: '#18c26b', dmg: '28.1B', note: '編成① / ② 21.4B' },
+    ];
+    return { done, avail, mocks };
+  }
+}
+</script>
+</body>
+</html>

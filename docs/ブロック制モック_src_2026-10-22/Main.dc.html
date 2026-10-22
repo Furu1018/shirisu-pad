@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>運営: 当日の司令席</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 1560px; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 14px; max-width: 1440px; margin: 0 auto">
+
+  <!-- 見出し行 -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第46回 ハード日 · 戦況タブ · 運営 · 19:40</div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #15171c; letter-spacing: -.01em">当日の司令席 <span style="font-size: 15px; font-weight: 800; color: #6a717b">いま 夕方 18〜20時 · 次 夜 21〜23時</span></h1>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+      <div style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">Lv2 進行中 · B1 B2 撃破</div>
+      <div style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">使った凸 34 / 57 (19 人)</div>
+      <div style="font-size: 12.5px; font-weight: 800; color: #a65a12; background: #fff7e6; border-radius: 999px; padding: 7px 12px">結果待ち 3 件 · 報告なし 2 凸</div>
+      <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 7px 12px">HP 更新 2 分前</div>
+    </div>
+  </div>
+
+  <!-- ブロックの帯 -->
+  <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+    <sc-for list="{{blocks}}" as="b" hint-placeholder-count="7">
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: {{b.bg}}; color: {{b.fg}}; border: 2px solid {{b.border}}">
+        <div style="display: flex; justify-content: space-between; gap: 6px"><span>{{b.name}}</span><span style="font-size: 11px; font-weight: 900; opacity: .85">{{b.tag}}</span></div>
+        <div style="font-size: 11px; font-weight: 700; opacity: .8">{{b.hours}}</div>
+        <div style="font-size: 11px; font-weight: 800; margin-top: 3px">{{b.sub}}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ① ボス状況 (運営だけ) -->
+  <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">① ボスの HP <span style="font-size: 12px; font-weight: 800; color: #6a717b">Lv2 · 残り 3 体 · メンバーの画面には出しません</span></h2>
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 9px 14px; background: #15171c; color: #fff; cursor: pointer">スクショで HP を更新</button>
+        <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 10px; padding: 9px 14px; background: #fff; color: #3a3f46; cursor: pointer">手で直す</button>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{bosses}}" as="x" hint-placeholder-count="5">
+        <div style="box-sizing: border-box; border-radius: 14px; border: 1.5px solid {{x.border}}; background: {{x.bg}}; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 6px; opacity: {{x.opacity}}">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px">
+            <div style="font-size: 14px; font-weight: 900; color: #15171c">{{x.code}} <span style="font-weight: 800; color: #3a3f46">{{x.name}}</span></div>
+            <span style="font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 3px 8px; color: #fff; background: {{x.ptColor}}">{{x.pt}}</span>
+          </div>
+          <div style="height: 10px; border-radius: 5px; background: #e9ecf0; overflow: hidden"><div style="height: 10px; border-radius: 5px; background: {{x.barColor}}; width: {{x.pct}}"></div></div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline">
+            <span style="font-size: 15px; font-weight: 900; color: #15171c; font-variant-numeric: tabular-nums">{{x.rem}}</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">{{x.total}}</span>
+          </div>
+          <div style="font-size: 10.5px; font-weight: 700; color: #6a717b">{{x.updated}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- ② 結果の取り込み -->
+  <section style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px">
+    <div style="grid-column: span 7; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">② 結果の取り込み <span style="font-size: 12px; font-weight: 800; color: #6a717b">Discord #凸報告 のリザルト · 未登録 3 件</span></h2>
+        <a href="OpsResults.dc.html" style="font-size: 12.5px; font-weight: 800; text-decoration: none">取り込みの画面を開く ›</a>
+      </div>
+      <div style="border: 2px dashed #c9b8ff; border-radius: 12px; padding: 12px; text-align: center; font-size: 12.5px; font-weight: 800; color: #4f2bc4; background: #faf8ff">リザルトのスクショをここに落とす (複数可) — 読み取って 誰・ボス・ダメージ を埋めます</div>
+      <sc-for list="{{results}}" as="r" hint-placeholder-count="3">
+        <div style="display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; align-items: center; border: 1px solid #e3e6eb; border-radius: 12px; padding: 10px 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 13.5px; font-weight: 900; color: #15171c">{{r.who}}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #6a717b">{{r.posted}}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+            <div style="font-size: 13px; font-weight: 900; color: #15171c">{{r.boss}} <span style="color: #3a3f46">{{r.dmg}}</span> <span style="font-size: 11px; font-weight: 800; color: {{r.diffFg}}; background: {{r.diffBg}}; border-radius: 999px; padding: 2px 8px">{{r.diff}}</span></div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #6a717b">
+              <span>使った PT (模擬から):</span>
+              <span style="font-size: 11px; font-weight: 900; border-radius: 999px; padding: 2px 8px; color: #fff; background: {{r.ptColor}}">{{r.pt}}</span>
+              <span style="display: inline-flex; gap: 3px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #d7dbe3"></span><span style="width: 18px; height: 18px; border-radius: 5px; background: #d7dbe3"></span><span style="width: 18px; height: 18px; border-radius: 5px; background: #d7dbe3"></span><span style="width: 18px; height: 18px; border-radius: 5px; background: #d7dbe3"></span><span style="width: 18px; height: 18px; border-radius: 5px; background: #d7dbe3"></span></span>
+              <span>{{r.note}}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px">
+            <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 9px; padding: 8px 12px; background: #15171c; color: #fff; cursor: pointer">登録</button>
+            <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 9px; padding: 8px 12px; background: #fff; color: #3a3f46; cursor: pointer">直す</button>
+          </div>
+        </div>
+      </sc-for>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.55">登録すると ボスの残 HP から引き、本人の済み凸に数えます。リザルトにキャラは写らないので、使った PT は登録済みの模擬 (そのボスの弱点属性) から決めます。2 編成あれば選びます。</p>
+    </div>
+    <div style="grid-column: span 5; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">報告の無い凸 <span style="font-size: 12px; font-weight: 800; color: #6a717b">予定の時刻を過ぎて 30 分</span></h2>
+      <sc-for list="{{missing}}" as="m" hint-placeholder-count="2">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #fde4c3; background: #fff7e6; border-radius: 12px; padding: 10px 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 13.5px; font-weight: 900; color: #15171c">{{m.who}}</span>
+            <span style="font-size: 11.5px; font-weight: 700; color: #a65a12">{{m.plan}}</span>
+          </div>
+          <div style="display: flex; gap: 6px">
+            <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 9px; padding: 7px 10px; background: #fff; color: #3a3f46; cursor: pointer">Discord で聞く</button>
+            <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 9px; padding: 7px 10px; background: #fff; color: #3a3f46; cursor: pointer">凸していない</button>
+          </div>
+        </div>
+      </sc-for>
+      <div style="border-top: 1px solid #e3e6eb; padding-top: 10px; display: flex; flex-direction: column; gap: 6px">
+        <div style="font-size: 12.5px; font-weight: 900; color: #15171c">きょうの結果 34 件</div>
+        <div style="font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.55">最新: 19:36 ねむねこ B3 26.9B · 19:31 みかん B5 31.2B · 19:22 あるちゃ B2 22.4B</div>
+        <div style="font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.55">模擬との差が −15% を超えた凸 2 件 (確認済み 1)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ③ 次のブロックを組む -->
+  <section style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px">
+    <div style="grid-column: span 5; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">③ 次のブロック 夜 21〜23時 を組む</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{nextStats}}" as="s" hint-placeholder-count="6">
+          <div style="border-radius: 12px; background: #f3f4f6; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b">{{s.k}}</span>
+            <span style="font-size: 16px; font-weight: 900; color: #15171c; font-variant-numeric: tabular-nums">{{s.v}}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #6a717b">{{s.sub}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button type="button" style="font: inherit; font-size: 13.5px; font-weight: 900; border: none; border-radius: 12px; padding: 12px 16px; background: #6b3df5; color: #fff; cursor: pointer; box-shadow: 0 6px 16px rgba(107,61,245,.25)">ブロック盤を開く (夜)</button>
+        <button type="button" style="font: inherit; font-size: 13px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 12px; padding: 12px 14px; background: #fff; color: #3a3f46; cursor: pointer">自動の参考案を見る</button>
+      </div>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.55">配信の目安 20:30。夜の人の模擬は 1 人分が未登録 (Discord に催促済み)。夜の予約 2 件は盤に置かれます。</p>
+    </div>
+    <div style="grid-column: span 7; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">夜の下書き <span style="font-size: 12px; font-weight: 800; color: #6a717b">まだ配信していません · 置いた凸 17 / 残り凸 23</span></h2>
+        <span style="font-size: 11.5px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 4px 10px">自動の参考案 + 予約 2</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 88px repeat(3, minmax(0, 1fr)); gap: 6px; align-items: stretch">
+        <div></div>
+        <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">21時</div>
+        <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">22時</div>
+        <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">23時</div>
+        <sc-for list="{{draft}}" as="d" hint-placeholder-count="12">
+          <div style="box-sizing: border-box; min-height: 54px; border-radius: 10px; padding: 7px 8px; background: {{d.bg}}; border: 1.5px solid {{d.border}}; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; font-size: 11.5px; font-weight: 900; color: {{d.fg}}">{{d.text}}<sc-for list="{{d.chips}}" as="c" hint-placeholder-count="2"><span style="font-size: 11px; font-weight: 900; border-radius: 999px; padding: 3px 8px; background: {{c.bg}}; color: {{c.fg}}; border: 1.5px solid {{c.border}}">{{c.label}}</span></sc-for></div>
+        </sc-for>
+      </div>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.55">枠線つきのチップは予約 (本人の希望)。チップの数字は模擬のダメージ (B)。置き直しはブロック盤で。</p>
+    </div>
+  </section>
+
+  <!-- ④ メンバー状況 -->
+  <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">④ メンバー状況 <span style="font-size: 12px; font-weight: 800; color: #6a717b">19 人 · 出られるブロックと凸数の希望 · 模擬 · 済/残 · 予約</span></h2>
+      <div style="display: flex; gap: 6px; font-size: 11.5px; font-weight: 800">
+        <span style="color: #3a3f46; background: #f3f4f6; border-radius: 999px; padding: 4px 10px">並び: 次のブロックに出る人が先</span>
+        <span style="color: #a65a12; background: #fff7e6; border-radius: 999px; padding: 4px 10px">模擬が足りない 2 人</span>
+      </div>
+    </div>
+    <div style="overflow-x: auto">
+      <div style="min-width: 1100px; display: grid; grid-template-columns: 120px 300px 150px 120px 90px 140px 1fr; gap: 0 10px; font-size: 11px; font-weight: 800; color: #6a717b; padding: 0 8px 6px; border-bottom: 1px solid #e3e6eb">
+        <div>名前</div><div>出られるブロック (タップで 凸数)</div><div>凸数の希望</div><div>模擬</div><div>済 / 残</div><div>予約</div><div>いまの状態</div>
+      </div>
+      <sc-for list="{{members}}" as="m" hint-placeholder-count="8">
+        <div style="min-width: 1100px; display: grid; grid-template-columns: 120px 300px 150px 120px 90px 140px 1fr; gap: 0 10px; align-items: center; padding: 8px 8px; border-bottom: 1px solid #eef0f3; background: {{m.rowBg}}">
+          <div style="font-size: 13px; font-weight: 900; color: #15171c">{{m.name}}</div>
+          <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px">
+            <sc-for list="{{m.cells}}" as="c" hint-placeholder-count="7"><div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 4px 0; background: {{c.bg}}; color: {{c.fg}}">{{c.t}}</div></sc-for>
+          </div>
+          <div style="font-size: 12px; font-weight: 800; color: #3a3f46">{{m.wish}}</div>
+          <div style="font-size: 12px; font-weight: 800; color: {{m.mockFg}}">{{m.mock}}</div>
+          <div style="font-size: 12px; font-weight: 900; color: #15171c; font-variant-numeric: tabular-nums">{{m.done}}</div>
+          <div style="font-size: 12px; font-weight: 800; color: #4f2bc4">{{m.resv}}</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: {{m.stateFg}}">{{m.state}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 手順の帯 (引き継ぎ用) -->
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e3e6eb; border-radius: 14px; padding: 10px 12px">
+    <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .06em; flex: none; padding-right: 4px">1 ブロックの手順</div>
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: {{s.bg}}; color: {{s.fg}}; border: 1.5px solid {{s.border}}">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: {{s.badgeBg}}; color: {{s.badgeFg}}">{{s.n}}</span>{{s.label}}
+      </div>
+    </sc-for>
+    <span style="margin-left: auto; font-size: 11.5px; font-weight: 700; color: #6a717b">最終更新 19:38 · ふるり</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const blk = (name, hours, state, sub) => {
+      const tag = state === 'now' ? 'いま' : state === 'next' ? '次' : state === 'done' ? '済' : '';
+      return { name, hours, sub, tag,
+        bg: state === 'now' ? '#6b3df5' : state === 'next' ? '#f1edff' : state === 'done' ? '#f3f4f6' : '#fff',
+        fg: state === 'now' ? '#fff' : state === 'done' ? '#6a717b' : '#15171c',
+        border: state === 'now' ? '#6b3df5' : state === 'next' ? '#c9b8ff' : '#e3e6eb' };
+    };
+    const blocks = [
+      blk('朝', '5〜8時', 'done', '7 凸 · Lv1'), blk('午前', '9〜11時', 'done', '6 凸'), blk('昼', '12〜14時', 'done', '8 凸 · Lv1 踏破'),
+      blk('午後', '15〜17時', 'done', '5 凸'), blk('夕方', '18〜20時', 'now', '8 凸 · 結果待ち 3'), blk('夜', '21〜23時', 'next', '14 人 · 下書き'), blk('深夜', '翌0〜4時', 'later', '6 人'),
+    ];
+    const PT = { fire: ['灼熱PT', '#e5484d'], water: ['水冷PT', '#2f80ed'], electric: ['電撃PT', '#8b5cf6'], iron: ['鉄甲PT', '#d97706'], wind: ['風圧PT', '#18c26b'] };
+    const boss = (code, name, pt, remB, totalB, updated, dead) => ({
+      code, name, pt: PT[pt][0], ptColor: PT[pt][1],
+      rem: dead ? '撃破' : `残り ${remB.toFixed(1)}B`, total: `/ ${totalB.toFixed(1)}B`, pct: `${Math.round(remB / totalB * 100)}%`,
+      barColor: dead ? '#d7dbe3' : (remB / totalB < 0.25 ? '#e5484d' : '#6b3df5'),
+      border: dead ? '#e3e6eb' : '#e3e6eb', bg: dead ? '#f3f4f6' : '#fff', opacity: dead ? '.6' : '1', updated,
+    });
+    const bosses = [
+      boss('B1', 'ドリアン', 'fire', 0, 149.8, '撃破 18:02', true),
+      boss('B2', 'サイレン', 'electric', 0, 149.8, '撃破 19:22', true),
+      boss('B3', 'ベヒモス', 'wind', 61.3, 226.3, '更新 19:38 ふるり', false),
+      boss('B4', 'マザーホエール', 'water', 104.0, 149.8, '更新 19:38 ふるり', false),
+      boss('B5', 'グレイブディガー', 'iron', 180.9, 226.3, '更新 19:31 ねむねこ', false),
+    ];
+    const res = (who, posted, boss, dmg, pt, diff, ok, note) => ({ who, posted, boss, dmg, pt: PT[pt][0], ptColor: PT[pt][1], diff, note,
+      diffFg: ok ? '#166534' : '#a65a12', diffBg: ok ? '#dcfce7' : '#fff7e6' });
+    const results = [
+      res('あるちゃ', '19:21 投稿 · Discord', 'B3 ベヒモス', '27.6B', 'wind', '模擬 28.1B との差 −0.5B', true, '編成①'),
+      res('みかん', '19:31 投稿 · Discord', 'B5 グレイブディガー', '31.2B', 'iron', '模擬 33.0B との差 −1.8B', true, '編成①'),
+      res('こむぎ', '19:36 投稿 · Discord', 'B3 ベヒモス', '19.4B', 'wind', '模擬 24.9B との差 −22% 要確認', false, '編成① / ② どちらか'),
+    ];
+    const missing = [
+      { who: 'おはぎ', plan: '18時 B2 サイレン 電撃PT 編成① 22.0B の予定 · リザルトなし' },
+      { who: 'クロ', plan: '19時 B4 マザーホエール 水冷PT 編成② 18.7B の予定 · リザルトなし' },
+    ];
+    const nextStats = [
+      { k: '夜に出られる人', v: '14 人', sub: '希望: 1 凸 × 9 人 · 2 凸 × 5 人' },
+      { k: '残り凸', v: '23 凸', sub: '夜の人 19 凸 + 深夜の人 4 凸' },
+      { k: '模擬', v: '13 / 14 人', sub: 'りんご が未登録 (催促済み)' },
+      { k: '予約', v: '2 件', sub: '21時 B3 · 22時 B5' },
+      { k: '踏破の見込み', v: 'Lv2 → 23時', sub: 'B3 B4 B5 を 23時までに' },
+      { k: '配信の目安', v: '20:30', sub: '夜の人に通知' },
+    ];
+    const chip = (label, resv) => ({ label, bg: resv ? '#fff' : '#e9e3ff', fg: '#4f2bc4', border: resv ? '#6b3df5' : '#e9e3ff' });
+    const cell = (text, chips, head) => ({ text: text || '', chips: chips || [], bg: head ? '#fff' : '#faf8ff', border: head ? '#e3e6eb' : '#eee9ff', fg: '#15171c' });
+    const draft = [
+      cell('B3 ベヒモス', [], true), cell('', [chip('あるちゃ 28', true), chip('ねむねこ 27')]), cell('', [chip('りんご 24')]), cell('', [chip('こむぎ 25')]),
+      cell('B4 マザーホエール', [], true), cell('', [chip('クロ 19'), chip('みかん 22')]), cell('', [chip('ゆず 31'), chip('しお 20')]), cell('', [chip('あずき 26')]),
+      cell('B5 グレイブディガー', [], true), cell('', [chip('ぽん 34')]), cell('', [chip('なべ 33', true), chip('てん 30')]), cell('', [chip('ひよこ 29'), chip('まめ 28')]),
+    ];
+    const names7 = ['朝', '午前', '昼', '午後', '夕', '夜', '深'];
+    const member = (name, cellsSpec, wish, mock, mockOk, done, resv, state, stateKind) => ({
+      name, wish, mock, mockFg: mockOk ? '#3a3f46' : '#a65a12', done, resv, state,
+      stateFg: stateKind === 'warn' ? '#a65a12' : stateKind === 'ok' ? '#166534' : '#6a717b', rowBg: stateKind === 'warn' ? '#fffaf0' : '#fff',
+      cells: names7.map((t, i) => { const n = cellsSpec[i]; return { t: n ? `${t} ${n}` : t, bg: n ? '#6b3df5' : '#eef0f3', fg: n ? '#fff' : '#9aa1ab' }; }),
+    });
+    const members = [
+      member('あるちゃ', [1, 0, 0, 0, 2, 0, 0], '朝 1 · 夕方 2', '5 / 5 登録', true, '2 / 1', '—', '20時 B3 の予定 · 結果 1 件 未登録', 'ok'),
+      member('ねむねこ', [0, 0, 0, 0, 1, 2, 0], '夕方 1 · 夜 2', '5 / 5 登録', true, '1 / 2', '21時 B3', '夜の下書きに 2 凸', 'ok'),
+      member('りんご', [0, 0, 0, 0, 0, 1, 2], '夜 1 · 深夜 2', '2 / 5 登録', false, '0 / 3', '—', '模擬が 3 属性足りない · Discord に催促 19:05', 'warn'),
+      member('みかん', [0, 0, 1, 0, 2, 0, 0], '昼 1 · 夕方 2', '5 / 5 登録', true, '2 / 1', '—', '結果 1 件 未登録', 'ok'),
+      member('おはぎ', [0, 0, 0, 1, 2, 0, 0], '午後 1 · 夕方 2', '4 / 5 登録', true, '1 / 2', '—', '18時 B2 の報告なし (30 分)', 'warn'),
+      member('クロ', [0, 1, 0, 0, 2, 0, 0], '午前 1 · 夕方 2', '5 / 5 登録', true, '1 / 2', '—', '19時 B4 の報告なし', 'warn'),
+      member('なべ', [0, 0, 0, 0, 0, 3, 0], '夜 3', '5 / 5 登録', true, '0 / 3', '22時 B5', '夜の下書きに 3 凸', 'ok'),
+      member('ぽん', [0, 0, 0, 0, 0, 2, 1], '夜 2 · 深夜 1', '5 / 5 登録', true, '0 / 3', '—', '夜の下書きに 2 凸', 'ok'),
+    ];
+    const steps = [
+      ['1', '結果を取り込む', 'done'], ['2', 'HP を更新', 'done'], ['3', '夜のブロック盤を組む', 'now'], ['4', '差分を見て配信', 'later'], ['5', '夜の人に通知', 'later'],
+    ].map(([n, label, st]) => ({ n, label,
+      bg: st === 'now' ? '#6b3df5' : st === 'done' ? '#f3f4f6' : '#fff', fg: st === 'now' ? '#fff' : st === 'done' ? '#6a717b' : '#15171c',
+      border: st === 'now' ? '#6b3df5' : '#e3e6eb', badgeBg: st === 'now' ? 'rgba(255,255,255,.25)' : st === 'done' ? '#dcfce7' : '#eef0f3', badgeFg: st === 'now' ? '#fff' : st === 'done' ? '#166534' : '#3a3f46' }));
+    return { blocks, bosses, results, missing, nextStats, draft, members, steps };
+  }
+}
+</script>
+</body>
+</html>

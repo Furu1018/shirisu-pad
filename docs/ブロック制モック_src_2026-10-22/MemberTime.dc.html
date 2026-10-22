@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>メンバー: 出られる時間と凸数</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: rgba(21,23,28,.45); display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; border-radius: 28px">
+
+  <div style="background: #fff; border-radius: 22px 22px 0 0; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 12px; max-height: 800px; overflow: hidden">
+    <div style="width: 40px; height: 4px; border-radius: 2px; background: #d7dbe3; align-self: center"></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <div style="font-size: 17px; font-weight: 900; color: #15171c">出られる時間と凸数</div>
+      <a href="MemberHome.dc.html" aria-label="閉じる" style="font-size: 12px; font-weight: 800; text-decoration: none; border-radius: 9px; padding: 6px 12px; background: #eef0f3; color: #15171c">閉じる</a>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">第46回 ハード日に<b>確実に動ける時間帯</b>を ON にして、その時間帯で<b>何凸するか</b>を入れてください (合計 3)。ボスや PT は運営が決めます。</p>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <sc-for list="{{blocks}}" as="b" hint-placeholder-count="7">
+        <div style="display: flex; align-items: center; gap: 8px; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 8px 8px 8px 14px; border: 2px solid {{b.border}}; background: {{b.bg}}; color: {{b.fg}}">
+          <button type="button" aria-pressed="{{b.pressed}}" style="font: inherit; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; border: none; background: transparent; color: inherit; padding: 0; text-align: left; cursor: pointer">
+            <span style="font-size: 15px; font-weight: 900">{{b.name}}</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">{{b.hours}}</span>
+          </button>
+          <sc-if value="{{b.on}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.18); border-radius: 999px; padding: 4px 6px">
+              <button type="button" aria-label="減らす" style="font: inherit; width: 30px; height: 30px; border-radius: 50%; border: none; background: #fff; color: #4f2bc4; font-size: 16px; font-weight: 900; cursor: pointer">−</button>
+              <span style="min-width: 44px; text-align: center; font-size: 13px; font-weight: 900">{{b.count}} 凸</span>
+              <button type="button" aria-label="増やす" style="font: inherit; width: 30px; height: 30px; border-radius: 50%; border: none; background: #fff; color: #4f2bc4; font-size: 16px; font-weight: 900; cursor: pointer">+</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{b.off}}" hint-placeholder-val="{{false}}">
+            <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: {{b.pillBg}}; color: {{b.pillFg}}">{{b.state}}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f1edff; border-radius: 12px; padding: 10px 12px">
+      <span style="font-size: 12.5px; font-weight: 800; color: #4f2bc4">合計 <b style="font-size: 16px">3</b> / 3 凸</span>
+      <span style="font-size: 11.5px; font-weight: 700; color: #4f2bc4">朝 1 · 夕方 2</span>
+    </div>
+
+    <p style="margin: 0; font-size: 11.5px; font-weight: 700; line-height: 1.55; color: #6a717b">凸数を入れない (ON だけ) と、運営がその時間帯のどこかに割り当てます。当日に都合が変わったら Discord で運営へ。</p>
+
+    <a href="MemberHome.dc.html" style="text-decoration: none; text-align: center; font-size: 15px; font-weight: 900; border-radius: 14px; padding: 15px; background: #6b3df5; color: #fff; box-shadow: 0 6px 16px rgba(107,61,245,.28)">この内容で参加します</a>
+    <button type="button" style="font: inherit; font-size: 13px; font-weight: 800; border: none; border-radius: 12px; padding: 11px; background: #fff; color: #6a717b; cursor: pointer">今回は難しい (計算から外す)</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const defs = [
+      ['朝', '5〜8時', 'on', 1], ['午前', '9〜11時', 'off', 0], ['昼', '12〜14時', 'off', 0], ['午後', '15〜17時', 'off', 0],
+      ['夕方', '18〜20時', 'on', 2], ['夜', '21〜23時', 'off', 0], ['深夜', '翌0〜4時', 'partial', 0],
+    ];
+    const blocks = defs.map(([name, hours, st, count]) => ({
+      name, hours, count, on: st === 'on', off: st !== 'on', pressed: st === 'on' ? 'true' : 'false',
+      state: st === 'partial' ? '一部 (2/5 時間)' : 'OFF',
+      border: st === 'on' ? '#6b3df5' : st === 'partial' ? '#c9b8ff' : '#e3e6eb',
+      bg: st === 'on' ? '#6b3df5' : st === 'partial' ? '#f1edff' : '#fff',
+      fg: st === 'on' ? '#fff' : '#15171c',
+      pillBg: st === 'partial' ? '#e9e3ff' : '#eef0f3', pillFg: st === 'partial' ? '#4f2bc4' : '#6a717b',
+    }));
+    return { blocks };
+  }
+}
+</script>
+</body>
+</html>
