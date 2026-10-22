@@ -461,6 +461,31 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const want = { p0: ['@13', '@13'], p1: ['@16', '@16'], p2: ['@13'], p3: ['@13', '@13', '@13'], p4: ['@16'], p5: ['@16'] };
         assert.deepEqual(Object.fromEntries(Object.entries(got).map(([k, v]) => [k, v.map(x => x.replace(/^B\d*/, ''))])), want);
     });
+    test('🧱 段階 5: secondB5Lv4Only — ボス 5 の弱点の 2 編成目は Lv1〜3 で使わず Lv4 だけ / 1 編成しか無い人は制限しない / 前回どおりでも Lv3 に置かない / 渡さなければ従来どおり', () => {
+        const lv3 = (extra = {}, lo = { fire: [20, 18] }) => compute({ season: { current_level: 3 }, bosses: [boss(5, 'fire', { tier: 'tyrant', remainingB: 30 })],
+            players: [capPlayer('P', lo, HRS(18, 23), null)], currentSlot: 'h18', timeAware: true, ...extra });
+        const slotsAt = (plan, finite) => plan.levels.filter(l => !!l.infinite !== finite).flatMap(l => l.bosses.flatMap(b => b.attacks.filter(a => a.memberId === 'P').map(a => a.loadoutSlot))).sort();
+        const off = lv3();
+        assert.deepEqual(slotsAt(off, true), [1, 2], '前提: 手当てなしは Lv3 のボス 5 に 2 編成とも使う');
+        const on = lv3({ secondB5Lv4Only: true });
+        assert.deepEqual(slotsAt(on, true), [1], 'Lv3 のボス 5 に 2 編成目を使った');
+        // Lv4 (HP 無限) では 2 編成目も使う
+        const lv4 = compute({ season: { current_level: 4 }, bosses: [boss(5, 'fire', { tier: 'tyrant', remainingB: 1000 })],
+            players: [capPlayer('P', { fire: [20, 18] }, HRS(18, 23), null)], currentSlot: 'h18', timeAware: true, secondB5Lv4Only: true });
+        assert.deepEqual(slotsAt(lv4, false), [1, 2], 'Lv4 で 2 編成目を使っていない');
+        // 編成が 1 つ (編成② だけ) の人は制限しない
+        const single = compute({ season: { current_level: 3 }, bosses: [boss(5, 'fire', { tier: 'tyrant', remainingB: 30 })],
+            players: [{ ...capPlayer('P', { fire: [20] }, HRS(18, 23), null), loadoutsByAttr: { fire: [{ dmgB: 20, team: ['S1', 'S2', 'S3', 'S4', 'S5'], slot: 2 }] } }],
+            currentSlot: 'h18', timeAware: true, secondB5Lv4Only: true });
+        assert.deepEqual(slotsAt(single, true), [2], '1 編成しか無い人の編成②まで止めた');
+        // 前回どおり (sticky): 手当てなしで配信した Lv3 の 2 編成目を、手当てありの算出で置き直さない
+        const sticky = lv3({ secondB5Lv4Only: true, previousPlan: off });
+        assert.ok(!slotsAt(sticky, true).includes(2), '前回どおりの置き直しで Lv3 に 2 編成目を置いた');
+        // ボス 5 以外の属性の 2 編成目は制限しない
+        const other = compute({ season: { current_level: 3 }, bosses: [boss(1, 'water', { remainingB: 30 }), boss(5, 'fire', { tier: 'tyrant', remainingB: 1 })],
+            players: [capPlayer('P', { water: [20, 18] }, HRS(18, 23), null)], currentSlot: 'h18', timeAware: true, secondB5Lv4Only: true });
+        assert.deepEqual(slotsAt(other, true), [1, 2], 'ボス 5 以外の 2 編成目まで止めた');
+    });
     test('🧱 2b: 境目 — Lv4 の 2 編成目も上限で止める / 開放時刻が埋まったブロックなら時間外にも置かない / 時刻なしの予約は上限 0 でも置く', () => {
         const b5 = [boss(5, 'fire', { tier: 'tyrant', remainingB: 1000 })];
         const lv4 = compute({ season: { current_level: 4 }, bosses: b5, players: [capPlayer('P', { fire: [10, 9] }, HRS(18, 20), [{ fromIdx: 13, toIdx: 15, max: 1 }])], currentSlot: 'h18', timeAware: true });
@@ -12651,6 +12676,29 @@ console.log('\ngrowthDomain:');
 
     });
 
+    test('★ 🧱 段階 5 mockIntake.b5SecondOf / missingRows: 18 時以降に出られる人だけ ボス 5 の弱点の模擬を 2 編成 / 足りなければ 5 属性そろっていても届いていない人に入る', () => {
+        const d = globalThis.mockIntakeDomain;
+        const full = { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 };
+        const P = (id, slots, b5) => ({ id, name: id, availableSlots: slots, damagesByAttr: full, loadoutsByAttr: { wind: Array.from({ length: b5 }, (_, i) => ({ slot: i + 1, dmgB: 10 })) } });
+        assert.equal(d.b5SecondOf(P('朝', ['h05', 'h06'], 1), 'wind'), null, '朝・昼だけの人を対象にした');
+        assert.equal(d.b5SecondOf(P('未', [], 0), 'wind'), null, '時間未登録を対象にした');
+        assert.equal(d.b5SecondOf(P('夜', ['h21'], 1), null), null, 'ボス 5 が分からないのに判定した');
+        assert.deepEqual(d.b5SecondOf(P('夕', ['h18'], 1), 'wind'), { have: 1, need: 2, short: 1 });
+        assert.deepEqual(d.b5SecondOf(P('深夜', ['h02'], 0), 'wind'), { have: 0, need: 2, short: 2 }, '翌 2 時 (深夜) を遅い時間に数えていない');
+        assert.deepEqual(d.b5SecondOf(P('夜', ['h21'], 3), 'wind'), { have: 2, need: 2, short: 0 });
+        assert.equal(d.b5SecondOf(P('昼', ['h17'], 0), 'wind'), null, '17 時を遅い時間に数えた');
+        const rows = d.missingRows({ players: [P('朝', ['h05'], 0), P('夕', ['h18'], 1), P('夜', ['h21'], 2)], blocks: [], b5Weakness: 'wind' });
+        assert.deepEqual(rows.map(r => [r.name, r.missing.length, r.b5Short]), [['夕', 0, 1]], '5 属性そろった遅い時間の人の 2 編成目の不足を拾っていない / 朝の人を入れた');
+        assert.deepEqual(d.missingRows({ players: [P('夕', ['h18'], 1)], blocks: [] }), [], 'b5Weakness を渡さないのに数えた (従来どおり)');
+    });
+    test('★ 配線: 🧱 段階 5 — 算出と承認の影響の 2 か所で secondB5Lv4Only / 模擬の取り込みと 👥 メンバー状況に ボス 5 の 2 編成目', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.equal((html.match(/secondB5Lv4Only: true,/g) || []).length, 2, 'ソルバーの呼び出し口 2 か所 (算出 / 承認の影響) で渡していない');
+        assert.equal((html.match(/excludeTimeUnknown: true,[^\n]*\n\s*secondB5Lv4Only: true,/g) || []).length, 2, '段階 2b と同じ呼び出し口に並べていない');
+        const intake = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /r\.b5Short \?/.test(intake), '届いていない人に ボス 5 の 2 編成目が無い');
+        assert.ok(/window\.mockIntakeDomain\.b5SecondOf\(p, _mbB5W\)/.test(html) && /\$\{mock\}\$\{excl\}\$\{b5\(r\)\}/.test(html), '👥 メンバー状況に ボス 5 の 2 編成目が無い');
+    });
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
         const dom = globalThis.mockIntakeDomain, rb = globalThis.raidBlocksDomain;
         const blocks = rb.blocksOfSeason(null);   // 既定 7 ブロック (朝5-8 / 午前9-11 / 昼12-14 / 午後15-17 / 夕方18-20 / 夜21-23 / 深夜0-4)
@@ -12715,7 +12763,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/renderOpsGrowth\(\);[^\n]*\n\s*renderOpsMockIntake\(\);/.test(html), 'ダッシュボードで描いていない');
         const render = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /\+\+_mockIntake\.gen;/.test(render), '運営OFF / 世代を進めていない');
-        assert.ok(/const rows = dom\.missingRows\(\{ players, blocks \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
+        assert.ok(/const rows = dom\.missingRows\(\{ players, blocks, b5Weakness: b5Weak \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
         assert.ok(/_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)/.test(render), '名前を押してその人を選べない');
     });
 

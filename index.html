@@ -4618,7 +4618,7 @@
                     <div id="opsMockIntakeAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
                 </div>
                 <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
-                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">届いていない人 <span style="font-weight:700;">(〆 = 自分が最初に出られるブロックの前。名前を押すとその人として読み取ります)</span></div>
+                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">届いていない人 <span style="font-weight:700;">(〆 = 自分が最初に出られるブロックの前。名前を押すとその人として読み取ります。18 時以降に出られる人は ボス 5 の模擬を 2 編成)</span></div>
                 <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -18044,14 +18044,17 @@
             sel.innerHTML = '<option value="">— 選んでください —</option>' + players.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'))
                 .map(p => `<option value="${Number(p.id)}"${Number(p.id) === picked ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
             const blocks = rb ? rb.blocksOfSeason(snap.season) : [];
-            const rows = dom.missingRows({ players, blocks });
+            // 🧱 段階 5: 18 時以降に出られる人は ボス 5 の弱点の模擬を 2 編成 (ユーザー決定 i)。足りない人も届いていない人に入る
+            const b5Weak = (snap.bosses || []).find(b => Number(b.boss_number) === 5)?.weakness || null;
+            const b5Pt = PT_ATTRS.find(x => x.key === b5Weak)?.name || '';
+            const rows = dom.missingRows({ players, blocks, b5Weakness: b5Weak });
             if (cnt) cnt.textContent = dom.summary(rows, players.length);
             if (!rows.length) { body.innerHTML = '<p style="color:var(--ok);font-size:12px;margin:0;font-weight:800;">全員の模擬が 5 属性そろっています 🎉</p>'; return; }
             body.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + rows.map(r => `
                 <button type="button" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として登録する (スクショを選ぶ)"
                         style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--s1);color:var(--t-ink);font-size:11.5px;font-weight:800;cursor:pointer;">
                     <span>${escapeHtml(r.name)}</span>
-                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : 'あと ' + escapeHtml(r.missingJp.join('・'))}</span>
+                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : r.missing.length ? 'あと ' + escapeHtml(r.missingJp.join('・')) : ''}${r.b5Short ? `${r.missing.length ? ' · ' : ''}ボス5 (${escapeHtml(b5Pt)}PT) の編成${r.b5Short === 2 ? '①②' : '②'}` : ''}</span>
                     <span style="color:${r.deadline ? 'var(--warn-deep)' : 'var(--t-muted)'};font-weight:800;">${r.deadline ? '〆 ' + escapeHtml(r.deadline.name) + 'の前' : (r.noSlots ? '時間 未登録' : 'いつでも')}</span>
                 </button>`).join('') + '</div>';
         }
@@ -18213,6 +18216,16 @@
                 const lbl = (_mbRb && p && p.blockCounts) ? _mbRb.countsLabel(p.blockCounts, _mbBlocks) : '';
                 return lbl ? `<span class="dc-mb-c acc" title="本人が決めたブロックごとの凸数 (最適凸プランはこの数を上限に置く)">凸数 ${escapeHtml(lbl)}</span>` : '';
             };
+            // 🧱 段階 5: 18 時以降に出られる人の ボス 5 の 2 編成 (ユーザー決定 i)。朝・昼だけの人には出さない。判定は mockIntakeDomain.b5SecondOf
+            const _mbB5W = ((typeof opsStore !== 'undefined' && opsStore.get()?.bosses) || []).find(b => Number(b.boss_number) === 5)?.weakness || null;
+            const b5 = (r) => {
+                const p = (_mb.players || []).find(x => Number(x.id) === Number(r.id));
+                const st = (window.mockIntakeDomain && p) ? window.mockIntakeDomain.b5SecondOf(p, _mbB5W) : null;
+                if (!st) return '';
+                return st.short === 0
+                    ? '<span class="dc-mb-c ok" title="ボス 5 の模擬が 2 編成そろっています (2 編成目は Lv4 で使います)">B5×2</span>'
+                    : `<span class="dc-mb-c warn" title="18 時以降に出られる人は、ボス 5 の弱点の模擬を 2 編成出してもらいます (2 編成目は Lv4 だけで使います)">B5 ${st.have}/2</span>`;
+            };
             rowsEl.innerHTML = shown.length ? shown.map(r => {
                 // 必要範囲は「キャラ被りなしで3属性」。5属性は運営が助かる加点 (★)。判定は domain (mockOk / mockUsable)
                 const mockTitle = r.mockOk
@@ -18245,7 +18258,7 @@
                     : r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
                     : r.finish === 'accepted' ? '<span class="dc-mb-c ok">締め凸 OK</span>'
                     : r.finish === 'declined' ? '<span class="dc-mb-c mute">締め凸 見送り</span>' : '';
-                const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${counts(r)}${atk}${fin}` : `${mock}${excl}${slv}${strip(r)}${counts(r)}${push}`;
+                const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${counts(r)}${atk}${fin}` : `${mock}${excl}${b5(r)}${slv}${strip(r)}${counts(r)}${push}`;
                 const why = r.reasons.length
                     ? r.reasons.map((w, i) => i === 0 ? `<b>${escapeHtml(w.label)}</b>` : escapeHtml(w.label)).join(' · ')
                     : '<span style="color:var(--t-muted);">完了</span>';
@@ -18658,6 +18671,7 @@
             const solve = (rows) => window.computeOptimalPlanCore({
                 season: snap.season, bosses: snap.bosses, players: _playersWithBlockCaps(snap.players, snap.season),
                 excludeTimeUnknown: true,   // 画面の算出と同じ (段階 2b)
+                secondB5Lv4Only: true,      // 画面の算出と同じ (段階 5)
                 currentSlot: _planNowSlot(snap.season), timeAware: true, onlyAvailableNow: false,
                 timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
                 reservations: rv.toSolverConstraints(rows),
@@ -21973,6 +21987,7 @@
             return window.computeOptimalPlanCore({
                 season, bosses, players: _playersWithBlockCaps(players, season),
                 excludeTimeUnknown: true,   // 🧱 段階 2b: 時間未登録の人は「いつでも」にしない (⏳隙間型の撤廃とそろえる)
+                secondB5Lv4Only: true,      // 🧱 段階 5: ボス 5 の弱点の 2 編成目は Lv4 (HP 無限) だけで使う (ベンチ tests/bench-blockflow/boss5-two-teams.mjs)
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)。
                 // 🧱 ブロックのときは **ブロックの始まりより前には置かない** (max(起点, ブロックの頭))。「次」のブロックを先に組むとき、

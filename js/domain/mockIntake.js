@@ -12,13 +12,32 @@
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
 
     /**
+     * 🧱 段階 5 (ユーザー決定 i 2026-10-22): 遅い時間 (18 時以降) に出られる人は、ボス 5 の弱点の模擬を 2 編成出す。
+     * 朝・昼だけの人は対象外 (Lv4 = ボス 5 だけ・HP 無限 が開くのは遅い時間なので、2 編成目が生きるのは遅い時間の人だけ)。
+     * @param {Object} p  盤面の人 (availableSlots / loadoutsByAttr)
+     * @param {string|null} b5Weakness  ボス 5 の弱点属性 (持っていく PT)。分からなければ null (= 判定しない)
+     * @returns {{ have: number, need: number, short: number }|null}  対象外 (朝・昼だけ・時間未登録・ボス 5 不明) は null
+     */
+    const LATE_HOURS = new Set([18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4]);
+    function b5SecondOf(p, b5Weakness) {
+        if (!p || !b5Weakness) return null;
+        const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
+        const late = slots.some(k => { const m = /^h(\d\d)$/.exec(String(k)); return !!m && LATE_HOURS.has(Number(m[1])); });
+        if (!late) return null;
+        const los = (p.loadoutsByAttr && Array.isArray(p.loadoutsByAttr[b5Weakness])) ? p.loadoutsByAttr[b5Weakness].filter(Boolean) : [];
+        const have = Math.min(2, los.length);
+        return { have, need: 2, short: 2 - have };
+    }
+
+    /**
      * 届いていない人: 模擬が 5 属性そろっていない人。書庫 (archived) と「今回は難しい」(unavailableThisSeason) は除く。
      * 期限 = その人が最初に出られるブロック (戦闘可能時間が 1 時間でも入る最初のブロック)。
      * ⏳隙間型・時間未登録は「いつでも」(期限なし・並びは最後)。
-     * @param {{ players?: Array<Object>, blocks?: Array<Object> }} a  players は opsStore の盤面の形 (damagesByAttr / availableSlots / flexTime)
-     * @returns {Array<{ id, name, missing: string[], missingJp: string[], submitted: number, deadline: { idx, name }|null, noSlots: boolean }>}
+     * 🧱 段階 5: b5Weakness を渡すと、遅い時間の人のボス 5 の 2 編成目の不足 (b5Short) も数える (5 属性そろっていても届いていない人に入る)
+     * @param {{ players?: Array<Object>, blocks?: Array<Object>, b5Weakness?: string|null }} a  players は opsStore の盤面の形 (damagesByAttr / availableSlots / flexTime / loadoutsByAttr)
+     * @returns {Array<{ id, name, missing: string[], missingJp: string[], submitted: number, deadline: { idx, name }|null, noSlots: boolean, b5Short: number }>}
      */
-    function missingRows({ players, blocks } = {}) {
+    function missingRows({ players, blocks, b5Weakness = null } = {}) {
         const rb = root.raidBlocksDomain;
         const list = Array.isArray(players) ? players : [];
         const bl = Array.isArray(blocks) ? blocks : [];
@@ -27,7 +46,9 @@
             if (!p || p.archived || p.unavailableThisSeason) continue;
             const dmg = p.damagesByAttr || {};
             const missing = ATTR_KEYS.filter(a => !((Number(dmg[a]) || 0) > 0));
-            if (missing.length === 0) continue;
+            const b5 = b5SecondOf(p, b5Weakness);
+            const b5Short = b5 ? b5.short : 0;
+            if (missing.length === 0 && b5Short === 0) continue;
             const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
             let deadline = null;
             if (rb && bl.length && slots.length && !p.flexTime) {
@@ -38,6 +59,7 @@
                 id: p.id, name: p.name, missing, missingJp: missing.map(a => ATTR_JP[a]),
                 submitted: ATTR_KEYS.length - missing.length, deadline,
                 noSlots: !p.flexTime && slots.length === 0,
+                b5Short,
             });
         }
         // 並び: 期限の早い順 (いつでも = 最後) → 足りない属性が多い順 → 名前
@@ -72,5 +94,5 @@
         });
     }
 
-    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows };
+    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf };
 })(typeof window !== 'undefined' ? window : globalThis);

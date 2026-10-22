@@ -176,6 +176,10 @@
             ? new Set(input.availableAtSlots.map(String)) : null;
         // 🧱 段階 2b (2026-10-22): 時間未登録の人を「いつでも出られる」にしない (渡さなければ従来どおり)
         const excludeTimeUnknown = !!input.excludeTimeUnknown;
+        // 🧱 段階 5 (2026-10-23): ボス 5 の弱点の 2 編成目は Lv4 (HP 無限) だけで使う (渡さなければ従来どおり = 指紋不変)。
+        //   遅い時間の人にボス 5 の模擬を 2 編成出してもらう方針 (ユーザー決定 i) の手当て。Lv1〜3 で 2 編成目までボス 5 に使うと、
+        //   ボス 5 だけ先に倒れて Lv4 が開かず、凸先の無い凸が残る (ベンチ tests/bench-blockflow/boss5-two-teams.mjs / boss5-why.mjs)
+        const b5WeakForSecond = input.secondB5Lv4Only ? ((bosses.find(b => Number(b.boss_number) === 5) || {}).weakness || null) : null;
         const inScope = (p) => {
             if (!onlyAvailableNow) return true;
             if (availableAtSlots) {
@@ -353,6 +357,8 @@
                 const loadouts = (p.loadoutsByAttr && Object.keys(p.loadoutsByAttr).length > 0) ? p.loadoutsByAttr : null;
                 if (loadouts) {
                     for (const [k, list] of Object.entries(loadouts)) {
+                        // 段階 5: ボス 5 の弱点に 2 編成あるとき、編成② (slot 2 以上) は Lv4 だけ (listCandidatesFor と前回どおりの置き直しで外す)
+                        const secondLv4Only = !!(b5WeakForSecond && k === b5WeakForSecond && (list || []).filter(Boolean).length >= 2);
                         let clean = (list || [])
                             // ord = 安定順序ID: undoPick で avail に戻すとき元の並びを再現するため
                             // (同ダメージの編成が入れ替わると pickFor の選択が変わってしまう)
@@ -384,6 +390,7 @@
                                     level,
                                     levels,
                                     ord: i,
+                                    ...(secondLv4Only && (Number(lo.slot) || 1) >= 2 ? { lv4Only: true } : {}),
                                 };
                             })
                             // ★ フィルタは正規化の後 — dmgB が古い 0 でも levels に有効な測定が
@@ -599,6 +606,7 @@
                         // 残HPが小さいボスには 2編成目 (低火力) の方がオーバーキルが小さい・
                         // 温存の機会費用が安いことがある (編成データが全く無い人は衝突チェック対象外)
                         for (const cand of list) {
+                            if (cand.lv4Only) continue;   // 段階 5: ボス 5 の 2 編成目は Lv4 だけ (有限のレベルの候補にしない)
                             const dmg = resolveDamage(cand);
                             if (dmg === null) continue;
                             if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
@@ -959,7 +967,7 @@
                         if (!list || list.length === 0) continue;
                         // 編成はスロットで特定する (同属性の別編成に化けさせない)
                         const cand = list.find(c => Number(c.slot) === Number(s.loadoutSlot));
-                        if (!cand) continue;
+                        if (!cand || cand.lv4Only) continue;   // 段階 5: ボス 5 の 2 編成目は前回どおりでも有限のレベルに置かない
                         const dmg = resolveDamage(cand);
                         if (dmg === null) continue;
                         // ⚠ キャラ被りの条件は listCandidatesFor と同じ式にすること

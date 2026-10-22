@@ -1,13 +1,14 @@
 // ふるりの方針 (2026-10-22): 遅い時間に凸できる人 (最初に出られるブロックが夕方以降) はボス5 の弱点の模擬を 2 編成出す。
 //   朝・昼の人は今のまま (できる範囲で出して Lv1〜3 の消化)。残る凸がどれだけ減るかを、本番のブロック制の流れで測る。
 //   2 編成目は「キャラが被らない別の編成」として足す (ダメージは 1 編成目の 0.85 倍。持っていない人は他の属性の中央値の 0.9 / 0.8 倍)
+// 段階 5 (2026-10-23): 3 つ目の列 = 2 編成 + ソルバーの手当て (secondB5Lv4Only: ボス 5 の 2 編成目は Lv4 だけで使う)
 // 実行: node tests/bench-blockflow/boss5-two-teams.mjs   (BENCH_N=40 / SCALE=1.3 で強さを変える)
 import * as m from './base.mjs';
 const B5W = m.BOSSES.find(b => b.boss_number === 5).weakness;
 const EVE = m.BLOCKS.findIndex(b => b.name === '夕方');
 const N = Number(process.env.BENCH_N || 40);
 const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 10; };
-function run(PAT, policy) {
+function run(PAT, policy, extra = {}) {
   const out = { left: 0, leftLate: 0, leftEarly: 0, cred: 0, late: 0 };
   for (let s = 1; s <= N; s++) {
     const rnd = m.rng(s * 7919);
@@ -30,7 +31,7 @@ function run(PAT, policy) {
       const inBlock = (p) => p.slots.some(h => m.blockOf(m.idxOf(h)) === k);
       const vis = (p) => firstBlock[w.players.indexOf(p)] <= k && inBlock(p);
       if (!w.players.some(vis)) return;
-      const plan = m.REAL.compute(m.input(w, bk.from, vis, {}));
+      const plan = m.REAL.compute(m.input(w, bk.from, vis, extra));
       m.execute(w, m.flatten(plan), bk.from, bk.to);
     });
     w.players.forEach((p, i) => { const l = 3 - p.attacks.length; out.left += l; if (isLate(i)) { out.leftLate += l; } else out.leftEarly += l; });
@@ -42,6 +43,7 @@ function run(PAT, policy) {
 }
 const f = (x) => x.toFixed(1).padStart(5);
 for (const [label, PAT] of [['集中 (夜に寄る)', m.CONC], ['散らばり', m.SPREAD]]) {
-  const a = run(PAT, false), b = run(PAT, true);
+  const a = run(PAT, false), b = run(PAT, true), c = run(PAT, true, { secondB5Lv4Only: true });
   console.log(`${label} ×${process.env.SCALE || 1} (夕方以降に出られる人 ${a.late.toFixed(1)} 人): 残った凸 ${f(a.left)} → ${f(b.left)}  [遅い人 ${f(a.leftLate)} → ${f(b.leftLate)} / 朝・昼だけの人 ${f(a.leftEarly)} → ${f(b.leftEarly)}]  与ダメ ${a.cred.toFixed(0)}B → ${b.cred.toFixed(0)}B`);
+  console.log(`   └ 手当てあり (2 編成目は Lv4 だけ): 残った凸 ${f(a.left)} → ${f(c.left)}  [遅い人 ${f(a.leftLate)} → ${f(c.leftLate)} / 朝・昼だけの人 ${f(a.leftEarly)} → ${f(c.leftEarly)}]  与ダメ ${a.cred.toFixed(0)}B → ${c.cred.toFixed(0)}B`);
 }
