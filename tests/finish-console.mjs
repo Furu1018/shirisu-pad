@@ -184,7 +184,7 @@ test('🏁 段階 2.5: プランのカードは本番では「📋 名前と文�
     assert.ok(/function _finishAskOn\(\) \{ return !!\(typeof window !== 'undefined' && window\.PAD_PRACTICE\); \}/.test(html), '同時打診を練習だけに絞っていない');
     // Codex指摘 (b34536c): 本番は依頼を読まない・候補の Push・HP 更新後の Push・同時打診の送信を止める
     assert.ok(/if \(!_finishAskOn\(\)\) \{ _finishReqCache = \[\]; _finishReqStaleSince = null; return; \}/.test(html), 'DB に残った依頼を本番で読んでいる');
-    for (const fn of ['async function handleOpsFinishPushSend() {', 'async function offerFinishPushAfterHpUpdate() {', 'async function handleOpsFinishOfferSend() {', 'async function handleOpsFinishPlanPush(kind) {']) {
+    for (const fn of [html.match(/async function handleMyFinishRequestRespond\([^)]*\) \{/)[0], 'async function handleOpsFinishPushSend() {', 'async function offerFinishPushAfterHpUpdate() {', 'async function handleOpsFinishOfferSend() {', 'async function handleOpsFinishPlanPush(kind) {']) {
         const i = html.indexOf(fn); assert.ok(i > 0, fn);
         assert.ok(/^\s*if \(!_finishAskOn\(\)\) return;/.test(html.slice(i + fn.length, i + fn.length + 120)), `${fn} を本番で止めていない`);
     }

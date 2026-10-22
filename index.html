@@ -10682,6 +10682,7 @@
         // rowId を渡すと**その行だけ**に答える。★ 同じ人が2案に居るとき、
         //   人+ボスで更新すると片方に答えただけで両案が動く (Codex指摘 2026-09-10)
         async function handleMyFinishRequestRespond(bossNumber, status, rowId = null) {
+            if (!_finishAskOn()) return;   // 🏁 本番は了承させない (締め凸は探すだけ・Codex指摘 5f81a46)
             const id = getCurrentIdentity();
             if (!id?.id) return;
             try {

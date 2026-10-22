@@ -54,6 +54,7 @@ const build = (opts = {}) => {
     };
     const fn = new Function('api', 'console', `
         const { getCurrentIdentity, ensureActiveSeasonLoaded, _myBestLoadoutFor, renderMyReservations, _refreshFinishRequests, _notifyOps, renderMyFinishRequestBanner, showNotification, window } = api;
+        const _finishAskOn = () => true;   // 🏁 段階 2.5: 本番は了承させない (練習だけ)。ここは了承の中身を見るので練習と同じ
         ${SRC}
         return handleMyFinishRequestRespond;`)(api, { warn() {}, log() {} });
     return { fn, calls };
