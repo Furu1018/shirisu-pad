@@ -338,6 +338,10 @@ SELECT * FROM (
         (SELECT COUNT(*) = 2 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name IN ('confirmed_at', 'confirmed_by')),
         '✅ 凸報告の確認 (運営の ✓・attacks.confirmed_at / confirmed_by)。未適用でも一覧と印は出る・✓ だけ止まる'
 
+    UNION ALL SELECT '53_block_counts',
+        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'availability_confirmations' AND column_name = 'block_counts'),
+        '🧱 時間アンケートのブロックごとの凸数 (未適用だと凸数は保存されず、運営は希望を見られない・時間帯の確認は従来どおり)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

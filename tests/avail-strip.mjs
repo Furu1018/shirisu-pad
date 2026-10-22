@@ -7,6 +7,7 @@
 // テンプレートリテラルの未定義参照は実行しないと出ない (2026-09-07 の本番障害と同じ型)。
 // ============================================================================
 import fs from 'node:fs';
+import '../js/domain/raidBlocks.js';   // globalThis.raidBlocksDomain (🧱 凸数のラベル)
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
@@ -38,10 +39,10 @@ function cut(marker) {
 const SRC = cut('        async function renderMyAvailStrip(identity)');
 
 const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
-function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, nowSlot = 'h13', fail = false, badgeText = '今期 確認済み' } = {}) {
+function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, nowSlot = 'h13', fail = false, badgeText = '今期 確認済み', confirm = null, withBlocks = false } = {}) {
     const els = {
         myAvailStripCard: { style: { display: 'none' } },
-        myAvailStripBody: { innerHTML: '' },
+        myAvailStripBody: { innerHTML: '', querySelectorAll() { return []; }, insertAdjacentHTML(_, h) { this.innerHTML += h; } },
         myAvailStripBadge: { style: {}, textContent: '' },
         myAvailConfirmBadge: { style: { display: 'inline-block', color: '#0E9455', background: 'x' }, textContent: badgeText },
     };
@@ -51,6 +52,7 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
         document: { getElementById: (id) => els[id] || null },
         window: {
             availabilityDomain: dom,
+            ...(withBlocks ? { raidBlocksDomain: globalThis.raidBlocksDomain } : {}),
             supabaseLoadAvailability: async () => { if (fail) throw new Error('boom'); return slots; },
             supabaseLoadAvailabilityPrefs: async () => prefs,
         },
@@ -59,6 +61,8 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
         _hourKey: (h) => `h${String(h).padStart(2, '0')}`,
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
         _loadMyAvailConfirm: async () => { },
+        _myAvailConfirm: confirm,
+        seasonStore: { get: () => null },
         _availStripSeq: 0,
         console,
     };
@@ -95,8 +99,18 @@ await test('時間外 / 未登録 / 隙間型 の説明が出る', async () => {
     const b = run({ slots: [], nowSlot: 'h13' }); await b.render({ id: 1 });
     assert.ok(b.els.myAvailStripBody.innerHTML.includes('未登録'));
     assert.ok(b.els.myAvailStripBody.innerHTML.includes('時間帯が未登録です'));
+    // ⏳ 隙間時間型は撤廃 (2026-10-22): 設定が残っていても出さない
     const c = run({ slots: [], prefs: { flexTime: true }, nowSlot: 'h13' }); await c.render({ id: 1 });
-    assert.ok(c.els.myAvailStripBody.innerHTML.includes('隙間時間型'));
+    assert.ok(!c.els.myAvailStripBody.innerHTML.includes('隙間時間型'), '撤廃した隙間時間型を出している');
+});
+
+await test('★ 🧱 凸数 (段階 2): 確認の行に凸数があれば帯の下に「凸数: 朝 1 · 夕方 2」/ 難しい・未入力なら出さない', async () => {
+    const a = run({ slots: H(5, 6, 18, 19), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: { '18-20': 2, '5-8': 1 } } }); await a.render({ id: 1 });
+    assert.ok(a.els.myAvailStripBody.innerHTML.includes('凸数: 朝 1 · 夕方 2'), `凸数が出ていない: ${a.els.myAvailStripBody.innerHTML.slice(-200)}`);
+    const b = run({ slots: H(5, 6), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: true, block_counts: { '5-8': 1 } } }); await b.render({ id: 1 });
+    assert.ok(!b.els.myAvailStripBody.innerHTML.includes('凸数:'), '難しいと伝えた人に凸数を出している');
+    const c = run({ slots: H(5, 6), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: null } }); await c.render({ id: 1 });
+    assert.ok(!c.els.myAvailStripBody.innerHTML.includes('凸数:'));
 });
 
 await test('プレイヤー未選択 / 取得失敗 は帯を隠す', async () => {

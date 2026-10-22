@@ -59,7 +59,7 @@ export const SCHEMA = {
     plan_acks: { pk: ['season_id', 'player_id'], required: ['season_id', 'player_id', 'plan_id'], defaults: { acked_at: NOW } },
     raid_event_notices: { pk: ['season_id', 'kind', 'ref'], required: ['season_id', 'kind', 'ref'], defaults: { claimed_at: NOW, sent: false, notified_by: null } },
     availability_confirmations: { pk: ['season_id', 'player_id'], required: ['season_id', 'player_id'],
-        defaults: { confirmed_at: NOW, unavailable: false, slot_count: null, slots_snapshot: null } },
+        defaults: { confirmed_at: NOW, unavailable: false, slot_count: null, slots_snapshot: null, block_counts: null } },   // block_counts = 53
     plan_reservations: { pk: ['id'], required: ['season_id', 'player_id', 'boss_number', 'loadout_slot'], serial: 'id',
         uniques: [
             { cols: ['season_id', 'player_id', 'boss_number', 'loadout_slot'], where: (r) => ACTIVE.includes(r.status) },   // 42 uq_plan_reservations_active_card

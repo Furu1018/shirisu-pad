@@ -270,10 +270,77 @@
     /** そのブロックに入る凸の数 */
     const attackCountIn = (plan, scope) => (scopePlan(plan, scope)?.levels || []).reduce((t, lv) => t + lv.bosses.reduce((u, b) => u + b.attacks.length, 0), 0);
 
+    // ===== 🧱 ブロックごとの凸数 (段階 2・2026-10-22 ユーザー決定「朝 1・夕方 2 のような希望を予約なしで通す」) =====
+    //   鍵はブロックの `from-to` (時)。区切りが変わっても読める (合わない鍵は捨てる)。値は 1〜3 で合計 3 まで。
+    //   入れていないブロックは「運営におまかせ」(そのブロックの上限なし)
+    const MAX_ATTACKS = 3;
+    const countKey = (b) => (b && Number.isInteger(b.from) && Number.isInteger(b.to)) ? `${b.from}-${b.to}` : '';
+    const countsTotal = (counts) => Object.values(counts && typeof counts === 'object' ? counts : {}).reduce((t, n) => t + (Number(n) || 0), 0);
+    /** ON (1 時間でも出られる) のブロックの鍵だけ残し、1〜3 の整数にして、合計を 3 までに (ブロックの順で詰める)。空なら null */
+    function normalizeCounts(counts, blocks, slots) {
+        if (!counts || typeof counts !== 'object' || Array.isArray(counts)) return null;
+        const list = Array.isArray(blocks) ? blocks : [];
+        const on = new Set(blockStates(list, slots).filter(s => s.state !== 'off').map(s => s.idx));
+        const out = {};
+        let total = 0;
+        list.forEach((b, i) => {
+            const k = countKey(b);
+            const n = Number(counts[k]);
+            if (!on.has(i) || !k || !Number.isInteger(n) || n < 1) return;
+            const take = Math.min(n, MAX_ATTACKS - total);
+            if (take > 0) { out[k] = take; total += take; }
+        });
+        return total > 0 ? out : null;
+    }
+    /** 1 つのブロックの凸数を ±1。0 になったら鍵を消す (おまかせ)。合計 3 を超える + と、OFF のブロックは何もしない */
+    function stepCount(counts, blocks, slots, idx, delta) {
+        const list = Array.isArray(blocks) ? blocks : [];
+        const base = normalizeCounts(counts, list, slots) || {};
+        const keep = () => (Object.keys(base).length ? base : null);
+        const b = list[Number(idx)];
+        const st = b ? blockStates(list, slots)[Number(idx)] : null;
+        if (!b || !st || st.state === 'off') return keep();
+        const k = countKey(b);
+        const cur = Number(base[k]) || 0;
+        if (delta > 0 && (countsTotal(base) >= MAX_ATTACKS || cur >= MAX_ATTACKS)) return keep();
+        const out = { ...base };
+        const next = cur + (delta > 0 ? 1 : -1);
+        if (next <= 0) delete out[k]; else out[k] = next;
+        return Object.keys(out).length ? out : null;
+    }
+    /** 「朝 1 · 夕方 2」(ブロックの順)。無ければ '' */
+    function countsLabel(counts, blocks) {
+        if (!counts || typeof counts !== 'object') return '';
+        return (Array.isArray(blocks) ? blocks : []).map(b => {
+            const n = Number(counts[countKey(b)]);
+            return Number.isInteger(n) && n > 0 ? `${b.name} ${n}` : '';
+        }).filter(Boolean).join(' · ');
+    }
+    /**
+     * ソルバーに渡す上限 (段階 2b)。[{ fromIdx, toIdx, max }] — max は「そのブロックでまだ置ける数」= 凸数 − そのブロックで済んだ凸。
+     * @param {Object|null} counts  保存した凸数 ({ "5-8": 1 })
+     * @param {Object[]} blocks     シーズンのブロック
+     * @param {number[]} doneHours  済んだ凸の時 (0〜23)。どのブロックで済んだかを数える
+     */
+    function capsOf(counts, blocks, doneHours) {
+        if (!counts || typeof counts !== 'object' || Array.isArray(counts)) return [];
+        const list = Array.isArray(blocks) ? blocks : [];
+        const done = new Map();
+        (Array.isArray(doneHours) ? doneHours : []).forEach(h => { const i = blockIndexOfHour(list, h); if (i >= 0) done.set(i, (done.get(i) || 0) + 1); });
+        const out = [];
+        list.forEach((b, i) => {
+            const n = Number(counts[countKey(b)]);
+            if (!Number.isInteger(n) || n < 1) return;
+            out.push({ fromIdx: b.fromIdx, toIdx: b.toIdx, max: Math.max(0, Math.min(n, MAX_ATTACKS) - (done.get(i) || 0)) });
+        });
+        return out;
+    }
+
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
         scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel, todayRows,
+        countKey, countsTotal, normalizeCounts, stepCount, countsLabel, capsOf,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

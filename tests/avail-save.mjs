@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import '../js/domain/raidBlocks.js';   // globalThis.raidBlocksDomain (🧱 凸数の詰め直し)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -73,11 +74,12 @@ let saveGate = null;          // 保存を止めておくためのフック
 // innerHTML を代入するとボタン要素が作り直される箱 (実物と同じ挙動)。
 // querySelectorAll('button') は「その瞬間の」ボタンを返す
 function makeBox() {
-    let buttons = [];
+    let buttons = [], html = '';
     return {
-        style: {}, _buttons: () => buttons,
+        style: {}, _buttons: () => buttons, _html: () => html,
         set innerHTML(v) {
-            buttons = [...String(v).matchAll(/<button\b/g)].map(() => ({ disabled: false, style: {} }));
+            html = String(v);
+            buttons = [...html.matchAll(/<button\b/g)].map(() => ({ disabled: false, style: {} }));
         },
         get innerHTML() { return ''; },
         querySelectorAll: () => buttons,
@@ -89,7 +91,7 @@ function makeEnv() {
     const box = makeBox();
     const env = {
         HOUR_ORDER, _hourKey,
-        _availUI: { slots: new Array(24).fill(false), saveTimer: null },
+        _availUI: { slots: new Array(24).fill(false), saveTimer: null, counts: null },
         clearTimeout: () => { },
         getCurrentIdentity: () => ({ id: 7 }),
         ensureActiveSeasonLoaded: async () => ({ season: { id: 44 } }),
@@ -105,8 +107,11 @@ function makeEnv() {
             supabaseConfirmAvailability: async (seasonId, playerId, opt) => {
                 confirmRows.push({ seasonId, playerId, ...opt });
                 log.push(`confirm(${opt.unavailable ? 'NG' : opt.slots.join('|')})`);
+                return env._confirmResult;   // 53 未適用なら { blockCountsDropped: true }
             },
+            raidBlocksDomain: globalThis.raidBlocksDomain,
         },
+        _confirmResult: undefined,
         _myAvailConfirm: null,
         // 保存の実体スタブ。実装と同じく **走り出した時点の** slots を読み、
         // 通信 (gate) を挟んでから着地し、**実際に載せた slots を返す**。
@@ -272,6 +277,45 @@ await test('「今回は難しい」は枠を送らない (slots/slotCount と�
     assert.equal(confirmRows[0].unavailable, true);
     assert.equal(confirmRows[0].slots, null);
     assert.equal(confirmRows[0].slotCount, null);
+});
+
+// ---- 🧱 段階 2: 凸数 (SQL 53) --------------------------------------------------
+// 既定のブロック: 朝 5〜8 / 午前 9〜11 / 昼 12〜14 / 午後 15〜17 / 夕方 18〜20 / 夜 21〜23 / 深夜 0〜4
+const ASA = [5, 6, 7, 8], YUU = [18, 19, 20];
+
+await test('★ 凸数は実際に保存した時間帯で詰め直して送る (OFF のブロックの凸数は送らない)', async () => {
+    const env = makeEnv();
+    setSlots(env, ASA);                          // 朝だけ ON
+    env._availUI.counts = { '5-8': 1, '18-20': 2 };   // 夕方は OFF なのに凸数が残っている
+    await env.handleConfirmAvailability(false);
+    assert.deepEqual(confirmRows[0].blockCounts, { '5-8': 1 }, `送った凸数: ${JSON.stringify(confirmRows[0].blockCounts)}`);
+    assert.deepEqual(env._myAvailConfirmRef().block_counts, { '5-8': 1 });
+});
+
+await test('★ 確認したあとに凸数を変えたら「確認しなおして」と出す / 元に戻したら消える', async () => {
+    const env = makeEnv();
+    setSlots(env, [...ASA, ...YUU]);
+    env._availUI.counts = { '5-8': 1, '18-20': 2 };
+    await env.handleConfirmAvailability(false);
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), '確認した直後なのに済んだ表示でない');
+    env._availUI.counts = { '5-8': 2, '18-20': 1 };   // 時間はそのまま・凸数だけ変えた
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._html().includes('確認したあとに凸数を変えました'), '凸数を変えたのに知らせていない');
+    env._availUI.counts = { '18-20': 2, '5-8': 1 };   // 鍵の順だけ違う = 同じ中身
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), '同じ凸数に戻したのに「変えました」のまま');
+});
+
+await test('★ 53 未適用で凸数が落ちたら、確認の記録に凸数を持たない (「凸数を変えました」を出し続けない)', async () => {
+    const env = makeEnv();
+    setSlots(env, ASA);
+    env._availUI.counts = { '5-8': 1 };
+    env._confirmResult = { blockCountsDropped: true };
+    await env.handleConfirmAvailability(false);
+    assert.ok(!('block_counts' in env._myAvailConfirmRef()), '保存できなかった凸数を記録に持っている');
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), `確認できたのに「変えました」が出る`);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

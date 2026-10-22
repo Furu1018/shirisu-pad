@@ -4459,7 +4459,8 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(/supabase\/37 が未適用のため/.test(client), '未適用時の警告が無い');
         // 時間帯を空にするだけでは「いつでも可」に化けるので、flexTime も落とし印も立てる
         assert.ok(/unavailableThisSeason: unavailableIds\.has\(Number\(p\.id\)\)/.test(client));
-        assert.ok(/flexTime: unavailableIds\.has\(Number\(p\.id\)\) \? false :/.test(client));
+        assert.ok(/flexTime: false,   \/\/ ⏳ 隙間時間型は撤廃/.test(client), '⏳隙間時間型を読んでいる (2026-10-22 に撤廃)');
+        assert.ok(/blockCounts: blockCountsById\.get\(Number\(p\.id\)\) \|\| null,/.test(client), '盤面に凸数 (53) を載せていない');
         for (const f of ['js/optimal-plan.js', 'index.html']) {
             const src = read(...f.split('/'));
             assert.ok(src.includes('!p.unavailableThisSeason'), `${f} で除外していない`);
@@ -6756,7 +6757,8 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(html.includes('id="myAvailStripCard"') && html.includes('id="myAvailStripBody"'));
         assert.ok(html.includes('<script defer src="./js/domain/availability.js"></script>'));
         const fn = html.match(/async function renderMyAvailStrip\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/dom\.labelOf\(slots, \{ flexTime: !!prefs\.flexTime \}\)/.test(fn), '要約をドメインで作っていない');
+        assert.ok(/dom\.labelOf\(slots, \{\}\)/.test(fn), '要約をドメインで作っていない');
+        assert.ok(!/prefs\.flexTime|supabaseLoadAvailabilityPrefs/.test(fn), 'ホームの帯が ⏳隙間時間型の設定を読んでいる (撤廃)');
         assert.ok(/HOUR_ORDER\.map\(h => \{/.test(fn) && /outline:2px solid var\(--attr-fire-solid\)/.test(fn), '24コマと今の時刻の印が無い');
         assert.ok(/const seq = \+\+_availStripSeq;/.test(fn) && (fn.match(/if \(seq !== _availStripSeq\) return;/g) || []).length >= 2, '世代ガードが無い');
         assert.ok(/renderMyAvailStrip\(id\);\s*\/\/ ⏰/.test(html), 'ホームの描画から呼んでいない');
@@ -9376,6 +9378,60 @@ console.log('\ngrowthDomain:');
         assert.ok(!/#[0-9A-Fa-f]{6}/.test(fn.replace(/'#7A7C81'/g, '')), '色の直値 (灰色の既定以外) がある');
     });
 
+    test('★ 🧱 段階 2 凸数のドメイン: normalizeCounts (ON のブロックだけ・1〜3・合計 3 まで) / stepCount / countsLabel / capsOf (済んだ凸を引く)', () => {
+        const d = globalThis.raidBlocksDomain;
+        const blocks = d.blocksOfSeason(null);   // 既定 7 つ (朝 5-8 / … / 夕方 18-20 / 夜 21-23 / 深夜 0-4)
+        const on = (...ks) => ks.flatMap(k => blocks.find(b => b.name === k).slots);
+        const slots = on('朝', '夕方');
+        assert.equal(d.countKey(blocks[0]), '5-8'); assert.equal(d.countKey(null), '');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '18-20': 2 }, blocks, slots), { '5-8': 1, '18-20': 2 });
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '21-23': 2 }, blocks, slots), { '5-8': 1 }, 'OFF のブロックの凸数を残している');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 3, '18-20': 2 }, blocks, slots), { '5-8': 3 }, '合計 3 を超えている (ブロックの順で詰める)');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 2, '18-20': 2 }, blocks, slots), { '5-8': 2, '18-20': 1 });
+        assert.equal(d.normalizeCounts({ '5-8': 0, '18-20': 'x' }, blocks, slots), null);
+        assert.equal(d.normalizeCounts([1, 2], blocks, slots), null); assert.equal(d.normalizeCounts(null, blocks, slots), null);
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '9-11': 1 }, blocks, ['h08']), { '5-8': 1 }, '一部だけ ON (1 時間) のブロックも ON として数える');
+        // stepCount: + / − / 0 で消える (おまかせ) / 合計 3 で + しない / OFF のブロックは何もしない
+        let c = d.stepCount(null, blocks, slots, 0, 1); assert.deepEqual(c, { '5-8': 1 });
+        c = d.stepCount(c, blocks, slots, 4, 1); c = d.stepCount(c, blocks, slots, 4, 1); assert.deepEqual(c, { '5-8': 1, '18-20': 2 });
+        assert.deepEqual(d.stepCount(c, blocks, slots, 4, 1), { '5-8': 1, '18-20': 2 }, '合計 3 なのに増やしている');
+        assert.deepEqual(d.stepCount(c, blocks, slots, 0, -1), { '18-20': 2 }, '0 にしたのに鍵が残る');
+        assert.deepEqual(d.stepCount(c, blocks, slots, 5, 1), { '5-8': 1, '18-20': 2 }, 'OFF のブロックに凸数を入れている');
+        assert.equal(d.stepCount({ '5-8': 1 }, blocks, slots, 0, -1), null);
+        assert.equal(d.countsLabel({ '18-20': 2, '5-8': 1 }, blocks), '朝 1 · 夕方 2', 'ブロックの順に並べていない');
+        assert.equal(d.countsLabel(null, blocks), ''); assert.equal(d.countsTotal({ a: 1, b: 2 }), 3);
+        // capsOf: max = 凸数 − そのブロックで済んだ凸 (朝に 1 凸済み → 朝の残り 0 / 夕方は 2)
+        assert.deepEqual(d.capsOf({ '5-8': 1, '18-20': 2 }, blocks, [7, 13]), [{ fromIdx: 0, toIdx: 3, max: 0 }, { fromIdx: 13, toIdx: 15, max: 2 }]);
+        assert.deepEqual(d.capsOf(null, blocks, []), []); assert.deepEqual(d.capsOf({ '1-2': 1 }, blocks, []), [], '合わない鍵 (区切りが変わった) を上限にしている');
+    });
+    test('★ 配線: 🧱 段階 2 凸数の保存と読み込み (SQL 53) / ⏳隙間時間型の撤廃', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
+        const sql = _grRd('supabase', '53_block_counts.sql').split(String.fromCharCode(13)).join('');
+        assert.ok(/ALTER TABLE availability_confirmations ADD COLUMN IF NOT EXISTS block_counts JSONB;/.test(sql), 'SQL 53 が無い');
+        assert.ok(/'53_block_counts',\s*\n\s*EXISTS \(SELECT 1 FROM information_schema\.columns WHERE table_schema = 'public' AND table_name = 'availability_confirmations' AND column_name = 'block_counts'\)/.test(_grRd('supabase', '99_check_applied.sql').split(String.fromCharCode(13)).join('')), '99 に 53 の判定が無い');
+        // 保存: 難しい / 空 は NULL・53 未適用は列を外して保存し、落としたことを返す
+        const cf = client.match(/window\.supabaseConfirmAvailability = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/row\.block_counts = \(!unavailable && blockCounts && typeof blockCounts === 'object' && !Array\.isArray\(blockCounts\) && Object\.keys\(blockCounts\)\.length\) \? blockCounts : null;/.test(cf));
+        assert.ok(/if \(error && _isMissingColumnErr\(error, 'block_counts'\)\) \{\s*\n\s*blockCountsDropped = row\.block_counts != null;\s*\n\s*delete row\.block_counts;/.test(cf) && /return \{ blockCountsDropped \};/.test(cf), '53 未適用で落とす / 落としたことを返す、ができていない');
+        assert.ok(cf.indexOf("_isMissingColumnErr(error, 'block_counts')") < cf.indexOf("_isMissingColumnErr(error, 'slots_snapshot')"), '外す順が違う (53 → 37 追補)');
+        assert.ok(/_one\('confirmed_at, unavailable, slot_count, slots_snapshot, block_counts'\)/.test(client) && /_all\('player_id, confirmed_at, unavailable, slot_count, slots_snapshot, block_counts'\)/.test(client), '確認の行から凸数を読んでいない');
+        assert.ok(/if \(uErr && _isMissingColumnErr\(uErr, 'block_counts'\)\) \{ withCounts = false;/.test(client), '盤面ローダが 53 未適用で落ちる');
+        assert.ok(/if \(c\.unavailable\) \{ unavailableIds\.add\(Number\(c\.player_id\)\); return; \}/.test(client), '「今回は難しい」の除外が壊れた (全部の行を読むようにしたので unavailable を見る)');
+        assert.ok(!/window\.supabaseUpdateAvailabilityPrefs/.test(client) && /return \{ flexTime: false, notifyAllHours/.test(client), '⏳隙間時間型を読む・書く経路が残っている');
+        // シート: 凸数の欄・±・開いたときだけ確認の行から取り込む・確認で渡す・確認したあとに変えたら知らせる
+        const ui = html.match(/\n        function _renderAvailUI\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_availUI\.counts = rbd \? rbd\.normalizeCounts\(_availUI\.counts, blocks, slotKeys\) : null;/.test(ui) && /\$\{countsHtml\}/.test(ui), 'シートに凸数の欄が無い');
+        assert.ok(/onclick="_availStepCount\(\$\{st\.idx\}, -1\)"/.test(ui) && /onclick="_availStepCount\(\$\{st\.idx\}, 1\)"/.test(ui) && /\$\{cTotal >= 3 \? 'disabled' : ''\}/.test(ui), '± / 合計 3 の上限が無い');
+        assert.ok(/_availUI\.counts = rbd\.stepCount\(_availUI\.counts, blocks, keys, Number\(i\), Number\(delta\)\);/.test(html));
+        assert.ok(/_availUI\.counts = null;\s*\n\s*_availUI\.countsPending = true;/.test(html) && /if \(_availUI\.countsPending\) \{/.test(html), '開いたときだけ確認の行から凸数を取り込む、ができていない');
+        const cfm = html.match(/\n        async function handleConfirmAvailability\(unavailable\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/counts = \(!unavailable && rbd\) \? rbd\.normalizeCounts\(_availUI\.counts, rbd\.blocksOfSeason\(_availUI\.season \|\| ctx\.season\), slots\) : null;/.test(cfm), '凸数を保存した時間帯で詰め直していない');
+        assert.ok(/slots: unavailable \? null : slots, blockCounts: counts \}\);/.test(cfm) && /countsDropped = !!\(res && res\.blockCountsDropped\);/.test(cfm), '確認で凸数を渡していない / 落ちたことを見ていない');
+        assert.ok(/\.\.\.\(countsDropped \? \{\} : \{ block_counts: counts \}\)/.test(cfm), '落ちたときに凸数を持つ (「凸数を変えました」が出続ける)');
+        assert.ok(/const changedCounts = !!\(c && !c\.unavailable && 'block_counts' in c && _cKey\(c\.block_counts\) !== _cKey\(_availUI\.counts\)\);/.test(html), '確認したあとに凸数を変えたことを知らせていない');
+        assert.ok(!/myAvailFlexTime|⏳ 隙間時間型 \(時間の約束はできないが3凸はする\)/.test(html), '⏳隙間時間型のスイッチが残っている');
+    });
     test('📘 readonlyRows (🧱 段階 1・2026-10-22): 属性ごとに 編成① / ② を並べ、無い属性は missing / 大文字の属性も読む / 空の行は無視 / damageOf で代表値', () => {
         const d = globalThis.mockIntakeDomain;
         const rows = [
@@ -12723,7 +12779,7 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         const tg = html.match(/async function handleMyNotifyTestToggle\(box\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/await window\.supabaseSetNotifyTest\(id\.id, want\);/.test(tg) && /catch \(e\) \{\s*if \(box\) box\.checked = !want;/.test(tg), '保存に失敗しても ON のままに見える');
         assert.ok(!/myAvailNotifyAll|いつでも受け取る|通知の受信時間/.test(html), '「いつでも通知」・「通知の受信時間」の名残がある (通知は時間帯で絞らない)');
-        assert.ok(/await window\.supabaseUpdateAvailabilityPrefs\(id\.id, \{ flexTime \}\);/.test(html), '外した「いつでも通知」を保存し続けている');
+        assert.ok(!/supabaseUpdateAvailabilityPrefs|handleAvailPrefChange|myAvailFlexTime/.test(html), '⏳隙間時間型のスイッチ・保存が残っている (2026-10-22 に撤廃)');
         // 一斉送信: 既定は本番 (チームの状況)、「テストとして送る」は開くたびに外す
         const send = html.match(/async function handleOpsPushSend\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/kind: asTest \? 'test' : 'team',/.test(send));

@@ -1153,7 +1153,7 @@ window.supabaseLoadAvailability = async function (playerId) {
 //   ここが持つのは「いつ確認したか」と「今回は難しいか」だけ — 時間帯はコピーしない
 //   (二重に持つと、片方だけ直したときにどちらが正かで揉める)。
 //   未確認は空欄と同じ **未確定** として扱う (勝手に「前回のまま有効」とみなさない)
-window.supabaseConfirmAvailability = async function (seasonId, playerId, { unavailable = false, slotCount = null, slots = null } = {}) {
+window.supabaseConfirmAvailability = async function (seasonId, playerId, { unavailable = false, slotCount = null, slots = null, blockCounts = null } = {}) {
     if (!seasonId || !playerId) throw new Error('シーズン/プレイヤーが特定できません');
     const row = {
         season_id: seasonId, player_id: playerId,
@@ -1163,8 +1163,16 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
     };
     // ★ 確認時の枠そのもの。枠数だけだと h21→h22 の付け替えを見逃す
     if (Array.isArray(slots)) row.slots_snapshot = slots.filter(_isValidHourSlot);
+    // 🧱 ブロックごとの凸数 (53)。難しい (unavailable) ときと空のときは NULL (= 凸数を入れていない)
+    row.block_counts = (!unavailable && blockCounts && typeof blockCounts === 'object' && !Array.isArray(blockCounts) && Object.keys(blockCounts).length) ? blockCounts : null;
+    let blockCountsDropped = false;
     let { error } = await supabase.from('availability_confirmations').upsert(row, { onConflict: 'season_id,player_id' });
-    // 追補列が無い環境では列抜きで再試行 (枠数だけの判定に静かに劣化)
+    // 追補列が無い環境では列抜きで再試行 (53 未適用 = 凸数だけ落とす / 37 追補未適用 = 枠数だけの判定に静かに劣化)
+    if (error && _isMissingColumnErr(error, 'block_counts')) {
+        blockCountsDropped = row.block_counts != null;
+        delete row.block_counts;
+        ({ error } = await supabase.from('availability_confirmations').upsert(row, { onConflict: 'season_id,player_id' }));
+    }
     if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
         delete row.slots_snapshot;
         ({ error } = await supabase.from('availability_confirmations').upsert(row, { onConflict: 'season_id,player_id' }));
@@ -1176,21 +1184,20 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
         throw error;
     }
     window.supabaseLogActivity?.('avail_confirm',
-        unavailable ? '今期は参加が難しいと申告' : `今期の戦闘可能時間を確認 (${slotCount ?? '?'}枠)`, { playerId });
+        unavailable ? '今期は参加が難しいと申告' : `今期の戦闘可能時間を確認 (${slotCount ?? '?'}枠${row.block_counts ? ` · 凸数 ${JSON.stringify(row.block_counts)}` : ''})`, { playerId });
+    return { blockCountsDropped };   // 53 未適用で凸数を保存できなかった (本人に知らせる)
 };
 // 自分の確認状態。未確認なら null。
 // ★ 37未適用は `{ unsupported: true }` を返して「未確認」と区別する (Codex指摘 2026-09-07) —
 //   同じ null にすると、確認ボタンが出せない環境で「今期 未確認」と表示し、押すと SQL 適用エラーになる
 window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, playerId) {
     if (!seasonId || !playerId) return null;
-    let { data, error } = await supabase.from('availability_confirmations')
-        .select('confirmed_at, unavailable, slot_count, slots_snapshot')
+    // 🧱 block_counts (53) → slots_snapshot (37 追補) の順に、無い列を外して読み直す
+    const _one = (cols) => supabase.from('availability_confirmations').select(cols)
         .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle();
-    if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
-        ({ data, error } = await supabase.from('availability_confirmations')
-            .select('confirmed_at, unavailable, slot_count')
-            .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle());
-    }
+    let { data, error } = await _one('confirmed_at, unavailable, slot_count, slots_snapshot, block_counts');
+    if (error && _isMissingColumnErr(error, 'block_counts')) ({ data, error } = await _one('confirmed_at, unavailable, slot_count, slots_snapshot'));
+    if (error && _isMissingColumnErr(error, 'slots_snapshot')) ({ data, error } = await _one('confirmed_at, unavailable, slot_count'));
     if (error) {
         if (_isMissingTableErr(error, 'availability_confirmations')) return { unsupported: true };
         throw error;   // 通信断などは呼び出し側の catch で「未確認」に倒れる (従来どおり)
@@ -1204,13 +1211,10 @@ window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, player
 window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
     if (!seasonId) return [];
     try {
-        let { data, error } = await supabase.from('availability_confirmations')
-            .select('player_id, confirmed_at, unavailable, slot_count, slots_snapshot')
-            .eq('season_id', seasonId);
-        if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
-            ({ data, error } = await supabase.from('availability_confirmations')
-                .select('player_id, confirmed_at, unavailable, slot_count').eq('season_id', seasonId));
-        }
+        const _all = (cols) => supabase.from('availability_confirmations').select(cols).eq('season_id', seasonId);
+        let { data, error } = await _all('player_id, confirmed_at, unavailable, slot_count, slots_snapshot, block_counts');
+        if (error && _isMissingColumnErr(error, 'block_counts')) ({ data, error } = await _all('player_id, confirmed_at, unavailable, slot_count, slots_snapshot'));
+        if (error && _isMissingColumnErr(error, 'slots_snapshot')) ({ data, error } = await _all('player_id, confirmed_at, unavailable, slot_count'));
         if (error) throw error;
         return data || [];
     } catch { return null; }   // テーブルごと無い/取得失敗 = 「全員未確認」と断定できない
@@ -5135,10 +5139,14 @@ window.supabaseLoadOpsDashboardData = async function () {
     //   静かに劣化してよいのは 37未適用 (テーブルごと無い) のときだけ —
     //   そのときは申告自体が存在し得ないので、誰も除外しないのが正しい
     const unavailableIds = new Set();
+    const blockCountsById = new Map();   // 🧱 ブロックごとの凸数 (53・段階 2)。ソルバーへの上限は画面が区切りと済んだ凸から作る
     if (season?.id) {
+        // 🧱 凸数 (53) も同じ行から読む。53 未適用は列を外して読み直す (凸数なし = 従来どおり)
+        let withCounts = true;
         const _loadUnavail = () => supabase.from('availability_confirmations')
-            .select('player_id, unavailable').eq('season_id', season.id).eq('unavailable', true);
+            .select(withCounts ? 'player_id, unavailable, block_counts' : 'player_id, unavailable').eq('season_id', season.id);
         let { data: confs, error: uErr } = await _loadUnavail();
+        if (uErr && _isMissingColumnErr(uErr, 'block_counts')) { withCounts = false; ({ data: confs, error: uErr } = await _loadUnavail()); }
         // 一時的な通信断で運営盤面が丸ごと開けなくなるのは当日致命的なので、1回だけ取り直す。
         // それでも駄目なら throw (誰も除外しないまま進むと、申告した人が候補に戻る)
         if (uErr && !_isMissingTableErr(uErr, 'availability_confirmations')) {
@@ -5147,7 +5155,10 @@ window.supabaseLoadOpsDashboardData = async function () {
         }
         if (uErr && !_isMissingTableErr(uErr, 'availability_confirmations')) throw uErr;
         if (uErr) console.warn('[ops] supabase/37 が未適用のため「今回は難しい」を反映できません:', uErr.message);
-        (confs || []).forEach(c => unavailableIds.add(Number(c.player_id)));
+        (confs || []).forEach(c => {
+            if (c.unavailable) { unavailableIds.add(Number(c.player_id)); return; }
+            if (c.block_counts && typeof c.block_counts === 'object' && !Array.isArray(c.block_counts)) blockCountsById.set(Number(c.player_id), c.block_counts);
+        });
     }
 
     // 5) SLv: 各メンバーの「最新シーズン」の sync_level を引き継ぐ (前月引き継ぎ)。
@@ -5217,7 +5228,8 @@ window.supabaseLoadOpsDashboardData = async function () {
             // 「今回は難しい」と申告した人は時間帯なし・隙間型オフとして扱う (全候補経路から外す)
             availableSlots: unavailableIds.has(Number(p.id)) ? [] : (slotsByPlayer.get(p.id) || []),
             unavailableThisSeason: unavailableIds.has(Number(p.id)),
-            flexTime: unavailableIds.has(Number(p.id)) ? false : !!p.flex_time,   // ⏳ 隙間時間型
+            flexTime: false,   // ⏳ 隙間時間型は撤廃 (2026-10-22 ユーザー決定「確実に動ける時間だけを見る」)。列 flex_time は残るが読まない
+            blockCounts: blockCountsById.get(Number(p.id)) || null,   // 🧱 ブロックごとの凸数 (53)
             notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         };
     });
@@ -5241,21 +5253,6 @@ window.supabaseSetAttackConfirmed = async function (attackId, on, byName) {
 
 // 戦闘可能時間の運用オプション (⏳隙間時間型 / 🔔いつでも通知) を保存
 // 18_availability_prefs.sql 未適用環境ではエラーメッセージで適用を促す
-window.supabaseUpdateAvailabilityPrefs = async function (playerId, { flexTime, notifyAllHours }) {
-    if (!playerId) throw new Error('プレイヤー未選択');
-    const patch = {};
-    if (flexTime !== undefined) patch.flex_time = !!flexTime;
-    if (notifyAllHours !== undefined) patch.notify_all_hours = !!notifyAllHours;
-    if (Object.keys(patch).length === 0) return;
-    const { error } = await supabase.from('players').update(patch).eq('id', playerId);
-    if (error) {
-        if (/column .*(flex_time|notify_all_hours)/i.test(String(error.message))) {
-            throw new Error('supabase/18_availability_prefs.sql を SQL Editor で適用してください');
-        }
-        throw error;
-    }
-};
-
 // 自分の運用オプションを取得 (未適用環境では両方 false)
 window.supabaseLoadAvailabilityPrefs = async function (playerId) {
     if (!playerId) return { flexTime: false, notifyAllHours: false };
@@ -5265,7 +5262,7 @@ window.supabaseLoadAvailabilityPrefs = async function (playerId) {
         .eq('id', playerId)
         .maybeSingle();
     if (error) return { flexTime: false, notifyAllHours: false };
-    return { flexTime: !!data?.flex_time, notifyAllHours: !!data?.notify_all_hours };
+    return { flexTime: false, notifyAllHours: !!data?.notify_all_hours };   // ⏳ 隙間時間型は撤廃 (2026-10-22)。列は残るが読まない
 };
 
 // プレイヤーを ID で取得（存在チェック用）

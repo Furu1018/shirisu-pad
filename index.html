@@ -6591,16 +6591,6 @@
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
                     <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
                     <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
-                    <!-- 運用オプション -->
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
-                            <input type="checkbox" id="myAvailFlexTime" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:var(--warn-solid);flex:none;">
-                            <span style="flex:1;">
-                                <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);">⏳ 隙間時間型 (時間の約束はできないが3凸はする)</span>
-                                <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。<br>💡 上の時間も塗っておくと「その時間は確約・それ以外は隙間で対応」のハイブリッドになります。</span>
-                            </span>
-                        </label>
-                    </div>
                     <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
@@ -9516,13 +9506,9 @@
             const dom = window.availabilityDomain;
             if (!identity?.id || !dom) { card.style.display = 'none'; return; }
             const seq = ++_availStripSeq;
-            let slots = [], prefs = { flexTime: false, notifyAllHours: false };
+            let slots = [];
             try {
-                [slots, prefs] = await Promise.all([
-                    window.supabaseLoadAvailability(identity.id),
-                    (window.supabaseLoadAvailabilityPrefs ? window.supabaseLoadAvailabilityPrefs(identity.id) : Promise.resolve(prefs))
-                        .catch(() => ({ flexTime: false, notifyAllHours: false })),
-                ]);
+                slots = await window.supabaseLoadAvailability(identity.id);   // ⏳ 隙間時間型は撤廃 (2026-10-22) — 設定は読まない
             } catch (e) {
                 console.warn('[avail strip] 取得skip:', e?.message || e);
                 if (seq === _availStripSeq) card.style.display = 'none';
@@ -9545,11 +9531,9 @@
                 ? blocks.map(b => `<span title="${escapeHtml(b.label)}" style="flex:${b.slots.length};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:9px;font-weight:800;color:var(--t-muted);">${escapeHtml(b.name)}</span>`).join('')
                 : [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:9px;font-weight:800;color:var(--t-muted);">${h === 0 ? '翌0' : h}時</span>`).join('');
             const nowOn = set.has(curSlot);
-            const summary = dom.labelOf(slots, { flexTime: !!prefs.flexTime });
+            const summary = dom.labelOf(slots, {});
             const w = dom.windowAt(slots, curHour);
-            const nowText = prefs.flexTime
-                ? '⏳ 隙間時間型: 時刻は約束しない設定です (通知は時間帯に関係なく届きます)'
-                : nowOn
+            const nowText = nowOn
                     ? `いま (${curHour}時) は戦闘可能時間です${w ? ` — ${dom.rangeLabel(w)}` : ''}`
                     : (set.size > 0
                         ? `いま (${curHour}時) は時間外です。赤い枠がいまの時刻、紫が登録した時間帯です`
@@ -9565,6 +9549,10 @@
             try { await _loadMyAvailConfirm(identity.id); } catch { /* バッジが出ないだけ */ }
             if (seq !== _availStripSeq) return;
             if (String(getCurrentIdentity()?.id) !== String(identity.id)) return;
+            // 🧱 ブロックごとの凸数 (確認の行から)。入れていなければ出さない
+            const cLabel = (rbd && blocks && _myAvailConfirm && !_myAvailConfirm.unavailable) ? rbd.countsLabel(_myAvailConfirm.block_counts, blocks) : '';
+            body.querySelectorAll?.('[data-avail-counts]').forEach(el => el.remove());
+            if (cLabel) body.insertAdjacentHTML?.('beforeend', `<div data-avail-counts style="margin-top:6px;font-size:11.5px;font-weight:900;color:var(--ops-deep);">凸数: ${escapeHtml(cLabel)}</div>`);
             const src = document.getElementById('myAvailConfirmBadge');
             if (badge && src) {
                 badge.textContent = src.textContent;
@@ -11058,8 +11046,9 @@
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
             document.getElementById('myAvailModal').classList.add('open');
+            _availUI.counts = null;
+            _availUI.countsPending = true;   // 🧱 凸数は確認の行から読む (開いたときに 1 回だけ取り込む — ホームの帯の読み込みで編集中の凸数を上書きしない)
             renderMyAvailabilitySettings(id);
-            _loadAvailPrefsUI(id.id);
             _loadMyAvailConfirm(id.id);
         }
         function closeMyAvailModal() {
@@ -11099,6 +11088,11 @@
                 const got = await window.supabaseLoadMyAvailabilityConfirmation(ctx.season.id, playerId);
                 if (reqSeq !== _availConfirmSeq) return;
                 _myAvailConfirm = got;
+                if (_availUI.countsPending) {   // 🧱 時間のシートを開いた直後だけ、保存済みの凸数を取り込む
+                    _availUI.countsPending = false;
+                    _availUI.counts = (got && !got.unavailable && got.block_counts && typeof got.block_counts === 'object') ? got.block_counts : null;
+                    if (document.getElementById('myAvailModal')?.classList.contains('open')) _renderAvailUI();
+                }
             } catch {
                 // ★ 通信断・RLS の失敗を「未確認」に落とさない (Codex指摘 2026-09-07)。
                 //   落とすと確認済みの人にまで「確認がまだです」と出て、押すと保存エラーになる。
@@ -11158,18 +11152,22 @@
             const n = nowSlots.length;
             // 枠数だけでなく中身も見る (h21→h22 の付け替えを見逃さない)
             const snap = Array.isArray(c && c.slots_snapshot) ? c.slots_snapshot : null;
-            const changed = !!(c && !c.unavailable && (snap
+            const changedSlots = !!(c && !c.unavailable && (snap
                 ? [...snap].sort().join(',') !== [...nowSlots].sort().join(',')
                 : (c.slot_count != null && Number(c.slot_count) !== n)));
+            // 🧱 凸数も「確認したあとに変えた」に数える (確認の行に入っているものと、いまのシートの凸数を比べる)
+            const _cKey = (o) => JSON.stringify(Object.keys(o || {}).sort().map(k => [k, Number(o[k])]));
+            const changedCounts = !!(c && !c.unavailable && 'block_counts' in c && _cKey(c.block_counts) !== _cKey(_availUI.counts));
+            const changed = changedSlots || changedCounts;
             box.style.display = 'block';
             if (!c || changed) {
                 box.style.background = 'rgba(245,158,11,0.08)';
                 box.style.border = '1px solid rgba(245,158,11,0.30)';
                 box.innerHTML = `
-                    <div style="font-size:12.5px;font-weight:900;color:var(--warn-deep);">${changed ? '確認したあとに時間帯を変えました' : '今回のレイドの確認がまだです'}</div>
+                    <div style="font-size:12.5px;font-weight:900;color:var(--warn-deep);">${changed ? (changedSlots ? '確認したあとに時間帯を変えました' : '確認したあとに凸数を変えました') : '今回のレイドの確認がまだです'}</div>
                     <div style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:3px;">
                         ${changed
-                            ? `いまは <b>${n}枠</b> です (確認時は ${snap ? snap.length : c.slot_count}枠)。この内容でよければ確認しなおしてください。`
+                            ? (changedSlots ? `いまは <b>${n}枠</b> です (確認時は ${snap ? snap.length : c.slot_count}枠)。この内容でよければ確認しなおしてください。` : 'この凸数でよければ確認しなおしてください。押すと運営に届きます。')
                             : 'いまの設定で今回も動けるなら「この時間で参加します」を押してください。運営はこれを見て凸プランを組みます。'}
                     </div>
                     <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
@@ -11213,6 +11211,7 @@
             _availConfirmBusy = true;
             _availConfirmSetBusy(true);
             const msg = document.getElementById('mypageAvailMessage');
+            let counts = null, countsDropped = false;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
@@ -11225,45 +11224,29 @@
                     //   ここで _availUI.slots を読み直すと、保存中に時間を変えた場合にずれる
                     const slots = await _availDoSaveInner({ rethrow: true });
                     if (!Array.isArray(slots)) throw new Error('時間帯を保存できませんでした');
-                    await window.supabaseConfirmAvailability(ctx.season.id, id.id,
-                        { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots });
+                    // 🧱 凸数は実際に保存した時間帯で詰め直す (保存中に ON/OFF を変えた分を持ち込まない)
+                    const rbd = window.raidBlocksDomain;
+                    counts = (!unavailable && rbd) ? rbd.normalizeCounts(_availUI.counts, rbd.blocksOfSeason(_availUI.season || ctx.season), slots) : null;
+                    const res = await window.supabaseConfirmAvailability(ctx.season.id, id.id,
+                        { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots, blockCounts: counts });
+                    countsDropped = !!(res && res.blockCountsDropped);
                     return slots;
                 });
                 _myAvailConfirm = { confirmed_at: new Date().toISOString(), unavailable: !!unavailable,
-                    slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur };
+                    slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur,
+                    ...(countsDropped ? {} : { block_counts: counts }) };   // 53 未適用で落ちたときは持たない (「凸数を変えました」が出続けないように)
                 _renderMyAvailConfirm();
                 opsStore.invalidate();   // メンバー状況ボードに即反映
-                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = unavailable ? '✅ 今回は難しいと伝えました' : '✅ 今回の参加時間を確認しました'; }
+                if (msg) {
+                    msg.style.color = countsDropped ? 'var(--warn-deep)' : 'var(--ok)';
+                    msg.textContent = unavailable ? '✅ 今回は難しいと伝えました'
+                        : countsDropped ? '✅ 時間は確認しました。凸数は保存できませんでした (運営の準備待ち)。凸数は Discord で伝えてください' : '✅ 今回の参加時間を確認しました';
+                }
             } catch (e) {
                 if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             } finally {
                 _availConfirmBusy = false;
                 _availConfirmSetBusy(false);   // 再描画で作り直された分も含めて戻す
-            }
-        }
-
-        // 運用オプション (⏳隙間時間型) の読み込みと即時保存。
-        // ★ 🔔 の「いつでも通知」の設定は 2026-10-07 に外した — 通知は戦闘可能時間で絞らなくなった (宛先は js/domain/notifyPolicy.js)。
-        //   列 players.notify_all_hours は残っているが、もう読まない・書かない
-        async function _loadAvailPrefsUI(playerId) {
-            try {
-                const prefs = await window.supabaseLoadAvailabilityPrefs(playerId);
-                const flexEl = document.getElementById('myAvailFlexTime');
-                if (flexEl) flexEl.checked = prefs.flexTime;
-            } catch { /* 未適用環境では OFF のまま */ }
-        }
-        async function handleAvailPrefChange() {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            const msg = document.getElementById('mypageAvailMessage');
-            const flexTime = !!document.getElementById('myAvailFlexTime')?.checked;
-            try {
-                await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime });
-                opsStore.invalidate();   // プラン算出に即反映
-                _invalidateSetupNeeds(); renderMyNextAction(id);   // ⏳隙間型ONでS2解除に追随
-                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = '✅ 設定を保存しました'; }
-            } catch (e) {
-                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             }
         }
 
@@ -13798,6 +13781,8 @@
         //   blocksReady = 取り直せたか (取れていない間は何も保存させない)
         const _availUI = {
             slots: new Array(24).fill(false),
+            counts: null,          // 🧱 ブロックごとの凸数 ({ "5-8": 1 } · null = 入れていない)。保存は「この時間で参加します」のとき
+            countsPending: false,  // 開いたあと、確認の行から凸数をまだ取り込んでいない
             season: null,
             blocksReady: false,
             saveTimer: null,
@@ -13868,6 +13853,32 @@
                     + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(hrs)}</span><span class="st">${sub}</span></button>`;
             }).join('');
 
+            // 🧱 ブロックごとの凸数 (段階 2・2026-10-22): ON のブロックに「− N +」。入れなければ運営におまかせ。合計 3 まで。
+            //   区切りや ON/OFF が変わったら合わないものを捨てる (normalizeCounts)。保存は下の「この時間で参加します」のとき
+            _availUI.counts = rbd ? rbd.normalizeCounts(_availUI.counts, blocks, slotKeys) : null;
+            const cTotal = rbd ? rbd.countsTotal(_availUI.counts) : 0;
+            const onRows = states.filter(st => st.state !== 'off').map(st => {
+                const b = blocks[st.idx];
+                const n = Number((_availUI.counts || {})[rbd.countKey(b)]) || 0;
+                const dis = _availUI.blocksReady ? '' : 'disabled';
+                return `<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--s2);">`
+                    + `<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(b.name)}</div><div style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${escapeHtml(b.label.slice(b.name.length).trim())}</div></div>`
+                    + `<button type="button" ${dis} ${n > 0 ? '' : 'disabled'} onclick="_availStepCount(${st.idx}, -1)" aria-label="${escapeHtml(b.name)} の凸数を減らす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--s2);color:var(--t-ink);font-size:17px;font-weight:900;cursor:pointer;">−</button>`
+                    + `<span style="min-width:64px;text-align:center;font-size:13px;font-weight:900;color:${n > 0 ? 'var(--ops-deep)' : 'var(--t-muted)'};">${n > 0 ? `${n} 凸` : 'おまかせ'}</span>`
+                    + `<button type="button" ${dis} ${cTotal >= 3 ? 'disabled' : ''} onclick="_availStepCount(${st.idx}, 1)" aria-label="${escapeHtml(b.name)} の凸数を増やす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--ops-solid);color:var(--ops-ink);font-size:17px;font-weight:900;cursor:pointer;">+</button>`
+                    + `</div>`;
+            }).join('');
+            const countsHtml = onRows ? `
+                <!-- (2.5) 🧱 ブロックごとの凸数 -->
+                <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+                        <div style="font-size:13px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">何凸するか</div>
+                        <div style="font-size:11px;font-weight:900;color:var(--ops-deep);font-variant-numeric:tabular-nums;">合計 ${cTotal} / 3</div>
+                    </div>
+                    <div style="font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;margin-bottom:4px;">入れなければ運営がその時間帯のどこかに割り当てます。下の「この時間で参加します」を押すと運営に届きます</div>
+                    ${onRows}
+                </div>` : '';
+
             // プリセット (ブロックで選ぶので 2 つだけ)
             const presets = [
                 { label: '☑️ すべて ON',           value: 'all-on' },
@@ -13924,6 +13935,8 @@
                     </div>
                 </div>
 
+                ${countsHtml}
+
                 <!-- (3) プリセット -->
                 <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);margin-bottom:9px;">プリセット</div>
@@ -13956,6 +13969,17 @@
             _availScheduleSave();
         }
         window._availToggleBlock = _availToggleBlock;
+        // 🧱 凸数を ±1 (保存は「この時間で参加します」のとき)。確認の箱も描き直す (確認したあとに変えた、を出す)
+        function _availStepCount(i, delta) {
+            const rbd = window.raidBlocksDomain;
+            if (!rbd || !_availUI.blocksReady) return;
+            const blocks = rbd.blocksOfSeason(_availUI.season);
+            const keys = HOUR_ORDER.map((h, k) => _availUI.slots[k] ? _hourKey(h) : null).filter(Boolean);
+            _availUI.counts = rbd.stepCount(_availUI.counts, blocks, keys, Number(i), Number(delta));
+            _renderAvailUI();
+            if (typeof _renderMyAvailConfirm === 'function') _renderMyAvailConfirm();
+        }
+        window._availStepCount = _availStepCount;
 
         function _availScheduleSave() {
             clearTimeout(_availUI.saveTimer);
