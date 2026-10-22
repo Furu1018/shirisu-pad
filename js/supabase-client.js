@@ -292,6 +292,37 @@ window.supabaseLoadPushCheck = async function (seasonId) {
         return null;
     }
 };
+// ===== 📥 報告の無い凸の「凸していない」(🧱 ブロック制 段階 4・2026-10-23) =====
+// 運営が「この割当は凸していない」と決めた印 (次のブロックの残り凸に戻る = 何も登録しない、を明示するだけ。盤面には触れない)。
+// ★ 置き場は raid_event_notices (29・適用済み) — 疎通確認と同じく新しい表を作らない (設計案の SQL 55 は要らなくなった)。
+//   kind 'atk_skip' / ref = attackCheckDomain.missingKey (配信 id|人|レベル|ボス|時刻) / notified_by = 押した運営
+// 戻り値: Set<ref>。取れなければ null (= 分からない。空の Set と混ぜない)
+window.supabaseLoadAttackSkips = async function (seasonId) {
+    if (!seasonId) return new Set();
+    try {
+        const { data, error } = await supabase.from('raid_event_notices').select('ref')
+            .eq('season_id', seasonId).eq('kind', 'atk_skip');
+        if (error) throw error;
+        return new Set((data || []).map(r => String(r.ref)));
+    } catch (e) {
+        console.warn('[atk skip] 取得に失敗:', e?.message || e);
+        return null;
+    }
+};
+// on = true で印を付ける (2 回押しても 1 件)、false で外す
+window.supabaseSetAttackSkip = async function (seasonId, key, on, byPlayerId = null) {
+    if (!seasonId || !key) throw new Error('seasonId / key 必須');
+    if (on) {
+        const { error } = await supabase.from('raid_event_notices')
+            .insert({ season_id: seasonId, kind: 'atk_skip', ref: String(key), sent: true, notified_by: byPlayerId || null });
+        if (error && error.code !== '23505') throw error;
+        return true;
+    }
+    const { error } = await supabase.from('raid_event_notices').delete()
+        .eq('season_id', seasonId).eq('kind', 'atk_skip').eq('ref', String(key));
+    if (error) throw error;
+    return false;
+};
 // 運営が確認の通知を送った印。送り直しは時刻だけ更新する (届いた人の記録は消さない)
 window.supabaseMarkPushCheckSent = async function (seasonId, byPlayerId = null) {
     if (!seasonId) throw new Error('アクティブなシーズンがありません');

@@ -66,6 +66,9 @@
         bossHpInput: ['#opsBossHpModal [data-boss-num="1"] input.ops-hp-rem'],
         bossHpSave: ['#opsBossHpModal [data-boss-num="1"] button[onclick^="handleOpsBossHpSave("]'],
         atkConfirm: ['#opsAtkCheckBody .ops-atk-row:not(.done) button.ok'],
+        resultTake: ['#opsAtkCheckMissing .ops-atk-row button.act.go'],   // 📥 結果の取り込み: 結果がまだの凸の「📥 取り込む」(段階 4)
+        resultDmg: ['#opsResultDmg'],
+        resultSave: ['#opsResultSaveBtn'],
         finishPick: ['.dc-boss-card[data-boss-card="1"] .js-finish[data-action="finish-pick"]:not([disabled])'],
         finishCopy: ['#opsFinishPlans button[onclick^="handleOpsFinishPlanCopy("]'],
     };
@@ -216,8 +219,11 @@
         var c = context();
         P.clock.set('hard', 20);
         await opsPublish('block', '夜');
-        // ★ 本番はブロックの配信で通知をまだ送らない (配信の通知は段階 4)。練習も送らない (本番とずらさない)
-        void c;
+        // 🧱 段階 4: 本番と同じく、ブロックの配信は割当のある人へ「あなたの凸」を通知する (本物の関数で・偽のサーバが控える)
+        var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
+        if (pub && pub.plan && typeof window._notifyBlockPublish === 'function') {
+            await window._notifyBlockPublish({ pub: pub, plan: pub.plan, seasonId: c.season.id, me: P.ops, changedIds: new Set(), onlyIds: null }).catch(function (e) { console.warn('[練習] 配信の通知の見本を出せませんでした:', e && e.message || e); });
+        }
     }
     var ASSUME = {
         // (メンバー編) 当日の夜の前に、運営が「夜」のぶんを配信した — 本物のソルバー (🧱 ブロックの人・本人の凸数の上限) と配信の関数で
@@ -290,7 +296,7 @@
     }
     // ---------- 編 (シナリオ) と課題 ----------
     // ★ 2026-10-22 作り直し (🧱 ブロック制・段階 2.5 の画面に合わせて): メンバーは「出られる時間と凸数」と「いつ・どの PT で凸するか」だけ、
-    //   運営はブロックの頭の手順 (⚔️ HP を直す → ⚔️ 凸報告の確認 → 🧱 そのブロックを組む → 配信 → 締凸検索で探す) を本物の画面で動かす。
+    //   運営はブロックの頭の手順 (⚔️ HP を直す → ⚔️ 結果の取り込み → 🧱 そのブロックを組む → 配信 → 締凸検索で探す) を本物の画面で動かす。
     // ★ id は js/practice/boot.js の SCENARIOS と同じ一覧 (テストが突き合わせる)。役と開始時刻は boot.js が決める
     var countsOf = function () { return (typeof _availUI !== 'undefined' && _availUI && _availUI.counts) ? _availUI.counts : {}; };
     var STEPS = {
@@ -375,7 +381,7 @@
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します (承認した予約が入ります)。', target: pick('planCompute') };
-                    return stray(c, []) || { text: '「📤 朝のぶんを配信」を押します。確認が出たら OK。押すまでメンバーには見えません。', real: '配信すると、朝に割当のある人のホームに割当が出ます (いまは配信だけでは通知を送りません。前の配信を「確認しました」した人の割当が変わったときだけ更新の通知が届きます)。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。', target: pick('planPublish') };
+                    return stray(c, []) || { text: '「📤 朝のぶんを配信」を押します。確認が出たら OK。押すまでメンバーには見えません。', real: '配信すると、朝に割当のある人のホームに割当が出て、「あなたの凸」の通知が届きます (同じブロックを配信し直したときは、割当が変わった人だけ)。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。', target: pick('planPublish') };
                 } },
         ],
         'ops-day': [
@@ -393,13 +399,23 @@
                         : { text: '夕方 (18〜20時) のブロックの頭です。まずボスの残HPをゲームと合わせます。ここでは B1 が ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」を押します。',
                             real: '凸の登録がまだのぶん、ここの残HPはゲームと食い違います。古い HP で組むと、無駄凸や取りこぼしが出ます。', target: pick('bossHpOpen') });
                 } },
-            { key: 'check', title: '⚔️ 前のブロックの凸報告を確かめる',
+            { key: 'check', title: '⚔️ 前のブロックの結果を取り込む',
+                // 取り込んだ凸は ✓ 確認済みになる (段階 4)。結果がまだの凸が無い盤面では、登録済みの凸を ✓ するだけでも済む
                 done: function (c) { return c.T.attacks.some(function (a) { return a.confirmed_at; }); },
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('battle')) return stray(c, []) || opsTab('battle');
+                    var dmg = pick('resultDmg');
+                    if (dmg) {
+                        if (!(Number(dmg.value) > 0)) return { text: 'Discord に貼られた結果の画面のダメージを入れます (例: 25)。ボスと編成は割当から入っています。', target: dmg,
+                            real: '本番は「📷 結果のスクショを選ぶ」で読み取れます (ボス・ダメージ・使ったキャラ)。PC はカードにスクショを落とすだけ。' };
+                        return { text: '「登録する」を押します。ボスの残HPもダメージぶん減り、この凸は ✓ 確認済みになります。', target: pick('resultSave') };
+                    }
+                    var take = pick('resultTake');
+                    if (take) return stray(c, []) || { text: '「📥 結果の取り込み」の「⏰ 結果がまだの凸」に、配信の時刻を過ぎても結果が入っていない凸が並んでいます。1 つ目の「📥 取り込む」を押します。',
+                        real: 'メンバーは凸したら結果のスクショを Discord に貼ります。それを見て運営が取り込みます。凸していなかった人は「凸していない」にすると、次のブロックで組み直します。', target: take };
                     var btn = pick('atkConfirm');
-                    if (!btn) return stray(c, []) || { text: '「✅ 凸報告の確認」が描かれるのを待ちます…' };
+                    if (!btn) return stray(c, []) || { text: '「📥 結果の取り込み」が描かれるのを待ちます…' };
                     return stray(c, []) || { text: '「✅ 凸報告の確認」に、ここまでの凸が配信と突き合わせて並んでいます。問題なければ「✓ 確認」を押します (練習では 1 件で構いません)。',
                         real: '印 (計画にない・予定より低い・時刻のずれ) と「予定を過ぎた未報告」を見て、報告の無い人には Discord で声をかけます。片付けてから次のブロックを組みます。', target: btn };
                 } },
@@ -418,7 +434,7 @@
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
-                    return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人のホームに割当が出ます (いまは配信だけでは通知を送らないので、Discord でも「夕方 配信しました」と伝えます)。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
+                    return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人のホームに割当が出ます 、割当のある人に「あなたの凸」の通知が届きます。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
                 } },
             { key: 'finish', title: '⚔️ 締凸検索で候補を探して声をかける',
                 done: function () { return store.get('ops-day:copied') === '1'; },
@@ -436,8 +452,8 @@
         'member': { title: 'メンバー編', sub: '出られる時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
             diff: '練習では運営の配信と凸の登録を「〜したことにする」で進めました。本番では運営がブロックの前に配信し、スクショを見て凸を登録します。' },
         'ops-eve': { title: '運営編・前日', sub: '催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信', next: 'ops-day',
-            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出ます (通知はまだ送らないので Discord でも伝えます)。' },
-        'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締凸検索', next: 'member',
+            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出て、その人たちに通知が届きます。' },
+        'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締凸検索', next: 'member',
             diff: '本番ではこの手順をブロックごとに繰り返します。交代するときは、運営タブのタブの数字 (手を打つべき件数) と「いちばん急ぐこと」から続けます。' },
     };
     // 締凸検索の「📋 名前と文面をコピー」を押したことを覚える (本物の関数をそのまま呼んでから印を付ける)

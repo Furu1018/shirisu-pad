@@ -765,6 +765,7 @@ node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カ�
 node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのスタンプ / 自動で効くもの / きっかけ / 動かせる幅 の実行テスト
 node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) の実行テスト — 本番の 2026-09 のデータで描く
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
+node tests/result-intake.mjs  # 📥 結果の取り込み (段階 4): 下書き → 登録 (代理凸の経路・✓・残 HP・撃破の検知) / 凸していない / 組むの片付け / ブロックの配信の通知 の実行テスト
 node tests/practice-e2e.mjs   # 🎮 練習モードの通し確認 — 本物のブラウザで案内の枠だけを押して最後まで (Chrome が要る・1〜2分。PC=1 で PC 幅も)
 node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの実験 (第44回の実データ)。ほかに carry-over / boss5-two-teams / boss5-why / left-attacks — 使い方と結論は同じフォルダの README (単体テストではない)
 ```
@@ -1165,6 +1166,23 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ 上限で埋まった人は時間外のベストエフォートにも回さない: ループで上限に当たった / 開放時刻が上限に達したブロック / 宣言した時間 (`allHourIdxs`) がすべて上限に達したブロック の 3 つで `null` (Codex指摘・変異テストで境目を固定)。
   未消化の理由に `cap` (「凸数の希望どおり」= 上限をすべて使い切り、出られる時間がすべて上限つきのブロック)。運営の 👥 メンバー状況に「凸数 朝 1 · 夕方 2」(`counts(r)`)・時間未登録の札に「候補にしません」の説明。
   確かめ: `tests/bench-blockflow/multi-block.mjs` の ⑥⑦ (朝+夕方の 4 人が 朝 1 → 夕方 2 になる)
+  ★ **🧱 段階 4: 📥 結果の取り込み + ブロックの配信の通知** (2026-10-23・ユーザー決定 b / c / h・設計案 §4): ③-f の「✅ 凸報告の確認」カードを**統合** (id は `opsSecAttackCheck` のまま・CARDS の名前は「結果の取り込み」)。
+  Discord に貼られた凸の結果のスクショを運営が取り込む: 誰の凸か (`#opsResultPlayer`) → 📷 スクショ (カードに落としても可・`_FILE_DROPS`) → 本人の凸報告と同じ OCR (`_ocrAttackMultiAndMerge`) → 下書き
+  (`_resultIntake.draft`: ボス・ダメージ・Lv・編成・残 HP) → 「登録する」(`handleOpsResultSave`)。判定は `js/domain/resultIntake.js` が唯一: `matchBoss` (名前で 1 つに決まらなければ `ocrDomain.detectBossCode`)・
+  `pickLoadout` (使った編成 = その人の模擬のうちボスの弱点属性。読み取ったキャラが 2 人以上当たる編成 → 配信の割当 (`plannedSlotFor`) → きょう使っていない編成)・`check` (止める: 誰か / 3 凸済み / ボス / ダメージ / Lv4 でボス 5 以外。知らせる: 同じボスに登録済み / キャラ使用済み / 模擬なし)。
+  ★ 登録は**代理凸と同じ経路** (`supabaseAddAttack` に `isProxy: true, actorName`・予約は `_reservationIdForAttack`)。押した時点の DB (`supabaseLoadMyAttacks`) で確かめ直し、同じボスは confirm。
+  スクショに残 HP があればその値に (`skipHpDecrement` + `supabaseUpdateBossHp`)、無ければダメージぶん減らす (外せる)。登録した凸は **✓ 確認済み** (`supabaseSetAttackConfirmed`・運営の登録で確定 = 決定 c)。
+  `_checkRaidEvents()` は invalidate の**前** (撃破の検知)、そのあと `_opsReloadBoardCards()`。解析中に「誰の凸か」を選び直したら古い読み取りで下書きを作らない。
+  ★ **報告の無い凸** (`#opsAtkCheckMissing`・「⏰ 結果がまだの凸」): 行ごとに「📥 取り込む」(その人・そのボス・割当の編成の下書きをすぐ出す。ファイル選択は開かない) /「📋 聞く」(`askText` をコピー) /「凸していない」。
+  **「凸していない」の置き場は `raid_event_notices` の kind `atk_skip` / ref = `attackCheckDomain.missingKey` (配信 id|人|レベル|ボス|時刻)** — 疎通確認と同じく新しい表を作らない (**設計案の SQL 55 は要らなくなった**)。
+  `supabaseLoadAttackSkips` (読めなければ null) / `supabaseSetAttackSkip`。盤面には触れない (次のブロックの残り凸に戻る、を明示するだけ)。行の操作は配列の添字で渡す (名前を onclick に埋めない)。
+  ★ **突き合わせは配信のそのブロックのぶんだけ** (`scopePlan(plan, plan.blockScope)`) で、**配信を算出した時刻 (`conditions.computedAt`) より前の凸は照合しない** (`buildRows` の `sinceMs` → unchecked「いまの配信より前の凸」)。
+  時刻でブロックを決めないこと — 運営があとから取り込む凸の `reported_at` は「登録した時刻」。配信は同じシーズンの `_opsPublishedPlan` だけ使う。
+  🧱 組む のタブの頭 (`#opsPlanTidy`・`_renderOpsPlanTidy`): 結果がまだの凸があれば「次のブロックを組む前に取り込むか『凸していない』に」+ 結果の取り込みへ (止めない)。
+  ★ **ブロックの配信の通知** (`_notifyBlockPublish`・決定 h): 🧱 ブロックで組んだ配信は、そのブロックに割当のある人へ自分の凸を 1 通 (`publishNotices`: 「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)。
+  同じブロックの配信し直し (前の配信と from / to が同じ) は**割当が変わった人だけ** (`planDiff.changedIds`)・「変わりました」。二重送信よけは `raid_event_notices` の kind `block_publish` / ref = 配信の id (確保 → 送信 → 送信済み / 1 通も送れなければ確保を戻す)。
+  通知した人には L4「割当が変わりました」を重ねない (`targets` から外す)。ブロックでない配信 (1 日ぶん) は従来どおり通知しない。練習のメンバー編の「夜」の配信も本物の関数で同じ通知を送る。
+  練習の運営編・当日の課題 `check` は「⚔️ 前のブロックの結果を取り込む」(「📥 取り込む」→ ダメージ → 登録。✓ でも済む)。実行テスト `tests/result-intake.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

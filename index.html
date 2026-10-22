@@ -108,6 +108,7 @@
     <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
     <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
     <script defer src="./js/domain/attackCheck.js"></script>     <!-- ✅ 凸報告の確認 (配信プランとの突き合わせ・未報告・ブロック制 ③-f 2026-10-18) -->
+    <script defer src="./js/domain/resultIntake.js"></script>    <!-- 📥 結果の取り込み (ボスの照合・使った編成・登録の前の注意・ブロックの配信の通知・ブロック制 段階 4 2026-10-23) -->
     <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
@@ -3158,6 +3159,28 @@
         .ops-atk-row .ok[aria-pressed="true"] { background: rgba(24, 194, 107, 0.14); color: var(--ok); border-color: transparent; }
         .ops-atk-row .ok:disabled { opacity: 0.55; cursor: not-allowed; }
         .ops-atk-row.done .n, .ops-atk-row.done .v { color: var(--t-muted); }
+        /* 📥 結果の取り込み (🧱 段階 4): 報告の無い凸の操作と、取り込みの下書き */
+        .ops-atk-row .act { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
+        .ops-atk-row .act.go { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
+        .ops-atk-row .act:disabled { opacity: 0.55; cursor: not-allowed; }
+        .ops-atk-skip { margin-top: 6px; font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .ops-atk-skip summary { cursor: pointer; }
+        .ops-result-draft { margin-top: 10px; padding: 11px 12px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 9px; }
+        .ops-result-draft .h { font-size: 12.5px; font-weight: 900; color: var(--t-ink); line-height: 1.5; }
+        .ops-result-draft .h small { font-weight: 700; color: var(--t-muted); }
+        .ops-result-draft .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; font-weight: 800; color: var(--t-body); }
+        .ops-result-draft .row > .k { flex: none; width: 46px; color: var(--t-muted); }
+        .ops-result-draft .pick { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+        .ops-result-draft .pick img { width: 16px; height: 16px; }
+        .ops-result-draft .pick[aria-pressed="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
+        .ops-result-draft input[type="number"], .ops-result-draft select { padding: 6px 9px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font-size: 13px; font-weight: 800; }
+        .ops-result-draft input[type="number"] { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+        .ops-result-draft .warn { margin: 0; padding: 6px 9px; border-radius: 9px; font-size: 11px; font-weight: 800; line-height: 1.5; background: var(--warn-bg); color: var(--warn-on); }
+        .ops-result-draft .warn.block { background: var(--bad-bg); color: var(--bad-on); }
+        .ops-result-draft .go, .ops-result-draft .cancel { padding: 8px 15px; border-radius: 999px; border: none; font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; }
+        .ops-result-draft .go { background: var(--t-ink); color: var(--card); }
+        .ops-result-draft .go:disabled { opacity: 0.45; cursor: not-allowed; }
+        .ops-result-draft .cancel { background: var(--s2); color: var(--t-strong); }
         .ops-recent-row .d.bad { color: var(--bad-deep); }
         .ops-recent-row .v { flex: none; font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .ops-recent-empty { margin: 0; font-size: 11.5px; color: var(--t-muted); }
@@ -4522,18 +4545,42 @@
                 </div>
             </div>
 
-            <!-- ✅ 凸報告の確認 (🧱 ブロック制 ③-f・2026-10-18・運営ONのみ)。本人の凸報告 (盤面の players[].attacks) を配信プランと突き合わせて印
-                 (計画にない / 予定よりかなり低い / 予定の時刻とずれ) を付け、✓ で確認した印を attacks.confirmed_at / confirmed_by に残す (supabase/52)。
-                 予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。純ロジックは js/domain/attackCheck.js -->
+            <!-- 📥 結果の取り込み (🧱 ブロック制 段階 4・2026-10-23・運営ONのみ)。③-f「✅ 凸報告の確認」を統合した (カードの id はそのまま)。
+                 Discord に貼られた凸の結果のスクショを運営が取り込んで登録する: 読み取りは本人の凸報告と同じ OCR (_ocrAttackMultiAndMerge)、
+                 使った編成はその人の模擬 (そのボスの弱点属性) から選び、登録は report_attack (代理凸の経路)。取り込んだ凸は ✓ 確認済みにする。
+                 報告の無い凸 (配信の時刻を過ぎて結果がまだ) には 取り込む / Discord で聞く / 凸していない (raid_event_notices の atk_skip)。
+                 登録された凸は配信プラン (そのブロックのぶん) と突き合わせて印 (計画にない / 予定よりかなり低い / 予定の時刻とずれ)。
+                 純ロジックは js/domain/resultIntake.js と js/domain/attackCheck.js -->
             <div class="dc-card" data-ops-only id="opsSecAttackCheck">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">✅ 凸報告の確認</div>
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📥 結果の取り込み</div>
                     <span id="opsAtkCheckCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
                     <button onclick="renderOpsAttackCheck(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
-                <p style="margin:0 0 8px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
-                    本人の凸報告を配信プランと突き合わせます。食い違いには印が付きます。見て問題なければ ✓ を押してください (最後は BlaBlaLINK の一括読み取りと突き合わせ)。
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
+                    Discord に貼られた<strong>凸の結果のスクショ</strong>を取り込んで、本人の代わりに凸を登録します。使った編成はその人の模擬から選びます (PC はこのカードに落とすだけ)。取り込んだ凸は ✓ 確認済みになります。
                 </p>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の凸か
+                        <select id="opsResultPlayer" onchange="_opsResultPick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
+                    </label>
+                    <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
+                        <input type="file" id="opsResultInput" accept="image/*" multiple onchange="handleOpsResultUpload(event)" style="display:none;">
+                        <div class="btn-nikke-inner">
+                            <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
+                            <span class="btn-nikke-title">📷 結果のスクショを選ぶ</span>
+                        </div>
+                    </label>
+                    <button type="button" onclick="_opsResultManual()" style="flex:none;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--t-body);font-size:11.5px;font-weight:800;cursor:pointer;">✏️ 手で入力</button>
+                </div>
+                <div id="opsResultAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:12px;padding:11px 13px;margin-top:10px;">
+                    <div style="width:16px;height:16px;border:2.5px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div id="opsResultAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
+                </div>
+                <div id="opsResultDraft" style="display:none;"></div>
+                <p id="opsResultStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
+                <div id="opsAtkCheckMissing"></div>
+                <p class="ops-recent-h" style="margin-top:10px;">登録された凸 <span style="font-weight:700;color:var(--t-muted);">(配信と突き合わせて食い違いに印。本人が報告した凸は見て ✓)</span></p>
                 <div id="opsAtkCheckFilters" class="ops-atk-f">
                     <button type="button" data-f="all" aria-pressed="true" onclick="_opsAtkCheckFilter('all')">全部</button>
                     <button type="button" data-f="flagged" aria-pressed="false" onclick="_opsAtkCheckFilter('flagged')">要確認</button>
@@ -4621,6 +4668,8 @@
                     <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
                 </div>
                 <!-- きっかけ: 前回の算出のあとに模擬が更新された / 締め凸コンソールの手詰まり (renderOpsPlanCue が描く) -->
+                <!-- 片付け (🧱 段階 4): 結果がまだの凸があれば、次のブロックを組む前に取り込みへ (_renderOpsPlanTidy が描く・止めはしない) -->
+                <div id="opsPlanTidy" class="plan-cue" style="display:none;"></div>
                 <div id="opsPlanCue" class="plan-cue" style="display:none;"></div>
                 <!-- 条件: 4 つ選ぶ (対象 / 起点 / 時間 / 前回の配信)。自動で効くものは見せるだけ -->
                 <div class="plan-cond" id="opsPlanCond">
@@ -17525,7 +17574,10 @@
         // 本人の凸報告 (盤面の players[].attacks) を配信プランと突き合わせて印を付け、✓ で確認した印を保存する。
         // 純ロジックは js/domain/attackCheck.js。配信プランは _syncOpsUnpublishBtn が盤面と同じ周期で取り直す _opsPublishedPlan を使い
         // (別クエリを増やさない)、その取り直しの最後にここを描く。✓ の結果は次の盤面の取り直しまで local で上書きする
-        const _atkCheck = { filter: 'all', local: new Map(), localGen: null, gen: 0, busy: new Set() };
+        // 段階 4: missing / skipped = 報告の無い凸 (配信の時刻を過ぎた割当) と「凸していない」にしたもの。skips = その印 (raid_event_notices の atk_skip) の集合。
+        //   plan / sinceMs = 突き合わせに使った配信 (そのブロックのぶん) と その算出の時刻 (取り込みの編成の既定にも使う)
+        const _atkCheck = { filter: 'all', local: new Map(), localGen: null, gen: 0, busy: new Set(),
+            missing: [], skipped: [], skips: null, skipsSeason: null, skipsGen: null, skipBusy: false, plan: null, sinceMs: null, planId: null, seasonId: null };
         // 盤面を取り直して、盤面から描くカード (👥 メンバー状況 / ✅ 凸報告の確認 / 📸 模擬の取り込み) をまとめて描き直す。
         // ★ 取り直しはここ 1 か所 (カードごとに load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346・1857fd6・5186ffc)。
         //   使うのは store に残った盤面だけ (load の戻り値ではない)。追い越されたら何もしない — 最新の呼び出しが描く。
@@ -17548,23 +17600,53 @@
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
         async function renderOpsAttackCheck(force = false) {
             const body = document.getElementById('opsAtkCheckBody'), cnt = document.getElementById('opsAtkCheckCounts');
+            const missEl = document.getElementById('opsAtkCheckMissing');
             if (!body) return;
             if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
             const dom = window.attackCheckDomain;
-            if (!dom) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">凸報告の確認の機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
+            if (!dom) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">結果の取り込みの機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
             ++_atkCheck.gen;
             if (force) return _opsReloadBoardCards();   // ↻: 盤面と配信を中央で取り直す (その最後がここを描く)
             // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — ここでは描かない (null を「シーズン無し」と誤認しない)。
             // ★ 自分では load しない: 取り直しは中央 (_opsReloadBoardCards / renderOpsDashboard) だけが行い、その完了が _syncOpsUnpublishBtn を通ってここを描く
             const snap = opsStore.get();
             if (!snap) return;
-            if (!snap?.season) { _atkCheck.counts = null; body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
+            _renderOpsResultPlayers(snap);
+            if (!snap?.season) {
+                _atkCheck.counts = null; _atkCheck.missing = []; _atkCheck.skipped = []; _atkCheck.plan = null; _atkCheck.seasonId = null;
+                body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>';
+                if (missEl) missEl.innerHTML = '';
+                if (cnt) cnt.textContent = '';
+                _renderOpsPlanTidy();
+                return;
+            }
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
             const g = opsStore.generation();
             if (g !== _atkCheck.localGen) { _atkCheck.local.clear(); _atkCheck.localGen = g; }
-            const plan = _opsPublishedPlan?.plan || null;
+            // 「凸していない」の印: 盤面を取り直したら 1 回だけ読み直す (読めたら描き直す。読めなければ前の印のまま)
+            if (_atkCheck.skipsGen !== g || Number(_atkCheck.skipsSeason) !== Number(snap.season.id)) {
+                _atkCheck.skipsGen = g;
+                const sid = snap.season.id;
+                if (typeof window.supabaseLoadAttackSkips === 'function') {
+                    window.supabaseLoadAttackSkips(sid).then(set => {
+                        if (!set || Number(opsStore.get()?.season?.id) !== Number(sid)) return;
+                        _atkCheck.skips = set; _atkCheck.skipsSeason = sid;
+                        renderOpsAttackCheck();
+                    }).catch(() => { /* 印なしのまま */ });
+                }
+            }
+            const skips = Number(_atkCheck.skipsSeason) === Number(snap.season.id) ? _atkCheck.skips : null;
+            // 🧱 段階 4: 配信は そのブロックのぶん (blockScope) に絞って突き合わせる (メンバーに約束したのはその範囲だけ)。
+            //   配信を算出する前に入っていた凸は、その凸を前提に組んだプランなので照合しない (sinceMs)。
+            //   ★ 時刻でブロックを決めない — 運営があとから取り込む凸の reported_at は「登録した時刻」
+            const pub = (_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null;
+            const rawPlan = pub?.plan || null;
+            const rb = window.raidBlocksDomain;
+            const plan = (rawPlan && rawPlan.blockScope && rb) ? rb.scopePlan(rawPlan, rawPlan.blockScope) : rawPlan;
+            const sinceMs = rawPlan?.conditions?.computedAt || pub?.published_at || null;
             const attacks = _opsFlatAttacks(snap).map(a => { const l = _atkCheck.local.get(Number(a.id)); return l ? { ...a, ...l } : a; });
-            const res = dom.buildRows({ attacks, plan, nowMs: Date.now() });
+            const res = dom.buildRows({ attacks, plan, nowMs: Date.now(), sinceMs, planId: pub?.id ?? null, skips });
+            Object.assign(_atkCheck, { missing: res.missing, skipped: res.skipped, plan, sinceMs, planId: pub?.id ?? null, seasonId: snap.season.id });
             _atkCheck.counts = res.counts ? { ...res.counts, missing: res.missing.length, seasonId: snap.season.id } : null;   // ⚔️ 戦況のタブの数 (段階 2.5)
             if (typeof _renderOpsCockpitSoon === 'function') _renderOpsCockpitSoon();
             if (cnt) cnt.textContent = dom.summary(res) + (res.hasPlan || !res.rows.length ? '' : ' · 配信プランなし (食い違いは見られません)');
@@ -17583,13 +17665,32 @@
                     ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}${r.unchecked ? `<span class="fl" style="background:var(--s2);color:var(--t-muted);" title="配信プランと照合できない凸 (印は付けません)">${escapeHtml(r.unchecked)}</span>` : ''}
                     <button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>
                 </div>`).join('')
-                : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる報告はありません。' : 'まだ凸の報告がありません。'}</p>`;
-            const miss = res.missing.length
-                ? `<p class="ops-recent-h" style="margin-top:10px;">⏰ 予定の時刻を過ぎた未報告 (報告漏れの候補 — 本人に声をかける)</p>` + res.missing.map(m => `
-                <div class="ops-atk-row"><span class="t">${escapeHtml(m.hourLabel)}</span>${chip(m.bossNumber)}<span class="n">${escapeHtml(nameOf.get(String(m.memberId)) || String(m.memberId))}</span><span class="v" style="color:var(--t-muted);">予定 ${m.dmgB.toFixed(1)}B</span></div>`).join('')
-                : '';
+                : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる凸はありません。' : 'まだ凸が登録されていません。'}</p>`;
             const note = canConfirm ? '' : '<p class="ops-recent-empty" style="margin-top:8px;">✓ の保存には supabase/52_attacks_confirmed.sql の適用が必要です (一覧と印はそのまま使えます)。</p>';
-            body.innerHTML = list + miss + note;
+            body.innerHTML = list + note;
+            // ⏰ 報告の無い凸: 取り込む / Discord で聞く / 凸していない。行の操作は配列の添字で渡す (名前を onclick に埋めない)
+            if (missEl) {
+                const missRow = (m, i, skipped) => `
+                <div class="ops-atk-row${skipped ? ' done' : ''}">
+                    <span class="t">${escapeHtml(m.hourLabel)}</span>${chip(m.bossNumber)}
+                    <span class="n">${escapeHtml(nameOf.get(String(m.memberId)) || String(m.memberId))}${m.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${m.level}</span>` : ''}</span>
+                    <span class="v" style="color:var(--t-muted);">予定 ${m.dmgB.toFixed(1)}B</span>
+                    ${skipped
+                        ? `<button type="button" class="act" onclick="handleOpsAtkSkip(${i}, false)" title="「凸していない」を取り消す">戻す</button>`
+                        : `<button type="button" class="act go" onclick="_opsResultFromMissing(${i})" title="この人のこの凸として、結果のスクショを取り込む">📥 取り込む</button>`
+                          + `<button type="button" class="act" onclick="_opsAtkAsk(${i})" title="Discord で聞く文をコピー">📋 聞く</button>`
+                          + `<button type="button" class="act" onclick="handleOpsAtkSkip(${i}, true)" title="凸していない (登録しない。残り凸のまま次のブロックで組み直す)">凸していない</button>`}
+                </div>`;
+                const head = res.missing.length
+                    ? `<p class="ops-recent-h" style="margin-top:10px;">⏰ 結果がまだの凸 ${res.missing.length} <span style="font-weight:700;">(配信の時刻を過ぎた割当 — 取り込む / Discord で聞く / 凸していない)</span></p>`
+                    : (res.hasPlan ? '<p class="ops-recent-h" style="margin-top:10px;color:var(--ok);">⏰ 配信の時刻を過ぎた凸は、すべて結果が入っています</p>' : '');
+                const skipped = res.skipped.length
+                    ? `<details class="ops-atk-skip"><summary>凸していない ${res.skipped.length}</summary>${res.skipped.map((m, i) => missRow(m, i, true)).join('')}</details>`
+                    : '';
+                missEl.innerHTML = head + res.missing.map((m, i) => missRow(m, i, false)).join('') + skipped;
+            }
+            _renderOpsResultWarn();   // 盤面が変わった (3 凸済み・同じボス) — 下書きの注意だけ描き直す (入力中の欄は作り直さない)
+            _renderOpsPlanTidy();
         }
         async function handleOpsAttackConfirm(attackId, on) {
             const id = Number(attackId);
@@ -17606,6 +17707,303 @@
                 showNotification(`❌ ${e?.message || e}`);
                 if (btn) btn.disabled = false;
             } finally { _atkCheck.busy.delete(id); }
+        }
+
+        // ⏰ 報告の無い凸: 「凸していない」の印を付ける / 外す (raid_event_notices の atk_skip — 盤面には触れない)
+        async function handleOpsAtkSkip(i, on) {
+            const m = ((on ? _atkCheck.missing : _atkCheck.skipped) || [])[Number(i)];
+            const sid = _atkCheck.seasonId;
+            if (!_opsMode || !m || !m.key || !sid || _atkCheck.skipBusy) return;
+            const name = _opsResultPlayer(m.memberId)?.name || String(m.memberId);
+            if (on && !confirm(`${name} さんの ${m.hourLabel} B${m.bossNumber} を「凸していない」にします。\n\n`
+                + 'この凸は登録しません (残り凸のまま、次のブロックで組み直します)。\n本人が凸していたら、あとで結果を取り込めば一覧から消えます。')) return;
+            _atkCheck.skipBusy = true;
+            try {
+                await window.supabaseSetAttackSkip(sid, m.key, !!on, getCurrentIdentity()?.id || null);
+                const set = new Set(Number(_atkCheck.skipsSeason) === Number(sid) && _atkCheck.skips ? _atkCheck.skips : []);
+                if (on) set.add(m.key); else set.delete(m.key);
+                _atkCheck.skips = set; _atkCheck.skipsSeason = sid;
+                renderOpsAttackCheck();
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+            } finally { _atkCheck.skipBusy = false; }
+        }
+        // ⏰ 報告の無い凸: Discord で聞く文をコピー
+        async function _opsAtkAsk(i) {
+            const m = (_atkCheck.missing || [])[Number(i)];
+            if (!m || !window.resultIntakeDomain) return;
+            const boss = _opsResultBoss(m.bossNumber);
+            const text = window.resultIntakeDomain.askText({ name: _opsResultPlayer(m.memberId)?.name || '', hourLabel: m.hourLabel, bossNumber: m.bossNumber,
+                ptName: PT_ATTRS.find(x => x.key === boss?.weakness)?.name || '' });
+            try { await navigator.clipboard.writeText(text); showNotification('📋 コピーしました (Discord に貼って聞いてください)'); }
+            catch { prompt('コピーして Discord に貼ってください', text); }
+        }
+        // 🧱 組む のタブの頭: 次のブロックを組む前に、結果がまだの凸を片付ける (止めはしない — 運営の判断)
+        function _renderOpsPlanTidy() {
+            const el = document.getElementById('opsPlanTidy');
+            if (!el) return;
+            const c = _atkCheck.counts, snap = opsStore.get();
+            const n = (_opsMode && c && snap?.season && Number(c.seasonId) === Number(snap.season.id)) ? (Number(c.missing) || 0) : 0;
+            if (!n) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            el.style.display = '';
+            el.innerHTML = `📥 <span>結果がまだの凸が <b>${n} 凸</b>あります (配信の時刻を過ぎた割当)`
+                + '<br><small>次のブロックを組む前に、Discord の結果を取り込むか「凸していない」にしてください。そのままだと、もう凸した人に同じ凸をまた割り当てます</small></span>'
+                + `<button type="button" class="go" onclick="_opsJump('opsSecAttackCheck')">結果の取り込みへ ›</button>`;
+        }
+
+        // ========== 📥 結果の取り込み (🧱 ブロック制 段階 4・運営ONのみ・2026-10-23) ==========
+        // Discord に貼られた凸の結果のスクショを運営が登録する。読み取りは本人の凸報告と同じ OCR (_ocrAttackMultiAndMerge)。
+        // 使った編成はその人の模擬のうちボスの弱点属性 (resultIntakeDomain.pickLoadout)、登録は report_attack (代理凸と同じ: isProxy・actorName)。
+        // 登録した凸は ✓ 確認済みにする (運営の登録で確定 = ユーザー決定 c)。純ロジックは js/domain/resultIntake.js
+        // ★ 下書き (draft) の材料 (人・ボス) は盤面の写し (players / bosses)。盤面が取り直されたら注意だけ描き直す (入力中の欄は作り直さない)
+        const _resultIntake = { picked: null, hint: null, draft: null, busy: false, players: [], bosses: [], playersKey: '' };
+        const _opsResultPlayer = (id) => _resultIntake.players.find(p => String(p.id) === String(id)) || null;
+        const _opsResultBoss = (n) => _resultIntake.bosses.find(b => Number(b.boss_number) === Number(n)) || null;
+        function _opsResultPick(v) {
+            _resultIntake.picked = v ? Number(v) : null;
+            if (_resultIntake.hint && Number(_resultIntake.hint.memberId) !== Number(_resultIntake.picked)) _resultIntake.hint = null;
+        }
+        // 誰の凸か: 盤面の人 (書庫を除く・名前順)。並びが変わったときだけ作り直す (選んでいる最中に作り直さない)
+        function _renderOpsResultPlayers(snap) {
+            const sel = document.getElementById('opsResultPlayer');
+            const players = (snap?.season ? (snap.players || []) : []).filter(p => p && !p.archived);
+            _resultIntake.players = players;
+            _resultIntake.bosses = snap?.season ? (snap.bosses || []).slice().sort((a, b) => Number(a.boss_number) - Number(b.boss_number)) : [];
+            if (!players.some(p => Number(p.id) === Number(_resultIntake.picked))) _resultIntake.picked = null;
+            if (!sel) return;
+            const sorted = players.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'));
+            const key = sorted.map(p => `${p.id}:${p.name}`).join(',');
+            if (key !== _resultIntake.playersKey) {
+                _resultIntake.playersKey = key;
+                sel.innerHTML = '<option value="">— 選んでください —</option>' + sorted.map(p => `<option value="${Number(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+            }
+            sel.value = _resultIntake.picked != null ? String(_resultIntake.picked) : '';
+        }
+        // ⏰ 報告の無い凸の「📥 取り込む」: その人・そのボス・割当の編成が入った下書きをすぐ出す (ダメージを入れるか、📷 でスクショを読む)
+        function _opsResultFromMissing(i) {
+            const m = (_atkCheck.missing || [])[Number(i)];
+            if (!m) return;
+            _resultIntake.picked = Number(m.memberId);
+            _resultIntake.hint = { memberId: Number(m.memberId), bossNumber: Number(m.bossNumber), slot: Number(m.loadoutSlot) || null };
+            const sel = document.getElementById('opsResultPlayer');
+            if (sel) sel.value = String(Number(m.memberId));
+            _opsResultStartDraft(Number(m.memberId), null, 0);
+            _opsResultStatus(`${_opsResultPlayer(m.memberId)?.name || ''} さんの ${m.hourLabel} B${m.bossNumber} — ダメージを入れて登録します。結果のスクショがあれば「📷 結果のスクショを選ぶ」で読み取れます (ボスと編成はこのまま)`);
+        }
+        function _opsResultStatus(text, kind = '') {
+            const el = document.getElementById('opsResultStatus');
+            if (!el) return;
+            el.textContent = text || '';
+            el.style.color = kind === 'bad' ? 'var(--bad)' : kind === 'ok' ? 'var(--ok)' : 'var(--t-muted)';
+        }
+        // ボス名 → ボスコードの推定 (OCR の照合と同じ材料)
+        function _opsResultDetectCode(name) {
+            if (!window.ocrDomain || typeof BOSS_ATTRIBUTES === 'undefined') return null;
+            const nameJpByCode = Object.fromEntries(Object.entries(BOSS_ATTRIBUTES).map(([c, info]) => [c, info?.nameJP || '']));
+            return window.ocrDomain.detectBossCode(name, { nameJpByCode });
+        }
+        // 下書きを作る。ocr = _ocrAttackMultiAndMerge の結果 (キャラはマスタの正式名に直したもの) / null = 手で入力
+        function _opsResultStartDraft(playerId, ocr, files = 0) {
+            const snap = opsStore.get();
+            const dom = window.resultIntakeDomain;
+            if (!dom || !snap?.season) { _opsResultStatus('盤面を読み込んでいます。少し待ってからもう一度押してください', 'bad'); return; }
+            const hint = (_resultIntake.hint && Number(_resultIntake.hint.memberId) === Number(playerId)) ? _resultIntake.hint : null;
+            const ocrBoss = ocr ? dom.matchBoss(ocr.bossName, _resultIntake.bosses, { detectCode: _opsResultDetectCode }) : null;
+            const boss = ocrBoss || (hint ? _opsResultBoss(hint.bossNumber) : null);
+            _resultIntake.draft = {
+                seasonId: snap.season.id, playerId: Number(playerId),
+                bossNumber: boss ? Number(boss.boss_number) : null, ocrBossNumber: ocrBoss ? Number(ocrBoss.boss_number) : null,
+                bossName: ocr?.bossName || null, fromOcr: !!ocr, files,
+                damageB: (ocr && ocr.totalDamage != null && Number.isFinite(Number(ocr.totalDamage))) ? (Number(ocr.totalDamage) / 1e9).toFixed(3) : '',
+                level: Number(snap.season.current_level) || 1,
+                ocrChars: ocr && Array.isArray(ocr.characters) ? ocr.characters : [],
+                // スクショの残 HP (ボスが読めたときだけ。ボスを選び直したら使わない)
+                hpAbs: (ocrBoss && ocr && ocr.bossRemainingHp != null && Number.isFinite(Number(ocr.bossRemainingHp)))
+                    ? { remainingHp: Number(ocr.bossRemainingHp), maxHp: ocr.bossMaxHp != null && Number.isFinite(Number(ocr.bossMaxHp)) ? Number(ocr.bossMaxHp) : null } : null,
+                useHpAbs: true, hpDecrement: true,
+                hint: hint ? { ...hint } : null,   // ⏰ 報告の無い凸から来たとき: そのボスなら割当の編成を既定にする
+                slot: null, slotTouched: false,
+            };
+            _opsResultAutoSlot();
+            _renderOpsResultDraft();
+            _opsResultStatus('');
+        }
+        function _opsResultManual() {
+            if (!_opsMode) return;
+            const p = _opsResultPlayer(_resultIntake.picked);
+            if (!p) { _opsResultStatus('先に「誰の凸か」を選んでください', 'bad'); return; }
+            _opsResultStartDraft(p.id, null, 0);
+        }
+        async function handleOpsResultUpload(event) {
+            const files = Array.from(event.target.files || []).slice(0, 2);
+            event.target.value = '';
+            if (files.length === 0) return;
+            if (!_opsMode) { _opsResultStatus('運営モードで使います', 'bad'); return; }
+            const target = _opsResultPlayer(_resultIntake.picked);
+            if (!target) { _opsResultStatus('先に「誰の凸か」を選んでください', 'bad'); return; }
+            const banner = document.getElementById('opsResultAnalyzing'), bannerText = document.getElementById('opsResultAnalyzingText');
+            if (banner) banner.style.display = 'flex';
+            if (bannerText) bannerText.textContent = `${target.name} さんの凸として ${files.length} 枚を解析中… (1 枚あたり 10〜20 秒)`;
+            _opsResultStatus('');
+            try {
+                const r = await _ocrAttackMultiAndMerge(files);
+                if (!r.bossName && r.totalDamage == null && !(Array.isArray(r.characters) && r.characters.length)) throw new Error('ボスもダメージも読み取れませんでした (結果の画面のスクショか確かめてください)');
+                await getNikkeCharsCache();
+                const chars = (Array.isArray(r.characters) ? r.characters : []).map(n => (n ? (fuzzyResolveCharacter(n) || n) : null)).filter(Boolean);
+                if (Number(_resultIntake.picked) !== Number(target.id)) return;   // 解析中に別の人を選び直した → この結果は使わない
+                _opsResultStartDraft(target.id, { ...r, characters: chars }, files.length);
+            } catch (e) {
+                _opsResultStatus(`❌ ${e?.message || e}`, 'bad');
+            } finally {
+                if (banner) banner.style.display = 'none';
+            }
+        }
+        // 編成の選択肢と既定 (読み取ったキャラ → 配信の割当 → きょう使っていない編成)
+        function _opsResultLoadouts(d) {
+            const dom = window.resultIntakeDomain;
+            const player = d ? _opsResultPlayer(d.playerId) : null, boss = d ? _opsResultBoss(d.bossNumber) : null;
+            if (!dom || !player || !boss) return { options: [], slot: null, why: null };
+            const since = _atkCheck.sinceMs != null ? Date.parse(_atkCheck.sinceMs) : NaN;
+            const doneOnBoss = (player.attacks || []).filter(a => Number(a.boss_number) === Number(boss.boss_number)
+                && (!Number.isFinite(since) || !(Date.parse(a.reported_at) < since))).length;
+            const planned = (d.hint && Number(d.hint.bossNumber) === Number(boss.boss_number) && d.hint.slot != null)
+                ? d.hint.slot : dom.plannedSlotFor(_atkCheck.plan, player.id, boss.boss_number, doneOnBoss);
+            return dom.pickLoadout({ player, weakness: boss.weakness, ocrCharacters: d.ocrChars, plannedSlot: planned });
+        }
+        function _opsResultAutoSlot() {
+            const d = _resultIntake.draft;
+            if (d && !d.slotTouched) d.slot = _opsResultLoadouts(d).slot;
+        }
+        function _opsResultWarnings(d) {
+            const dom = window.resultIntakeDomain;
+            if (!dom || !d) return [];
+            const boss = _opsResultBoss(d.bossNumber), lo = _opsResultLoadouts(d);
+            const raw = String(d.damageB ?? '').trim();
+            return dom.check({ player: _opsResultPlayer(d.playerId), boss, damageB: raw === '' ? null : Number(raw), level: d.level,
+                loadout: lo.options.find(o => o.slot === d.slot) || null, hasMock: lo.options.length > 0,
+                ptName: PT_ATTRS.find(x => x.key === boss?.weakness)?.name || '' });
+        }
+        function _renderOpsResultDraft() {
+            const el = document.getElementById('opsResultDraft');
+            if (!el) return;
+            const d = _resultIntake.draft;
+            if (!d || !_opsMode) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            const player = _opsResultPlayer(d.playerId), boss = _opsResultBoss(d.bossNumber);
+            const lo = _opsResultLoadouts(d);
+            const pt = boss ? PT_ATTRS.find(x => x.key === boss.weakness) : null;
+            const bossBtns = _resultIntake.bosses.map(b => {
+                const p = PT_ATTRS.find(x => x.key === b.weakness);
+                return `<button type="button" class="pick" aria-pressed="${Number(b.boss_number) === Number(d.bossNumber)}" onclick="_opsResultSetBoss(${Number(b.boss_number)})">${p ? `<img src="${p.icon}" alt="${escapeHtml(p.name)}PT">` : ''}B${Number(b.boss_number)} ${escapeHtml(b.name || b.boss_code || '')}</button>`;
+            }).join('');
+            const loBtns = lo.options.length
+                ? lo.options.map(o => `<button type="button" class="pick" aria-pressed="${o.slot === d.slot}" onclick="_opsResultSetSlot(${o.slot})">編成${SLOT_JP[o.slot] || o.slot} ${renderTeamSnippet(o.team, { size: 20 })} <span>${o.dmgB.toFixed(1)}B</span></button>`).join('')
+                : `<span style="color:var(--t-muted);">${boss ? `${escapeHtml(pt?.name || '')}PT の模擬が登録されていません` : 'ボスを選ぶと出ます'}</span>`;
+            const why = { ocr: 'スクショのキャラから', plan: '配信の割当から', unused: 'きょう使っていない編成' }[lo.why] || '';
+            const hpOk = d.hpAbs && boss && Number(d.ocrBossNumber) === Number(boss.boss_number);
+            const hp = hpOk
+                ? `<label class="row"><input type="checkbox" ${d.useHpAbs ? 'checked' : ''} onchange="_opsResultSetHp(this.checked)"> ボスの残 HP をスクショの値 (${(d.hpAbs.remainingHp / 1e9).toFixed(2)}B) に合わせる</label>`
+                : `<label class="row"><input type="checkbox" ${d.hpDecrement ? 'checked' : ''} onchange="_opsResultSetHp(this.checked)"> ボスの残 HP もダメージぶん減らす</label>`;
+            const src = d.fromOcr
+                ? `スクショ ${Number(d.files) || 1} 枚から読み取り${d.bossName && d.ocrBossNumber == null ? ` (ボス名「${escapeHtml(d.bossName)}」はシーズンのボスと照合できませんでした)` : ''}`
+                : '手で入力';
+            el.style.display = '';
+            el.innerHTML = `<div class="ops-result-draft">
+                <div class="h">📥 ${escapeHtml(player?.name || '?')} さんの凸 <small>${src}</small></div>
+                <div class="row"><span class="k">ボス</span>${bossBtns}</div>
+                <div class="row"><span class="k">ダメージ</span><input type="number" id="opsResultDmg" inputmode="decimal" step="0.001" min="0" value="${escapeHtml(String(d.damageB ?? ''))}" oninput="_opsResultSetDamage(this.value)"> B
+                    <select id="opsResultLevel" aria-label="レベル" onchange="_opsResultSetLevel(this.value)" style="margin-left:6px;">${[1, 2, 3, 4].map(l => `<option value="${l}"${l === Number(d.level) ? ' selected' : ''}>Lv${l}</option>`).join('')}</select></div>
+                <div class="row"><span class="k">編成</span>${loBtns}${why ? `<small style="color:var(--t-muted);font-weight:700;">(${why})</small>` : ''}</div>
+                ${hp}
+                <div id="opsResultWarn" style="display:flex;flex-direction:column;gap:5px;"></div>
+                <div class="row" style="justify-content:flex-end;"><button type="button" class="cancel" onclick="_opsResultCancel()">やめる</button><button type="button" class="go" id="opsResultSaveBtn" onclick="handleOpsResultSave()">登録する</button></div>
+            </div>`;
+            _renderOpsResultWarn();
+        }
+        function _renderOpsResultWarn() {
+            const el = document.getElementById('opsResultWarn'), btn = document.getElementById('opsResultSaveBtn');
+            const d = _resultIntake.draft;
+            if (!el || !d) return;
+            const ws = _opsResultWarnings(d);
+            el.innerHTML = ws.map(w => `<p class="warn${w.blocking ? ' block' : ''}">${w.blocking ? '⛔' : '⚠'} ${escapeHtml(w.text)}</p>`).join('');
+            if (btn) btn.disabled = _resultIntake.busy || ws.some(w => w.blocking);
+        }
+        function _opsResultSetBoss(n) {
+            const d = _resultIntake.draft;
+            if (!d) return;
+            d.bossNumber = Number(n);
+            d.slotTouched = false;
+            _opsResultAutoSlot();
+            _renderOpsResultDraft();
+        }
+        function _opsResultSetSlot(s) { const d = _resultIntake.draft; if (!d) return; d.slot = Number(s); d.slotTouched = true; _renderOpsResultDraft(); }
+        function _opsResultSetDamage(v) { const d = _resultIntake.draft; if (!d) return; d.damageB = v; _renderOpsResultWarn(); }
+        function _opsResultSetLevel(v) { const d = _resultIntake.draft; if (!d) return; d.level = Number(v) || 1; _renderOpsResultWarn(); }
+        function _opsResultSetHp(on) {
+            const d = _resultIntake.draft;
+            if (!d) return;
+            const boss = _opsResultBoss(d.bossNumber);
+            if (d.hpAbs && boss && Number(d.ocrBossNumber) === Number(boss.boss_number)) d.useHpAbs = !!on; else d.hpDecrement = !!on;
+        }
+        function _opsResultCancel() { _resultIntake.draft = null; _resultIntake.hint = null; _renderOpsResultDraft(); _opsResultStatus(''); }
+        // 登録: 押した時点の DB で 3 凸済み・同じボスを確かめ直してから report_attack (代理凸の経路)
+        async function handleOpsResultSave() {
+            const d = _resultIntake.draft;
+            const dom = window.resultIntakeDomain;
+            if (!_opsMode || !d || !dom || _resultIntake.busy) return;
+            const btn = document.getElementById('opsResultSaveBtn');
+            _resultIntake.busy = true;
+            if (btn) btn.disabled = true;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                if (!ctx?.season || Number(ctx.season.id) !== Number(d.seasonId)) throw new Error('シーズンが変わりました。取り込み直してください');
+                const boss = (ctx.bosses || []).find(b => Number(b.boss_number) === Number(d.bossNumber)) || null;
+                const base = _opsResultPlayer(d.playerId);
+                const fresh = await window.supabaseLoadMyAttacks(d.playerId, ctx.season.id, ctx.season.hard_date) || [];
+                const lo = _opsResultLoadouts(d);
+                const cur = lo.options.find(o => o.slot === d.slot) || null;
+                const raw = String(d.damageB ?? '').trim();
+                const damageB = raw === '' ? null : Number(raw);
+                const ws = dom.check({ player: base ? { ...base, attacks: fresh } : null, boss, damageB, level: d.level, loadout: cur, hasMock: lo.options.length > 0,
+                    ptName: PT_ATTRS.find(x => x.key === boss?.weakness)?.name || '' });
+                const stop = ws.find(w => w.blocking);
+                if (stop) { _opsResultStatus(`⛔ ${stop.text}`, 'bad'); return; }
+                const dup = ws.find(w => w.key === 'dup');
+                if (dup && !confirm(`⚠️ ${base?.name || ''} さん: ${dup.text}\n\n[OK] 別の凸として登録する\n[キャンセル] やめる`)) { _opsResultStatus('登録をやめました'); return; }
+                const me = getCurrentIdentity();
+                const team = cur ? cur.team.slice() : [];
+                const hpAbs = (d.hpAbs && d.useHpAbs && Number(d.ocrBossNumber) === Number(boss.boss_number)) ? d.hpAbs : null;
+                const rid = await _reservationIdForAttack(ctx.season.id, d.playerId, d.level, boss.boss_number, team);
+                const res = await window.supabaseAddAttack({
+                    seasonId: ctx.season.id, playerId: d.playerId, attackDate: ctx.season.hard_date,
+                    bossNumber: boss.boss_number, bossCode: boss.boss_code, damageRaw: Math.round(damageB * 1e9),
+                    level: d.level, characters: team,
+                }, { isProxy: true, actorName: me?.name || null, reservationId: rid, skipHpDecrement: hpAbs ? true : !d.hpDecrement });
+                if (hpAbs) {
+                    const totalRaw = hpAbs.maxHp != null ? hpAbs.maxHp : Number(boss.total_hp_raw || 0);
+                    try { await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, hpAbs.remainingHp); }
+                    catch (e) { console.warn('[result intake] 残HPの反映に失敗:', e?.message || e); showNotification('⚠ 凸は登録しましたが、ボスの残 HP を直せませんでした (⚔️ ボス状況で直してください)'); }
+                }
+                // 運営の登録で確定 = ✓ 確認済み (52 が無ければ黙って諦める — 一覧に ✓ が付かないだけ)
+                if (res?.id != null && typeof window.supabaseSetAttackConfirmed === 'function') {
+                    window.supabaseSetAttackConfirmed(res.id, true, me?.name || '運営').catch(() => { /* 52 未適用 */ });
+                }
+                if (Number(res?.overCapacity) > 0) showNotification('⚠ 残り凸を超えて予約を押さえています。予約を確かめてください');
+                const name = base?.name || '';
+                _resultIntake.draft = null; _resultIntake.hint = null;
+                _renderOpsResultDraft();
+                _opsResultStatus(`✅ ${name} さんの B${boss.boss_number} ${damageB.toFixed(2)}B を登録しました${hpAbs ? ' (残 HP はスクショの値)' : d.hpDecrement ? '' : ' — 残 HP は減らしていません'}`, 'ok');
+                // ★ invalidate の前に検知する (キャッシュ = 登録前の盤面を比較元に使う)
+                _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
+                opsStore.invalidate();
+                _opsReloadBoardCards();
+                // 👥 メンバー状況の「代理」件数は activity_log (fire-and-forget) を数える → 少し待って取り直す (代理凸と同じ)
+                setTimeout(() => { if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true); }, 1500);
+            } catch (e) {
+                _opsResultStatus(`❌ ${e?.message || e}`, 'bad');
+            } finally {
+                _resultIntake.busy = false;
+                _renderOpsResultWarn();
+            }
         }
 
         // ========== 📸 模擬の取り込み (🧱 ブロック制 ③-e・運営ONのみ・2026-10-18) ==========
@@ -23014,6 +23412,48 @@
             return true;
         }
 
+        // 🧱 ブロックの配信の通知 (段階 4・ユーザー決定 h「次のブロックの配信は通知する」)。
+        //   そのブロックに割当のある人へ、自分の凸を 1 通にまとめて送る (「🧱 夜 21〜23時 のあなたの凸が決まりました — 21時 B3 風圧PT 編成①」)。
+        //   同じブロックの配信し直し (承認後の組み直しなど) は、割当が変わった人だけ (変わらない人を何度も鳴らさない)。
+        //   二重送信よけは raid_event_notices の kind 'block_publish' / ref = 配信の id (配信 1 回につき 1 度)。
+        // 戻り値: 通知の相手にした人の id の集合 (この人には下の「割当が変わりました」(L4) を重ねない)。全部送れなかったら空 (L4 に任せる)
+        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds, onlyIds }) {
+            const none = new Set();
+            const rb = window.raidBlocksDomain, dom = window.resultIntakeDomain;
+            const scope = plan?.blockScope;
+            if (!pub?.id || !scope || !rb || !dom || typeof window.sendPushNotification !== 'function') return none;
+            let bosses = [];
+            try { bosses = (await ensureActiveSeasonLoaded())?.bosses || []; } catch { /* ボスの PT 名を補えないだけ */ }
+            const notices = dom.publishNotices(rb.scopePlan(plan, scope), {
+                label: scope.label, bosses, changedIds,
+                ptName: (w) => PT_ATTRS.find(x => x.key === w)?.name || '',
+            }).filter(n => !onlyIds || onlyIds.has(Number(n.memberId)));
+            if (!notices.length) return none;
+            const st = typeof window.supabaseClaimRaidNotice === 'function'
+                ? await window.supabaseClaimRaidNotice(seasonId, 'block_publish', String(pub.id), me?.id || null) : 'claimed';
+            if (st !== 'claimed') return none;   // 送信済み / 誰かが送信中
+            let reached = 0, failed = 0;
+            const sent = new Set();
+            for (const n of notices) {
+                try {
+                    const res = await window.sendPushNotification({ title: n.title, body: n.body, url: './?tab=mypage&focus=plan', playerIds: [n.memberId] },
+                        { senderPlayerId: me?.id || null });
+                    sent.add(Number(n.memberId));
+                    if (Number(res?.sent) > 0) reached++;
+                } catch (e) {
+                    failed++;
+                    console.warn('[publish] ブロックの配信の通知に失敗:', e?.message || e);
+                }
+            }
+            if (sent.size === 0) {   // 1 通も送れなかった → 確保を戻す (送っていないのに送信済みにしない)
+                await window.supabaseReleaseRaidNotice?.(seasonId, 'block_publish', String(pub.id));
+                showNotification(`⚠️ 配信はできましたが、${scope.label} の割当の通知を送れませんでした`);
+                return none;
+            }
+            await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', String(pub.id));
+            showNotification(`📣 ${scope.label} の割当を ${sent.size} 人に通知しました${reached < sent.size ? ` (端末に届いたのは ${reached} 人ぶん)` : ''}${failed ? ` / ${failed} 人は送信失敗` : ''}`);
+            return sent;
+        }
         async function handleOpsPublishPlan() {
             if (!_opsLastPlan) {
                 showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
@@ -23047,6 +23487,7 @@
             //   ここで取った差分は配信後の通知の絞り込み (L4) にも使い回す — 判定を二重に書かない
             let publishDiff = null;
             let prevPlanId = null;   // 差分を取った相手。ack の引き継ぎをこの行に限定するのに使う
+            let prevScope = null;    // 前の配信のブロック (🧱 段階 4: 同じブロックの配信し直しは、割当が変わった人だけに通知する)
             try {
                 const prevPub = typeof window.supabaseGetPublishedPlan === 'function'
                     ? await window.supabaseGetPublishedPlan() : null;
@@ -23054,6 +23495,7 @@
                 const sameSeason = prevPub && Number(prevPub.season_id) === Number(seasonId);
                 const prevPlan = sameSeason ? prevPub.plan : null;
                 if (sameSeason) prevPlanId = prevPub.id;
+                if (sameSeason) prevScope = prevPlan?.blockScope || null;
                 // 🧱 ブロックのぶんだけ配信するときは、差分 (L5 の提示・L4 の通知) もその範囲で見る。
                 //   前の配信の後ろのブロックは約束ではないので「変わった」に数えない
                 const scopeNow = _opsLastPlan?.blockScope || null;
@@ -23084,10 +23526,10 @@
                   `「プランが更新されました」の通知を送ります (変わらない人には送りません)。`
                 : '';
             const scopeMsg = (_opsLastPlan?.blockScope && window.raidBlocksDomain)
-                ? `🧱 ${_opsLastPlan.blockScope.label} のぶん (${window.raidBlocksDomain.attackCountIn(_opsLastPlan, _opsLastPlan.blockScope)}凸) を配信します。\nメンバーのホームにはこのブロックの割当だけが出ます (後ろのブロックはまだ約束しません)。\n\n`
+                ? `🧱 ${_opsLastPlan.blockScope.label} のぶん (${window.raidBlocksDomain.attackCountIn(_opsLastPlan, _opsLastPlan.blockScope)}凸) を配信します。\nメンバーのホームにはこのブロックの割当だけが出ます (後ろのブロックはまだ約束しません)。\nこのブロックに割当のある人には、自分の凸を書いた通知を送ります (同じブロックの配信し直しは、割当が変わった人だけ)。\n\n`
                 : '';
             const msg = scopeMsg + '📤 現在表示中のプランを全メンバーに配信しますか？'
-                + (ackedPreview.length > 0 ? '' : '\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。')
+                + (ackedPreview.length > 0 || _opsLastPlan?.blockScope ? '' : '\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。')
                 + diffMsg + ackMsg;
             if (!confirm(msg)) return;
             try {
@@ -23106,6 +23548,7 @@
                 //   ※ 照合と INSERT の間の窓は残る。完全に閉じるにはサーバ側 RPC で照合と INSERT を一体化する
                 if (!(await _publishReservationGuard(seasonId))) return;
                 const me = getCurrentIdentity();
+                const published = _opsLastPlan;   // 配信したプラン (通知の文に使う。await の間に算出し直されても変わらない)
                 const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId, _planSchemaOf(_opsLastPlan));
                 showNotification('✅ プランを配信しました');
                 // 通知対象は**配信後に**取り直す: 確認ダイアログを出している間に押した人も拾える。
@@ -23146,6 +23589,21 @@
                         }
                     }
                 } catch (e) { console.warn('[publish] 通知対象の取得skip:', e?.message || e); }
+                // 🧱 ブロックの配信: 割当のある人へ「あなたの凸」を 1 通ずつ (段階 4)。同じブロックの配信し直しは、割当が変わった人だけ。
+                //   通知した人には下の「割当が変わりました」(L4) を重ねない
+                if (published?.blockScope) {
+                    const sameBlock = !!(prevScope && Number(prevScope.from) === Number(published.blockScope.from) && Number(prevScope.to) === Number(published.blockScope.to));
+                    const dd = window.planDiffDomain;
+                    const changedAll = (dd && publishDiff && !publishDiff.first) ? new Set(dd.changedIds(publishDiff).map(Number)) : null;
+                    try {
+                        const blockSent = await _notifyBlockPublish({ pub, plan: published, seasonId, me,
+                            changedIds: sameBlock ? (changedAll || new Set()) : new Set(),
+                            onlyIds: sameBlock ? changedAll : null });
+                        targets = targets.filter(id => !blockSent.has(Number(id)));
+                    } catch (e) { console.warn('[publish] ブロックの配信の通知skip:', e?.message || e); }
+                    // 新しいブロックの初回の配信: 前の配信のこのブロックの割当は仮 (約束していない) なので「割当が変わりました」(L4) は送らない
+                    if (!sameBlock) targets = [];
+                }
                 if (carried > 0) showNotification(`🔕 割当が変わらない ${carried} 名には通知しません`);
                 if (targets.length > 0) {
                     try {
@@ -27325,6 +27783,7 @@
             ['myTeamEditModal', 'myTeamEditOcrInput', (ev) => handleMyTeamEditOcr(ev)],           // 📸 模擬の提出 (戦闘履歴)
             ['myBulkAttackModal', 'myBulkAttackOcrInput', (ev) => handleMyBulkAttackOcrUpload(ev)],   // BlaBlaLINK 3凸
             ['opsSecMockIntake', 'opsMockIntakeInput', (ev) => handleOpsMockIntakeUpload(ev)],      // 📸 運営の模擬取り込み (③-e・カードそのものが受け口)
+            ['opsSecAttackCheck', 'opsResultInput', (ev) => handleOpsResultUpload(ev)],             // 📥 結果の取り込み (段階 4・カードそのものが受け口)
         ];
         const _dropHasFiles = (ev) => Array.from(ev.dataTransfer?.types || []).includes('Files');
         function _enableFileDrop(modalId, inputId, handler) {

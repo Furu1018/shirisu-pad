@@ -21,6 +21,7 @@ import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦�
 import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
 import '../js/domain/mockIntake.js';      // globalThis.mockIntakeDomain (📸 運営の模擬取り込み — ブロック制 ③-e 2026-10-18)
 import '../js/domain/attackCheck.js';     // globalThis.attackCheckDomain (✅ 凸報告の確認 — ブロック制 ③-f 2026-10-18)
+import '../js/domain/resultIntake.js';    // globalThis.resultIntakeDomain (📥 結果の取り込み — ブロック制 段階 4 2026-10-23)
 import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
@@ -5675,7 +5676,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/async function _reservationIdForAttack/.test(html), '紐づけの共通処理が無い');
         const n = (html.match(/_reservationIdForAttack\(/g) || []).length;
         assert.ok(n >= 5, `呼び出しが足りない (定義1 + 4経路 = 5以上のはずが ${n})`);
-        assert.equal((html.match(/reservationId: r/g) || []).length, 4, '凸報告4経路すべてに渡していない');
+        assert.equal((html.match(/reservationId: r/g) || []).length, 5, '凸報告の 5 経路 (本人・一括・代理・代理一括・📥 結果の取り込み) すべてに渡していない');
         // 曖昧なときは紐づけない (間違った予約を消し込む方が害が大きい)
         const m = rv.matchForAttack;
         const R = (o) => ({ id: o.id, player_id: 'p1', status: o.st || 'approved', raid_level: 2,
@@ -10436,7 +10437,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/attackCounts: \(typeof _atkCheck !== 'undefined' && _atkCheck\.counts && same\(_atkCheck\.counts\.seasonId\)\)/.test(html)
             && /reservations: \(typeof _resv !== 'undefined' && same\(_resv\.seasonId\)\)/.test(html) && /mbRows: \(typeof _mb !== 'undefined' && same\(_mb\.season\?\.id\)\)/.test(html), '件数をシーズンで確かめていない');
         assert.ok(/_resv\.rows = rows;\s*\n\s*_resv\.seasonId = season\.id;/.test(html) && /_resv\.rows = reservations;[^\n]*\n\s*_resv\.seasonId = snapshot\.season\.id;/.test(html), '予約にシーズンを持たせていない');
-        assert.ok(/if \(!snap\?\.season\) \{ _atkCheck\.counts = null;/.test(html), 'シーズンが無いときに凸報告の件数を消していない');
+        assert.ok(/if \(!snap\?\.season\) \{\s*_atkCheck\.counts = null;/.test(html), 'シーズンが無いときに凸報告の件数を消していない');
     });
     test('★ 配線 (2.5): メンバー (lite) の戦況タブを隠す — 下メニュー・上のタブ・ドロワー (CSS) / 古い導線はホームへ / スワイプも飛ばす', () => {
         const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -12451,9 +12452,9 @@ console.log('\ngrowthDomain:');
         assert.equal(row3.confirmedBy, 'ふるり'); assert.equal(row3.confirmedAt, Date.parse(at(19, 30))); assert.deepEqual(row3.planned, { bossNumber: 3, hourIdx: 10, dmgB: 25, level: 1 });
         assert.equal(r.rows.find(x => x.id === 1).damageB, 28); assert.equal(r.rows.find(x => x.id === 1).hourIdx, 16);
         // 未報告: D (13 時の予定・いまは 22 時) だけ。E は ⏳隙間 (数えない)、F は 翌1時 でまだ先
-        assert.deepEqual(r.missing, [{ memberId: 'D', bossNumber: 5, hourIdx: 8, hourLabel: '13時', dmgB: 40, level: 1 }]);
-        assert.deepEqual(r.counts, { total: 5, confirmed: 1, flagged: 4, unchecked: 0, missing: 1 });
-        assert.equal(dom.summary(r), '確認 1 / 5 · 要確認 4 · 未報告 1');
+        assert.deepEqual(r.missing, [{ memberId: 'D', bossNumber: 5, hourIdx: 8, hourLabel: '13時', dmgB: 40, level: 1, loadoutSlot: 1, key: null }]);
+        assert.deepEqual(r.counts, { total: 5, confirmed: 1, flagged: 4, unchecked: 0, missing: 1, skipped: 0 });
+        assert.equal(dom.summary(r), '確認 1 / 5 · 要確認 4 · 結果がまだ 1');
         // 同じ人・同じボスに 2 つの割当: 近い時刻の割当へ当てる (1 つの割当に 1 つの報告)
         const plan2 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 2, dmgB: 30 }, { memberId: 'A', hourIdx: 16, dmgB: 30 }] }] }] };
         const r2 = dom.buildRows({ attacks: [{ id: 1, player_id: 'A', boss_number: 1, damage_raw: 30e9, reported_at: at(21, 0) }], plan: plan2, nowMs: Date.parse(at(22, 0)) });
@@ -12475,7 +12476,7 @@ console.log('\ngrowthDomain:');
         assert.equal(byId(2).unchecked, null); assert.deepEqual(byId(2).flags, []); assert.equal(byId(2).planned.level, 2, 'Lv2 の報告が Lv2 の割当に当たる (古い Lv1 の凸に食われない)');
         assert.equal(byId(3).unchecked, 'ボス未指定 (照合できません)'); assert.equal(byId(3).bossNumber, null); assert.deepEqual(byId(3).flags, []);
         assert.deepEqual(rl.missing, [], '割当は Lv2 の報告で埋まっている (未報告の誤表示なし)');
-        assert.deepEqual(rl.counts, { total: 3, confirmed: 0, flagged: 0, unchecked: 2, missing: 0 });
+        assert.deepEqual(rl.counts, { total: 3, confirmed: 0, flagged: 0, unchecked: 2, missing: 0, skipped: 0 });
         assert.equal(dom.summary(rl), '確認 0 / 3 · 照合できない 2');
         // 配信が複数レベルを持つとき: 同じ人・同じボスでもレベルの合う割当へ (時刻が近いだけの別レベルに当てない — 変異「レベルを見ずに当てる」で発覚)
         const planLv12 = { levels: [
@@ -12491,12 +12492,118 @@ console.log('\ngrowthDomain:');
         assert.equal(rn.rows[0].unchecked, null); assert.equal(rn.rows[0].planned.level, 2);
     });
 
+    test('★ 🧱 段階 4 attackCheck: 配信の算出より前の凸は照合しない (sinceMs) / 「凸していない」の印 (skips・missingKey) は未報告から外して skipped へ', () => {
+        const dom = globalThis.attackCheckDomain;
+        const at = (h, m = 0) => new Date(Date.UTC(2026, 9, 19, h - 9, m)).toISOString();
+        const plan = { levels: [{ level: 1, bosses: [
+            { bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 13, dmgB: 30, loadoutSlot: 2 }] },
+            { bossNumber: 2, attacks: [{ memberId: 'B', hourIdx: 14, dmgB: 20 }] },
+        ] }] };
+        // A の 17 時の凸は 18 時の算出より前 = その凸を前提に組んだプラン → 照合しない (割当を食わない・印なし)
+        const attacks = [{ id: 1, player_id: 'A', name: 'A', boss_number: 1, damage_raw: 30e9, reported_at: at(17, 0) }];
+        const r = dom.buildRows({ attacks, plan, nowMs: Date.parse(at(21, 0)), sinceMs: at(18, 0), planId: 77 });
+        assert.equal(r.rows[0].unchecked, 'いまの配信より前の凸', '算出より前の凸を照合している');
+        assert.deepEqual(r.rows[0].flags, []);
+        assert.deepEqual(r.missing.map(m => [m.memberId, m.bossNumber, m.loadoutSlot, m.key]), [['A', 1, 2, '77|A|1|1|13'], ['B', 2, 1, '77|B|1|2|14']], 'A の割当が食われた / 鍵・編成枠が無い');
+        // 算出のあとの凸は今までどおり照合する
+        const r1 = dom.buildRows({ attacks: [{ ...attacks[0], reported_at: at(18, 30) }], plan, nowMs: Date.parse(at(21, 0)), sinceMs: at(18, 0), planId: 77 });
+        assert.equal(r1.rows[0].unchecked, null); assert.equal(r1.rows[0].planned.bossNumber, 1);
+        assert.deepEqual(r1.missing.map(m => m.memberId), ['B']);
+        // 「凸していない」: 鍵が当たる割当は missing から skipped へ (数えない)
+        const r2 = dom.buildRows({ attacks: [], plan, nowMs: Date.parse(at(21, 0)), planId: 77, skips: new Set(['77|B|1|2|14']) });
+        assert.deepEqual(r2.missing.map(m => m.memberId), ['A']); assert.deepEqual(r2.skipped.map(m => m.memberId), ['B']);
+        assert.equal(r2.counts.missing, 1); assert.equal(r2.counts.skipped, 1);
+        assert.equal(dom.summary(r2), '確認 0 / 0 · 結果がまだ 1 · 凸していない 1');
+        // 配信の id が無い (旧データ) は鍵を作らない = 印を付けられない
+        assert.equal(dom.missingKey(null, { memberId: 'A', level: 1, bossNumber: 1, hourIdx: 3 }), null);
+        assert.equal(dom.missingKey(5, { memberId: 'A', level: null, bossNumber: 1, hourIdx: null }), '5|A||1|');
+    });
+    test('★ 🧱 段階 4 resultIntake: ボスの照合 / 配信の割当の編成枠 / 使った編成 (キャラ → 割当 → 使っていない編成) / 登録の前の注意 / Discord の聞き方 / ブロックの配信の通知', () => {
+        const d = globalThis.resultIntakeDomain;
+        const bosses = [
+            { boss_number: 1, boss_code: 'Z.E.U.S.', name: '電撃ゼウス', weakness: 'iron' },
+            { boss_number: 3, boss_code: 'A.N.M.I.', name: '風圧アネモイ', weakness: 'fire' },
+            { boss_number: 5, boss_code: 'D.M.T.R.', name: '鉄甲デメテル', weakness: 'wind' },
+        ];
+        // matchBoss: 名前の部分一致 (空白は無視) / 決まらなければボスコードの推定へ / 読めなければ null
+        assert.equal(d.matchBoss('風圧 アネモイ', bosses).boss_number, 3);
+        assert.equal(d.matchBoss('アネモイ', bosses).boss_number, 3);
+        assert.equal(d.matchBoss('キューカンバー', bosses, { detectCode: (n) => (n === 'キューカンバー' ? 'A.N.M.I.' : null) }).boss_number, 3, 'ボスコードの推定に任せていない');
+        assert.equal(d.matchBoss('ほかのボス', bosses), null); assert.equal(d.matchBoss('', bosses), null); assert.equal(d.matchBoss(null, null), null);
+        assert.equal(d.matchBoss('ゼウス', [...bosses, { boss_number: 9, name: 'ゼウスII' }]), null, '2 つに当たるのに 1 つを選んだ');
+        // plannedSlotFor: その人・そのボスの割当を時刻の早い順に、登録済みの数だけ飛ばす
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 3, attacks: [{ memberId: 7, hourIdx: 15, loadoutSlot: 2 }, { memberId: 7, hourIdx: 13, loadoutSlot: 1 }, { memberId: 8, hourIdx: 13, loadoutSlot: 2 }] }] }] };
+        assert.equal(d.plannedSlotFor(plan, 7, 3, 0), 1); assert.equal(d.plannedSlotFor(plan, 7, 3, 1), 2); assert.equal(d.plannedSlotFor(plan, 7, 3, 2), null);
+        assert.equal(d.plannedSlotFor(plan, '7', 1, 0), null); assert.equal(d.plannedSlotFor(null, 7, 3), null);
+        // pickLoadout
+        const player = { id: 7, name: 'あお', attacks: [{ boss_number: 1, characters: ['X1'] }],
+            loadoutsByAttr: { fire: [{ slot: 2, team: ['F1', 'F2', 'F3', 'F4', 'F5'], dmgB: 30 }, { slot: 1, team: ['X1', 'G2', 'G3', 'G4', 'G5'], dmgB: 33 }] } };
+        const pk = d.pickLoadout({ player, weakness: 'fire' });
+        assert.deepEqual(pk.options.map(o => [o.slot, o.usedChars]), [[1, ['X1']], [2, []]], '編成枠の順 / きょう使ったキャラ');
+        assert.deepEqual([pk.slot, pk.why], [2, 'unused'], 'きょう使っていない編成を選んでいない');
+        assert.deepEqual(Object.values(d.pickLoadout({ player, weakness: 'fire', plannedSlot: 1 })).slice(1), [1, 'plan'], '配信の割当を選んでいない');
+        assert.deepEqual(Object.values(d.pickLoadout({ player, weakness: 'fire', plannedSlot: 1, ocrCharacters: ['F1', 'F3', 'Z9'] })).slice(1), [2, 'ocr'], '読み取ったキャラを割当より先に見ていない');
+        assert.deepEqual(Object.values(d.pickLoadout({ player, weakness: 'fire', plannedSlot: 1, ocrCharacters: ['F1'] })).slice(1), [1, 'plan'], 'キャラ 1 人の一致で決めている');
+        assert.deepEqual(d.pickLoadout({ player, weakness: 'wind' }), { options: [], slot: null, why: null });
+        assert.deepEqual(Object.values(d.pickLoadout({ player: { attacks: [{ characters: ['F1', 'X1'] }], loadoutsByAttr: player.loadoutsByAttr }, weakness: 'fire' })).slice(1), [1, 'first'], 'どれも使っていれば 1 つ目');
+        // check
+        const keys = (o) => d.check(o).map(w => w.key + (w.blocking ? '!' : ''));
+        assert.deepEqual(keys({ player: null, boss: null, damageB: null }), ['player!', 'boss!', 'damage!']);
+        assert.deepEqual(keys({ player, boss: bosses[1], damageB: 31.5, level: 1, loadout: pk.options[1], hasMock: true }), [], '問題の無い下書きに注意が出る');
+        assert.deepEqual(keys({ player: { ...player, attacks: [{}, {}, {}] }, boss: bosses[1], damageB: 1, hasMock: true }), ['spent!']);
+        assert.deepEqual(keys({ player, boss: bosses[0], damageB: 0, hasMock: false }), ['dup', 'noMock'], '0 は通す (凸の消化だけの登録) / 同じボス・模擬なしは知らせるだけ');
+        assert.deepEqual(keys({ player, boss: bosses[1], damageB: -1, hasMock: true }), ['damage!']);
+        assert.deepEqual(keys({ player, boss: bosses[1], damageB: 5, level: 4, hasMock: true }), ['lv4!'], 'Lv4 でボス 5 以外を通している');
+        assert.deepEqual(keys({ player, boss: bosses[2], damageB: 5, level: 4, hasMock: true }), [], 'Lv4 のボス 5 を止めている');
+        assert.deepEqual(keys({ player, boss: bosses[1], damageB: 5, loadout: pk.options[0], hasMock: true }), ['chars']);
+        // askText
+        assert.equal(d.askText({ name: 'あお', hourLabel: '13時', bossNumber: 3, ptName: '灼熱' }), 'あお さん、13時の B3 (灼熱PT) の凸の結果のスクショを #凸報告 に貼ってください 🙏 まだ凸していなければ、このあと出られるかだけ教えてください');
+        // publishNotices: 人ごとに自分の凸を時刻順に 1 通 / 変わった人は「変わりました」
+        // ★ プランの並び (ボス順) ではなく時刻の順に書く: 7 の B3 は 23 時・B1 は 21 時
+        const scoped = { levels: [
+            { level: 1, bosses: [{ bossNumber: 3, weakness: 'fire', attacks: [{ memberId: 8, hourIdx: 17, loadoutSlot: 1 }, { memberId: 7, hourIdx: 18, loadoutSlot: 2 }] },
+                { bossNumber: 1, attacks: [{ memberId: 7, hourIdx: 16, loadoutSlot: 1 }] }] },
+        ] };
+        const ns = d.publishNotices(scoped, { label: '夜 21〜23時', bosses, changedIds: new Set([8]), ptName: (w) => ({ fire: '灼熱', iron: '鉄甲' })[w] });
+        assert.deepEqual(ns.map(n => [n.memberId, n.title, n.body]), [
+            [7, '🧱 夜 21〜23時 のあなたの凸が決まりました', '21時 B1 鉄甲PT 編成① / 23時 B3 灼熱PT 編成② — ホームで確認してください'],
+            [8, '🔄 夜 21〜23時 のあなたの凸が変わりました', '22時 B3 灼熱PT 編成① — ホームで確認してください'],
+        ]);
+        assert.deepEqual(d.publishNotices({ levels: [] }, { label: 'x' }), []);
+    });
+    test('★ 配線: 🧱 段階 4 📥 結果の取り込み — 戦況のカード (旧 ✅ 凸報告の確認) / 代理凸の経路で登録 + ✓ / 撃破の検知を invalidate の前に / 凸していない は raid_event_notices / 組むの片付け / ブロックの配信の通知', () => {
+        const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
+        const html = rd('index.html'), client = rd('js', 'supabase-client.js');
+        assert.ok(html.includes('<script defer src="./js/domain/resultIntake.js"></script>'), 'resultIntake.js を読み込んでいない');
+        // 登録: 押した時点の DB で確かめ直す → 予約に紐づけ → report_attack (代理凸と同じ印) → ✓ → 撃破の検知 → invalidate → 中央の取り直し
+        const save = html.match(/async function handleOpsResultSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const fresh = await window\.supabaseLoadMyAttacks\(d\.playerId, ctx\.season\.id, ctx\.season\.hard_date\)/.test(save), '押した時点の凸で確かめ直していない');
+        assert.ok(/\{ isProxy: true, actorName: me\?\.name \|\| null, reservationId: rid, skipHpDecrement: hpAbs \? true : !d\.hpDecrement \}/.test(save), '代理凸の印 / 予約 / 残HP の扱いが違う');
+        assert.ok(/window\.supabaseSetAttackConfirmed\(res\.id, true, me\?\.name \|\| '運営'\)/.test(save), '取り込んだ凸を ✓ にしていない');
+        assert.ok(save.indexOf('_checkRaidEvents()') > 0 && save.indexOf('_checkRaidEvents()') < save.indexOf('opsStore.invalidate()') && save.indexOf('opsStore.invalidate()') < save.indexOf('_opsReloadBoardCards()'), '撃破の検知を invalidate の前に呼んでいない / 取り直していない');
+        assert.ok(/if \(!_opsMode \|\| !d \|\| !dom \|\| _resultIntake\.busy\) return;/.test(save) && /_resultIntake\.busy = false;/.test(save), '二重押しを止めていない');
+        // 凸していない: 置き場は raid_event_notices (新しい表を作らない) / 読めなければ null
+        const loadSkips = client.match(/window\.supabaseLoadAttackSkips = async function \(seasonId\) \{[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/\.eq\('kind', 'atk_skip'\)/.test(loadSkips) && /catch \(e\) \{[^}]*return null;\s*\}/.test(loadSkips), '凸していない の読み出しが違う / 読めないときに空 (= 印なし) と偽る');
+        assert.ok(/\.insert\(\{ season_id: seasonId, kind: 'atk_skip', ref: String\(key\), sent: true, notified_by: byPlayerId \|\| null \}\)/.test(client) && /if \(error && error\.code !== '23505'\) throw error;/.test(client), '凸していない の書き込みが違う');
+        // 組むの片付け: 結果がまだの凸があるときだけ (止めない)
+        assert.ok(/<div id="opsPlanTidy" class="plan-cue" style="display:none;"><\/div>\s*\n\s*<div id="opsPlanCue"/.test(html), '片付けの案内が組むの頭に無い');
+        // ブロックの配信の通知: 配信 1 回につき 1 度 (block_publish) / 同じブロックの配信し直しは変わった人だけ / 通知した人に L4 を重ねない
+        const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds, onlyIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/supabaseClaimRaidNotice\(seasonId, 'block_publish', String\(pub\.id\), me\?\.id \|\| null\)/.test(notify) && /if \(st !== 'claimed'\) return none;/.test(notify), '二重送信よけが無い');
+        assert.ok(/supabaseReleaseRaidNotice\?\.\(seasonId, 'block_publish', String\(pub\.id\)\)/.test(notify) && /supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', String\(pub\.id\)\)/.test(notify), '送れなかったときに確保を戻していない');
+        const pubFn = html.match(/async function handleOpsPublishPlan\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const sameBlock = !!\(prevScope && Number\(prevScope\.from\) === Number\(published\.blockScope\.from\) && Number\(prevScope\.to\) === Number\(published\.blockScope\.to\)\);/.test(pubFn)
+            && /onlyIds: sameBlock \? changedAll : null/.test(pubFn) && /targets = targets\.filter\(id => !blockSent\.has\(Number\(id\)\)\);/.test(pubFn), '同じブロックの配信し直し / L4 の重ね送りの扱いが違う');
+        assert.ok(pubFn.indexOf('_notifyBlockPublish(') < pubFn.indexOf('if (targets.length > 0) {'), 'L4 を送ってからブロックの通知をしている (重ねて送る)');
+        assert.ok(/if \(!sameBlock\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている');
+    });
     test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js'), sql = rd('supabase', '52_attacks_confirmed.sql');
         assert.ok(html.includes('<script defer src="./js/domain/attackCheck.js"></script>'), 'attackCheck.js を読み込んでいない');
-        assert.ok(/id: 'opsSecAttackCheck', title: '凸報告の確認',[^\n]*opsOnly: true,[^\n]*open: \{ pre: false, day: true \},[^\n]*stages: \['day', 'end'\], span: 12/.test(layout), 'CARDS に無い / 段階・幅・開閉が違う');
-        assert.ok(/<div class="dc-card" data-ops-only id="opsSecAttackCheck">\s*\n[\s\S]{0,400}✅ 凸報告の確認</.test(html), 'カードが無い');
+        assert.ok(/id: 'opsSecAttackCheck', title: '結果の取り込み',[^\n]*opsOnly: true,[^\n]*open: \{ pre: false, day: true \},[^\n]*stages: \['day', 'end'\], span: 12/.test(layout), 'CARDS に無い / 段階・幅・開閉が違う');
+        assert.ok(/<div class="dc-card" data-ops-only id="opsSecAttackCheck">\s*\n[\s\S]{0,400}📥 結果の取り込み</.test(html), 'カードが無い');
         assert.ok(/<div id="opsAtkCheckFilters" class="ops-atk-f">[\s\S]*?data-f="all"[\s\S]*?data-f="flagged"[\s\S]*?data-f="todo"/.test(html), '絞り込み (全部 / 要確認 / 未確認) が無い');
         // SQL 52: 2 列を冪等に足す。99 の判定行は別テスト
         assert.ok(/ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;/.test(sql) && /ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_by TEXT;/.test(sql) && /NOTIFY pgrst, 'reload schema';/.test(sql), '52 の SQL が違う');
@@ -12512,8 +12619,11 @@ console.log('\ngrowthDomain:');
         assert.ok(/supabaseLogActivity\?\.\('attack_confirm',[^\n]*\{ playerId: data\[0\]\.player_id, actorName: byName \|\| null \}\)/.test(setFn), '活動ログに actor が無い');
         // 描画: 運営OFF は何もしない / 配信の取り直しの最後に描く / ↻ は盤面と配信を取り直す / 52 未適用は ✓ を押せなくする
         const render = html.match(/async function renderOpsAttackCheck\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(!_opsMode\) return;/.test(render) && /const res = dom\.buildRows\(\{ attacks, plan, nowMs: Date\.now\(\) \}\);/.test(render), '運営OFF / ドメインで決めていない');
-        assert.ok(/const plan = _opsPublishedPlan\?\.plan \|\| null;/.test(render), '配信プランは _opsPublishedPlan を使う (別クエリを増やさない)');
+        assert.ok(/if \(!_opsMode\) return;/.test(render) && /const res = dom\.buildRows\(\{ attacks, plan, nowMs: Date\.now\(\), sinceMs, planId: pub\?\.id \?\? null, skips \}\);/.test(render), '運営OFF / ドメインで決めていない');
+        // 段階 4: 配信は同じシーズンの _opsPublishedPlan (別クエリを増やさない) を そのブロックのぶんに絞り、算出の時刻より前の凸は照合しない
+        assert.ok(/const pub = \(_opsPublishedPlan && Number\(_opsPublishedPlan\.season_id\) === Number\(snap\.season\.id\)\) \? _opsPublishedPlan : null;/.test(render)
+            && /const plan = \(rawPlan && rawPlan\.blockScope && rb\) \? rb\.scopePlan\(rawPlan, rawPlan\.blockScope\) : rawPlan;/.test(render)
+            && /const sinceMs = rawPlan\?\.conditions\?\.computedAt \|\| pub\?\.published_at \|\| null;/.test(render), '配信プランは同じシーズンの _opsPublishedPlan を そのブロックに絞って使う');
         assert.ok(/const canConfirm = snap\.attackConfirm !== false;/.test(render) && /disabled title="supabase\/52_attacks_confirmed\.sql を SQL Editor で実行すると押せます"/.test(render), '52 未適用で ✓ を止めていない');
         assert.ok(/if \(g !== _atkCheck\.localGen\) \{ _atkCheck\.local\.clear\(\); _atkCheck\.localGen = g; \}/.test(render), '盤面を取り直したら ✓ の上書きを捨てていない');
         assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
@@ -13246,7 +13356,7 @@ console.log('\n運営チームの要望 2026-10-10:');
     });
     test('★ 配線: PC の D&D — 凸報告・模擬の提出・BlaBlaLINK 3凸 のシートに画像を落とすと、ファイルを選んだときと同じ関数に同じ形で渡す', () => {
         const drops = html.match(/const _FILE_DROPS = \[[\s\S]*?\n        \];/)?.[0].replace(/\/\/[^\n]*/g, '') || '';
-        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
+        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],\s*\['opsSecAttackCheck', 'opsResultInput', \(ev\) => handleOpsResultUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
         const fn = html.match(/function _enableFileDrop\(modalId, inputId, handler\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const files = Array\.from\(ev\.dataTransfer\.files \|\| \[\]\)\.filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);/.test(fn), '画像以外を通している');
         assert.ok(/handler\(\{ target: \{ files, value: '' \} \}\);/.test(fn), 'ファイルを選んだときと違う形で渡している (読み取りの経路が増える)');
