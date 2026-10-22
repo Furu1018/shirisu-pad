@@ -40,6 +40,7 @@ function extract(marker) {
 const els = {};
 const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
     classList: { contains: () => false, add() {}, remove() {}, toggle() {} } });
+globalThis._finishAskOn = () => true;   // 🏁 段階 2.5: 本番は締め凸の依頼を読まない (練習だけ)。ここは従来の表示 (締め凸 未返答) を見るので true
 globalThis.document = { getElementById: (id) => el(id) };
 globalThis.escapeHtml = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 globalThis.DC_ATTR_COLORS = { fire: '#FF3D44', water: '#2E8BFF', electric: '#9B4DFF', iron: '#FF8A2B', wind: '#18C26B' };

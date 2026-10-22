@@ -14480,12 +14480,18 @@
         // ポーリング: 10秒毎に再取得。タブ非表示中は停止 (Page Visibility API)。
         // 3回に1回 (30秒毎) はボスHPも再取得して、当日のボス状況カードをライブに保つ。
         let _coordPollTick = 0;
+        // ===== 🏁 締め凸は「探す」だけ (2026-10-22 ユーザー決定) =====
+        // 同時打診・候補への依頼 Push・メンバーの了承は画面から外す (コードは残す)。相手は運営が Discord で声をかけて決め、盤 (📌) に置く。
+        // 本番では締め凸の依頼 (finish_requests) を**読まない** = DB に残った進行中の依頼でもホームの了承・運営の打診中は出ない (Codex指摘 b34536c)。
+        // ★ 練習の運営編・当日は同時打診を課題にしているので、練習を作り直すまでは練習の中だけ残す
+        function _finishAskOn() { return !!(typeof window !== 'undefined' && window.PAD_PRACTICE); }
         // ===== 締め凸依頼ステータス (finish_requests) =====
         let _finishReqCache = [];
         let _finishReqStaleSince = null;   // 取得に失敗してから前の内容を保っている (null = 最新)
         let _finishReqGen = 0;             // 取得の世代。追い越された古い応答 (了承前の pending) で新しいキャッシュを上書きしない (修正後の Codex 指摘)
         async function _refreshFinishRequests() {
             const gen = ++_finishReqGen;
+            if (!_finishAskOn()) { _finishReqCache = []; _finishReqStaleSince = null; return; }   // 本番は依頼を扱わない (上)
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (gen !== _finishReqGen) return;                       // 追い越された
@@ -17718,6 +17724,8 @@
                 const extras = await window.supabaseLoadMemberStatusExtras(snap.season.id, since.toISOString(),
                     Number(snap.season.current_level) || null);
                 if (gen !== _mb.gen) return;                          // 追い越された古い応答は捨てる
+                // 🏁 本番は締め凸の依頼を扱わない → メンバー表の「締め凸 未返答 / OK」も出さない (Codex指摘 b34536c)
+                if (extras && !_finishAskOn()) extras.finishRequests = [];
                 if (!opsStore.isCurrentGeneration(storeGen)) return;  // 盤面が書き換わった (invalidate/load) → 次の描画に任せる
                 if (!_opsMode) return;                                // 待機中に運営OFF → 隠れた盤面を更新しない
                 _mb.players = snap.players;
@@ -20381,8 +20389,8 @@
                     </div>`;
             }).join('');
 
-            // 候補へのPush送信ボタン (Phase 6c)
-            const pushBtn = `
+            // 候補へのPush送信ボタン (Phase 6c)。🏁 本番は出さない (締め凸は探すだけ・2026-10-22)
+            const pushBtn = !_finishAskOn() ? '' : `
                 <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
                     <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--card);color:var(--ops);font-size:13px;font-weight:700;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
                     <span style="font-size:11px;color:var(--t-body);">${ptInfo?.name}PT / 残HP ${remainingHpB.toFixed(2)}B</span>
@@ -20468,6 +20476,7 @@
 
         // 選んだ案を同時に打診する
         async function handleOpsFinishOfferSend() {
+            if (!_finishAskOn()) return;   // 🏁 本番は同時打診しない
             const cmp = _opsFinishCompare;
             const ctx = _opsFinishPushContext;
             // 二重押しよけ (押すたびに全員へ通知が飛ぶ)。★ パネルの状態に置く —
@@ -20869,10 +20878,6 @@
             if (r) r(sel ? picked : !!confirmed);
         }
 
-        // ===== 🏁 締め凸は「探す」だけ (2026-10-22 ユーザー決定) =====
-        // 同時打診とメンバーの了承は画面から外す (コードは残す)。相手は運営が Discord で声をかけて決め、盤 (📌) に置く。
-        // ★ 練習の運営編・当日は同時打診を課題にしているので、練習を作り直すまでは練習の中だけ残す
-        const _finishAskOn = () => !!(typeof window !== 'undefined' && window.PAD_PRACTICE);
         async function handleOpsFinishPlanCopy(kind) {
             const ctx = _opsFinishPlanContext;
             const plan = ctx && ctx.plans ? ctx.plans[kind] : null;
@@ -20883,6 +20888,7 @@
             catch { prompt('コピーして Discord に貼ってください', text); }
         }
         async function handleOpsFinishPlanPush(kind) {
+            if (!_finishAskOn()) return;
             const ctx = _opsFinishPlanContext;
             if (!ctx) return;
             const plan = ctx.plans[kind];
@@ -20913,6 +20919,7 @@
         }
 
         async function handleOpsFinishPushSend() {
+            if (!_finishAskOn()) return;   // 🏁 本番は依頼しない (Discord で声をかける)
             const ctx = _opsFinishPushContext;
             if (!ctx) { alert('候補データ無し'); return; }
             const playerIds = ctx.candidates.map(c => c.id);
@@ -23410,6 +23417,7 @@
 
         // HP更新後: 締め凸候補が出ている属性があれば運営にPush送信を促す
         async function offerFinishPushAfterHpUpdate() {
+            if (!_finishAskOn()) return;   // 🏁 本番は HP 更新のあとに依頼を勧めない (Codex指摘 b34536c)
             try {
                 if (!opsStore.get()) return;
                 const { bosses, players } = opsStore.get();

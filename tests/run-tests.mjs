@@ -4596,7 +4596,7 @@ console.log('\n運営除外の配線 (ソース突合):');
     await testAsync('★ 配線: _refreshFinishRequests は取得失敗 (null) で前の内容を保つ / 成功で置き換えて古さを消す', async () => {
         const src = html.match(/async function _refreshFinishRequests\(\) \{[\s\S]*?\n        \}\n/)?.[0];
         assert.ok(src, '_refreshFinishRequests が見つからない');
-        const run = new Function('window', 'seed', 'staleSeed', `let _finishReqCache = seed; let _finishReqStaleSince = staleSeed; let _finishReqGen = 0;
+        const run = new Function('window', 'seed', 'staleSeed', `let _finishReqCache = seed; let _finishReqStaleSince = staleSeed; let _finishReqGen = 0; const _finishAskOn = () => true;
             const ensureActiveSeasonLoaded = async () => ({ season: { id: 1, current_level: 1 } });
             ${src}
             return async () => { await _refreshFinishRequests(); return { cache: _finishReqCache, stale: _finishReqStaleSince }; };`);
