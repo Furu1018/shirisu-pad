@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>マスター専用</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 1000px; max-width: 1440px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: flex-start; background: #f3f4f6">
+
+  <nav aria-label="メニュー" style="flex: 1 1 220px; max-width: 232px; box-sizing: border-box; min-height: 1000px; background: #fff; border-right: 1px solid #e3e6eb; padding: 18px 12px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-size: 17px; font-weight: 900; color: #15171c; padding: 4px 10px 14px">しりすこPAD</div>
+    <a href="#home" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">ホーム</a>
+    <div style="font-size: 10.5px; font-weight: 800; color: #6a717b; letter-spacing: .08em; padding: 12px 12px 4px">運営</div>
+    <a href="Main.dc.html" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">👥 メンバー</a>
+    <a href="OpsBuild.dc.html" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">🧱 組む</a>
+    <a href="OpsLive.dc.html" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">⚔️ 戦況</a>
+    <div style="height: 8px"></div>
+    <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
+    <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <a href="#master" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #fff; background: #15171c; border-radius: 10px; padding: 10px 12px; margin-top: 6px">👑 マスター <span style="font-size: 10.5px; font-weight: 800; color: #c9b8ff">ふるりだけ</span></a>
+    <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">ふるりだけに見えます · 運営担当とメンバーには出ません</div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #15171c">👑 マスター <span style="font-size: 14px; font-weight: 800; color: #6a717b">準備と管理 · めったに触らないもの</span></h1>
+    </div>
+
+    <!-- 確認 (いちばん使う) -->
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 2px solid #6b3df5; border-radius: 16px; padding: 14px 18px">
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">見え方を確かめる</div>
+        <div style="font-size: 12px; font-weight: 700; color: #6a717b">メンバーや運営担当にどう見えているかを、この端末だけで切り替えて確かめる</div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button type="button" style="font: inherit; font-size: 13px; font-weight: 900; border: none; border-radius: 12px; padding: 11px 14px; background: #6b3df5; color: #fff; cursor: pointer">👤 メンバーの見え方</button>
+        <button type="button" style="font: inherit; font-size: 13px; font-weight: 900; border: 1.5px solid #e3e6eb; border-radius: 12px; padding: 11px 14px; background: #fff; color: #15171c; cursor: pointer">🛠 運営担当の見え方</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start">
+      <sc-for list="{{cards}}" as="c" hint-placeholder-count="6">
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">{{c.title}}</h2>
+            <span style="font-size: 11px; font-weight: 800; color: {{c.stateFg}}; background: {{c.stateBg}}; border-radius: 999px; padding: 3px 9px">{{c.state}}</span>
+          </div>
+          <sc-for list="{{c.lines}}" as="l" hint-placeholder-count="2">
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">{{l}}</div>
+          </sc-for>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            <sc-for list="{{c.buttons}}" as="b" hint-placeholder-count="2">
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: {{b.border}}; background: {{b.bg}}; color: {{b.fg}}">{{b.t}}</button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const main = (t) => ({ t, bg: '#15171c', fg: '#fff', border: 'none' });
+    const sub = (t) => ({ t, bg: '#fff', fg: '#15171c', border: '1.5px solid #e3e6eb' });
+    const danger = (t) => ({ t, bg: '#fff', fg: '#b42318', border: '1.5px solid #f4c7c3' });
+    const ok = (s) => ({ state: s, stateFg: '#166534', stateBg: '#dcfce7' });
+    const warn = (s) => ({ state: s, stateFg: '#a65a12', stateBg: '#fff7e6' });
+    const plain = (s) => ({ state: s, stateFg: '#6a717b', stateBg: '#f3f4f6' });
+    const cards = [
+      { title: 'シーズン', ...ok('第46回 進行中'), lines: ['ハード日 10/31 (土) · ボス 5 体', '模擬タブ: 出さない (Discord → 運営が登録)'], buttons: [main('✏️ 編集 (ボス · ハード日)'), sub('🧪 テスト回をつくる'), danger('終了する')] },
+      { title: 'ブロックの区切り', ...plain('7 つ'), lines: ['朝 5〜8 · 午前 9〜11 · 昼 12〜14 · 午後 15〜17', '夕方 18〜20 · 夜 21〜23 · 深夜 翌0〜4'], buttons: [sub('区切りを変える'), sub('既定に戻す')] },
+      { title: '運営担当', ...plain('2 人'), lines: ['ねむねこ · Enter95', '任命した人は名乗った時点で運営の画面になる'], buttons: [main('任命する'), sub('外す')] },
+      { title: 'メンバー管理', ...plain('19 人 · 書庫 4'), lines: ['新しいメンバーの追加と、抜けた人を書庫へ'], buttons: [main('追加'), sub('書庫を見る')] },
+      { title: 'バックアップ · 復元', ...warn('最後の保存 10/30'), lines: ['シーズンの切り替えの前に保存', '復元は全員の画面を巻き戻す'], buttons: [main('いま保存する'), danger('復元する')] },
+      { title: 'アプリの版のしめ切り', ...plain('締めていない'), lines: ['古いアプリの凸プラン表示 · 配信を止める', '全員が新しい版になってから締める'], buttons: [sub('いまの版で締める')] },
+      { title: 'キャラクターマスタ', ...warn('要確認 2 体'), lines: ['ギルティ：マイティバニー · シン：スウィフトバニー', '登録者と別の運営が確認する'], buttons: [main('確認する')] },
+      { title: '育成データ', ...plain('第45回 14 / 19 人'), lines: ['BlaBlaLINK の育成をレイド後に取り込む (分析の育成くらべ用)'], buttons: [sub('取り込む')] },
+      { title: '一斉通知 · 記録', ...plain(''), lines: ['全員への連絡 (テストとして送るも)', '通知状況 · 最近のアクティビティ'], buttons: [main('一斉通知'), sub('通知状況'), sub('アクティビティ')] },
+    ];
+    return { cards };
+  }
+}
+</script>
+</body>
+</html>

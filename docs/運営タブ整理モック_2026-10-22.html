@@ -16,7 +16,7 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
 <h1 class="pg">しりすこPAD 運営タブの整理モック</h1>
 <p class="lead">人名・ボス名・数字はすべて見本です。</p>
 <p class="cap">考え方: ① 運営の 1 ブロックの手順 (結果を取り込む → 次を組む → 配信 → 戦況を見る) とタブの並びをそろえる ② 各タブの名前の横に「手を打つべき数」を出す (交代で入った運営が、どこから手を付けるかを数字で判断できる) ③ いちばん上の「いちばん急ぐこと」は 3 つのタブで共通。押すとその作業のタブへ ④ 日によって変わるのは「開いたときに最初に出るタブ」だけ (前日まで = メンバー / 当日 = 戦況)</p>
-<p class="cap">運営タブから外すもの: シーズン制御・一斉通知・Discord 告知テンプレ・育成データの取り込み → 設定タブの運営の区画へ (使う頻度が低い)。「戦闘中の運営アクション」「オンライン / 調整中」→ メンバーが戦闘に入らないので外す。メンバーの「戦況」タブ → なくす (状況は BlaBlaLINK で見る)</p>
+<p class="cap">画面は 3 段: メンバー (ホーム · 分析 · 設定) / 運営 (+ 👥 メンバー · 🧱 組む · ⚔️ 戦況) / マスター (+ 👑 マスター・ふるりだけ)。運営は毎回使う最低限だけ。準備と管理 (シーズン · 任命 · メンバー管理 · バックアップ · キャラマスタ · 育成データ · 一斉通知) は 👑 マスターへ。何をどこへ移すか · なくすかは下の段の振り分け表</p>
 <h2 class="sec" id="Main">運営 PC: 👥 メンバー (前日 20:10)</h2>
 <div class="frame"><div style="width:1440px">
 <div style="box-sizing: border-box; min-height: 1180px; max-width: 1440px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: flex-start; background: #f3f4f6">
@@ -45,6 +45,7 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
     <div style="height: 8px"></div>
     <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
     <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <a href="#MasterPage" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px; border: 1.5px dashed #c9b8ff; margin-top: 6px">👑 マスター <span style="font-size: 10.5px; font-weight: 800; color: #6a717b">ふるりだけ</span></a>
     <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
   </nav>
 
@@ -247,7 +248,6 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
             </div>
           
         </div>
-        <a href="#compare" style="align-self: flex-start; font-size: 12.5px; font-weight: 800; text-decoration: none">📊 ユニオン事前比較 (模擬の強さを属性ごとに並べる) を開く ›</a>
       </section>
 
       <!-- 模擬の取り込み -->
@@ -316,6 +316,7 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
     <div style="height: 8px"></div>
     <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
     <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <a href="#MasterPage" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px; border: 1.5px dashed #c9b8ff; margin-top: 6px">👑 マスター <span style="font-size: 10.5px; font-weight: 800; color: #6a717b">ふるりだけ</span></a>
     <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
   </nav>
 
@@ -481,7 +482,6 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
           <div style="font-size: 12px; font-weight: 900; color: #15171c">承認済み 2</div>
           <div style="font-size: 12px; font-weight: 700; color: #3a3f46; line-height: 1.7">ねむねこ · 夜 · 風圧PT ① → B3 (21時に置いた)<br>なべ · 夜 · 鉄甲PT ① → B5 (22時に置いた)</div>
         </div>
-        <a href="#finish" style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px 16px; text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #15171c">🏁 締め凸候補を探す <span style="font-size: 12px; color: #6b3df5">開く ›</span></a>
       </section>
     </div>
 
@@ -523,6 +523,7 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
     <div style="height: 8px"></div>
     <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
     <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <a href="#MasterPage" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px; border: 1.5px dashed #c9b8ff; margin-top: 6px">👑 マスター <span style="font-size: 10.5px; font-weight: 800; color: #6a717b">ふるりだけ</span></a>
     <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
   </nav>
 
@@ -534,7 +535,7 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap">
         <span style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">Lv2 · B1 B2 撃破</span>
-        <span style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">使った凸 34 / 57</span>
+        <span style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">使った凸 34 / 57 · 翌2時に使い切る見込み</span>
         <span style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 7px 12px">HP 更新 2 分前</span>
       </div>
     </div>
@@ -663,13 +664,6 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
               </div>
             </div>
           
-        </div>
-        <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
-          <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">消化のペース</h2>
-          <div style="height: 12px; border-radius: 6px; background: #e9ecf0; overflow: hidden"><div style="height: 12px; background: #6b3df5; width: 60%"></div></div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #3a3f46"><span>34 / 57 凸</span><span>このペースなら 翌2時に使い切る</span></div>
-          <div style="font-size: 12px; font-weight: 900; color: #15171c; padding-top: 4px">直近の動き</div>
-          <div style="font-size: 12px; font-weight: 700; color: #3a3f46; line-height: 1.7">19:36 こむぎ B3 19.4B (未登録)<br>19:31 みかん B5 31.2B (未登録)<br>19:22 あるちゃ B2 22.4B · B2 撃破</div>
         </div>
       </section>
     </div>
@@ -847,6 +841,372 @@ h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:34px 0 8px;padding-to
     </div>
     <div style="font-size: 12px; font-weight: 700; color: #6a717b; line-height: 1.6">運営タブから外すもの: シーズン制御 · 一斉通知 · Discord 告知テンプレ · 育成データ → 設定タブの運営の区画へ。戦闘中の運営アクション · オンライン / 調整中 → なくす。</div>
   </section>
+</div>
+</div></div>
+<h2 class="sec" id="Triage">機能の振り分け: 運営 (最低限) / マスター専用 / なくす</h2>
+<div class="frame"><div style="width:1440px">
+<div style="box-sizing: border-box; min-height: 900px; max-width: 1440px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; background: #f3f4f6">
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #15171c">いまの運営機能を 3 つに振り分ける</h1>
+    <p style="margin: 0; font-size: 13.5px; font-weight: 700; color: #3a3f46; line-height: 1.6">メンバー · 運営 · マスター (ふるりだけ) の 3 段。運営は毎回使う最低限だけにする。「なくす」は画面から外すだけで、コードは残す (戻すのは簡単)。</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start">
+    
+      <section style="background: #fff; border: 2px solid #6b3df5; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #15171c">🛠 運営 (毎回使う最低限)</h2>
+          <span style="font-size: 12px; font-weight: 800; color: #6a717b">運営担当とマスター · 3 つのタブ</span>
+        </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #4f2bc4">👥 メンバー</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">メンバー表 (出られる時間と凸数 · 模擬 · 通知) と催促</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">模擬の取り込み (Discord のスクショ)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">通知の疎通確認 (前日に 1 回)</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #4f2bc4">🧱 組む</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">ブロック盤 (自動の参考案 · 駒を置く)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">予約の承認</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">配信 (割当のある人に通知)</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #4f2bc4">⚔️ 戦況</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">ボスの HP (スクショで更新 · 手で直す)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">結果の取り込み (代理の凸報告もここ)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f1edff">報告の無い凸</div>
+            
+          </div>
+        
+      </section>
+    
+      <section style="background: #fff; border: 2px solid #15171c; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #15171c">👑 マスター専用</h2>
+          <span style="font-size: 12px; font-weight: 800; color: #6a717b">ふるりだけ · 準備と管理 · めったに触らない</span>
+        </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">シーズン</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">作成 · 編集 · 終了 · テスト回</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">ブロックの区切り</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">模擬タブを出すスイッチ</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">人</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">運営担当の任命</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">メンバー管理 (追加 · 書庫)</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">安全</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">バックアップ · 復元</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">アプリの版のしめ切り</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">データと連絡</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">キャラクターマスタ (新キャラの確認)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">育成データの取り込み</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">一斉通知</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">確認</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">👤 メンバーの見え方で見る</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">通知状況 · 最近のアクティビティ</div>
+            
+          </div>
+        
+      </section>
+    
+      <section style="background: #fff; border: 2px solid #c2c7cf; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #15171c">🧹 なくす (画面から外す)</h2>
+          <span style="font-size: 12px; font-weight: 800; color: #6a717b">コードは残す · 必要になったら戻せる</span>
+        </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #6a717b">置き換わるもの</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">段階ヘッダ · チェックリスト · コックピット → 3 つのタブと「いちばん急ぐこと」</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">凸報告の確認 → 結果の取り込みに統合 (メンバーは報告しない)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">消化のペース → 戦況の見出しの 1 行に畳む</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #6a717b">役目が無くなったもの</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">戦闘中の運営アクション · オンライン / 調整中 (メンバーが戦闘に入らない)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">残り戦闘可能メンバー · 直近の動き (メンバー表と結果の取り込みで足りる)</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">Discord 告知テンプレ</div>
+            
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: #6a717b">場所を移すもの</div>
+            
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: #f3f4f6">ユニオン事前比較 → 分析タブ (運営の作業ではない)</div>
+            
+          </div>
+        
+      </section>
+    
+  </div>
+
+  <section style="background: #fff7e6; border: 1.5px solid #f5c27a; border-radius: 18px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">決めてほしいこと</h2>
+    
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6"><b style="color: #15171c">🏁 締め凸 (候補検索 · 同時打診 · メンバーの了承)</b> — 残すか、Discord で声をかける運用にしてなくすか。なくすとメンバーの操作が 1 つ減る</div>
+    
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6"><b style="color: #15171c">🎮 練習モード</b> — 新しい画面に合わせて作り直すか、いったん外すか (今の練習はメンバーの模擬・凸報告を前提にしている)</div>
+    
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6"><b style="color: #15171c">一斉通知</b> — マスター専用でよいか (運営担当も使うなら運営へ)</div>
+    
+  </section>
+</div>
+</div></div>
+<h2 class="sec" id="MasterPage">👑 マスター専用 (ふるりだけ)</h2>
+<div class="frame"><div style="width:1440px">
+<div style="box-sizing: border-box; min-height: 1000px; max-width: 1440px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: flex-start; background: #f3f4f6">
+
+  <nav aria-label="メニュー" style="flex: 1 1 220px; max-width: 232px; box-sizing: border-box; min-height: 1000px; background: #fff; border-right: 1px solid #e3e6eb; padding: 18px 12px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-size: 17px; font-weight: 900; color: #15171c; padding: 4px 10px 14px">しりすこPAD</div>
+    <a href="#home" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">ホーム</a>
+    <div style="font-size: 10.5px; font-weight: 800; color: #6a717b; letter-spacing: .08em; padding: 12px 12px 4px">運営</div>
+    <a href="#Main" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">👥 メンバー</a>
+    <a href="#OpsBuild" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">🧱 組む</a>
+    <a href="#OpsLive" style="text-decoration: none; font-size: 13.5px; font-weight: 900; color: #15171c; border-radius: 10px; padding: 10px 12px">⚔️ 戦況</a>
+    <div style="height: 8px"></div>
+    <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
+    <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <a href="#master" style="text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #fff; background: #15171c; border-radius: 10px; padding: 10px 12px; margin-top: 6px">👑 マスター <span style="font-size: 10.5px; font-weight: 800; color: #c9b8ff">ふるりだけ</span></a>
+    <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">ふるりだけに見えます · 運営担当とメンバーには出ません</div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #15171c">👑 マスター <span style="font-size: 14px; font-weight: 800; color: #6a717b">準備と管理 · めったに触らないもの</span></h1>
+    </div>
+
+    <!-- 確認 (いちばん使う) -->
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 2px solid #6b3df5; border-radius: 16px; padding: 14px 18px">
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">見え方を確かめる</div>
+        <div style="font-size: 12px; font-weight: 700; color: #6a717b">メンバーや運営担当にどう見えているかを、この端末だけで切り替えて確かめる</div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button type="button" style="font: inherit; font-size: 13px; font-weight: 900; border: none; border-radius: 12px; padding: 11px 14px; background: #6b3df5; color: #fff; cursor: pointer">👤 メンバーの見え方</button>
+        <button type="button" style="font: inherit; font-size: 13px; font-weight: 900; border: 1.5px solid #e3e6eb; border-radius: 12px; padding: 11px 14px; background: #fff; color: #15171c; cursor: pointer">🛠 運営担当の見え方</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start">
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">シーズン</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 3px 9px">第46回 進行中</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">ハード日 10/31 (土) · ボス 5 体</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">模擬タブ: 出さない (Discord → 運営が登録)</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">✏️ 編集 (ボス · ハード日)</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">🧪 テスト回をつくる</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #f4c7c3; background: #fff; color: #b42318">終了する</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">ブロックの区切り</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px">7 つ</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">朝 5〜8 · 午前 9〜11 · 昼 12〜14 · 午後 15〜17</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">夕方 18〜20 · 夜 21〜23 · 深夜 翌0〜4</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">区切りを変える</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">既定に戻す</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">運営担当</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px">2 人</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">ねむねこ · Enter95</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">任命した人は名乗った時点で運営の画面になる</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">任命する</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">外す</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">メンバー管理</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px">19 人 · 書庫 4</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">新しいメンバーの追加と、抜けた人を書庫へ</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">追加</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">書庫を見る</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">バックアップ · 復元</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #a65a12; background: #fff7e6; border-radius: 999px; padding: 3px 9px">最後の保存 10/30</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">シーズンの切り替えの前に保存</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">復元は全員の画面を巻き戻す</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">いま保存する</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #f4c7c3; background: #fff; color: #b42318">復元する</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">アプリの版のしめ切り</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px">締めていない</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">古いアプリの凸プラン表示 · 配信を止める</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">全員が新しい版になってから締める</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">いまの版で締める</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">キャラクターマスタ</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #a65a12; background: #fff7e6; border-radius: 999px; padding: 3px 9px">要確認 2 体</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">ギルティ：マイティバニー · シン：スウィフトバニー</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">登録者と別の運営が確認する</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">確認する</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">育成データ</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px">第45回 14 / 19 人</span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">BlaBlaLINK の育成をレイド後に取り込む (分析の育成くらべ用)</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">取り込む</button>
+            
+          </div>
+        </section>
+      
+        <section style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 900; color: #15171c">一斉通知 · 記録</h2>
+            <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 3px 9px"></span>
+          </div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">全員への連絡 (テストとして送るも)</div>
+          
+            <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.55">通知状況 · 最近のアクティビティ</div>
+          
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: none; background: #15171c; color: #fff">一斉通知</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">通知状況</button>
+            
+              <button type="button" style="font: inherit; font-size: 12px; font-weight: 900; border-radius: 10px; padding: 8px 12px; cursor: pointer; border: 1.5px solid #e3e6eb; background: #fff; color: #15171c">アクティビティ</button>
+            
+          </div>
+        </section>
+      
+    </div>
+  </main>
 </div>
 </div></div>
 <h2 class="sec">スマホ</h2>

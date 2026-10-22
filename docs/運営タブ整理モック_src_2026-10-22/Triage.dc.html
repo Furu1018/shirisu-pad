@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>機能の振り分け</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 900px; max-width: 1440px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; background: #f3f4f6">
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #15171c">いまの運営機能を 3 つに振り分ける</h1>
+    <p style="margin: 0; font-size: 13.5px; font-weight: 700; color: #3a3f46; line-height: 1.6">メンバー · 運営 · マスター (ふるりだけ) の 3 段。運営は毎回使う最低限だけにする。「なくす」は画面から外すだけで、コードは残す (戻すのは簡単)。</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start">
+    <sc-for list="{{cols}}" as="c" hint-placeholder-count="3">
+      <section style="background: #fff; border: 2px solid {{c.border}}; border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 900; color: #15171c">{{c.title}}</h2>
+          <span style="font-size: 12px; font-weight: 800; color: #6a717b">{{c.sub}}</span>
+        </div>
+        <sc-for list="{{c.groups}}" as="g" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <div style="font-size: 12.5px; font-weight: 900; color: {{c.headFg}}">{{g.name}}</div>
+            <sc-for list="{{g.items}}" as="i" hint-placeholder-count="3">
+              <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5; border-radius: 9px; padding: 6px 9px; background: {{c.itemBg}}">{{i}}</div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </section>
+    </sc-for>
+  </div>
+
+  <section style="background: #fff7e6; border: 1.5px solid #f5c27a; border-radius: 18px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">決めてほしいこと</h2>
+    <sc-for list="{{asks}}" as="a" hint-placeholder-count="3">
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6"><b style="color: #15171c">{{a.t}}</b> — {{a.d}}</div>
+    </sc-for>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const cols = [
+      { title: '🛠 運営 (毎回使う最低限)', sub: '運営担当とマスター · 3 つのタブ', border: '#6b3df5', headFg: '#4f2bc4', itemBg: '#f1edff', groups: [
+        { name: '👥 メンバー', items: ['メンバー表 (出られる時間と凸数 · 模擬 · 通知) と催促', '模擬の取り込み (Discord のスクショ)', '通知の疎通確認 (前日に 1 回)'] },
+        { name: '🧱 組む', items: ['ブロック盤 (自動の参考案 · 駒を置く)', '予約の承認', '配信 (割当のある人に通知)'] },
+        { name: '⚔️ 戦況', items: ['ボスの HP (スクショで更新 · 手で直す)', '結果の取り込み (代理の凸報告もここ)', '報告の無い凸'] },
+      ] },
+      { title: '👑 マスター専用', sub: 'ふるりだけ · 準備と管理 · めったに触らない', border: '#15171c', headFg: '#15171c', itemBg: '#f3f4f6', groups: [
+        { name: 'シーズン', items: ['作成 · 編集 · 終了 · テスト回', 'ブロックの区切り', '模擬タブを出すスイッチ'] },
+        { name: '人', items: ['運営担当の任命', 'メンバー管理 (追加 · 書庫)'] },
+        { name: '安全', items: ['バックアップ · 復元', 'アプリの版のしめ切り'] },
+        { name: 'データと連絡', items: ['キャラクターマスタ (新キャラの確認)', '育成データの取り込み', '一斉通知'] },
+        { name: '確認', items: ['👤 メンバーの見え方で見る', '通知状況 · 最近のアクティビティ'] },
+      ] },
+      { title: '🧹 なくす (画面から外す)', sub: 'コードは残す · 必要になったら戻せる', border: '#c2c7cf', headFg: '#6a717b', itemBg: '#f3f4f6', groups: [
+        { name: '置き換わるもの', items: ['段階ヘッダ · チェックリスト · コックピット → 3 つのタブと「いちばん急ぐこと」', '凸報告の確認 → 結果の取り込みに統合 (メンバーは報告しない)', '消化のペース → 戦況の見出しの 1 行に畳む'] },
+        { name: '役目が無くなったもの', items: ['戦闘中の運営アクション · オンライン / 調整中 (メンバーが戦闘に入らない)', '残り戦闘可能メンバー · 直近の動き (メンバー表と結果の取り込みで足りる)', 'Discord 告知テンプレ'] },
+        { name: '場所を移すもの', items: ['ユニオン事前比較 → 分析タブ (運営の作業ではない)'] },
+      ] },
+    ];
+    const asks = [
+      { t: '🏁 締め凸 (候補検索 · 同時打診 · メンバーの了承)', d: '残すか、Discord で声をかける運用にしてなくすか。なくすとメンバーの操作が 1 つ減る' },
+      { t: '🎮 練習モード', d: '新しい画面に合わせて作り直すか、いったん外すか (今の練習はメンバーの模擬・凸報告を前提にしている)' },
+      { t: '一斉通知', d: 'マスター専用でよいか (運営担当も使うなら運営へ)' },
+    ];
+    return { cols, asks };
+  }
+}
+</script>
+</body>
+</html>
