@@ -11356,6 +11356,7 @@
                     if (document.getElementById('myAvailModal')?.classList.contains('open')) _renderAvailUI();
                 }
             } catch {
+                if (reqSeq !== _availConfirmSeq) return;   // 古い読み込みの失敗で、いま開いているシート (別の人) の確認状態を取得失敗に上書きしない (Codex 再監査 9a・3 回目)
                 // ★ 通信断・RLS の失敗を「未確認」に落とさない (Codex指摘 2026-09-07)。
                 //   落とすと確認済みの人にまで「確認がまだです」と出て、押すと保存エラーになる。
                 //   37未適用は下位関数が { unsupported: true } で返すので、ここには来ない

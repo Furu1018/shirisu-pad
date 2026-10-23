@@ -12939,6 +12939,8 @@ console.log('\ngrowthDomain:');
         assert.ok(html.includes('renderMyAvailabilitySettings(_availTarget())') && !html.includes('renderMyAvailabilitySettings(getCurrentIdentity())'), '「取り直す」が名乗っている本人のぶんを読む');
         assert.ok(/if \(_availUI\.forPlayer\) return;   \/\/ 🗣 9a: 運営が別の人のシートを開いている間は、共有の確認状態/.test(html), 'ホームの帯が運営の登録中に共有の確認状態を本人のものに差し替える');
         assert.ok(!ms.includes('ホームからもう一度確認') && ms.includes('いまの時間でよいか Discord で運営に伝えてください'), '時間が変わった人への催促がホームからの確認を促している');
+        const lc = html.match(/async function _loadMyAvailConfirm\(playerId\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/\} catch \{\s*\n\s*if \(reqSeq !== _availConfirmSeq\) return;/.test(lc), '確認状態の読み込みの失敗が世代を見ずに共有状態を loadFailed に上書きする (Codex 再監査 9a・3 回目)');
     });
     test('★ 🧱 段階 7 publishedPlansDomain: ブロックごとの最新 (ブロックの行と 1 日ぶんの行は新しいほう) / 1 つ前 / ブロックの並び / 既定のブロック', () => {
         const d = globalThis.publishedPlansDomain;

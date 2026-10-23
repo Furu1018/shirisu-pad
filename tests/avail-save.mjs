@@ -400,12 +400,12 @@ function makeEnvReal() {
             supabaseLoadActiveSeasonWithBosses: async () => ({ season: { id: 44 } }),
             supabaseSaveAvailability: async (pid, slots, opts = {}) => { await wait('save' + pid); saves.push({ playerId: pid, slots: slots.slice(), actorName: opts.actorName || null }); },
             supabaseConfirmAvailability: async (sid, pid, opt) => { confirms.push({ playerId: pid, slots: opt.slots, actorName: opt.actorName || null }); return {}; },
-            supabaseLoadMyAvailabilityConfirmation: async (sid, pid) => { loadConfirmCalls.push(pid); await wait('conf' + pid); return env._conf[pid] || null; },
+            supabaseLoadMyAvailabilityConfirmation: async (sid, pid) => { loadConfirmCalls.push(pid); await wait('conf' + pid); if (env._confFail[pid]) throw new Error('通信断'); return env._conf[pid] || null; },
             raidBlocksDomain: globalThis.raidBlocksDomain,
         },
         _avail: { 9: ['h05'], 10: ['h21'] },
         _conf: { 7: { confirmed_at: 'x', unavailable: false, slot_count: 2, slots_snapshot: ['h21', 'h22'], who: 7 }, 9: null, 10: { confirmed_at: 'y', unavailable: false, slot_count: 1, slots_snapshot: ['h21'], who: 10 } },
-        _myAvailConfirm: null,
+        _myAvailConfirm: null, _confFail: {},
         gates, saves, confirms, loadConfirmCalls, stripCalls, mbCalls,
         setIdentity: (v) => { identity = v; },
         fire: async () => { const fns = timers.splice(0).filter(Boolean); for (const f of fns) await f(); },
@@ -519,6 +519,16 @@ await test('★ 閉じたあと名乗り直していたら、閉じたときの�
     const before = env.loadConfirmCalls.length;
     env.gates.save9.resolve(); await settle(6);
     assert.deepEqual(env.loadConfirmCalls.slice(before).filter(x => x === 7), [], '名乗り直したあとに旧本人 (7) の確認状態を読み直した: ' + env.loadConfirmCalls.join(','));
+});
+
+await test('★ 古い確認状態の読み込みが失敗しても、いま開いている別の人のシートを「取得失敗」で上書きしない', async () => {
+    const env = makeEnvReal();
+    env.gates.conf7 = defer(); env._confFail[7] = true;   // 本人 (7) の確認状態の読み込みを止めて、あとで失敗させる
+    env.openMyAvailModal(); await settle();
+    env.openOpsAvailModal(10); await settle();            // C を開く → C の確認状態 (who 10)
+    assert.equal(env._myAvailConfirmRef()?.who, 10);
+    env.gates.conf7.resolve(); await settle();            // 古い 7 の読み込みが失敗
+    assert.equal(env._myAvailConfirmRef()?.who, 10, '古い読み込みの失敗が C の確認状態を loadFailed に上書きした: ' + JSON.stringify(env._myAvailConfirmRef()));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
