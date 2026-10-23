@@ -478,6 +478,11 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
             players: [{ ...capPlayer('P', { fire: [20] }, HRS(18, 23), null), loadoutsByAttr: { fire: [{ dmgB: 20, team: ['S1', 'S2', 'S3', 'S4', 'S5'], slot: 2 }] } }],
             currentSlot: 'h18', timeAware: true, secondB5Lv4Only: true });
         assert.deepEqual(slotsAt(single, true), [2], '1 編成しか無い人の編成②まで止めた');
+        // 編成① が壊れている (dmg 0) 人 = 有効な編成は ② だけ → 制限しない (見かけの本数で数えない: Codex 全体監査 C 2026-10-23)
+        const broken = compute({ season: { current_level: 3 }, bosses: [boss(5, 'fire', { tier: 'tyrant', remainingB: 30 })],
+            players: [{ ...capPlayer('P', { fire: [20] }, HRS(18, 23), null), loadoutsByAttr: { fire: [{ dmgB: 0, team: ['A1', 'A2', 'A3', 'A4', 'A5'], slot: 1 }, { dmgB: 20, team: ['S1', 'S2', 'S3', 'S4', 'S5'], slot: 2 }] } }],
+            currentSlot: 'h18', timeAware: true, secondB5Lv4Only: true });
+        assert.deepEqual(slotsAt(broken, true), [2], '編成① が dmg 0 なのに編成② を Lv4 だけにした');
         // 前回どおり (sticky): 手当てなしで配信した Lv3 の 2 編成目を、手当てありの算出で置き直さない
         const sticky = lv3({ secondB5Lv4Only: true, previousPlan: off });
         assert.ok(!slotsAt(sticky, true).includes(2), '前回どおりの置き直しで Lv3 に 2 編成目を置いた');
@@ -7516,7 +7521,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     });
     test('L1 配線: 安定化 OFF で組んだプランは基準の照合をしない', () => {
         // OFF は「前回を尊重しない」と決めて算出したもの。照合すると出せなくなるだけ
-        assert.ok(/plan\.stickyOn = !!_opsPlanSticky;/.test(html));
+        assert.ok(/plan\.stickyOn = !!\(_opsPlanSticky && previousPlan\);/.test(html));
         assert.ok(/_opsLastPlan\?\.stickyOn &&/.test(html), 'OFF でも照合してしまう');
         assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations: [^}]*\}, snapshot\);/.test(html));
         // 取得に失敗しても算出は続ける (安定化は「あれば嬉しい」もので、止める理由にならない)
@@ -7614,7 +7619,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     });
     test('L2 配線: 承認は「固定した場合の影響」を見せてから', () => {
         const fn = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/_reservationImpact\(rowNow\)/.test(fn), '影響を出していない (いまの写しで解く)');
+        assert.ok(/_reservationImpact\(rowNow, recomputeOpts\)/.test(fn), '影響を出していない (いまの写しで解く)');
         assert.ok(fn.includes('完全攻略の見込み'));
         assert.ok(fn.includes('未消化の凸'));
         assert.ok(fn.includes('仮のプランの中で割当が動く人'));
@@ -7662,7 +7667,10 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.equal(clocked(season), 'h05', '引数なし (Date.now = 練習の時計も通る経路) で前日を判定できていない');
         // 配線: 承認の影響と算出の両方がこれを通す。ソルバーに時計を直に渡す箇所を残さない
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/currentSlot: _planNowSlot\(snap\.season\), timeAware: true/.test(im), '承認の影響が時計を直に渡している');
+        assert.ok(/currentSlot: _opsPlanStartSlot\(\{ blockStartSlot: blk \? _hourKey\(blk\.from\) : null \}, _planNowSlot\(snap\.season\)\), timeAware: true/.test(im), '承認の影響が時計を直に渡している (🧱 ブロックの頭より前にも置かない)');
+        // 🧱 承認の影響は承認後の組み直しと同じ対象で解く (ブロックで運用中はそのブロックの人だけ・それ以外は全員: Codex 全体監査 C 2026-10-23)
+        assert.ok(/onlyAvailableNow: !!blk, availableAtSlot: getCurrentSlotJST\(\),\s*\n\s*availableAtSlots: blk \? blk\.slots : undefined, availableAtLabel: blk \? blk\.label : undefined,/.test(im), '承認の影響を 1 日ぶん・全員で解いている (組み直しの盤と食い違う)');
+        assert.ok(/const blk = recomputeOpts && recomputeOpts\.who === 'block' \? recomputeOpts\.block : null;/.test(im), '承認時の条件 (recomputeOpts) からブロックを取っていない');
         const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/currentSlot: _opsPlanStartSlot\(options, _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(season\)\),/.test(cp), '算出が時計を直に渡している');
         for (const m of html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)) {
@@ -7704,17 +7712,17 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     test('★ B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) / 自動配信はしない (2026-09-08)', () => {
         const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ok = await _resvTransition\(id, 'approved'/.test(ap), '承認の成否を見ていない');
-        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を反映して組み直しました'\);/.test(ap),
+        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を反映して組み直しました', recomputeOpts\);/.test(ap),
             '承認のあとに組み直し→配信の流れへ入っていない');
         // ★ 承認待ちが他にも残っている間は配信の確認を出さず、組み直しだけ (ユーザー決定 2026-09-08)。
         //   最後の1件を承認したときに差分と配信の確認を出す
         // 承認したばかりの行は数えない (一覧の取り直しに失敗しても最後の1件で配信へ進める — Codex指摘)
         assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(ap), '残りの承認待ちを数えていない');
-        assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
+        assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(recomputeOpts\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
             '承認待ちが残っているのに配信の確認を出している');
-        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を反映して組み直しました')"), '順序が逆');
-        const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(ro), '組み直していない (承認後の条件を通していない)');
+        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を反映して組み直しました', recomputeOpts)"), '順序が逆');
+        const ro = html.match(/async function _recomputeOnly\(opts = _recomputeOptsAfterApproval\(\)\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/async function _recomputeOnly\(opts = _recomputeOptsAfterApproval\(\)\)/.test(ro) && /await computeAndRenderOptimalPlan\(opts\)/.test(ro), '組み直していない (承認後の条件を通していない)');
         // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示
         const optsSrc = html.match(/const _recomputeOptsAfterApproval = \(\) => \([\s\S]*?\);\n/)?.[0] || '';   // 2026-10-22: いま組んでいたプランのブロックを使う (複数行)
         assert.ok(optsSrc, '_recomputeOptsAfterApproval が無い');
@@ -7727,7 +7735,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(html.includes('その人が出られるブロックで組むときに置きます。</div>` : \'\'}'), '対象外の案内の結びが無い');
         assert.ok(!/handleOpsPublishPlan/.test(ro), '組み直しだけのはずが配信の確認を出している');
         const fl = html.match(/async function _recomputeAndOfferPublish\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(fl), '算出していない');
+        assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(opts\)/.test(fl), '算出していない');
         // ★ 算出が無効化されたら古いプランを配信しない
         assert.ok(/if \(!_opsLastPlan \|\| _opsLastPlan === before\)/.test(fl), '古いプランを配信してしまう');
         // 配信は handleOpsPublishPlan (差分・予約の照合・確認ダイアログ) を通す = 自動配信ではない
@@ -7744,7 +7752,10 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/window\.planDiffDomain, row\.id, row\.player_id\)/.test(im), '候補IDと本人を渡していない (置けたか・本人の予約が壊れるかを判定できない)');
         // 影響は承認に使う写し (いまの提出) で解く — 申請時の写しで解くと申請後の編成変更のキャラ被りをすり抜ける (Codex指摘)
-        const iSnap = ap.indexOf('const snap = await _snapshotAtApproval(row);'), iImp = ap.indexOf('_reservationImpact(rowNow)');
+        const iSnap = ap.indexOf('const snap = await _snapshotAtApproval(row);'), iImp = ap.indexOf('_reservationImpact(rowNow, recomputeOpts)');
+        // ★ 組み直しの条件 (対象・ブロック) は最初の await より前に写す (待っている間に運営が条件を切り替えても承認時の条件で: Codex 全体監査 C 2026-10-23)
+        const iOpts = ap.indexOf('const recomputeOpts = _recomputeOptsAfterApproval();');
+        assert.ok(iOpts >= 0 && iOpts < iSnap && iOpts < ap.indexOf('await _snapshotAtApproval(row)'), '組み直しの条件を最初の await より前に写していない');
         assert.ok(iSnap >= 0 && iImp > iSnap, '影響の算出より前に承認時点の写しを取っていない');
         assert.ok(/const rowNow = snap \? \{ \.\.\.row, characters_snapshot: snap\.characters, expected_damage_b: snap\.expectedDamageB \} : row;/.test(ap), 'いまの写しで解いていない');
         assert.equal((ap.match(/_snapshotAtApproval\(row\)/g) || []).length, 1, '写しを2回取っている (影響と承認で別の内容になり得る)');
@@ -10519,7 +10530,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/const _OPS_MASTER_ACTS = new Set\(\['create', 'season-edit', 'end', 'backup', 'reset', 'notify'\]\);/.test(html));
         assert.ok(/if \(_OPS_MASTER_ACTS\.has\(a\) && _opsMode && !_opsIsMasterNow\(\)\) \{ showNotification/.test(html), '運営担当がマスターの作業を押せる');
         assert.ok(/function _opsJumpEtc\(elId\) \{[^]*?if \(_opsMode && !_opsIsMasterNow\(\)\) \{ showNotification\('これはマスター運営 \(👑\) の画面で行います'\); return; \}/.test(html), '運営担当を見えない 👑 へ飛ばす');
-        for (const fn of ['async function _recomputeAndOfferPublish(noteJp) {', 'async function _opsGotoReservations() {']) {
+        for (const fn of ['async function _recomputeAndOfferPublish(noteJp, opts = _recomputeOptsAfterApproval()) {', 'async function _opsGotoReservations() {']) {
             const i = html.indexOf(fn); assert.ok(i > 0, fn);
             assert.ok(/switchTab\('ops'\);\s*\n\s*if \(typeof setOpsTab === 'function'\) setOpsTab\('build'\);/.test(html.slice(i, i + 400)), `${fn} が 🧱 組むへ切り替えない`);
         }
@@ -11816,7 +11827,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の仮置き \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
         assert.ok(/btn\('📣 お願いする', `_opsPlanAsk\(\$\{Number\(r\.id\)\}\)`/.test(paint) && /btn\('外す', `_opsPlanUnpin\(\$\{Number\(r\.id\)\}\)`/.test(paint), '📌 に お願いする / 外す が無い');
         // ★ 承認前の影響計算は同じカードの 📌 を拘束から外す (外さないと候補と奪い合って承認が止まる — Codex指摘 2026-09-11)
-        const imp = html.match(/async function _reservationImpact\(row\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        const imp = html.match(/async function _reservationImpact\(row, recomputeOpts = _recomputeOptsAfterApproval\(\)\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const samePin = rv\.pinFor\(_resv\.rows \|\| \[\], \{ playerId: row\.player_id, bossNumber: row\.boss_number, loadoutSlot: row\.loadout_slot \}\);/.test(imp)
             && /rv\.isFixed\(r\) && !\(samePin && Number\(r\.id\) === Number\(samePin\.id\)\)/.test(imp), '承認の影響計算が同じカードの 📌 を拘束にしている');
         // 承認したら同じカードの 📌 を superseded で外す
@@ -12766,6 +12777,16 @@ console.log('\ngrowthDomain:');
             { memberId: 1, memberName: 'あ', dmgB: 20, hourIdx: 13, loadoutSlot: 1 }, { memberId: 2, memberName: 'い', dmgB: 15, hourIdx: 14, flex: true, loadoutSlot: 1 }] }] }] }, { fromIdx: 13, toIdx: 15 })[0];
         assert.deepEqual([flexRow.killed, flexRow.killHourIdx], [true, null], '⏳ の凸の仮の時刻を撃破の時刻にした');
     });
+    test('★ 配線: 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23) — 尊重するのは いま組むブロックの範囲の凸だけ / 別のブロックの配信は尊重しない (基準の照合もしない・焼き込みは ゼロから)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.length > 1000, 'computeAndRenderOptimalPlan が無い');
+        const i0 = fn.indexOf('const blk = who === '), i1 = fn.indexOf('if (previousPlan && blk && window.raidBlocksDomain) {'), i2 = fn.indexOf('const plan = computeOptimalPlan({ ...options, previousPlan,');
+        assert.ok(i0 >= 0 && i1 > i0 && i2 > i1, '前回の配信をブロックで絞っていない (絞る前に渡している)');
+        assert.ok(/const same = !ps \|\| \(Number\(ps\.from\) === Number\(blk\.from\) && Number\(ps\.to\) === Number\(blk\.to\)\);\s*\n\s*previousPlan = same \? window\.raidBlocksDomain\.scopePlan\(previousPlan, blk\) : null;/.test(fn), '同じブロックの配信だけを範囲で絞って尊重していない');
+        assert.ok(/if \(!previousPlan\) \{ basisPlanId = null; basisPub = null; \}/.test(fn), '尊重しなかったのに配信時の基準の照合をする');
+        assert.ok(/prev: \(_opsPlanSticky && previousPlan\) \? 'keep' : 'fresh',/.test(fn), '尊重しなかったのに「前回を尊重」と焼き込む');
+    });
     test('★ 配線: 🧱 段階 6 ブロック盤 — 最適凸プランに「🧱 盤」(時間割と同じ置き方) / 🧱 組むの頭に手順の帯 / メンバーの配信カードに「🧱 盤」タブ', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         assert.ok(html.includes("${viewBtn('board', '🧱', '盤')}") && /if \(!\['list', 'timetable', 'board'\]\.includes\(_opsPlanViewMode\)\)/.test(html), '「🧱 盤」の切り替えが無い');
@@ -13536,7 +13557,7 @@ console.log('\n運営チームの要望 2026-10-10:');
         assert.ok(/set\('時間', _opsPlanTimeMode\);/.test(html), 'セグメントを状態に合わせていない');
         const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/timeStrict: _opsPlanTimeMode === 'strict',/.test(cp), '算出に時間の扱いを渡していない');
-        const imp = html.match(/async function _reservationImpact\(row\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        const imp = html.match(/async function _reservationImpact\(row, recomputeOpts = _recomputeOptsAfterApproval\(\)\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/timeStrict: _opsPlanTimeMode === 'strict',/.test(imp), '承認の影響を画面の算出と違う時間の扱いで解いている');
         assert.ok(/time: plan\.timeStrict \? 'strict' : 'damage',/.test(html), '使った時間の扱いを焼き込んでいない');
         // ソルバーを呼ぶ口 (computeOptimalPlanCore) の数 = 時間の扱いを渡している数 (口を増やしたら渡し忘れに気づく)

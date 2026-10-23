@@ -357,8 +357,6 @@
                 const loadouts = (p.loadoutsByAttr && Object.keys(p.loadoutsByAttr).length > 0) ? p.loadoutsByAttr : null;
                 if (loadouts) {
                     for (const [k, list] of Object.entries(loadouts)) {
-                        // 段階 5: ボス 5 の弱点に 2 編成あるとき、編成② (slot 2 以上) は Lv4 だけ (listCandidatesFor と前回どおりの置き直しで外す)
-                        const secondLv4Only = !!(b5WeakForSecond && k === b5WeakForSecond && (list || []).filter(Boolean).length >= 2);
                         let clean = (list || [])
                             // ord = 安定順序ID: undoPick で avail に戻すとき元の並びを再現するため
                             // (同ダメージの編成が入れ替わると pickFor の選択が変わってしまう)
@@ -390,7 +388,6 @@
                                     level,
                                     levels,
                                     ord: i,
-                                    ...(secondLv4Only && (Number(lo.slot) || 1) >= 2 ? { lv4Only: true } : {}),
                                 };
                             })
                             // ★ フィルタは正規化の後 — dmgB が古い 0 でも levels に有効な測定が
@@ -400,6 +397,9 @@
                             //   なので、DB の返却順が揺れると選ばれる編成が変わる = 非決定的になる
                             //   (取得側にも order を付けてあるが、不変条件をここでも閉じておく)
                             .sort((a, b) => b.dmg - a.dmg || a.slot - b.slot || a.ord - b.ord);
+                        // 段階 5: ボス 5 の弱点に **有効な** 編成が 2 つあるとき、編成② (slot 2 以上) は Lv4 だけ (listCandidatesFor と前回どおりの置き直しで外す)。
+                        //   ★ 正規化と dmg > 0 の絞り込みの**あと**で数える — 壊れた行や dmg 0 の編成①を数えると、唯一の有効な編成②まで Lv1〜3 から外れる (Codex 全体監査 C 2026-10-23)
+                        if (b5WeakForSecond && k === b5WeakForSecond && clean.length >= 2) clean.forEach(lo => { if ((Number(lo.slot) || 1) >= 2) lo.lv4Only = true; });
                         // ① 実際に使った編成 (記録キャラと完全一致) を優先的に消す
                         let unresolved = usedCount.get(k) || 0;
                         for (const doneTeam of (doneTeamsByAttr.get(k) || [])) {

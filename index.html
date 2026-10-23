@@ -18608,11 +18608,11 @@
         // 承認だけして配信が古いままだと、本人はプランの3枚と予約の1枚で**4凸**を求められる (3凸までなので破綻)。
         // ★ 自動配信はしない (承認しても自動では配信しない、の決定は守る) — 配信の確認は明示の1タップ。
         //   ここで配信を押さなかった場合は、運営ホームのヒーロー「配信後の予約があります」が促す (A)
-        async function _recomputeAndOfferPublish(noteJp) {
+        async function _recomputeAndOfferPublish(noteJp, opts = _recomputeOptsAfterApproval()) {
             if (typeof switchTab === 'function') switchTab('ops');
             if (typeof setOpsTab === 'function') setOpsTab('build');   // 段階 2.5: プランは 🧱 組む (Codex指摘 9e81574)
             const before = _opsLastPlan;
-            await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval());
+            await computeAndRenderOptimalPlan(opts);
             if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecPlan');   // 算出結果の位置へ合わせる
             // 算出が途中で無効化された (後発の算出・ゲート・取得失敗) ときは古いプランを配信しない
             if (!_opsLastPlan || _opsLastPlan === before) {
@@ -18676,6 +18676,8 @@
             const rv = window.reservationsDomain;
             const row = (_resv.rows || []).find(r => Number(r.id) === Number(id));
             if (!row) return;
+            // ★ 組み直しの条件 (対象・ブロック) は**最初の await より前**に写す (Codex 全体監査 C 2026-10-23) — 待っている間に運営が条件を切り替えても、承認した時点の条件で影響を解き・組み直す
+            const recomputeOpts = _recomputeOptsAfterApproval();
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             // ★ 承認前に「固定した場合の影響」を出す。同じ盤面を
             //   「いまの承認済みだけ」と「+この候補」で解いて比べる (Codex 設計レビュー)
@@ -18684,7 +18686,7 @@
             const snap = await _snapshotAtApproval(row);
             const rowNow = snap ? { ...row, characters_snapshot: snap.characters, expected_damage_b: snap.expectedDamageB } : row;
             let impact = null;
-            try { impact = await _reservationImpact(rowNow); }
+            try { impact = await _reservationImpact(rowNow, recomputeOpts); }
             catch (e) { console.warn('[reservation] 影響の算出skip:', e?.message || e); }
             // ★ 候補そのものが置けない (約束の時刻にそのボスがいない見込み 等) なら承認しない。
             //   理由は日本語で (ユーザー決定 C の置き換え・D)
@@ -18712,7 +18714,7 @@
                 + '・ほかのメンバーには何も届きません\n'
                 + '・取り消したくなったら「取り下げる」で外せます (本人に通知が届きます)';
             if (impact) {
-                msg += `\n\n【承認した場合の影響 — いまの提出 (${impact.mockCount != null ? impact.mockCount + ' 人分' : '模擬だけ'}) で仮に組んだ参考値】\n`
+                msg += `\n\n【承認した場合の影響 — いまの提出 (${impact.mockCount != null ? impact.mockCount + ' 人分' : '模擬だけ'})${impact.scopeLabel ? ` · 🧱 ${impact.scopeLabel} の人だけ` : ''} で仮に組んだ参考値】\n`
                     + `・Lv${impact.clearBefore} 完全攻略の見込み → ${impact.clearAfter >= impact.clearBefore ? '変わりません' : `Lv${impact.clearAfter} に下がります`}\n`
                     + `・未消化の凸 ${impact.unusedBefore} → ${impact.unusedAfter}\n`
                     + `・総与ダメ ${impact.creditedDiffB >= 0 ? '+' : ''}${impact.creditedDiffB.toFixed(1)}B`
@@ -18747,11 +18749,11 @@
             //   requested のまま残り、最後の1件でも配信の確認に進めなくなる
             const remaining = (_resv.rows || []).filter(r => r.status === 'requested' && Number(r.id) !== Number(id)).length;
             if (remaining > 0) {
-                await _recomputeOnly();
+                await _recomputeOnly(recomputeOpts);
                 showNotification(`🔒 承認しました。残り ${remaining} 件を承認してから配信へ進みます`);
                 return;
             }
-            await _recomputeAndOfferPublish('承認した予約を反映して組み直しました');
+            await _recomputeAndOfferPublish('承認した予約を反映して組み直しました', recomputeOpts);
         }
 
         // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
@@ -18762,8 +18764,8 @@
             ? { who: 'block', block: (typeof _opsLastPlan !== 'undefined' && _opsLastPlan?.blockScope?.slots) ? _opsLastPlan.blockScope : _opsPlanBlock() }
             : { onlyAvailableNow: false });
         // 承認のたびの組み直し (配信の確認は出さない)。失敗しても承認は成立している
-        async function _recomputeOnly() {
-            try { await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval()); }
+        async function _recomputeOnly(opts = _recomputeOptsAfterApproval()) {
+            try { await computeAndRenderOptimalPlan(opts); }
             catch (e) { console.warn('[reservation] 承認後の組み直しに失敗:', e?.message || e); }
         }
 
@@ -18795,11 +18797,14 @@
         }
 
         // 承認前の影響: 同じ盤面を「いまの承認済みだけ」と「+この候補」で解いて差を出す
-        async function _reservationImpact(row) {
+        async function _reservationImpact(row, recomputeOpts = _recomputeOptsAfterApproval()) {
             const rv = window.reservationsDomain;
             if (!rv || typeof window.computeOptimalPlanCore !== 'function') return null;
             const snap = await opsStore.load();
             if (!snap) return null;
+            // 🧱 承認後の組み直し (_recomputeOptsAfterApproval) と同じ条件で解く (Codex 全体監査 C 2026-10-23)。以前は常に 1 日ぶん・全員で解いていたので、
+            //   影響の数字が承認後の盤と食い違い、ブロックの対象外の人の予約が「置ける」と出ることがあった。対象外の人の予約は影響 0 で承認できる (そのブロックで組むときに置く)
+            const blk = recomputeOpts && recomputeOpts.who === 'block' ? recomputeOpts.block : null;
             // 実際のソルバー条件と同じ集合。★ ただし**同じカードの 📌 (運営の下書き) は外す** (Codex指摘 2026-09-11) —
             //   本人が同じカードを申請してきたら、承認で 📌 は superseded になる。外さずに解くと候補と 📌 が同じ編成を
             //   奪い合って「置けない」になり、📌 を手で外すまで承認できない
@@ -18809,7 +18814,9 @@
                 season: snap.season, bosses: snap.bosses, players: _playersWithBlockCaps(snap.players, snap.season),
                 excludeTimeUnknown: true,   // 画面の算出と同じ (段階 2b)
                 secondB5Lv4Only: true,      // 画面の算出と同じ (段階 5)
-                currentSlot: _planNowSlot(snap.season), timeAware: true, onlyAvailableNow: false,
+                currentSlot: _opsPlanStartSlot({ blockStartSlot: blk ? _hourKey(blk.from) : null }, _planNowSlot(snap.season)), timeAware: true,
+                onlyAvailableNow: !!blk, availableAtSlot: getCurrentSlotJST(),
+                availableAtSlots: blk ? blk.slots : undefined, availableAtLabel: blk ? blk.label : undefined,
                 timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
                 reservations: rv.toSolverConstraints(rows),
             });
@@ -18818,6 +18825,7 @@
             const impact = rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain, row.id, row.player_id);
             // ダイアログの注記用: いま模擬を提出している人数 (影響の数字は、この人たちだけで仮に組んだ 2 つのプランの差)
             if (impact) impact.mockCount = (snap.players || []).filter(p => Object.values(p.loadoutsByAttr || {}).some(a => Array.isArray(a) && a.length > 0)).length;
+            if (impact) impact.scopeLabel = blk ? blk.label : null;   // ダイアログの注記用 (🧱 どのブロックの人だけで解いたか)
             return impact;
         }
 
@@ -22295,6 +22303,14 @@
             const who = options.who === 'block' ? 'block' : (options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho);
             const blk = who === 'block' ? (options.block || _opsPlanBlock()) : null;
             const onlyNow = who !== 'all';
+            // 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23): 配信の JSON は 1 日ぶんで、いま組むブロックより後ろの凸 (まだ約束していない予想) も入っている。
+            //   そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。尊重するのは **いま組むブロックの範囲の凸だけ**、前回の配信が別のブロックのぶんなら尊重しない
+            if (previousPlan && blk && window.raidBlocksDomain) {
+                const ps = previousPlan.blockScope;
+                const same = !ps || (Number(ps.from) === Number(blk.from) && Number(ps.to) === Number(blk.to));
+                previousPlan = same ? window.raidBlocksDomain.scopePlan(previousPlan, blk) : null;
+                if (!previousPlan) { basisPlanId = null; basisPub = null; }   // 基準にしていないので、配信時の照合も「尊重していない」として扱う
+            }
             options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null, blockStartSlot: blk ? _hourKey(blk.from) : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
@@ -22315,7 +22331,7 @@
             //   B が P0 基準のまま P2 を配信すると、B は P1 の約束を知らないまま壊してしまう。
             //   配信直前にこの ID と最新を照合して、ずれていたら組み直させる
             plan.basisPlanId = basisPlanId;
-            plan.stickyOn = !!_opsPlanSticky;
+            plan.stickyOn = !!(_opsPlanSticky && previousPlan);   // 別のブロックの配信は尊重していない (上) — そのときは配信時の基準の照合もしない
             // ★ 「この条件で組んだ」を焼き込む (パズル盤 ①・2026-09-11)。配信されたプランにも残るので、
             //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
@@ -22323,7 +22339,7 @@
                 block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「夕方 18〜20時」)
                 // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む。🧱 は起点がブロックの頭なら 'block'、ブロックの途中 (今 > 頭) なら 'now' (Codex指摘)
                 from: blk ? (plan.currentSlot === _hourKey(blk.from) ? 'block' : 'now') : (plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode),
-                prev: _opsPlanSticky ? 'keep' : 'fresh',
+                prev: (_opsPlanSticky && previousPlan) ? 'keep' : 'fresh',   // 別のブロックの配信は尊重していない = ゼロから
                 time: plan.timeStrict ? 'strict' : 'damage',   // 実際に使った時間の扱いを焼き込む
                 reservations: (Array.isArray(reservations) && window.reservationsDomain)
                     ? reservations.filter(r => window.reservationsDomain.isFixed(r)).length : 0,
