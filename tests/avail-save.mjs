@@ -146,7 +146,7 @@ async function test(name, fn) {
     catch (e) { console.error(`  ❌ ${name}\n     ${e.message}`); fail++; }
 }
 
-console.log('戦闘可能時間の保存キュー:\n');
+console.log('参加可能時間の保存キュー:\n');
 
 await test('★ 自動保存が通信中でも、後から押した確認の内容が最後に残る (巻き戻らない)', async () => {
     const env = makeEnv();

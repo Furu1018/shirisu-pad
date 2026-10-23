@@ -121,7 +121,7 @@ await test('★ 候補を押す = その模擬ピースを選んで、その時�
     assert.equal(t.calls.filter(c => c[0] === 'place').length, 1);
 });
 
-await test('選んだ駒が置けるマスに印 (属性と出られる時間)', () => {
+await test('選んだ駒が置けるマスに印 (属性と参加可能時間)', () => {
     const t = makeEnv({ sel: { kind: 'piece', memberId: 11, loadoutSlot: 1, attr: 'iron' } });
     const out = t._planBlockBoardHtml(PLAN, { ops: true });
     assert.ok(/class="bb-cell can" data-boss="4" data-h="14" data-can="1"/.test(out), '置けるマスに印が無い');

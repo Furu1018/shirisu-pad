@@ -169,7 +169,7 @@
         if (!attr || boss.weakness !== attr) return { ok: false, reason: 'attr', label: `${boss.weakness ? (ATTR_JP[boss.weakness] || boss.weakness) + 'PT' : '別の属性'} のボスです` };
         if (!player.flexTime) {
             const win = windowOf(player, hourOrder);
-            if (!Number.isInteger(hourIdx) || !win.has(hourIdx)) return { ok: false, reason: 'time', label: `${player.name || ''} の戦闘可能時間の外です` };
+            if (!Number.isInteger(hourIdx) || !win.has(hourIdx)) return { ok: false, reason: 'time', label: `${player.name || ''} の参加可能時間の外です` };
         }
         return { ok: true };
     }
@@ -241,7 +241,7 @@
         const hours = (Array.isArray(hourIdxs) ? hourIdxs : []).filter(Number.isInteger).slice().sort((x, y) => x - y);
         const out = [];
         for (const pc of Array.isArray(pieces) ? pieces : []) {
-            if (!pc || pc.placed || !(Number(pc.remaining) > 0)) continue;   // 属性と出られる時間は下の canPlace が見る
+            if (!pc || pc.placed || !(Number(pc.remaining) > 0)) continue;   // 属性と参加可能時間は下の canPlace が見る
             const player = byId.get(String(pc.memberId));
             if (!player) continue;
             const h = hours.find(i => canPlace({ player, attr: pc.attr, boss: { weakness: row.weakness }, hourIdx: i, hourOrder }).ok);
@@ -272,7 +272,7 @@
             { key: 'result', label: '📥 前のブロックの結果を取り込む', sub: missing == null ? '⚔️ 戦況の結果の取り込み' : (missing > 0 ? `結果がまだ ${missing} 凸` : '結果は入っています'), done: missing === 0 },
             { key: 'build', label: '🧱 このブロックを組む', sub: built ? '組みました' : '対象を「🧱 ブロックの人」にして算出', done: !!built },
             { key: 'publish', label: '📤 配信する', sub: published ? '配信しました (割当のある人に通知)' : '組んだら配信', done: !!published },
-            { key: 'finish', label: '🏁 締凸検索で声をかける', sub: '任意 — 倒し切れないボスがあるとき', done: false, optional: true },
+            { key: 'finish', label: '🏁 締め凸検索で声をかける', sub: '任意 — 倒し切れないボスがあるとき', done: false, optional: true },
         ];
         const cur = steps.find(s => !s.done && !s.optional);
         return steps.map(s => ({ ...s, optional: !!s.optional, current: s === cur }));
@@ -284,16 +284,16 @@
         .map(c => c.normalize('NFKC').trim().toLowerCase())
         .filter(Boolean);
     const SWAP_JP = {
-        promise: '🔒 本人の約束 — 入れ替えられません',
-        pinned: '📌 固定 — 外すなら固定を外してから',
-        requested: '📝 本人の申請中 — 承認か却下で決めます (固定はしません)',
+        promise: '🔒 本人の予約 — 入れ替えられません',
+        pinned: '📌 仮置き — 外すなら仮置きを外してから',
+        requested: '📝 本人の予約 (承認待ち) — 承認か却下で決めます (仮置きはしません)',
         conflict: '同じキャラ — 必ず外れます',
         free: '入れ替えられます',
     };
     /**
      * 🔁 入れ替えの候補 (パズル盤 ⑤・2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
      *   いまのプランに入っているその人の凸を並べ、新しいピース (team) と両立できるかを付ける:
-     *     promise = 🔒 本人の約束 (入れ替えられない) / pinned = 📌 固定 (外すなら固定を外してから)
+     *     promise = 🔒 本人の約束 (入れ替えられない) / pinned = 📌 固定 (外すなら仮置きを外してから)
      *     requested = 📝 本人の申請中のカード (選べない・📌 にもしない: canPin が本人の申請と同じカードの固定を禁じる。Codex指摘 2026-09-12)
      *     conflict = 同じキャラ (必ず外れる) / free = 入れ替えられる
      *   over = 被りを外してもなお残凸を超える数 (普通は 0 か 1)。1 なら free から 1 つ選んでもらう (pickable)。

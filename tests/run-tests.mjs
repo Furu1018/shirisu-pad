@@ -17,7 +17,7 @@ import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
-import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦闘可能時間の読み方)
+import '../js/domain/availability.js';    // globalThis.availabilityDomain (参加可能時間の読み方)
 import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
 import '../js/domain/mockIntake.js';      // globalThis.mockIntakeDomain (📸 運営の模擬取り込み — ブロック制 ③-e 2026-10-18)
 import '../js/domain/attackCheck.js';     // globalThis.attackCheckDomain (✅ 凸報告の確認 — ブロック制 ③-f 2026-10-18)
@@ -574,7 +574,7 @@ test('時間外(ミスマッチ)割当は MISMATCH_PENALTY で正規時間の人
     assert.equal(atk.timeMismatch, false);
 });
 
-test('凸は「そのレベルが開いてから最も早い凸可能時間帯」に割り当てられる', () => {
+test('凸は「そのレベルが開いてから最も早い参加可能時間帯」に割り当てられる', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 10 })],
         [player('夜の人', { fire: 12 }, { availableSlots: ['h21', 'h22'] })],
@@ -1041,7 +1041,7 @@ test('時間が合わない人も最寄り扱いで必ず組み込まれる (⏳
     assert.equal(b1.timeConstrained, false);
 });
 
-test('凸可能時間 未登録のメンバーは「いつでも可」+ timeUnknown フラグ', () => {
+test('参加可能時間 未登録のメンバーは「いつでも可」+ timeUnknown フラグ', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 10 })],
         [player('未登録さん', { fire: 12 })],
@@ -3865,7 +3865,7 @@ console.log('\nopsLayoutDomain:');
         assert.equal(dom.resolveOpen('opsSecReserve', 'day', null, true), false, '当日は畳むこと');
         assert.equal(dom.resolveOpen('opsSecReserve', 'pre', null, true), true, '前日は開くこと');
         const s = dom.summarize({ season: null, reservations: { pending: 2, approved: 3 } });
-        assert.equal(s.summaries.opsSecReserve.text, '承認待ち 2 · 固定中 3');
+        assert.equal(s.summaries.opsSecReserve.text, '承認待ち 2 · 予約 3');
         assert.equal(s.summaries.opsSecReserve.bad, true, '承認待ちがあるなら目立たせる');
         const none = dom.summarize({ season: null, reservations: { pending: 0, approved: 3 } });
         assert.equal(none.summaries.opsSecReserve.bad, false);
@@ -4029,7 +4029,7 @@ console.log('\nopsStageDomain:');
         assert.deepEqual(rows.map(r => r.key), ['bosses', 'mock', 'avail', 'pushcheck', 'resv', 'publish']);
         assert.equal(by.bosses.value, 4); assert.equal(by.bosses.done, false);
         assert.equal(by.mock.value, 2); assert.equal(by.mock.total, 3); assert.equal(by.mock.nudge, 'mock');
-        assert.equal(by.avail.value, 1); assert.equal(by.avail.label, '戦闘可能時間の確認');
+        assert.equal(by.avail.value, 1); assert.equal(by.avail.label, '参加可能時間の確認');
         // 送ったあと: 届いた人数 / 全員。全員に届くまでは「相手待ち」(waiting) で、done ではない
         assert.deepEqual([by.pushcheck.value, by.pushcheck.total, by.pushcheck.done, by.pushcheck.waiting, by.pushcheck.action], [1, 3, false, true, 'pushcheck']);
         assert.equal(by.resv.value, '承認待ち 2'); assert.equal(by.resv.done, false);
@@ -4057,7 +4057,7 @@ console.log('\nopsStageDomain:');
         const rp = dom.checklist({ stage: 'pre', season, bosses, mbRows: [mbRows[0]], reservations: { pending: 0 }, published: true, pendingRepublish: 1 }).find(r => r.key === 'publish');
         assert.equal(rp.done, false); assert.equal(rp.action, 'republish');
         const legacy = dom.checklist({ stage: 'pre', season, bosses, mbRows: [{ mockOk: true, availSupported: false, slots: ['h05'], flex: false, push: true }], reservations: { pending: 0 }, published: true }).find(r => r.key === 'avail');
-        assert.equal(legacy.label, '戦闘可能時間の登録'); assert.equal(legacy.value, 1);
+        assert.equal(legacy.label, '参加可能時間の登録'); assert.equal(legacy.value, 1);
         assert.deepEqual(dom.checklist({ stage: 'day' }), []); assert.deepEqual(dom.checklist({ stage: 'prep' }), []);
     });
     test('checklist(終了): バックアップはハード日以降に保存したものだけ「保存済み」 / 終了 / リセットは任意', () => {
@@ -4236,7 +4236,7 @@ console.log('\nmemberStatusDomain:');
         const m = dom.nudgeMessage(rows[1], 'pre');
         assert.match(m.body, /キャラ被りなしで3属性必要・あと1属性/);
     });
-    test('★ 戦闘可能時間は 未登録 / 今期未確認 / 確認済み の3状態を区別する', () => {
+    test('★ 参加可能時間は 未登録 / 今期未確認 / 確認済み の3状態を区別する', () => {
         // 第44回の実害: availability は無期限のプロフィール設定なので、前月のまま残っている人が
         // 「登録済み」に見えて、当日いないのに候補へ出る。今期確認したかを別に持つ (37)
         const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
@@ -4774,7 +4774,7 @@ console.log('\n運営除外の配線 (ソース突合):');
     // 保存キューの**振る舞い**は tests/avail-save.mjs が実行して確かめる
     // (ソース文字列の検査は「実際に前の保存を待っているか」を保証しない — Codex指摘 2026-09-07)。
     // ここでは静的にしか見えないものだけ残す
-    test('戦闘可能時間: デバウンスは引数なしで _availDoSave を呼ぶ', () => {
+    test('参加可能時間: デバウンスは引数なしで _availDoSave を呼ぶ', () => {
         // setTimeout(_availDoSave, 250) だと第2引数の遅延時間が opts に渡り、opts.rethrow が
         // undefined になるだけでなく将来のオプション追加で誤動作する
         assert.ok(!/setTimeout\(_availDoSave,/.test(html));
@@ -4982,7 +4982,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(rv.capacityLeft(rows, 'p9', 0), 3, '別人は影響しない');
     });
 
-    test('★ 📌 運営の固定 (pinned): 拘束にはなるが約束ではない — 指紋・ソルバー・消し込み・本人の3枠', () => {
+    test('★ 📌 運営の仮置き (pinned): 拘束にはなるが約束ではない — 指紋・ソルバー・消し込み・本人の3枠', () => {
         const P = { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, time_mode: 'fixed', time_slot: 'h21', characters_snapshot: ['a'] };
         const pin = { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, time_mode: 'fixed', time_slot: 'h22', characters_snapshot: ['b'], pinned_by: 'ふるり' };
         const asked = { ...pin, id: 3, boss_number: 4, asked_at: '2026-09-11T12:00:00Z', ask_deadline_at: '2026-09-11T12:15:00Z' };
@@ -4992,7 +4992,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(rv.isFixed(pin), true, '固定はソルバーを拘束する'); assert.equal(rv.isFixed(req), false);
         assert.equal(rv.isActive(pin), false, '固定は残凸の枠 (ACTIVE) に数えない');
         assert.deepEqual([...rv.ACTIVE].sort(), ['approved', 'cancel_requested', 'requested']);
-        assert.equal(rv.STATUS_JP.pinned, '運営の固定'); assert.deepEqual(rv.TRANSITIONS.pinned, ['approved', 'released']);
+        assert.equal(rv.STATUS_JP.pinned, '運営の仮置き'); assert.deepEqual(rv.TRANSITIONS.pinned, ['approved', 'released']);
         // 指紋に入る (配信直前に固定が動いていたら止める) / ソルバーの拘束に pinned の印が付く
         assert.ok(rv.fingerprint([P, pin]).includes('2:pinned'), '指紋に固定が入らない');
         // ★ 📌 は置き直せるので、ボス・時刻・編成枠が変われば指紋も変わる (Codex指摘 2026-09-11)。約束は id:status だけ
@@ -5017,7 +5017,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // 配信後の固定は「配信後の予約」に数える (組み直しの合図)
         assert.equal(rv.pendingRepublish([pin], { levels: [] }).count, 1);
     });
-    test('★ 📌 canPin / pinFor: 本人の申請・予約があるカードには置かない / 残凸 / キャラ被り / 置き直しは自分を数えない', () => {
+    test('★ 📌 canPin / pinFor: 本人の予約があるカードには置かない / 残凸 / キャラ被り / 置き直しは自分を数えない', () => {
         const rows = [
             { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, characters_snapshot: ['ラピ', 'ドロシー'] },
             { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, characters_snapshot: ['紅蓮'] },
@@ -5478,7 +5478,7 @@ console.log('\nreservationsDomain (凸の予約):');
             const render = html.match(/function _resvReqRender\(\) \{[\s\S]{0,12000}/)?.[0] || '';
             // ★ レベルは聞かない (2026-09-08)。ボスは全レベル共通で、置くレベルは運営の算出が時刻から決める。
             //   ボスも選ばせない (同日ユーザー指摘): 編成の弱点属性で行くボスが決まる。確認の1行だけ
-            for (const t of ['どの編成で', '何時に', 'この内容で申請する', 'に行きます']) {
+            for (const t of ['どの編成で', '何時に', 'この内容で予約する', 'に行きます']) {
                 assert.ok(render.includes(t), `「${t}」が無い`);
             }
             assert.ok(!render.includes('どのレベルを'), 'レベルを聞いている (本人が選ぶものではない)');
@@ -5555,17 +5555,17 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/opened\.forEach\(el => \{[\s\S]{0,200}history\.pushState/.test(fn));
     });
 
-    test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件を固定して計算」', () => {
+    test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件の予約を入れて計算」', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/const resvPin = a\.fromReservation \?/.test(html), '運営プランの行にピンが無い');
         assert.ok(/\$\{meTag\}\$\{resvPin\}\$\{reservedTag\}/.test(html), 'ピンを行に差し込んでいない');
-        assert.ok(/件を固定して計算しました/.test(html), '「N件を固定して計算」が無い');
-        assert.ok(/statChip\('🔒予約を固定'/.test(html));
-        assert.ok(/固定できなかった予約が/.test(html), '守れなかった予約を運営に見せていない');
+        assert.ok(/件を入れて計算しました/.test(html), '「N件の予約を入れて計算」が無い');
+        assert.ok(/statChip\('🔒 予約'/.test(html));
+        assert.ok(/置けなかった予約が/.test(html), '守れなかった予約を運営に見せていない');
         // 本人の配信プランの行にも (2026-09-08: 3枠の一覧では「予約で固定」の行として出る)
         const mine = html.match(/function _planMineHtml\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/rv\.homeSlots\(\{ plan, viewerId,/.test(mine), '本人の一覧を homeSlots で組んでいない');
-        assert.ok(mine.includes('🔒 予約で固定'), '本人の行に予約の印が無い');
+        assert.ok(mine.includes('🔒 予約'), '本人の行に予約の印が無い');
     });
 
     // ===== 本人のホーム = 3枠 (2026-09-08) =====
@@ -5758,7 +5758,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // ユーザー決定は「承認時点で固定」。申請時の写しのままだと、
         // 申請から承認までの間に本人が模擬を直したとき古い内容で固定される (Codex指摘)
         assert.ok(/async function _snapshotAtApproval/.test(html), '承認時の読み直しが無い');
-        assert.ok(/申請後に本人が編成を変えています/.test(html), '変わったことを運営に見せていない');
+        assert.ok(/予約のあとに本人が編成を変えています/.test(html), '変わったことを運営に見せていない');
         assert.ok(/characters: snap\?\.characters \|\| null, expectedDamageB: snap\?\.expectedDamageB \|\| null/.test(html));
         assert.ok(/p_characters: Array\.isArray\(o\.characters\)/.test(client), 'RPC に渡していない');
         // SQL 側: 承認の瞬間だけ載せ直す。引数を増やしたので旧シグネチャは落とす
@@ -5788,7 +5788,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/const chk = rv\.canRequest\(st\.mine, \{ playerId: me\.id/.test(sheet), '送信直前に canRequest していない');
         // 戦闘可能時間の取得失敗を「未登録」と混同しない
         assert.ok(/_resvReq\.slotsFailed = !Array\.isArray\(slots\);/.test(html));
-        assert.ok(/戦闘可能時間を取得できませんでした/.test(html));
+        assert.ok(/参加可能時間を取得できませんでした/.test(html));
     });
 
     // ===== 2026-09-08: 予約から「レベル」を外す =====
@@ -5829,7 +5829,7 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ 予約: 置けない理由はすべて日本語 (コードのまま出さない) / 見込み時刻を添える', () => {
         for (const k of Object.keys(rv.UNMET_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNMET_JP[k]), k);
         for (const k of Object.keys(rv.UNASSIGNED_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNASSIGNED_JP[k]), k);
-        assert.equal(rv.unmetText({ reason: 'time_passed' }), '約束の時刻を過ぎています');
+        assert.equal(rv.unmetText({ reason: 'time_passed' }), '予約の時刻を過ぎています');
         const t = rv.unmetText({ reason: 'no_boss_at_time', detail: { level: 2, killedLabel: '9時', nextOpenLabel: '11時' } });
         assert.match(t, /そのボスがいない見込み/);
         assert.match(t, /Lv2 は 9時に撃破の見込み/);
@@ -5844,7 +5844,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(r.blockingHard, true, '同じ人のキャラ被りを承認できてしまう');
         assert.equal(r.breaks.length, 1);
         assert.match(r.breaksText, /A の予約 \(B3 編成①\) が置けなくなります: ほかの凸とキャラが被るため置けません/);
-        assert.ok(r.warnings.some(w => w.includes('固定済みの予約が置けなくなります')));
+        assert.ok(r.warnings.some(w => w.includes('承認済みの予約が置けなくなります')));
         // 他人の予約が置けなくなる = 止めないが警告
         const o = rv.approvalImpact(plan([]), plan([{ reservationId: 41, memberId: 'p2', memberName: 'B', bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }]), null, 42, 'p1');
         assert.equal(o.blockingHard, false); assert.equal(o.blocking, true); assert.equal(o.breaks.length, 1);
@@ -5857,7 +5857,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const r = rv.approvalImpact(plan([]), plan([{ reservationId: 42, reason: 'no_boss_at_time' }]), null, 42);
         assert.equal(r.blocking, true);
         assert.equal(r.cannotPlace, true);
-        assert.match(r.warnings[0], /この予約は置けません: 約束の時刻には、そのボスがいない見込みです/);
+        assert.match(r.warnings[0], /この予約は置けません: 予約の時刻には、そのボスがいない見込みです/);
         // 別の予約が新たに置けなくなるのは「候補が置けない」ではなく「固定済みが壊れる」(breaks) — 承認不可ではないが警告
         const ok = rv.approvalImpact(plan([]), plan([{ reservationId: 41, reason: 'conflict' }]), null, 42);
         assert.equal(ok.cannotPlace, false, '別の予約の未達で候補を止めてはいけない');
@@ -5947,7 +5947,7 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(rv.pendingRepublish([{ ...inTime[0], time_slot: 'h07' }], nowPlan).count, 1, '置き直した 📌 は催促する');
             // 画面: 3 枠のカードと「わたしの凸」が印を読む
             assert.ok(_htmlB.includes(": slot.laterBlock ? '🔒 予約 (あとのブロック)' : slot.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'"), '3 枠のカードが印を読まない');
-            assert.ok(_htmlB.includes(": a.laterBlock ? '🔒 予約で固定 (あとのブロック)' : a.outOfScope ? '🔒 予約で固定 (この配信の計算に入っていません)'"), '「わたしの凸」が印を読まない');
+            assert.ok(_htmlB.includes(": a.laterBlock ? '🔒 予約 (あとのブロック)' : a.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'"), '「わたしの凸」が印を読まない');
             assert.ok(_htmlB.includes(':${x.laterBlock ? 1 : 0}:${x.outOfScope ? 1 : 0}`).join(\'|\')'), '3 枠の鍵に印が無い (変わっても描き直さない)');
             // ③ ブロックの時間の中なのに入っていない → 従来どおり数える / ⏳隙間型 (時刻なし) も数える
             assert.equal(rv.pendingRepublish([{ ...res({ id: 6, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
@@ -6658,11 +6658,11 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.ok(!/no_boss_at_time/.test(t), 'コードが日本語に混ざっている');
     });
 
-    test('★ L2: 約束の時刻を過ぎたレベル無しの予約は time_passed / ⏳隙間型は倒れていれば次のレベルへ', () => {
+    test('★ L2: 予約の時刻を過ぎたレベル無しの予約は time_passed / ⏳隙間型は倒れていれば次のレベルへ', () => {
         const past = compute(mkInput(tl(), { bosses: smallB(), currentSlot: 'h13',
             reservations: [free({ id: 4, member: 3, boss: 1, slot: 'h07' })] }));
         assert.equal(past.unmetReservations[0]?.reason, 'time_passed', JSON.stringify(past.unmetReservations));
-        assert.equal(rv.unmetText(past.unmetReservations[0]), '約束の時刻を過ぎています');
+        assert.equal(rv.unmetText(past.unmetReservations[0]), '予約の時刻を過ぎています');
         const fx = compute(mkInput(tl(), { bosses: smallB(0), reservations: [free({ id: 5, member: 3, boss: 1, flex: true })] }));
         assert.deepEqual(rowOf(fx, 3), ['L2/B1/1/flex'], `倒れたボスの隙間予約は次のレベルへ: ${JSON.stringify(rowOf(fx, 3))} / ${JSON.stringify(fx.unmetReservations)}`);
     });
@@ -6987,7 +6987,7 @@ console.log('\nL2 予約の拘束 (ソルバー):');
 }
 
 // ---- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) ----------------
-console.log('\navailabilityDomain (戦闘可能時間):');
+console.log('\navailabilityDomain (参加可能時間):');
 {
     const av = globalThis.availabilityDomain;
     const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
@@ -7016,7 +7016,7 @@ console.log('\navailabilityDomain (戦闘可能時間):');
         assert.equal(av.canAttackWithin(H(2), 23, 3), false);
         assert.equal(av.canAttackWithin(H(13), 10, 3), false, '10,11,12 に 13 は入らない');
         assert.equal(av.canAttackWithin(H(13), 10, 4), true);
-        assert.equal(av.canAttackWithin([], 10, 2), false, '未登録は「出られる時間が分からない」');
+        assert.equal(av.canAttackWithin([], 10, 2), false, '未登録は「参加可能時間が分からない」');
         assert.equal(av.canAttackWithin([], 10, 2, { flexTime: true }), true);
         assert.equal(av.canAttackWithin([], 10, null), true, '制限なしは全員');
     });
@@ -7089,7 +7089,7 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(/return finishDomain\.computeFinishPlans\(candidates, remHP, \{ shots: _opsFinish\.shots \}\);/.test(html), '人数を組合せに渡していない');
         assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);/.test(html), 'チップを押しても描き直さない');
     });
-    test('★ 配線: ホームに「あなたの戦闘可能時間」の帯 (要約 + 24コマ + 今の時刻) と変更ボタン', () => {
+    test('★ 配線: ホームに「あなたの参加可能時間」の帯 (要約 + 24コマ + 今の時刻) と変更ボタン', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('id="myAvailStripCard"') && html.includes('id="myAvailStripBody"'));
         assert.ok(html.includes('<script defer src="./js/domain/availability.js"></script>'));
@@ -7103,7 +7103,7 @@ console.log('\nfinishDomain (人数・時間範囲):');
         const close = html.match(/function closeMyAvailModal\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/renderMyAvailStrip\(id\)/.test(close), '変更のあと帯を描き直していない');
     });
-    test('★ 配線: 当日、時間帯の始まりに「戦闘可能時間になりました」を本人へ (運営端末が送り手・二重送信よけ)', () => {
+    test('★ 配線: 当日、時間帯の始まりに「参加可能時間になりました」を本人へ (運営端末が送り手・二重送信よけ)', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn, '通知の関数が無い');
@@ -7121,7 +7121,7 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(/supabaseMarkRaidNoticeSent\(season\.id, 'avail_start', ref\)/.test(fn), '送信済みを記録していない');
         assert.ok(/supabaseReleaseRaidNotice\(season\.id, 'avail_start', ref\)/.test(fn), '送信失敗で確保を戻していない');
         assert.ok(/ignoreAvailability: true/.test(fn) && /playerIds: \[t\.id\]/.test(fn), '本人だけに送っていない');
-        assert.ok(fn.includes('戦闘可能時間になりました'));
+        assert.ok(fn.includes('参加可能時間になりました'));
         // Codex指摘 (2026-09-08): 残凸は送る直前に本人の実凸で見直す / 1人の失敗で残りを落とさない / 30分を過ぎたら送らない
         assert.ok(/supabaseLoadMyAttacks\?\.\(t\.id, season\.id, season\.hard_date\)/.test(fn), '残凸を取り直していない');
         assert.ok(/if \(remaining <= 0\) continue;/.test(fn));
@@ -7673,7 +7673,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     test('★ B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) / 自動配信はしない (2026-09-08)', () => {
         const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ok = await _resvTransition\(id, 'approved'/.test(ap), '承認の成否を見ていない');
-        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を固定して組み直しました'\);/.test(ap),
+        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を入れて組み直しました'\);/.test(ap),
             '承認のあとに組み直し→配信の流れへ入っていない');
         // ★ 承認待ちが他にも残っている間は配信の確認を出さず、組み直しだけ (ユーザー決定 2026-09-08)。
         //   最後の1件を承認したときに差分と配信の確認を出す
@@ -7681,7 +7681,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(ap), '残りの承認待ちを数えていない');
         assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
             '承認待ちが残っているのに配信の確認を出している');
-        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を固定して組み直しました')"), '順序が逆');
+        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を入れて組み直しました')"), '順序が逆');
         const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(ro), '組み直していない (承認後の条件を通していない)');
         // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示
@@ -7754,7 +7754,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(st.includes('配信後の予約が'));
     });
     test('★ D: 固定できなかった予約の表示はコードでなく日本語 (unmetText) / レベル無しは Lv を出さない', () => {
-        const view = html.match(/固定できなかった予約が \$\{plan\.unmetReservations\.length\}件あります[^\n]*/)?.[0] || '';
+        const view = html.match(/置けなかった予約が \$\{plan\.unmetReservations\.length\}件あります[^\n]*/)?.[0] || '';
         assert.ok(view, '表示が無い');
         assert.ok(/reservationsDomain\.unmetText\(u\)/.test(view), 'unmetText を通していない');
         assert.ok(!/\$\{u\.reason/.test(view), 'コードをそのまま出している');
@@ -9454,7 +9454,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(await mk(() => ({ data: null, error: null })).fn(9, '2026-10-10'), []);
     });
 
-    await testAsync('★ 実行: ⏰ 戦闘可能時間の通知はレイド日 (5時〜翌4時) だけ・前夜 0 時台は送らない (第45回で踏んだ)', async () => {
+    await testAsync('★ 実行: ⏰ 参加可能時間の通知はレイド日 (5時〜翌4時) だけ・前夜 0 時台は送らない (第45回で踏んだ)', async () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn, '_checkAvailReminders が無い');
@@ -9641,7 +9641,7 @@ console.log('\ngrowthDomain:');
         assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 3 }).readable, true, '新しい端末が前の版の配信を読めない');
     });
 
-    test('★ 配線: 🧱 時間アンケートをブロックで (③-b) — 戦闘可能時間はブロックのチップで選ぶ / 押すと丸ごと ON・OFF / 保存は時間帯のまま / ホームの帯にブロック名', () => {
+    test('★ 配線: 🧱 時間アンケートをブロックで (③-b) — 参加可能時間はブロックのチップで選ぶ / 押すと丸ごと ON・OFF / 保存は時間帯のまま / ホームの帯にブロック名', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const ui = html.match(/function _renderAvailUI\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(ui, '_renderAvailUI が無い');
@@ -9863,13 +9863,13 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
         // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
         const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 出られる時間を確認する'\)\s*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
+        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 参加可能時間を確認する'\)\s*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
         assert.ok(/const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden\(\);/.test(hero), 'ヒーローが模擬タブの判定を見ていない');
         assert.ok(!/heroBtn\("switchTab\('mock'\)"/.test(hero) && !/softBtn\("switchTab\('mock'\)"/.test(hero), '模擬タブへの直の導線が残っている');
         assert.equal((hero.match(/mockCta\(/g) || []).length, 6, 'mockCta を使う場所が 6 か所 (B1 / C0 / C1 / B2 / C3 / C2) でない');
         assert.ok(/模擬戦のスクショを Discord に貼ってください。運営が PAD に登録すると/.test(hero) && /why \+= liteNote;/.test(hero), '隠しているときの文言が無い');
         // ✏️ シーズン編集: スイッチ (既定 OFF) → supabaseUpdateSeasonMemberInput → seasonStore.invalidate
-        assert.ok(/<input type="checkbox" id="opsSeasonEditMemberInput"/.test(html) && /メンバーに模擬の提出シートと凸の申請を出す/.test(html), 'スイッチが無い');
+        assert.ok(/<input type="checkbox" id="opsSeasonEditMemberInput"/.test(html) && /従来の画面にする \(メンバーの模擬の提出シート・戦闘カード・凸報告・📣 お願い など\)/.test(html), 'スイッチが無い');
         assert.ok(/_opsSeasonEditCtx\.memberInputFull = season\.metadata\?\.member_input === 'full';/.test(html), '開いたときの値を読んでいない');
         const save = html.match(/async function handleOpsSeasonEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const memberInputChanged = memberInputFull !== !!ctx\.memberInputFull;/.test(save) && /&& !memberInputChanged\) \{ set\('変更はありません'\); return; \}/.test(save), '変更の判定が無い');
@@ -10436,7 +10436,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(L.TAB_KEYS, ['members', 'build', 'battle', 'master']);
         assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く');
         assert.deepEqual(byTab('build'), ['opsSecReserve', 'opsSecPlan']);
-        assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackCheck'], '締凸検索は戦況に残す (ユーザー決定)');
+        assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定)');
         assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecGrowth']);
         assert.deepEqual(L.CARDS.filter(c => c.tab === null).map(c => c.id).sort(),
             ['opsSecActions', 'opsSecCoord', 'opsSecDiscord', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining'], '画面から外すカードが違う');
@@ -10661,11 +10661,11 @@ console.log('\ngrowthDomain:');
         assert.ok(/window\.supabaseReservationPinColsMissing = \(\) => _resvPinColsMissing;/.test(client), '画面から読めない');
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
         const iLoad = place.indexOf('await window.supabaseLoadReservations(snap.season.id)');
-        const iGate = place.search(/if \(window\.supabaseReservationPinColsMissing\?\.\(\) === true\) \{ showNotification\('📌 固定を置くには supabase\/45_reservation_pins\.sql/);
+        const iGate = place.search(/if \(window\.supabaseReservationPinColsMissing\?\.\(\) === true\) \{ showNotification\('📌 仮置きを置くには supabase\/45_reservation_pins\.sql/);
         const iCreate = place.indexOf('await window.supabaseCreateReservation(');
         assert.ok(iLoad > 0 && iGate > iLoad && iGate < iCreate, '置く前 (読み出しの後・insert の前) に 45 の有無を見ていない');
         const tray = html.match(/function _opsPlanTrayHtml\(plan\)[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/const noPinsHtml = noPins \? '<p class="hint warn">⚠ 📌 固定を置くには supabase\/45_reservation_pins\.sql/.test(tray) && /\$\{noPinsHtml\}/.test(tray),
+        assert.ok(/const noPinsHtml = noPins \? '<p class="hint warn">⚠ 📌 仮置きを置くには supabase\/45_reservation_pins\.sql/.test(tray) && /\$\{noPinsHtml\}/.test(tray),
             'ピース箱の頭で 45 未適用を言っていない');
         // ③ ピース箱は sticky (Lv3 を埋めるときにピースが上に残って持ってきづらい: 実機FB)
         assert.ok(/\.plan-board\.with-tray > \.plan-tray \{ position: sticky; top: var\(--stick-top, 128px\); max-height: calc\(100vh - var\(--stick-top, 128px\) - 12px\); display: flex; flex-direction: column; \}/.test(html), 'ピース箱が画面に留まらない');
@@ -10758,8 +10758,8 @@ console.log('\ngrowthDomain:');
         // メンバー → 運営: 申請 (2 経路) / 取消希望 / 📣 の返事 (2) / 締め凸の返事
         const tags = (html.match(/_notifyOps\(\{ title: [^\n]*?tag: '([a-z-]+)'/g) || []).map(x => x.match(/tag: '([a-z-]+)'/)[1]);
         assert.deepEqual(tags.sort(), ['ops-finish-answer', 'ops-pin-answer', 'ops-pin-answer', 'ops-resv-cancel', 'ops-resv-request', 'ops-resv-request'], `運営あての通知の場所が違う: ${tags}`);
-        for (const site of ["_notifyOps({ title: '🔒 予約の申請', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });",
-                            "_notifyOps({ title: '🔒 予約の申請 (配信の凸を引き受け)',", "tag: 'ops-resv-cancel', except: me?.id });",
+        for (const site of ["_notifyOps({ title: '🔒 予約 (承認待ち)', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });",
+                            "_notifyOps({ title: '🔒 予約 (配信の凸を引き受け)',", "tag: 'ops-resv-cancel', except: me?.id });",
                             "_notifyOps({ title: '🔒 お願いを引き受けました',", "_notifyOps({ title: '✋ お願いは難しいそうです',",
                             "_notifyOps({ title: status === 'accepted' ? '🗡 締め凸を了承' : '✕ 締め凸は難しい',"]) {
             assert.ok(html.includes(site), `運営あての通知が無い: ${site.slice(0, 40)}`);
@@ -11398,7 +11398,7 @@ console.log('\ngrowthDomain:');
     test('★ 配線: 横画面のホームに ボス状況カード (戦闘カードの隣)。スマホ縦は細い帯のまま', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const i = html.indexOf('id="mypageBossStrip"'), j = html.indexOf('id="myBossBoardCard"'), k = html.indexOf('id="myAvailStripCard"');
-        assert.ok(i > 0 && j > i && k > j, 'ボス状況カードが 戦闘カードの直後・戦闘可能時間の前 にない (右列の空きに入らない)');
+        assert.ok(i > 0 && j > i && k > j, 'ボス状況カードが 戦闘カードの直後・参加可能時間の前 にない (右列の空きに入らない)');
         assert.ok(/class="dc-card mp-bbcard" data-span="6" id="myBossBoardCard"/.test(html), 'カードの幅 (6) が無い');
         assert.ok(/id="myBossBoard" class="mp-bossboard" data-no-swipe/.test(html), '横スクロールの箱に data-no-swipe が無い');
         const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
@@ -11477,7 +11477,7 @@ console.log('\ngrowthDomain:');
         assert.equal(d.conditionSummary({ who: 'all', time: 'strict', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
         assert.equal(d.conditionSummary(null), '全員 · 今から · ⚡ダメージ優先 · 前回を尊重 · 🔒予約 0');
     });
-    test('★ planBoard: 戦闘可能時間 → 行番号 / 動かせる幅 (硬い・狭い・柔らかい) / 模擬の更新数', () => {
+    test('★ planBoard: 参加可能時間 → 行番号 / 動かせる幅 (硬い・狭い・柔らかい) / 模擬の更新数', () => {
         const d = globalThis.planBoardDomain;
         const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
         const w = d.windowOf({ availableSlots: ['h21', 'h22', 'h00', 'x', 'h99', 7] }, HO);
@@ -11591,7 +11591,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(sw.rows.map(r => [r.key, r.status]), [['1:1:1', 'promise'], ['1:2:1', 'free'], ['2:3:2', 'free']]);
         assert.equal(sw.capacity, 3); assert.equal(sw.over, 1); assert.equal(sw.pickable, true); assert.equal(sw.ask, true);
         assert.deepEqual(sw.free.map(r => r.key), ['1:2:1', '2:3:2']);
-        assert.equal(sw.rows[0].label, '🔒 本人の約束 — 入れ替えられません');
+        assert.equal(sw.rows[0].label, '🔒 本人の予約 — 入れ替えられません');
         assert.deepEqual([sw.rows[1].hourLabel, sw.rows[2].hourLabel, sw.rows[2].flex, sw.rows[2].bossName, sw.rows[2].weakness], ['6時', null, true, 'C', 'electric']);
         // 同じキャラ (全角/空白/大文字の違いは同じ) の凸は必ず外れる → over は 0 になり、選ばせない
         sw = dom.swapOptions({ plan, memberId: 7, team: ['ｗ2', 'q9'], doneAttacks: 0 });
@@ -11602,7 +11602,7 @@ console.log('\ngrowthDomain:');
         const pinnedPlan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 20, team: ['x1'], pinned: true, fromReservation: true }] }] }] };
         sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 2 });
         assert.deepEqual(sw.rows.map(r => r.status), ['pinned']); assert.equal(sw.over, 1); assert.equal(sw.pickable, false, '固定しか無いのに選ばせている');
-        assert.equal(sw.rows[0].label, '📌 固定 — 外すなら固定を外してから');
+        assert.equal(sw.rows[0].label, '📌 仮置き — 外すなら仮置きを外してから');
         // 空きがある (残凸 3 に 1 凸) なら聞かない / その人の凸がプランに無ければ聞かない
         sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 0 });
         assert.equal(sw.ask, false, '空きがあるのに聞いている');
@@ -11617,12 +11617,12 @@ console.log('\ngrowthDomain:');
         sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv, isActive: globalThis.reservationsDomain.isActive });
         assert.deepEqual(sw.rows.map(r => r.status), ['promise', 'requested', 'free']);
         assert.deepEqual(sw.free.map(r => r.key), ['2:3:2']); assert.equal(sw.pickable, true);
-        assert.equal(sw.rows[1].label, '📝 本人の申請中 — 承認か却下で決めます (固定はしません)');
+        assert.equal(sw.rows[1].label, '📝 本人の予約 (承認待ち) — 承認か却下で決めます (仮置きはしません)');
         assert.deepEqual(dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv }).rows.map(r => r.status), ['promise', 'requested', 'free'], 'isActive 無しの既定でも同じ');
         // 同じキャラなら申請中でも「必ず外れる」(置けないものは置けない)
         assert.equal(dom.swapOptions({ plan, memberId: 7, team: ['y1'], doneAttacks: 0, reservations: resv }).rows[1].status, 'conflict');
     });
-    test('★ 配線: ピースを置く前に入れ替えの確認 (planSwapModal) → 選ばなかった自由な凸は 📌 で固定して残す / 算出し直しても画面の位置を保つ', () => {
+    test('★ 配線: ピースを置く前に入れ替えの確認 (planSwapModal) → 選ばなかった自由な凸は 📌 で仮置きして残す / 算出し直しても画面の位置を保つ', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
         // 置く前 (canPin の後・insert の前) に、ピースのときだけ聞く。チップの置き直しでは聞かない
@@ -11638,13 +11638,13 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(ans\.mode === 'pick'\) keeps = sw\.free\.filter\(r => r\.key !== ans\.key\);/.test(place), '選ばなかった自由な凸を残す対象にしていない');
         // 残す凸は 📌 (pinned) で固定。時刻の無い凸 (⏳) は flex で
         const keep = place.match(/for \(const k of keeps\) \{[\s\S]*?\n                \}/)?.[0] || '';
-        assert.ok(/status: 'pinned'/.test(keep) && /flex: k\.flex \|\| k\.hourIdx == null/.test(keep) && /characters: k\.team/.test(keep), '残す凸を 📌 で固定していない');
+        assert.ok(/status: 'pinned'/.test(keep) && /flex: k\.flex \|\| k\.hourIdx == null/.test(keep) && /characters: k\.team/.test(keep), '残す凸を 📌 で仮置きしていない');
         // ★ 残す凸も canPin を通す (本人の申請と同じカード / 被り / 上限)。新しい固定と残した固定を rows に足して数える
         assert.ok(/const ok = rv\.canPin\(rows, \{ playerId: player\.id, bossNumber: k\.bossNumber, loadoutSlot: k\.loadoutSlot, characters: k\.team/.test(keep), '残す凸を canPin に通していない');
-        assert.ok(/if \(!ok\.ok\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸は固定せず算出に任せます: \$\{ok\.label\}`\); continue; \}/.test(keep), '置けない残す凸を固定している');
+        assert.ok(/if \(!ok\.ok\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸は仮置きせず算出に任せます: \$\{ok\.label\}`\); continue; \}/.test(keep), '置けない残す凸を仮置きしている');
         assert.ok(keep.indexOf('const ok = rv.canPin(') < keep.indexOf('await window.supabaseCreateReservation('), '見直しが insert より後');
         assert.ok(/if \(created\) rows = rows\.concat\(\[created\]\);/.test(place) && /if \(kr\) rows = rows\.concat\(\[kr\]\);/.test(keep), '入れた固定を rows に足していない (上限・被りの数え漏れ)');
-        assert.ok(/catch \(e\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸を残す固定に失敗/.test(keep), '残す固定の失敗を黙っている');
+        assert.ok(/catch \(e\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸を残す仮置きに失敗/.test(keep), '残す固定の失敗を黙っている');
         assert.ok(place.indexOf('for (const k of keeps)') > iCreate, '新しい固定より先に残す固定を入れている (新しい方が失敗すると残す固定だけ入る)');
         // モーダルの箱と待ち手
         assert.ok(/<div class="player-select-modal" id="planSwapModal">/.test(html) && /id="planSwapBody"/.test(html), 'モーダルの箱が無い');
@@ -11727,7 +11727,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(d.piecesOf(), []);
         assert.deepEqual(d.piecesOf({ players: [null, {}], plan: null }), []);
     });
-    test('★ canPlace: 有利属性のボスだけ / その人の戦闘可能時間だけ (⏳隙間型は例外)。レベルは見ない', () => {
+    test('★ canPlace: 有利属性のボスだけ / その人の参加可能時間だけ (⏳隙間型は例外)。レベルは見ない', () => {
         const d = globalThis.planBoardDomain;
         const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
         const p = { name: 'A', availableSlots: ['h21', 'h22'] };
@@ -11744,7 +11744,7 @@ console.log('\ngrowthDomain:');
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const chip = html.match(/function _planChipHtml\(a, color, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const resvMark = a\.pinned \? '📌' : \(a\.fromReservation \? '🔒' : ''\);/.test(chip), '📌 / 🔒 の印が無い');
-        assert.ok(/const promise = !!a\.fromReservation && !a\.pinned;\s*\n\s*const dragOk = !!opts\.draggable && !promise && !done;/.test(chip), '約束 (🔒) を掴めなくしていない');
+        assert.ok(/const promise = !!a\.fromReservation && !a\.pinned;\s*\n\s*const dragOk = !!opts\.draggable && !promise && !done;/.test(chip), '予約 (🔒) を掴めなくしていない');
         assert.ok(/data-slot="\$\{Number\(a\.loadoutSlot\) \|\| 1\}" data-attr="\$\{esc\(String\(opts\.cellAttr \|\| ''\)\)\}" data-resv=/.test(chip), 'チップに 編成枠 / 属性 / 予約id の札が無い');
         const tt = html.match(/function _planTimetableHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const attrOk = opts\.placeAttr \? \(bm\.weakness === opts\.placeAttr\) : null;/.test(tt) && /data-boss="\$\{bm\.bossNumber\}"/.test(tt), '置ける先 (有利属性 × 時間) を光らせていない / セルにボス番号が無い');
@@ -11782,7 +11782,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/onclick="handleAcceptPin\(\$\{Number\(r\.id\)\}\)"/.test(home) && /onclick="handleDeclinePin\(\$\{Number\(r\.id\)\}\)"/.test(home), '返事のボタンが無い');
         // 運営の予約カード: 📌 のグループ (お願いする / 外す)
         const paint = html.match(/function _paintOpsReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の固定 \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
+        assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の仮置き \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
         assert.ok(/btn\('📣 お願いする', `_opsPlanAsk\(\$\{Number\(r\.id\)\}\)`/.test(paint) && /btn\('外す', `_opsPlanUnpin\(\$\{Number\(r\.id\)\}\)`/.test(paint), '📌 に お願いする / 外す が無い');
         // ★ 承認前の影響計算は同じカードの 📌 を拘束から外す (外さないと候補と奪い合って承認が止まる — Codex指摘 2026-09-11)
         const imp = html.match(/async function _reservationImpact\(row\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -11860,7 +11860,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(bad, [], bad.join('\n'));
         // 表・横に広い中身は全幅 (半分に切ると読めない)
         const spanOf = (tab, id) => (found[tab].find(c => c.tag.includes(`id="${id}"`)) || {}).tag?.match(/ data-span="(\d+)"/)?.[1];
-        assert.equal(spanOf('tab-mypage', 'myAvailStripCard'), '12', '戦闘可能時間 (24時間の帯) は全幅であること');
+        assert.equal(spanOf('tab-mypage', 'myAvailStripCard'), '12', '参加可能時間 (24時間の帯) は全幅であること');
         assert.equal(spanOf('tab-mock', 'mockCompareCard'), '12', '編成の比較は全幅であること');
         const setSpans = found['tab-settings'].map(c => c.tag.match(/ data-span="(\d+)"/)?.[1]);
         assert.equal(setSpans.filter(v => v === '12').length, 1, '設定の全幅は キャラクターマスタ管理 の 1 枚だけ (メンバー管理は 2026-09-12 に 👑 区画で 6 に)');
@@ -12261,12 +12261,14 @@ console.log('\ngrowthDomain:');
         assert.ok((helpBody.match(/<span class="help-pill">メンバー<\/span>/g) || []).length >= 5, 'メンバー向けの章が少ない');
         assert.ok((helpBody.match(/<span class="help-pill">運営<\/span>/g) || []).length >= 5, '運営向けの章が少ない');
         // 今の画面の言葉で書かれている (古い名前が残っていない)
-        for (const word of ['今期の確認', 'あなたの3凸', '何凸するか', '📅 きょうの凸', '📘 登録された模擬', 'Discord に貼', '🧮 この条件で算出', '📥 結果の取り込み', '⏰ 結果がまだの凸',
-            '🧱 盤', '締凸検索', 'このブロックの手順', '👑 マスター', '育成くらべ', '逆引き', 'GB比較', 'サイドバー', 'ライト / ダーク', '未取り込みの人だけ', '✅ 確認しました', '組み直し中', 'ボス 5 の弱点の模擬を 2 編成']) {
+        for (const word of ['今期の確認', 'ユニオンレイド参加可能時間', '枠を予約する', '🔒 予約', '📌', '仮置き', '何凸するか', '📅 きょうの凸', '📘 登録された模擬', 'Discord に貼', '🧮 この条件で算出', '📥 結果の取り込み', '⏰ 結果がまだの凸',
+            '🧱 盤', '締め凸検索', 'このブロックの手順', '👑 マスター', '育成くらべ', '逆引き', 'GB比較', 'サイドバー', 'ライト / ダーク', '未取り込みの人だけ', '✅ 確認しました', '組み直し中', 'ボス 5 の弱点の模擬を 2 編成']) {
             assert.ok(helpBody.includes(word), 'ヘルプに「' + word + '」が無い');
         }
         for (const old of ['現在凸可能のみ', '全員で算出', '画面右上の', '2つのモード', '模擬提出チェック', '前回ダメージ引継ぎは廃止',
-            '5つのタブ', '模擬タブ', '⏳ 隙間', '隙間時間型', '戦闘準備', '⚔️ 凸報告', '凸を報告する ▶', '締め凸の依頼', '依頼への返事', '締め凸コンソール', '📈 消化のペース', '🔁 直近の動き', '🧹 整理', '残り戦闘可能メンバー']) {
+            '5つのタブ', '模擬タブ', '⏳ 隙間', '隙間時間型', '戦闘準備', '⚔️ 凸報告', '凸を報告する ▶', '締め凸の依頼', '依頼への返事', '締め凸コンソール', '📈 消化のペース', '🔁 直近の動き', '🧹 整理', '残り戦闘可能メンバー',
+            // 用語集 (docs/用語集.md・2026-10-23 ユーザー決定) の「使わない言い方」
+            '戦闘可能時間', '出られる時間', '締凸検索', '締め凸候補検索', '申請', '引き受けた凸', '🎯 あなたの3凸', '📣 お願い', '📌 固定', '運営の固定', '🔒 予約で固定']) {
             assert.ok(!helpBody.includes(old), 'ヘルプに古い言葉「' + old + '」が残っている');
         }
         // ツアー: 配列を実際に評価する (文字列の検査ではなく、壊れた JS なら落ちる)
@@ -12281,6 +12283,11 @@ console.log('\ngrowthDomain:');
         }
         assert.deepEqual(steps.filter(s => s.demo).map(s => s.demo), ['avail', 'battle'], '体験デモの並び (時間 → 凸) が崩れている (2026-10-22: 模擬は Discord なのでデモなし)');
         assert.ok(steps[0].body.includes('8つのステップ'), '冒頭の案内がステップ数と合っていない');
+        // ツアーも用語集 (docs/用語集.md) の「使わない言い方」を出さない
+        const tourText = steps.map(st => [st.chapterTag, st.title, st.body, st.tip].join(' ')).join(' ');
+        for (const old of ['戦闘可能時間', '出られる時間', '締凸検索', '申請', '引き受けた凸', 'あなたの3凸', '📣 お願い', '📌 固定', '模擬タブ', '戦闘に入る']) {
+            assert.ok(!tourText.includes(old), 'ツアーに古い言葉「' + old + '」が残っている');
+        }
         const head = (s) => s.chapterTag + ' ' + s.title;
         assert.ok(steps.some(s => /予約/.test(head(s))) && steps.some(s => /運営担当/.test(head(s))) && steps.some(s => /こう決まる/.test(head(s))), '予約 / 運営 / 3凸 の章が無い');
         // 足したステップの色はトークン (直値の上限に数えない)。既存 7 ステップの hex は上限の内訳に入っている
@@ -12719,7 +12726,7 @@ console.log('\ngrowthDomain:');
         const st = (o) => d.blockSteps(o).map(x => (x.done ? '✓' : x.current ? '▶' : '·') + x.key);
         assert.deepEqual(st({ hpFreshMin: 50, missing: 2 }), ['▶hp', '·result', '·build', '·publish', '·finish']);
         assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true }), ['✓hp', '✓result', '✓build', '▶publish', '·finish']);
-        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true, published: true }), ['✓hp', '✓result', '✓build', '✓publish', '·finish'], '全部済んだのに任意の締凸検索を「いま」にした');
+        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true, published: true }), ['✓hp', '✓result', '✓build', '✓publish', '·finish'], '全部済んだのに任意の締め凸検索を「いま」にした');
         assert.deepEqual(st({ hpFreshMin: null, missing: null }), ['▶hp', '·result', '·build', '·publish', '·finish'], '分からないのを済んだにした');
         assert.deepEqual(st({ hpFreshMin: 30, missing: 0 }).slice(0, 2), ['▶hp', '✓result'], '30 分ちょうど (HP 更新のピルは ⚠) を済にした');
         assert.deepEqual(st({ hpFreshMin: 29, missing: 0 }).slice(0, 2), ['✓hp', '✓result']);
@@ -13519,13 +13526,13 @@ console.log('\n運営チームの要望 2026-10-10:');
         const sql = _fsLate.readFileSync(new URL('../supabase/47_approval_counts_pins.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/\(v_from = 'pinned'\s+AND p_to IN \('approved', 'released'\)\)/.test(sql), 'SQL の遷移表に pinned → approved が無い');
     });
-    test('★ 配線: 握った人の出られる時間 — ピースの見出しに時間 / PC はつかんだ瞬間に行の見出しを光らせ帯を差し替える (描き直さない)', () => {
+    test('★ 配線: 握った人の参加可能時間 — ピースの見出しに時間 / PC はつかんだ瞬間に行の見出しを光らせ帯を差し替える (描き直さない)', () => {
         const tray = html.match(/function _opsPlanTrayHtml\(plan\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const hoursOf = \(memberId\) => \{[\s\S]*?if \(p\.flexTime\) return `⏳ \$\{label \|\| 'いつでも'\}`;[\s\S]*?return label \|\| '時間 未登録';/.test(tray), 'ピースの見出しに出られる時間を出していない (⏳ 隙間型でも塗った時間は出す)');
-        assert.ok(/<span class="hrs" title="出られる時間">\$\{esc\(hoursOf\(g\.memberId\)\)\}<\/span>/.test(tray));
+        assert.ok(/const hoursOf = \(memberId\) => \{[\s\S]*?if \(p\.flexTime\) return `⏳ \$\{label \|\| 'いつでも'\}`;[\s\S]*?return label \|\| '時間 未登録';/.test(tray), 'ピースの見出しに参加可能時間を出していない (⏳ 隙間型でも塗った時間は出す)');
+        assert.ok(/<span class="hrs" title="参加可能時間">\$\{esc\(hoursOf\(g\.memberId\)\)\}<\/span>/.test(tray));
         const paint = html.match(/function _opsPlanPaintTargets\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/el\.querySelectorAll\('\[data-h\]:not\(\[data-boss\]\)'\)\.forEach\(cell => \{/.test(paint) && /cell\.style\.color = inWin \? 'var\(--ops\)' : '';/.test(paint), 'つかんだ瞬間に行の見出し (時刻) を光らせていない');
-        assert.ok(/const bar = document\.getElementById\('opsPlanFocusBar'\);\s*if \(bar\) bar\.innerHTML = _opsPlanFocusBarHtml\(_opsLastPlan\);/.test(paint), 'つかんだ瞬間に帯 (出られる時間) を差し替えていない');
+        assert.ok(/const bar = document\.getElementById\('opsPlanFocusBar'\);\s*if \(bar\) bar\.innerHTML = _opsPlanFocusBarHtml\(_opsLastPlan\);/.test(paint), 'つかんだ瞬間に帯 (参加可能時間) を差し替えていない');
         assert.ok(/`<div id="opsPlanFocusBar">\$\{_opsPlanFocusBarHtml\(plan\)\}<\/div><\/div>`/.test(html), '帯の置き場 (#opsPlanFocusBar) が無い');
         assert.ok(!/renderOpsPlanView\(\)/.test(paint), 'ドラッグ中に描き直している (掴んだ要素が消えてドラッグが切れる)');
     });

@@ -132,11 +132,11 @@
                 rows.push(row({ key: 'mock', label: '模擬の提出 (3属性・被りなし)', value: mock, total: n, done: mock >= n, nudge: 'mock', action: 'members' }));
                 const supported = rs.some(r => r.availSupported);
                 const avail = supported ? rs.filter(r => r.availConfirmed).length : rs.filter(r => (r.slots && r.slots.length > 0) || r.flex).length;
-                rows.push(row({ key: 'avail', label: supported ? '戦闘可能時間の確認' : '戦闘可能時間の登録', value: avail, total: n, done: avail >= n, nudge: 'avail', action: 'members' }));
+                rows.push(row({ key: 'avail', label: supported ? '参加可能時間の確認' : '参加可能時間の登録', value: avail, total: n, done: avail >= n, nudge: 'avail', action: 'members' }));
                 rows.push(pushCheckRow(rs, season, now, row));
             } else {
                 rows.push(row({ key: 'mock', label: '模擬の提出 (3属性・被りなし)', value: null, pending: true, nudge: 'mock', action: 'members' }));
-                rows.push(row({ key: 'avail', label: '戦闘可能時間の確認', value: null, pending: true, nudge: 'avail', action: 'members' }));
+                rows.push(row({ key: 'avail', label: '参加可能時間の確認', value: null, pending: true, nudge: 'avail', action: 'members' }));
                 rows.push(row({ key: 'pushcheck', label: '通知の疎通確認', value: null, pending: true, action: 'pushcheck' }));
             }
             if (reservations) {
@@ -218,8 +218,8 @@
             return { lead: 'シーズンを作ると、提出・予約・プランが動き出します', why: 'ボス 5 体の属性と HP、ハード日を入れます。作るまでは他の操作は要りません', action: 'create', label: '🗓 シーズンを作る' };
         }
         if (stage === 'pre') {
-            if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '承認するとその凸は固定され、プランを組み直します。最後の 1 件で配信へ進みます', action: 'reserve', label: '🔒 予約を見る' };
-            if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません。固定して組み直し、配信し直してください`, action: 'republish', label: '🧮 固定して組み直す → 配信' };
+            if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '承認すると予約が決まり、プランを組み直します。最後の 1 件で配信へ進みます', action: 'reserve', label: '🔒 予約を見る' };
+            if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません。予約を入れて組み直し、配信し直してください`, action: 'republish', label: '🧮 予約を入れて組み直す → 配信' };
             const rs = Array.isArray(rows) ? rows : [];
             const next = rs.find(r => !r.done && !r.pending && !r.optional && !r.waiting);
             if (!next) {
@@ -237,9 +237,9 @@
             switch (next.key) {
                 case 'bosses': return { lead: `ボスの属性と HP が未設定です (${next.value}/5)`, why: '5 体そろわないとプランを算出できません', action: 'season-edit', label: '✏️ シーズンを編集する' };
                 case 'mock': return { lead: `模擬の提出が残り ${left} 人`, why: '3 属性・キャラ被りなしの提出がプランの材料です。催促は通知を購読している人にだけ届きます', action: 'nudge:mock', label: '📣 未提出の人に催促する' };
-                case 'avail': return { lead: `戦闘可能時間の確認が残り ${left} 人`, why: '前回のままの人は確認ボタン 1 つで終わります。時間が分からないとプランに乗りません', action: 'nudge:avail', label: '📣 未確認の人に催促する' };
+                case 'avail': return { lead: `参加可能時間の確認が残り ${left} 人`, why: '前回のままの人は確認ボタン 1 つで終わります。時間が分からないとプランに乗りません', action: 'nudge:avail', label: '📣 未確認の人に催促する' };
                 case 'pushcheck': return { lead: '🔔 通知の疎通確認を送りましょう', why: 'レイドの 2 日前からです。確認の通知を全員に送り、届いた人がタップすると記録されます。届かない人に前もって連絡できます', action: 'pushcheck', label: '🔔 確認の通知を送る' };
-                case 'resv': return { lead: `🔒 承認待ちの予約が ${next.value}`, why: '承認するとその凸は固定されます', action: 'reserve', label: '🔒 予約を見る' };
+                case 'resv': return { lead: `🔒 承認待ちの予約が ${next.value}`, why: '承認すると予約が決まります', action: 'reserve', label: '🔒 予約を見る' };
                 case 'publish': return { lead: '📤 プランを配信しましょう', why: '算出 → 差分の確認 → 配信 → Discord テンプレの順に進みます', action: 'plan', label: '🧮 算出して配信する' };
                 default: return { lead: next.label, why: '', action: next.action || 'members', label: '開く' };
             }
@@ -247,7 +247,7 @@
         if (stage === 'day') {
             if (freshMin != null && freshMin >= 30) return { lead: `HP 更新が ${fmtAgo(freshMin)} です`, why: '古い HP で締め凸を出すと、無駄凸や取りこぼしが出ます', action: 'hp', label: '🎯 ボス HP を更新する' };
             if ((Number(finPending) || 0) > 0) return { lead: `締め凸の返答待ちが ${finPending} 件`, why: '返答が無いと締めの割当が決まりません', action: 'members', label: '👥 返答待ちを見る' };
-            if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '当日の予約は承認するとすぐ固定されます', action: 'reserve', label: '🔒 予約を見る' };
+            if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '当日の予約は承認するとすぐ決まります', action: 'reserve', label: '🔒 予約を見る' };
             if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません`, action: 'republish', label: '🧮 組み直して再配信' };
             // ★ 盤面が未ロード (null) なら「完了」とは言わない (Codex指摘 2026-09-08)。
             //   [] に潰すと残り0凸 = 全員完了に見えて、当日のうちに終了処理へ誘導してしまう

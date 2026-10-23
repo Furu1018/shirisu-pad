@@ -1215,7 +1215,7 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
         throw error;
     }
     window.supabaseLogActivity?.('avail_confirm',
-        unavailable ? '今期は参加が難しいと申告' : `今期の戦闘可能時間を確認 (${slotCount ?? '?'}枠${row.block_counts ? ` · 凸数 ${JSON.stringify(row.block_counts)}` : ''})`, { playerId });
+        unavailable ? '今期は参加が難しいと申告' : `今期の参加可能時間を確認 (${slotCount ?? '?'}枠${row.block_counts ? ` · 凸数 ${JSON.stringify(row.block_counts)}` : ''})`, { playerId });
     return { blockCountsDropped };   // 53 未適用で凸数を保存できなかった (本人に知らせる)
 };
 // 自分の確認状態。未確認なら null。
@@ -1260,7 +1260,7 @@ window.supabaseSaveAvailability = async function (playerId, slots) {
         .delete()
         .eq('player_id', playerId);
     if (dErr) throw dErr;
-    window.supabaseLogActivity?.('avail_change', `戦闘可能時間を更新 (${clean.length}枠)`, { playerId });
+    window.supabaseLogActivity?.('avail_change', `参加可能時間を更新 (${clean.length}枠)`, { playerId });
     if (clean.length === 0) return;
     const rows = clean.map(s => ({ player_id: playerId, time_slot: s }));
     const { error: iErr } = await supabase
@@ -3891,11 +3891,11 @@ window.supabaseCreateReservation = async function (o = {}) {
             throw new Error(PIN_SQL_HINT);
         }
         if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
-        if (/運営の固定が残凸を超え/.test(String(error.message || ''))) throw new Error('残りの凸数を超える固定はできません (約束 + 固定 + 実凸 で 3 まで)');
-        if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの固定がすでにあります (別の運営が置きました)');
+        if (/運営の固定が残凸を超え/.test(String(error.message || ''))) throw new Error('残りの凸数を超える仮置きはできません (予約 + 仮置き + 実凸 で 3 まで)');
+        if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの仮置きがすでにあります (別の運営が置きました)');
         // トリガー / 部分一意索引のエラーを、運営とメンバーに意味の分かる文言へ
         const msg = String(error.message || '');
-        if (/約束が残凸を超え/.test(msg)) throw new Error('残りの凸数を超える約束はできません (📌 の固定を外してから承認してください)');   // SQL 47
+        if (/約束が残凸を超え/.test(msg)) throw new Error('残りの凸数を超える予約はできません (📌 の仮置きを外してから承認してください)');   // SQL 47
         if (/残凸を超える予約/.test(msg)) throw new Error('残りの凸数を超える予約はできません');
         if (/uq_plan_reservations_active|duplicate key/i.test(msg)) {
             throw new Error('同じボス・同じ編成の予約がすでにあります');
@@ -3929,7 +3929,7 @@ window.supabaseMovePin = async function (id, o = {}) {
     if (error) {
         if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
         if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
-        if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの固定がすでにあります (別の運営が置きました)');
+        if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの仮置きがすでにあります (別の運営が置きました)');
         throw error;
     }
     if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしました。画面を更新してから、もう一度お試しください');

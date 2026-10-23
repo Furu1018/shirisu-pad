@@ -37,7 +37,7 @@
         fulfilled: '実行済み',
         released: '解除',
         rejected: '見送り',
-        pinned: '運営の固定',
+        pinned: '運営の仮置き',
     };
     const RELEASE_JP = {
         fulfilled: '凸が入った',
@@ -48,7 +48,7 @@
         ops: '運営の判断',
         infeasible: '実行できなくなった',
         member_declined: '本人が「難しい」と返事',
-        superseded: '本人の申請・予約に置き換わった',
+        superseded: '本人の予約に置き換わった',
         ask_expired: '📣 お願いの期限が過ぎた (運営が外した)',
     };
     // 許可する遷移。DB の reservation_set_status と**同じ表**にすること
@@ -71,9 +71,9 @@
         boss_defeated: 'そのボスはもう倒れています',
         level_passed: 'そのレベルはもう終わっています',
         loadout_gone: '予約した編成が模擬から消えています',
-        time_passed: '約束の時刻を過ぎています',
-        before_open: '約束の時刻には、そのレベルがまだ開いていない見込みです',
-        no_boss_at_time: '約束の時刻には、そのボスがいない見込みです',
+        time_passed: '予約の時刻を過ぎています',
+        before_open: '予約の時刻には、そのレベルがまだ開いていない見込みです',
+        no_boss_at_time: '予約の時刻には、そのボスがいない見込みです',
         level_unreached: 'そのレベルまで届かない見込みです',
         conflict: 'ほかの凸とキャラが被るため置けません',
     };
@@ -83,7 +83,7 @@
         cards_used_up: '提出した編成をすべて使いました (3凸ぶんの編成が足りません)',
         char_conflict: 'ほかの凸とキャラが被って、使える編成が残っていません',
         no_target: '出せる属性のボスが残っていない見込みです',
-        time: '戦闘可能時間に合う枠がありません',
+        time: '参加可能時間に合う枠がありません',
         not_needed: 'いまのプランでは出番がありません (残HPは足りる見込みです)',
         reserved: '予約のために残しています (その予約はまだ置けていません)',
         later_block: '残りの凸は次のブロック以降で組みます',   // 🧱 ブロックのぶんの配信で、このブロックに置かれなかった残り凸 (homeSlots が文を組む)
@@ -193,7 +193,7 @@
                 ...(blockWindowOf(r) ? { window: blockWindowOf(r) } : {}),
                 team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : [],
                 expectedB: Number(r.expected_damage_b) || 0,
-                pinned: isPin(r),   // 📌 画面で 🔒 (約束) と見分けるため。ソルバーの置き方は同じ
+                pinned: isPin(r),   // 📌 画面で 🔒 (予約) と見分けるため。ソルバーの置き方は同じ
             });
         });
         const idKey = (v) => String(v);
@@ -326,7 +326,7 @@
         // 承認を鈍らせる条件 (押せなくはしない — 運営が例外を通せる余地は残す)
         const warnings = [];
         if (cand) warnings.push(`この予約は置けません: ${unmetText(cand)}`);
-        breaks.forEach(b => warnings.push(`承認すると固定済みの予約が置けなくなります: ${b.memberName || '#' + b.memberId} B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'} (${unmetText(b)})`));
+        breaks.forEach(b => warnings.push(`承認すると承認済みの予約が置けなくなります: ${b.memberName || '#' + b.memberId} B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'} (${unmetText(b)})`));
         if (clearAfter < clearBefore) warnings.push(`Lv${clearBefore} 完全攻略の見込みが消えます`);
         if (unusedAfter > unusedBefore) warnings.push(`未消化の凸が ${unusedBefore} → ${unusedAfter} に増えます`);
         if (risk(withPlan) > risk(basePlan)) warnings.push('時刻を確約できない凸が増えます');
@@ -337,7 +337,7 @@
             creditedDiffB: Math.round((creditedAfter - creditedBefore) * 1000) / 1000,
             movedCount,
             warnings,
-            blocking: !!cand || clearAfter < clearBefore || breaks.length > 0,   // 置けない / 踏破の見込みが消える / 固定済みが壊れる
+            blocking: !!cand || clearAfter < clearBefore || breaks.length > 0,   // 置けない / 踏破の見込みが消える / 承認済みの予約が壊れる
             cannotPlace: !!cand,
             cannotPlaceText: cand ? unmetText(cand) : '',
             breaks,
@@ -439,13 +439,13 @@
         const list = (Array.isArray(rows) ? rows : []).filter(r => r && String(r.player_id) === String(playerId)
             && (excludeId == null || String(r.id) !== String(excludeId)));
         if (list.some(r => isActive(r) && Number(r.boss_number) === Number(bossNumber) && Number(r.loadout_slot) === Number(loadoutSlot))) {
-            return { ok: false, reason: 'promise_exists', label: '本人の申請・予約があります' };
+            return { ok: false, reason: 'promise_exists', label: '本人の予約があります' };
         }
         const held = list.filter(r => isPromise(r) || isPin(r)).length;
         if (held + (Number(doneAttacks) || 0) >= 3) return { ok: false, reason: 'no_capacity', label: '残り凸がありません' };
         const mine = new Set(_charKeys(characters));
         const clash = mine.size ? list.find(r => (isActive(r) || isPin(r)) && _charKeys(r.characters_snapshot).some(k => mine.has(k))) : null;
-        if (clash) return { ok: false, reason: 'char_conflict', label: '同じキャラを使う予約・固定があります', with: clash };
+        if (clash) return { ok: false, reason: 'char_conflict', label: '同じキャラを使う予約・仮置きがあります', with: clash };
         return { ok: true, left: 3 - held - (Number(doneAttacks) || 0) };
     }
 
@@ -464,14 +464,14 @@
         const held = list.filter(r => isPromise(r) || (isPin(r) && !sameCard(r))).length;
         const done = Number(doneAttacks) || 0;
         if (held + done >= 3) {
-            return { ok: false, reason: 'no_capacity', held, done, label: `残りの凸数を超える約束はできません (約束・固定 ${held} + 実凸 ${done}) — 📌 の固定を外してから` };
+            return { ok: false, reason: 'no_capacity', held, done, label: `残りの凸数を超える予約はできません (予約・仮置き ${held} + 実凸 ${done}) — 📌 の仮置きを外してから` };
         }
         return { ok: true, held, done, left: 3 - held - done };
     }
 
     function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters }) {
         if (findActiveFor(rows, { playerId, bossNumber, loadoutSlot })) {
-            return { ok: false, reason: 'already', label: '申請済み' };
+            return { ok: false, reason: 'already', label: '承認待ち' };
         }
         const left = capacityLeft(rows, playerId, doneAttacks);
         if (left <= 0) return { ok: false, reason: 'no_capacity', label: '残り凸がありません' };
@@ -548,7 +548,7 @@
         if (missing.length) return { ok: false, missing };
         // いまのレベルでそのボスが倒れていれば、次のレベルのそのボスに置かれることを本人に伝える
         const note = (boss && Number(boss.remaining_hp_raw) <= 0)
-            ? 'このボスはいまのレベルでは倒れています。約束の時刻に次のレベルで出てきていれば、そこに置かれます。' : '';
+            ? 'このボスはいまのレベルでは倒れています。予約の時刻に次のレベルで出てきていれば、そこに置かれます。' : '';
         return {
             ok: true, missing: [], note,
             draft: {

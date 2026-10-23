@@ -165,11 +165,11 @@ await test('★ 「わたしの凸」一覧も同じ3枠 (予約の行に取り�
         rows: [resv({ id: 1 })],
     });
     const out = t.mine(t.now({ id: 7 }) && plan([{ reservationId: 1, hourIdx: 16, hourLabel: '21時' }, { loadoutSlot: 2, team: ['f', 'g', 'h', 'i', 'j'] }], [{ memberId: 7, reason: 'time' }]), 7, new Map(), 2);
-    assert.ok(out.includes('🔒 予約で固定'), '予約の行が無い');
+    assert.ok(out.includes('🔒 予約'), '予約の行が無い');
     assert.ok(/handleRequestCancelReservation\(1\)/.test(out), '取り消し希望のボタンが無い');
     assert.ok(out.includes('運営Aが承認'), '承認者が出ていない');
     assert.ok(/class="claim"/.test(out), '配信の行に引き受けるが無い');
-    assert.ok(out.includes('戦闘可能時間に合う枠がありません'), '空き枠の理由が無い');
+    assert.ok(out.includes('参加可能時間に合う枠がありません'), '空き枠の理由が無い');
     assert.ok(/openMyResvRequest\(\)/.test(out), '空き枠から申請できない');
     assert.ok(/報告する ▶/.test(out), '現在レベルの配信の行に報告ボタンが無い');
     assert.ok(!/undefined|NaN/.test(out), `未定義参照が混ざっている: ${out.match(/.{40}(undefined|NaN).{40}/)?.[0]}`);

@@ -256,13 +256,13 @@
             var c = context();
             if (c.allResv.some(function (r) { return r.status === 'requested'; })) return;
             var q = pickRequester(c);
-            if (!q) { note('assume', '申請できる人が見つかりません', 'この練習ではここまでです'); return; }
+            if (!q) { note('assume', '予約できる人が見つかりません', 'この練習ではここまでです'); return; }
             // 🧱 段階 3: メンバーはブロックで申請する (時刻は運営がブロックの中で決める)。本番の申請シートと同じ関数・同じ形
             await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: q.player.id, bossNumber: q.boss.boss_number, block: { from: 5, to: 8 }, loadoutSlot: Number(q.dmg.slot) || 1,
                 characters: q.dmg.characters, expectedDamageB: Number(q.dmg.damage_b), requestedBy: q.player.name });
-            await window.sendPushNotification({ title: '🔒 予約の申請', body: q.player.name + ': B' + q.boss.boss_number + ' 5〜8時のどこか 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
+            await window.sendPushNotification({ title: '🔒 予約 (承認待ち)', body: q.player.name + ': B' + q.boss.boss_number + ' 5〜8時のどこか 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
                 tag: 'ops-resv-request', playerIds: [P.ops.id], ignoreAvailability: true, requireInteraction: true }, { senderPlayerId: q.player.id });
-            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 朝 (5〜8時) のどこか」の申請が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
+            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 朝 (5〜8時) のどこか」の予約が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
         },
     };
     /** 配信プランのうち hour 時より前のぶんを、ほかのメンバーが凸したことにする (ボスは倒し切らない)。keepRatio = ボス番号 → 残す割合 (既定 0.12) */
@@ -301,7 +301,7 @@
     var countsOf = function () { return (typeof _availUI !== 'undefined' && _availUI && _availUI.counts) ? _availUI.counts : {}; };
     var STEPS = {
         member: [
-            { key: 'avail', title: '出られる時間と「何凸するか」を伝える',
+            { key: 'avail', title: '参加可能時間と「何凸するか」を伝える',
                 done: function (c) { return c.mine('availability_confirmations').some(function (r) { return r.block_counts && Object.keys(r.block_counts).length > 0; }); },
                 guide: function (c) {
                     if (c.modalId === 'myAvailModal') {
@@ -310,7 +310,7 @@
                         return { text: '「夜 2」になりました。下の「この時間で参加します」を押します。', target: pick('availConfirm') };
                     }
                     return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
-                        : { text: 'ホームの「⏰ あなたの戦闘可能時間」で「変更する ›」を押します。', target: pick('availOpen') });
+                        : { text: 'ホームの「⏰ ユニオンレイド参加可能時間」で「変更する ›」を押します。', target: pick('availOpen') });
                 } },
             { key: 'wait', title: '運営の配信を待つ',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope); },
@@ -351,29 +351,29 @@
                     if (typeof _opsPlanWho !== 'undefined' && _opsPlanWho !== 'block') return stray(c, []) || { text: '対象を「🧱 ブロックの人」にします。前日に組むのは当日の最初のブロック「朝」です (既定で選ばれています)。', target: pick('planWhoBlock') };
                     return stray(c, []) || { text: '「🧮 この条件で算出」を押します。朝に出られる人の模擬で、本物のソルバーが組みます (本人が入れた凸数より多くは置きません)。', target: pick('planCompute') };
                 } },
-            { key: 'pin', title: '📌 で 1 つ固定する',
+            { key: 'pin', title: '📌 で 1 つ仮置きする',
                 done: function (c) { return c.allResv.some(function (r) { return r.status === 'pinned'; }); },
                 guide: function (c) {
                     if (c.modalId === 'planSwapModal') return { text: 'この人はもう 3 凸ぶんの割当があります。ここでは「外す凸は算出に任せる」を押します。', target: pick('swapAuto') };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
-                    if (typeof _opsPlanViewMode !== 'undefined' && _opsPlanViewMode !== 'timetable') return stray(c, []) || { text: '「🗓 時間割」に切り替えます。📌 の固定は時間割で置きます。', target: pick('planTimetable') };
+                    if (typeof _opsPlanViewMode !== 'undefined' && _opsPlanViewMode !== 'timetable') return stray(c, []) || { text: '「🗓 時間割」に切り替えます。📌 の仮置きは時間割で置きます。', target: pick('planTimetable') };
                     var pp = placeablePiece();
                     if (!pp) return stray(c, []) || { text: 'いまの時間割に置ける模擬ピースがありません。「🧮 この条件で算出」をもう一度押してから試します。', target: pick('planCompute') };
                     if (!pp.selected) return stray(c, []) || { text: '下の「🧩 模擬ピース」(まだ盤に無い人の編成) から、枠の付いた 1 つを押します。', real: '📌 は運営の下書きです。本人には届かず、配信したときに割当として届きます。', target: pp.el };
-                    return stray(c, []) || { text: '枠の付いたマス (その人が出られる時間 × 合う属性のボス) を押します。📌 として固定され、算出し直されます。', target: placeableCell() };
+                    return stray(c, []) || { text: '枠の付いたマス (その人が参加可能時間 × 合う属性のボス) を押します。📌 として仮置きされ、算出し直されます。', target: placeableCell() };
                 } },
-            { key: 'request', title: 'メンバーからの予約の申請を承認して組み直す',
+            { key: 'request', title: 'メンバーからの予約を承認して組み直す',
                 done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.source_type !== 'finish_request'; }); },
                 guide: function (c) {
                     var req = c.allResv.filter(function (r) { return r.status === 'requested'; })[0];
-                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「このブロックに この PT で凸したい」の申請が届くことがあります。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴ります。', assume: ['memberRequest', '⏩ メンバーから申請が来たことにする'] };
+                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「このブロックに この PT で凸したい」の予約が届くことがあります。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴ります。', assume: ['memberRequest', '⏩ メンバーから予約が来たことにする'] };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('resvApprove');
-                    if (!btn) return stray(c, []) || { text: '申請が届いています。「🔒 凸の予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve > .ops-card-head') };
-                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を固定して朝のブロックを組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認すると本人に通知が届きます。予約は約束なので、本人が入れた凸数より強く効きます。', target: btn };
+                    if (!btn) return stray(c, []) || { text: '予約が届いています。「🔒 凸の予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve > .ops-card-head') };
+                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を入れて朝のブロックを組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認すると本人に通知が届きます。予約は約束なので、本人が入れた凸数より強く効きます。', target: btn };
                 } },
             { key: 'publish', title: '朝のぶんを配信する',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope && Number(c.pub.plan.reservationCount) >= 1); },
@@ -436,24 +436,24 @@
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
                     return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人のホームに割当が出ます 、割当のある人に「あなたの凸」の通知が届きます。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
                 } },
-            { key: 'finish', title: '⚔️ 締凸検索で候補を探して声をかける',
+            { key: 'finish', title: '⚔️ 締め凸検索で候補を探して声をかける',
                 done: function () { return store.get('ops-day:copied') === '1'; },
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('battle')) return stray(c, []) || opsTab('battle');
                     var copy = pick('finishCopy');
-                    if (!copy) return stray(c, []) || { text: '残りが少ないボスは締め凸 (とどめ) の相手を探します。「ボス状況」の B1 のカードで「締凸検索」を押します。', target: pick('finishPick') };
+                    if (!copy) return stray(c, []) || { text: '残りが少ないボスは締め凸 (とどめ) の相手を探します。「ボス状況」の B1 のカードで「締め凸検索」を押します。', target: pick('finishPick') };
                     return stray(c, []) || { text: '候補とプランが出ました。「いま打つか、待つか」を読んでから、プランの「📋 名前と文面をコピー」を押します。',
-                        real: 'PAD からは頼みません。コピーした文面を Discord に貼って声をかけ、引き受けた人は盤 (📌) に置きます。', target: copy };
+                        real: 'PAD からは頼みません。コピーした文面を Discord に貼って声をかけ、やってもらえることになった人は盤に置いて 🔒 確定します。', target: copy };
                 } },
         ],
     };
     var SCENARIOS = {
-        'member': { title: 'メンバー編', sub: '出られる時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
+        'member': { title: 'メンバー編', sub: '参加可能時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
             diff: '練習では運営の配信と凸の登録を「〜したことにする」で進めました。本番では運営がブロックの前に配信し、スクショを見て凸を登録します。' },
         'ops-eve': { title: '運営編・前日', sub: '催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信', next: 'ops-day',
-            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出て、その人たちに通知が届きます。' },
-        'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締凸検索', next: 'member',
+            diff: '練習ではメンバーの予約を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出て、その人たちに通知が届きます。' },
+        'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締め凸検索', next: 'member',
             diff: '本番ではこの手順をブロックごとに繰り返します。交代するときは、運営タブのタブの数字 (手を打つべき件数) と「いちばん急ぐこと」から続けます。' },
     };
     // 締凸検索の「📋 名前と文面をコピー」を押したことを覚える (本物の関数をそのまま呼んでから印を付ける)

@@ -198,7 +198,7 @@ test('★ 🔁 打診の状態 (名前 + 返事のチップ + 期限) が主役�
     // 上限を超えたぶんは件数だけ
     const many = run({ finishReqs: Array.from({ length: 8 }, (_, i) => ({ id: i, boss_number: (i % 5) + 1, player_id: 10 + i, name: `P${i}`, status: 'pending', requested_at: iso(-i), offer_id: `o${i}`, plan_key: 'p', deadline_at: iso(9), raid_level: 2 })), snap: { season, bosses, players: players([]) } });
     many.renderOpsRecent();
-    assert.ok(many.els.opsRecentBody.innerHTML.includes('ほか 2 件は締め凸候補検索で'), '溢れた件数を言っていない');
+    assert.ok(many.els.opsRecentBody.innerHTML.includes('ほか 2 件は締め凸検索で'), '溢れた件数を言っていない');
 });
 
 test('シーズン無し / 盤面未ロード は「始まると出る」に', () => {

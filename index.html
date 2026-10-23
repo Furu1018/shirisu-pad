@@ -109,7 +109,7 @@
     <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
     <script defer src="./js/domain/attackCheck.js"></script>     <!-- ✅ 凸報告の確認 (配信プランとの突き合わせ・未報告・ブロック制 ③-f 2026-10-18) -->
     <script defer src="./js/domain/resultIntake.js"></script>    <!-- 📥 結果の取り込み (ボスの照合・使った編成・登録の前の注意・ブロックの配信の通知・ブロック制 段階 4 2026-10-23) -->
-    <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
+    <script defer src="./js/domain/availability.js"></script>    <!-- 参加可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
@@ -4281,7 +4281,7 @@
             <!-- ⏰ あなたの戦闘可能時間 (2026-09-08 ユーザー要望: 自分の設定を認識していないメンバーがいた) -->
             <div class="dc-card" data-span="12" id="myAvailStripCard" style="display:none;padding:12px 14px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ あなたの戦闘可能時間</div>
+                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ ユニオンレイド参加可能時間</div>
                     <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
                     <button type="button" onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
                 </div>
@@ -4348,7 +4348,7 @@
                     <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">
-                    運営が承認した凸は<b>固定</b>されます。プランを組み直しても動きません。
+                    運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。
                 </p>
                 <div id="myReservationsBody"></div>
             </div>
@@ -4369,7 +4369,7 @@
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
-                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">戦闘可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸の候補に使う)</span></div>
+                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">ユニオンレイド参加可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸検索に使う)</span></div>
                     <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
                     <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
                 </div>
@@ -4529,7 +4529,7 @@
 
             <!-- 締め凸候補検索 -->
             <div class="dc-card">
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:8px;">締め凸候補検索</div>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:8px;">締め凸検索</div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);">ボス状況カードの「PT属性 締め凸」ボタンから対象ボスを選ぶと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
@@ -4575,14 +4575,14 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">残り戦闘可能メンバー</div>
-                    <button id="opsRemSortBtn" data-ops-only onclick="handleOpsRemainingSortToggle()" title="各セクション内の並びを 火力順 ⇄ 戦闘可能時間の早い順 で切り替え (運営モード限定)" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">⏰ 時間順</button>
+                    <button id="opsRemSortBtn" data-ops-only onclick="handleOpsRemainingSortToggle()" title="各セクション内の並びを 火力順 ⇄ 参加可能時間の早い順 で切り替え (運営モード限定)" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">⏰ 時間順</button>
                     <button id="opsRemModeBtn" onclick="handleOpsRemainingModeToggle()" title="各属性の数値表示を ダメージ(B) ⇄ ふるり値 (SLv補正・基準者比) で切り替え" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">⚖️ ふるり値で見る</button>
                 </div>
                 <!-- ベースフィルタ (3ピル, 排他選択) -->
                 <div style="display:flex;gap:6px;">
                     <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span data-sp-icon="users" data-sp-size="13"></span> 全員</button>
                     <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span data-sp-icon="gamepad" data-sp-size="13"></span> オンライン</button>
-                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 戦闘可能時間</button>
+                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 参加可能時間</button>
                 </div>
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
                 <div style="display:flex;gap:5px;margin-top:8px;">
@@ -4713,7 +4713,7 @@
                     <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
                     <button onclick="renderOpsReservations(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認するとプランに固定されます。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。</p>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。</p>
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -4739,7 +4739,7 @@
                     <div class="row"><span class="k">対象</span>
                         <div class="plan-seg" role="group" aria-label="対象"><button type="button" data-k="all" onclick="setOpsPlanWho('all')">全員</button><button type="button" data-k="now" onclick="setOpsPlanWho('now')">今動ける人だけ</button><button type="button" data-k="block" onclick="setOpsPlanWho('block')">🧱 ブロックの人</button></div>
                         <select id="opsPlanBlockSel" aria-label="ブロック" onchange="setOpsPlanBlock(this.value)" style="display:none;max-width:100%;padding:5px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;font-weight:700;"></select>
-                        <span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け) / 🧱 そのブロック (時間帯の区切り) に出られる人だけで、次のブロックぶんを組む。区切りは ✏️ シーズン編集で</span></div>
+                        <span class="hint">残り凸のあるメンバー全員 / いま参加可能時間の人だけ (締め凸の相談向け) / 🧱 そのブロック (時間帯の区切り) に出られる人だけで、次のブロックぶんを組む。区切りは ✏️ シーズン編集で</span></div>
                     <div class="row"><span class="k">起点</span>
                         <div class="plan-seg" role="group" aria-label="起点"><button type="button" data-k="now" onclick="setOpsPlanStartMode('now')">今から</button><button type="button" data-k="day" onclick="setOpsPlanStartMode('day')">朝5時から</button></div>
                         <span class="hint">前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ</span></div>
@@ -4801,7 +4801,7 @@
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、申請→承認→固定→凸報告の1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
+                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、予約→承認→配信→結果の取り込みの1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
             </div>
 
             <!-- 🧬 育成データの取り込み (43 / 運営ON・段階「終了」のみ)。純ロジックは js/domain/growth.js -->
@@ -5323,7 +5323,7 @@
                     <a href="#help-plan">9. あなたの凸はこう決まる</a>
                     <a href="#help-plan-ops">10. 最適凸プラン算出 (運営)</a>
                     <a href="#help-remaining">11. 結果の取り込み (運営)</a>
-                    <a href="#help-finish-call">12. 締凸検索 (運営)</a>
+                    <a href="#help-finish-call">12. 締め凸検索 (運営)</a>
                     <a href="#help-notify">13. 通知を受け取る</a>
                     <a href="#help-analysis">14. 分析タブ</a>
                     <a href="#help-ops">15. 運営タブと運営担当</a>
@@ -5361,7 +5361,7 @@
                             <li><strong>設定</strong> — 見た目 (ライト / ダーク)、ガイド、通知、練習モード</li>
                             <li><strong>運営</strong> (運営担当だけ) — 👥 メンバー / 🧱 組む / ⚔️ 戦況 (+ 👑 マスター) の中のタブに分かれています (<a href="#help-ops">§15</a>)</li>
                         </ul>
-                        <p>メンバーが PAD でやることは<strong>「出られる時間と何凸するかを伝える」「配信された自分の凸を見る」</strong>だけです。模擬と凸の結果は Discord にスクショを貼り、運営が PAD に登録します。ボスの状況はゲーム (BlaBlaLINK) で見てください。</p>
+                        <p>メンバーが PAD でやることは<strong>「参加可能時間と何凸するかを伝える」「配信された自分の凸を見る」</strong>だけです。模擬と凸の結果は Discord にスクショを貼り、運営が PAD に登録します。ボスの状況はゲーム (BlaBlaLINK) で見てください。</p>
                         <h3>画面のつくり</h3>
                         <ul>
                             <li><strong>下のメニュー</strong> (スマホ縦): 白い帯に ホーム / 分析 / 設定 (運営担当は 運営 も)。いま居るタブだけ黒い円で持ち上がります。下にスクロールすると隠れ、少し戻すと出ます</li>
@@ -5390,12 +5390,12 @@
                         <h2>🏠 3. ホームの使い方 <span class="help-pill">メンバー</span></h2>
                         <p>ホームは「自分のことは全部ここ」の場所です。上から順に、いま必要なものが並びます。</p>
                         <h3>⓪ 📌 次にやること</h3>
-                        <p>いちばん上のカードが、あなたがいまやるべきことを1つだけ案内します。通知が未設定なら通知、出られる時間が未確認なら確認、模擬が届いていなければ「Discord に模擬のスクショを貼ってください」— 順に片づけるとカードが消えます。</p>
+                        <p>いちばん上のカードが、あなたがいまやるべきことを1つだけ案内します。通知が未設定なら通知、参加可能時間が未確認なら確認、模擬が届いていなければ「Discord に模擬のスクショを貼ってください」— 順に片づけるとカードが消えます。</p>
                         <h3>① 名乗る</h3>
                         <p>上の帯 (PC のサイドバーなら左下の足元) の名前をタップして、自分を選びます。端末ごとに覚えるので、機種変更やブラウザ変更のときだけ選び直してください。</p>
-                        <h3>② ⏰ 出られる時間と「何凸するか」</h3>
+                        <h3>② ⏰ 参加可能時間と「何凸するか」</h3>
                         <ul>
-                            <li><strong>MY設定 › ⏰ 戦闘可能時間</strong>で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。一部だけ ON の古い登録は「一部」と出て、押すと丸ごと ON になります</li>
+                            <li><strong>MY設定 › ユニオンレイド参加可能時間</strong>で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。一部だけ ON の古い登録は「一部」と出て、押すと丸ごと ON になります</li>
                             <li>ON にしたブロックに<strong>何凸するか</strong>を − / + で入れられます (合計 3 まで)。たとえば「朝 1・夕方 2」。入れなければ運営におまかせです。運営の算出はこの数を<strong>上限</strong>にして置きます</li>
                             <li>シーズンごとに <strong>「この時間で参加します」</strong> か <strong>「今回は難しい」</strong> を押してください。押すと運営に届きます。確認したあとに時間や凸数を変えたら、もう一度押します</li>
                             <li>時間を登録していない人は、運営の算出の候補に入りません (催促が届きます)。「今回は難しい」の人は算出・催促のすべてから外れます</li>
@@ -5403,18 +5403,16 @@
                         <h3>③ 📅 きょうの凸 / 配信された凸プラン</h3>
                         <p>運営はブロックごとに「次のブロックのぶん」だけを配信します。配信されると<strong>割当のある人に通知</strong>が届き (「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)、ホームに<strong>いつ・どのボスへ・どの PT と編成で</strong>が出ます。読んだら <strong>✅ 確認しました</strong> を押してください。</p>
                         <ul>
-                            <li>🎯 あなたの3凸 (いちばん上のカード): 🔒 予約 → 配信の割当 → 空き枠 (理由つき) の 3 枠</li>
-                            <li>📅 きょうの凸: ブロックごとに1行。済んだ凸は ✓、まだ配信されていないブロックは「まだ決まっていません」</li>
-                            <li>配信された凸プラン: 🙋 わたしの凸 / 🗺 全体 / 🗓 時間割 / 🧱 盤 (どう組まれたかを見たい人だけ・<a href="#help-plan">§9</a>)</li>
+                            <li><strong>📅 きょうの凸</strong>: ブロックごとに1行。配信されたあなたの凸 (時刻・ボス・PT・編成と 5 キャラ)、運営が結果を取り込んだ凸は ✓、まだ配信されていないブロックは「まだ決まっていません」</li>
+                            <li>配信された凸プラン: 🧱 盤 (このブロックがボスごとにどう組まれたか・<a href="#help-plan">§9</a>) と <strong>✅ 確認しました</strong></li>
                             <li>「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます</li>
                         </ul>
                         <h3>④ 📘 登録された模擬</h3>
                         <p>運営が登録したあなたの模擬 (属性 × 編成① / ②) が読み取り専用で出ます。直したいときは Discord に模擬のスクショを貼り直してください (<a href="#help-mock">§4</a>)。</p>
                         <h3>⑤ 🔒 予約 (希望がある人だけ)</h3>
-                        <p>「このブロックにこの PT で凸したい」希望がある人だけ、ホームの <strong>🔒 引き受けた凸</strong> の <strong>自分から凸を申請する</strong> から申請します (<a href="#help-reserve">§5</a>)。</p>
-                        <h3>⑥ 運営からのお願い・通知</h3>
+                        <p>「このブロックにこの PT で凸したい」希望がある人だけ、ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong> から (<a href="#help-reserve">§5</a>)。</p>
+                        <h3>⑥ 通知</h3>
                         <ul>
-                            <li>🔒 引き受けた凸 — 運営が盤で置いた「このブロックにこのボスへ」の 📣 お願いです。<strong>引き受ける</strong>と🔒の約束に、<strong>難しい</strong>なら運営が組み直します</li>
                             <li>🧬 育成データの公開のお願い — BlaBlaLINK のゲームカードが非公開だと育成くらべに載らないので、公開してほしいときに届きます</li>
                             <li>📨 受け取った通知 — 自分あて・全員あての通知が新しい順に残ります</li>
                         </ul>
@@ -5442,7 +5440,7 @@
                         </ul>
                         <div class="help-callout">
                             <span class="ico">📝</span>
-                            <p>登録したダメージは「あなたならこれだけ出せる」として、運営の算出・締凸検索で使われます。<strong>締め凸などで実力より低い値になったら</strong>、模擬で出た本来の値を貼り直してください。</p>
+                            <p>登録したダメージは「あなたならこれだけ出せる」として、運営の算出・締め凸検索で使われます。<strong>締め凸などで実力より低い値になったら</strong>、模擬で出た本来の値を貼り直してください。</p>
                         </div>
                         <h3>運営: 📸 模擬の取り込み</h3>
                         <ul>
@@ -5455,20 +5453,20 @@
 
                     <section id="help-reserve" class="help-section">
                         <h2>🔒 5. 凸の予約 <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
-                        <p>予約は<strong>「このブロックに・この PT で凸します」という約束</strong>です。<strong>希望がある人だけ</strong>申請すれば大丈夫です。申請しなくても、運営が出られる時間と凸数から割り当てます。</p>
-                        <h3>申請 (メンバー)</h3>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>ホームの <strong>🔒 引き受けた凸</strong> の <strong>自分から凸を申請する</strong>。</div></div>
+                        <p>予約は<strong>「このブロックに・この PT で凸したい」を運営に出しておくこと</strong>です。運営が承認すると決まり、組み直しても動きません。<strong>希望がある人だけ</strong>で大丈夫です。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
+                        <h3>枠を予約する (メンバー)</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong>。</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>どの PT・編成で</strong> (登録された模擬から) → <strong>どのブロックで</strong> (出られるブロックから) を選びます。行き先のボスは PT で決まります。何時に凸するかは、運営がブロックの中で決めて配信します。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>申請すると運営に通知が飛び、ホームの枠が「承認待ち」になります。承認・却下は通知で届きます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>予約すると運営に通知が飛び、「承認待ち」になります。承認・却下は通知で届きます。</div></div>
                         <ul>
-                            <li>予約はレベルを持ちません。約束の時間にそのボスがいるレベルへ、算出が置きます</li>
-                            <li>予約中の編成とキャラが被る編成は申請できません (同じキャラは1日1回)</li>
+                            <li>予約はレベルを持ちません。そのブロックの時刻にそのボスがいるレベルへ、算出が置きます</li>
+                            <li>予約中の編成とキャラが被る編成は予約できません (同じキャラは1日1回)</li>
                             <li>やめたいときは「取り消しを希望」→ 運営が解除します</li>
                         </ul>
                         <h3>承認 (運営)</h3>
                         <ul>
                             <li>🧱 組む の 🔒 凸の予約カードで 承認 / 却下。承認すると<strong>承認して組み直す → 差分 → 📤配信は明示の1タップ</strong> (自動配信はしません)</li>
-                            <li>1人の枠は 約束 (🔒) + 固定 (📌) + 実凸 ≤ 3。超える承認は止まります。予約は本人の凸数の上限より強く効きます</li>
+                            <li>1人の枠は 予約 (🔒) + 仮置き (📌) + 実凸 ≤ 3。超える承認は止まります。予約は本人の凸数の上限より強く効きます</li>
                             <li>置けなくなった予約は未達として画面に出ます。運営が解除しないとその人の枠を押さえたままです</li>
                         </ul>
                     </section>
@@ -5500,7 +5498,7 @@
                         </ul>
                         <div class="help-callout">
                             <span class="ico">🗡</span>
-                            <p>締め凸は<strong>運営が Discord で声をかけて</strong>決めます。声がかかったら Discord で返事をしてください。引き受けた凸は運営が盤に置き、配信と通知で届きます。</p>
+                            <p>締め凸は<strong>運営が Discord で声をかけて</strong>決めます。声がかかったら Discord で返事をしてください。決まった凸は運営が盤に置き、配信と通知で届きます。</p>
                         </div>
                     </section>
 
@@ -5526,12 +5524,12 @@
 
                     <section id="help-plan" class="help-section">
                         <h2>9. あなたの凸はこう決まる <span class="help-pill">メンバー</span></h2>
-                        <p>運営はレイドの日を<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) に分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。</p>
+                        <p>運営はレイドの日を<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) に分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。後ろのブロックはまだ決めていないので、当日に組み直しても誰も振り回しません。</p>
                         <p>算出は AI ではなく決まった手順の計算です。あなたに関係する材料は5つ:</p>
                         <ul>
-                            <li><strong>出られる時間と凸数</strong> — そのブロックに出られる人だけで組み、入れた凸数を上限にします</li>
+                            <li><strong>参加可能時間と凸数</strong> — そのブロックに出られる人だけで組み、入れた凸数を上限にします</li>
                             <li><strong>登録された模擬</strong> — 「この編成でこれだけ出せる」。1編成は1回しか使いません (同じキャラは1日1回)</li>
-                            <li><strong>🔒 予約</strong> — 約束はそのまま固定し、残りの枠だけ組みます (<a href="#help-reserve">§5</a>)</li>
+                            <li><strong>🔒 予約</strong> — 予約はそのまま置き、残りの枠だけ組みます (<a href="#help-reserve">§5</a>)</li>
                             <li><strong>ボスの残HP</strong> — 倒せるボスへの凸は残HPまでしかスコアに入らないので、無駄 (オーバーキル) が出ない配り方を探します</li>
                             <li><strong>済んだ凸</strong> — 運営が取り込んだ結果 (<a href="#help-real">§6</a>)</li>
                         </ul>
@@ -5547,7 +5545,7 @@
 
                     <section id="help-plan-ops" class="help-section">
                         <h2>🧮 10. 最適凸プラン算出 <span class="help-pill">運営</span></h2>
-                        <p>🧱 組む のタブ。頭に<strong>このブロックの手順</strong> (⚔️ HP を直す → 📥 前のブロックの結果を取り込む → 🧱 組む → 📤 配信 → 🏁 締凸検索) が並び、いまの手順が光ります。交代した運営も、この帯を見れば次に何をするか分かります。</p>
+                        <p>🧱 組む のタブ。頭に<strong>このブロックの手順</strong> (⚔️ HP を直す → 📥 前のブロックの結果を取り込む → 🧱 組む → 📤 配信 → 🏁 締め凸検索) が並び、いまの手順が光ります。交代した運営も、この帯を見れば次に何をするか分かります。</p>
                         <h3>① 条件を選ぶ</h3>
                         <ul>
                             <li>対象: <strong>🧱 ブロックの人</strong> (既定はいまのブロック・前日は朝) / 全員 / 今動ける人だけ</li>
@@ -5558,8 +5556,8 @@
                         <h3>② 🧱 盤 / 🗓 時間割 で手を打つ</h3>
                         <ul>
                             <li><strong>🧱 盤</strong>: ボスの行ごとに「枠 = 残り HP」へ「幅 = ダメージ」のピース。足りない行には<strong>候補</strong> (撃破 / 余り / 時刻 / 残凸 / 入れ替えが要る) が出て、押すとそこへ 📌 で置きます</li>
-                            <li>ピースやチップをタップ (PC はドラッグ) → 光った時刻のマスへ 📌 固定。🧩 模擬ピースの箱から置くこともできます。置いたら算出し直しです</li>
-                            <li>📌 は運営の下書き (算出は動かせない・本人の約束ではない)。📣 お願い で本人に届き、引き受けると 🔒 に。🔒 確定 で本人の返事を待たずに約束にもできます</li>
+                            <li>ピースやチップをタップ (PC はドラッグ) → 光った時刻のマスへ 📌 仮置き。🧩 模擬ピースの箱から置くこともできます。置いたら算出し直しです</li>
+                            <li>📌 は運営の<strong>仮置き</strong> (算出は動かせない・本人には見えない)。<strong>🔒 確定</strong> で本人に通知して予約にします</li>
                             <li>3凸が埋まっている人に置くと 🔁 入れ替えの確認 (🔒 と 📌 は外せず、同じキャラの凸は必ず外れる)</li>
                         </ul>
                         <h3>③ 承認 → 組み直し → 📤 配信</h3>
@@ -5586,18 +5584,18 @@
                     </section>
 
                     <section id="help-finish-call" class="help-section">
-                        <h2>12. 締凸検索 <span class="help-pill">運営</span></h2>
-                        <p>⚔️ 戦況の <strong>締め凸候補検索</strong>。残 HP に対して「今打てる手」と「待って打てる手」を並べます。</p>
+                        <h2>12. 締め凸検索 <span class="help-pill">運営</span></h2>
+                        <p>⚔️ 戦況の <strong>締め凸検索</strong>。残 HP に対して「今打てる手」と「待って打てる手」を並べます。</p>
                         <ul>
                             <li>候補はオーバーキルを抑えつつ確実に削れる順 (同じダメージなら残凸の多い人)。いまのブロックに出られる人・今回は難しい人を除いて探します</li>
-                            <li>決めたら <strong>📋 名前と文面をコピー</strong> して Discord で声をかけます。引き受けてもらえたら、盤に 📌 で置いて配信します</li>
+                            <li>決めたら <strong>📋 名前と文面をコピー</strong> して Discord で声をかけます。やってもらえることになったら、盤に置いて 🔒 確定 → 配信します</li>
                             <li>手詰まり (今も待つも無い) なら 🧱 組む で組み直します</li>
                         </ul>
                     </section>
 
                     <section id="help-notify" class="help-section">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
-                        <p>ブロックで配信された「あなたの凸」・予約の承認・📣 お願い・戦闘可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
+                        <p>ブロックで配信された「あなたの凸」・予約の承認・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
                             <span class="ico">📲</span>
                             <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取るなら、それぞれで設定してください。</p>
@@ -5625,7 +5623,7 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび・変わった人だけ)・📣 お願い・予約の承認/却下・割当の変更・催促・戦闘可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび・変わった人だけ)・予約の承認/却下・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
                             <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
@@ -5680,13 +5678,13 @@
                         <ul>
                             <li>マスター運営 (ふるり) だけが、👑 マスターのタブで運営担当を任命できます</li>
                             <li>任命された人は名乗った時点で常に運営画面。マスターだけ ホームの「👤 メンバーの見え方で見る」で行き来できます</li>
-                            <li>メンバーの申請・返事は運営担当の全員に通知されます (押した本人を除く)</li>
+                            <li>メンバーの予約・返事は運営担当の全員に通知されます (押した本人を除く)</li>
                         </ul>
                         <h3>運営タブの中のタブ (カードはいつも同じ場所)</h3>
                         <ul>
                             <li><strong>👥 メンバー</strong>: メンバー状況 (模擬 / SLv / 時間帯・凸数 / 通知 / B5×2) と催促 ・ 📸 模擬の取り込み ・ 一斉通知</li>
                             <li><strong>🧱 組む</strong>: このブロックの手順 ・ 🔒 凸の予約 (承認) ・ 最適凸プラン算出 (🧱 盤 / 🗓 時間割)</li>
-                            <li><strong>⚔️ 戦況</strong>: ボス状況 (HP の更新) ・ 締め凸候補検索 ・ 📥 結果の取り込み</li>
+                            <li><strong>⚔️ 戦況</strong>: ボス状況 (HP の更新) ・ 締め凸検索 ・ 📥 結果の取り込み</li>
                             <li><strong>👑 マスター</strong> (ふるりだけ): シーズン制御・育成データ・バックアップ・任命・復元・版のしめ切り</li>
                         </ul>
                         <p>日によって変わるのは<strong>開いたときのタブ</strong> (前日まで 👥 / 当日 ⚔️) と、いちばん上の「いちばん急ぐこと」だけです。タブの横の数字は手を打つべき件数。</p>
@@ -5696,11 +5694,11 @@
                             <li>📥 前のブロックの結果を Discord から取り込む (結果がまだの凸を片付ける)</li>
                             <li>🧱 そのブロックを組む (盤で足りないボスに候補を置く)</li>
                             <li>📤 配信 (割当のある人に通知) — Discord の運営スレに「夕方 配信した」と 1 行</li>
-                            <li>🏁 倒し切れないボスがあれば締凸検索で探して Discord で声をかける</li>
+                            <li>🏁 倒し切れないボスがあれば締め凸検索で探して Discord で声をかける</li>
                         </ol>
                         <p>練習: ヘルプの先頭の 🎮 練習する の「運営編・前日 / 当日」で、本物の画面のまま手順を通せます。</p>
                         <ul>
-                            <li><strong>約束は守る</strong> — 組み直しても 🔒 は動きません。動かすときは本人に聞く。配信は差分を見てから</li>
+                            <li><strong>予約は守る</strong> — 組み直しても 🔒 は動きません。動かすときは本人に聞く。配信は差分を見てから</li>
                             <li><strong>障害時</strong> — 📸 共有画像と Discord で手動運用へ。復旧後に 📥 結果の取り込みでまとめて登録</li>
                             <li><strong>凍結</strong> — レイド当日はアプリを改修しない。「シーズン作成」も当日は触らない</li>
                         </ul>
@@ -5720,9 +5718,9 @@
 
                     <section id="help-data" class="help-section">
                         <h2>16. データの流れ</h2>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>⏰ 出られる時間 + 凸数 + 今期の確認 (ホーム) → 運営の算出 (ブロックの人・凸数の上限)・催促の対象</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>模擬 (Discord) → 運営の 📸 模擬の取り込み → 算出・締凸検索・ふるり値レーダー・ホームの 📘 登録された模擬</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>🔒 予約 → 承認で固定 → 🧱 そのブロックを算出 → 📤 配信 (割当のある人に通知) → 各自のホーム (確認しました)</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>⏰ 参加可能時間 + 凸数 + 今期の確認 (ホーム) → 運営の算出 (ブロックの人・凸数の上限)・催促の対象</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>模擬 (Discord) → 運営の 📸 模擬の取り込み → 算出・締め凸検索・ふるり値レーダー・ホームの 📘 登録された模擬</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>🔒 予約 → 承認で決まる → 🧱 そのブロックを算出 → 📤 配信 (割当のある人に通知) → 各自のホーム (確認しました)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div>凸の結果 (Discord) → 運営の 📥 結果の取り込み → 残HP の更新・予約の消し込み・✓ → 撃破やレベル開放の通知 → 次のブロックの算出</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>レイド終了 → 月次の JSON にスナップショット (次のふるり値の基準・確定 SLv の同期) → 🧬 育成データの取り込み → 育成くらべ</div></div>
                         <div class="help-callout">
@@ -5744,12 +5742,12 @@
                         <h3>Q. 締め凸でダメージが低く記録されました</h3>
                         <p>本番の記録はそのままで構いません (「締」バッジが付き、平均から外れます)。模擬の値は本来のベスト出力にしておいてください (<a href="#help-finisher">§7</a>)。</p>
                         <h3>Q. 予約したのにプランに載っていません</h3>
-                        <p>承認待ちか、置けなくなっている (⚠ 置けていません) か、まだそのブロックが配信されていない (🔒 予約 (あとのブロック)) かです。ホームの枠に理由が出ます。約束のブロックを過ぎた予約は運営が解除します (<a href="#help-reserve">§5</a>)。</p>
+                        <p>承認待ちか、置けなくなっている (⚠ 置けていません) か、まだそのブロックが配信されていない (🔒 予約 (あとのブロック)) かです。ホームの枠に理由が出ます。そのブロックを過ぎた予約は運営が解除します (<a href="#help-reserve">§5</a>)。</p>
                         <h3>Q. 配信されたプランが「組み直し中」のままです</h3>
                         <p>運営が配信を止めています。前の割当は見えたままで、新しい配信が入ると自動で置き換わります (<a href="#help-plan">§9</a>)。</p>
                         <h3>Q. 通知が来ません</h3>
                         <p>あなた宛ての通知は時間帯に関係なく届きます。届かないなら端末側の設定です。<a href="#help-notify">§13</a> のチェックリストを上から。</p>
-                        <h3>Q. 戦闘可能時間を毎回入れ直すのですか？</h3>
+                        <h3>Q. 参加可能時間を毎回入れ直すのですか？</h3>
                         <p>時間帯と凸数は残ります。シーズンごとに <strong>今期の確認</strong> (この時間で参加します / 今回は難しい) だけ押してください (<a href="#help-mypage">§3</a>)。</p>
                         <h3>Q. 最適プランで Lv3 まで届きません</h3>
                         <p>いまの模擬のダメージでは火力不足という判定です。届かないレベルではオーバーキルの出ない配り方に切り替わります。模擬や SLv を最新にすると届くことがあります。</p>
@@ -5912,15 +5910,15 @@
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
                     <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (メンバー編)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 出られる時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 参加可能時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
                     </button>
                     <button onclick="startPractice('ops-eve')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・前日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 🧱 朝のブロックを組む → 📌 固定 → 予約の承認 → 朝のぶんを配信・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 🧱 朝のブロックを組む → 📌 仮置き → 予約の承認 → 朝のぶんを配信・約5分</span>
                     </button>
                     <button onclick="startPractice('ops-day')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・当日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 18 時 (夕方のブロックの頭) の運営役として — ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締凸検索・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 18 時 (夕方のブロックの頭) の運営役として — ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締め凸検索・約5分</span>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
@@ -5941,7 +5939,7 @@
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">通知・戦闘可能時間の設定</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">通知・参加可能時間の設定</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
@@ -5994,7 +5992,7 @@
                     <div style="font-size:14px;font-weight:900;color:var(--t-ink);">👑 運営担当</div>
                     <div id="settingsRolesCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
                 </div>
-                <p style="margin:0 0 10px;font-size:11px;color:var(--t-muted);line-height:1.6;">任命した人は名乗った時点で運営画面になり、予約の申請・取消希望・📣 や締め凸の返事が Push で届きます。任命と解任はマスター運営だけができます。</p>
+                <p style="margin:0 0 10px;font-size:11px;color:var(--t-muted);line-height:1.6;">任命した人は名乗った時点で運営画面になり、予約・取消希望・📣 や締め凸の返事が Push で届きます。任命と解任はマスター運営だけができます。</p>
                 <div id="settingsRolesBody" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">読み込み中…</div>
             </div>
             <!-- 復元 (巻き戻し) は全員のデータを戻す最高危険操作なので master 専用。保存 (ダウンロード) は運営の作業なのでメンテナンスに残す (Codex 提案) -->
@@ -6434,7 +6432,7 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
                 <button onclick="closePlanSwap(null)" style="padding:10px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
                 <button id="planSwapAutoBtn" onclick="closePlanSwap('auto')" style="padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--t-strong);font-size:13px;font-weight:800;cursor:pointer;">外す凸は算出に任せる</button>
-                <button id="planSwapGoBtn" onclick="closePlanSwap('pick')" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:13px;font-weight:900;cursor:pointer;">入れ替えて固定する</button>
+                <button id="planSwapGoBtn" onclick="closePlanSwap('pick')" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:13px;font-weight:900;cursor:pointer;">入れ替えて仮置きする</button>
             </div>
         </div>
     </div>
@@ -6532,8 +6530,8 @@
             <div>
                 <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
                     <input type="checkbox" id="opsSeasonEditMemberInput" style="margin-top:2px;width:16px;height:16px;flex:none;">
-                    <span style="font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.5;">メンバーに模擬の提出シートと凸の申請を出す
-                        <span style="display:block;font-size:11px;font-weight:700;color:var(--t-muted);">既定は出さない (メンバーの入力は最低限。模擬は Discord にスクショを貼り、運営が登録する)。出すときだけ ON。運営モードの人には常に見える</span></span>
+                    <span style="font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.5;">従来の画面にする (メンバーの模擬の提出シート・戦闘カード・凸報告・📣 お願い など)
+                        <span style="display:block;font-size:11px;font-weight:700;color:var(--t-muted);">既定は OFF = シンプルな画面 (模擬と凸の結果は Discord にスクショを貼り、運営が登録する)。従来の操作に戻すときだけ ON</span></span>
                 </label>
             </div>
 
@@ -6698,7 +6696,7 @@
             <div class="player-select-modal" id="myAvailModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
+                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> ユニオンレイド参加可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">🧱 ブロックで選びます。1 時間でも出られるブロックを ON に。ON にした時間帯は <strong>①凸プランの割当 ②締め凸の候補 (その時間に出られる人)</strong> に使われます。<br>※通知は時間帯で絞られません (あなた宛の連絡と、レイド当日のチームの状況が届きます)。</p>
@@ -7251,7 +7249,7 @@
                 chapterTag: 'はじめに',
                 stepLabel: 'CHAPTER 01',
                 title: 'しりすこPADへ\nようこそ',
-                body: 'これから数分で、メンバーが知っておきたいことを <strong>8つのステップ</strong> でご紹介します (2026-10 の 🧱 ブロック制の画面に合わせて更新)。<br><br>メンバーが PAD でやることは <strong>「出られる時間と何凸するかを伝える」「配信された自分の凸を見る」</strong> だけ。模擬と凸の結果は Discord にスクショを貼り、運営が PAD に登録します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド / チュートリアル</strong> からいつでも見返せます。',
+                body: 'これから数分で、メンバーが知っておきたいことを <strong>8つのステップ</strong> でご紹介します (2026-10 の 🧱 ブロック制の画面に合わせて更新)。<br><br>メンバーが PAD でやることは <strong>「参加可能時間と何凸するかを伝える」「配信された自分の凸を見る」</strong> だけ。模擬と凸の結果は Discord にスクショを貼り、運営が PAD に登録します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド / チュートリアル</strong> からいつでも見返せます。',
                 tip: '画面下の白い帯が移動の起点です (ホーム / 分析 / 設定。運営担当は 運営 も。いま居るタブだけ黒い円で持ち上がります)。PC や横画面ではカードが2列になり、広い画面では左のサイドバーに変わります。',
                 accentColor: '#7A5AF8', accentDark: '#6C42F0',
                 showMiniScreen: true,
@@ -7261,16 +7259,16 @@
                 chapterTag: '① 最初に',
                 stepLabel: 'CHAPTER 02',
                 title: 'アプリ化と\nPush通知',
-                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>次に、上の帯の名前をタップして<strong>自分を選び</strong>、ホームの <strong>MY設定 → 🔔 Push通知設定</strong> で「通知を有効にする」。<strong>ブロックごとに決まる「あなたの凸」</strong>・予約の承認・📣 お願い はここに届きます。',
+                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>次に、上の帯の名前をタップして<strong>自分を選び</strong>、ホームの <strong>MY設定 → 🔔 Push通知設定</strong> で「通知を有効にする」。<strong>ブロックごとに決まる「あなたの凸」</strong>・予約の承認 はここに届きます。',
                 tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。あなた宛ての通知は時間帯に関係なく届きます。',
                 accentColor: '#9B4DFF', accentDark: '#7C3AED',
             },
             {
                 emoji: '⏰',
-                chapterTag: '② 出られる時間',
+                chapterTag: '② 参加可能時間',
                 stepLabel: 'CHAPTER 03',
-                title: '出られる時間と\n何凸するか',
-                body: 'ホームの <strong>MY設定 → ⏰ 戦闘可能時間</strong> で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。ON にしたブロックには<strong>何凸するか</strong>を − / + で (合計 3 まで・入れなければおまかせ)。下から練習で触れます👇<br><br>シーズンごとに <strong>「この時間で参加します」</strong> か <strong>「今回は難しい」</strong> を押すのも忘れずに。',
+                title: '参加可能時間と\n何凸するか',
+                body: 'ホームの <strong>MY設定 → ⏰ 参加可能時間</strong> で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。ON にしたブロックには<strong>何凸するか</strong>を − / + で (合計 3 まで・入れなければおまかせ)。下から練習で触れます👇<br><br>シーズンごとに <strong>「この時間で参加します」</strong> か <strong>「今回は難しい」</strong> を押すのも忘れずに。',
                 demo: 'avail',
                 tip: '時間を登録していない人は、運営の算出の候補に入りません (催促が届きます)。運営はこの時間と凸数を上限にして、ブロックごとにあなたの凸を組みます。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
@@ -7289,9 +7287,9 @@
                 emoji: '🔒',
                 chapterTag: '④ 凸の予約',
                 stepLabel: 'CHAPTER 05',
-                title: '「このブロックに\nこの編成で」を約束する',
-                body: '予約は<strong>希望がある人だけ</strong>の約束です (申請しなくても、運営が出られる時間と凸数から割り当てます)。ホームの <strong>🔒 引き受けた凸</strong> の <strong>自分から凸を申請する</strong> から、<strong>どの PT・編成で → どのブロックで</strong> を選ぶだけ。ボスは PT で決まり、何時に凸するかは運営がブロックの中で決めます。<br><br>運営が承認すると <strong>🔒</strong> で固定され、組み直しても<strong>動きません</strong>。',
-                tip: '予約中の編成とキャラが被る編成は申請できません (同じキャラは1日1回)。やめたいときは「取り消しを希望」→ 運営が解除します。',
+                title: '「このブロックに\nこの PT で」枠を予約する',
+                body: '予約は<strong>希望がある人だけ</strong>で大丈夫です (予約しなくても、運営が参加可能時間と凸数から割り当てます)。ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong> から、<strong>どの PT・編成で → どのブロックで</strong> を選ぶだけ。ボスは PT で決まり、何時に凸するかは運営がブロックの中で決めます。<br><br>運営が承認すると <strong>🔒 予約</strong> が決まり、組み直しても<strong>動きません</strong>。',
+                tip: '予約中の編成とキャラが被る編成は予約できません (同じキャラは1日1回)。やめたいときは「取り消しを希望」→ 運営が解除します。',
                 accentColor: 'var(--attr-water-solid)', accentDark: 'var(--attr-water-deep)',   // 色はトークン (直値の上限に数えない)
             },
             {
@@ -7301,15 +7299,15 @@
                 title: '凸したら\nDiscord へ',
                 body: 'ブロックの前に運営が配信すると、<strong>「🧱 夕方 18〜20時 のあなたの凸が決まりました」</strong> の通知が届きます。その時刻に、配信のボス・PT・編成で凸 → <strong>結果のスクショを Discord に貼る</strong>だけ。<br><br>PAD に凸を報告する操作はありません。<strong>運営が結果を取り込むと</strong>、ホームの凸に ✓ が付きます。下から練習で触れます👇',
                 demo: 'battle',
-                tip: '凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます。運営から 📣 お願い (引き受けた凸) が届いたら、ホームで 引き受ける / 難しい を押すだけ。',
+                tip: '凸できなかったときも Discord で一言。締め凸も運営が Discord で声をかけます。',
                 accentColor: '#FF8A2B', accentDark: '#E0701F',
             },
             {
                 emoji: '🗺',
-                chapterTag: '⑥ あなたの3凸',
+                chapterTag: '⑥ きょうの凸',
                 stepLabel: 'CHAPTER 07',
                 title: 'あなたの凸は\nこう決まる',
-                body: '運営はレイドの日をブロックに分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。ホームに <strong>🎯 あなたの3凸</strong> と <strong>📅 きょうの凸</strong> (ブロックごとに1行) が並びます。<br><br>割当は 出られる時間と凸数・登録された模擬・予約・ボスの残HP から<strong>決まった手順の計算</strong>で組まれ、<strong>前回の配信を尊重</strong>します。読んだら <strong>✅ 確認しました</strong>。配信された凸プランの <strong>🧱 盤</strong> で、ボスごとにどう組まれたかも見られます。',
+                body: '運営はレイドの日をブロックに分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。ホームの <strong>📅 きょうの凸</strong> に、ブロックごとに あなたの凸 (時刻・ボス・PT・編成) が並びます。<br><br>割当は 参加可能時間と凸数・登録された模擬・予約・ボスの残HP から<strong>決まった手順の計算</strong>で組まれ、<strong>前回の配信を尊重</strong>します。読んだら <strong>✅ 確認しました</strong>。配信された凸プランの <strong>🧱 盤</strong> で、ボスごとにどう組まれたかも見られます。',
                 tip: '「運営が組み直し中です」の帯が出ている間も前の割当は見えます。後ろのブロックは「まだ決まっていません」— そのブロックの前に配信されます。',
                 accentColor: '#18C26B', accentDark: '#0EA055',
                 showMiniScreen: true,
@@ -7319,8 +7317,8 @@
                 chapterTag: '⑦ 運営のしごと',
                 stepLabel: 'CHAPTER 08',
                 title: '運営担当の\n1日の流れ',
-                body: '運営担当 (👑 マスターが任命) には <strong>運営</strong> タブがあり、中が <strong>👥 メンバー / 🧱 組む / ⚔️ 戦況</strong> に分かれます。<br><br><strong>前日</strong>: 👥 で時間と模擬の届いていない人を催促 → <strong>📸 模擬の取り込み</strong> → 🔒 予約の承認 → 🧱 朝のぶんを組んで <strong>📤 配信</strong>。<br><strong>当日 (ブロックの頭ごと)</strong>: ⚔️ HP を直す → <strong>📥 前のブロックの結果を取り込む</strong> → 🧱 組む (盤で足りないボスに候補を置く) → 📤 配信 → 🏁 締凸検索で探して Discord で声かけ。',
-                tip: '🧱 組む の頭の「このブロックの手順」がいまやることを光らせます。約束 (🔒) は算出で動きません。配信は自動では出ません — 差分を見てから明示の1タップで。練習モードの運営編で通せます (ヘルプ §10・§11・§15)。',
+                body: '運営担当 (👑 マスターが任命) には <strong>運営</strong> タブがあり、中が <strong>👥 メンバー / 🧱 組む / ⚔️ 戦況</strong> に分かれます。<br><br><strong>前日</strong>: 👥 で時間と模擬の届いていない人を催促 → <strong>📸 模擬の取り込み</strong> → 🔒 予約の承認 → 🧱 朝のぶんを組んで <strong>📤 配信</strong>。<br><strong>当日 (ブロックの頭ごと)</strong>: ⚔️ HP を直す → <strong>📥 前のブロックの結果を取り込む</strong> → 🧱 組む (盤で足りないボスに候補を置く) → 📤 配信 → 🏁 締め凸検索で探して Discord で声かけ。',
+                tip: '🧱 組む の頭の「このブロックの手順」がいまやることを光らせます。予約 (🔒) は算出で動きません。配信は自動では出ません — 差分を見てから明示の1タップで。練習モードの運営編で通せます (ヘルプ §10・§11・§15)。',
                 accentColor: 'var(--grad-ops-a)', accentDark: 'var(--grad-ops-b)',
             },
             {
@@ -7339,7 +7337,7 @@
                 stepLabel: 'CHAPTER 10',
                 title: 'おしまい！\n楽しんでください',
                 body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド / チュートリアル</strong> からヘルプの各章に飛べます (メンバー向けと運営向けの両方があります)。<br><br>このガイドは <strong>設定タブ → ガイド → ▶ 再生</strong> からいつでも見返せます。',
-                tip: 'まずは ①アプリ化&通知 → ②出られる時間・凸数と今期の確認 → ③模擬のスクショを Discord に (キャラ被りなしで3属性・18時以降に出られる人はボス5を2編成) の順で。希望があれば ④予約 も。',
+                tip: 'まずは ①アプリ化&通知 → ②参加可能時間・凸数と今期の確認 → ③模擬のスクショを Discord に (キャラ被りなしで3属性・18時以降に出られる人はボス5を2編成) の順で。希望があれば ④予約 も。',
                 accentColor: '#14161A', accentDark: '#000000',
             },
         ];
@@ -7349,7 +7347,7 @@
         // 以前は手描きの見本 (戦闘可能時間 / 模擬提出 / 凸の流れ) をここに描いていたが、本番の画面を直すたびにずれるので廃止。
         // 練習モード (本物の画面 + 練習用のデータ) の該当する課題から始める入口だけを置く
         // 2026-10-22 の作り直し: メンバーは模擬を Discord に貼るだけ・凸の報告は運営が登録する → 模擬の体験は「出られる時間」、戦闘は「凸したら Discord へ」
-        const TOUR_DEMO_START = { avail: ['avail', '出られる時間と「何凸するか」を伝える'], battle: ['report', '凸したら Discord へ'] };
+        const TOUR_DEMO_START = { avail: ['avail', '参加可能時間と「何凸するか」を伝える'], battle: ['report', '凸したら Discord へ'] };
         function _tourDemoHtml(kind) {
             const d = TOUR_DEMO_START[kind];
             if (!d) return '';
@@ -8183,7 +8181,7 @@
             const liteNote = lite ? ' 模擬は Discord にスクショを貼ってください。運営が PAD に登録します。' : '';
             const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 運営モードでも模擬タブは隠れる → 📸 模擬の取り込みへ (2026-10-22)
             const mockCta = (label, soft = false) => lite
-                ? (soft ? softBtn : heroBtn)('openMyAvailModal()', '⏰ 出られる時間を確認する')
+                ? (soft ? softBtn : heroBtn)('openMyAvailModal()', '⏰ 参加可能時間を確認する')
                 : mockHidden ? (soft ? softBtn : heroBtn)('_gotoOpsMockIntake()', '📸 模擬の取り込み (戦況タブ) で登録する')
                 : (soft ? softBtn : heroBtn)("switchTab('mock')", label);
             const maxPick = _maxDisjointSquads(squads);
@@ -8220,16 +8218,16 @@
             if (_opsMode && opsWaiting > 0) {
                 opsNotice = {
                     lead: `🔒 承認待ちの予約が ${opsWaiting}件あります`,
-                    why: '承認するとその凸は固定され、プランを組み直して配信できます。取り消し希望も含みます。'
+                    why: '承認すると予約が決まり、プランを組み直して配信できます。取り消し希望も含みます。'
                         + (opsPending && opsPending.count > 0 ? ` 配信し直しが必要な予約も ${opsPending.count}件あります。` : ''),
                     onclick: '_opsGotoReservations()', label: '🔒 予約を確認する',
                 };
             } else if (opsPending && opsPending.count > 0) {
                 opsNotice = {
                     lead: '🔒 配信後の予約があります、確認して下さい',
-                    why: `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。固定して組み直し、配信し直してください。`
+                    why: `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。予約を入れて組み直し、配信し直してください。`
                         + 'それまで本人のホームには「運営が組み直し中」と出ています。',
-                    onclick: '_opsGotoRepublish()', label: '🧮 固定して組み直す → 配信',
+                    onclick: '_opsGotoRepublish()', label: '🧮 予約を入れて組み直す → 配信',
                 };
             }
             const opsHero = () => {
@@ -8422,7 +8420,7 @@
                 <button type="button" onclick="${canAsk ? 'openMyResvRequest()' : (mockHidden ? '_gotoOpsMockIntake()' : "switchTab('mock')")}" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
                     <div class="dc-plan-empty-title">空き枠 ${i + 1}</div>
                     <div class="dc-plan-empty-why">${esc(slot.text || '')}</div>
-                    <div class="dc-plan-empty-cta">${canAsk ? '＋ 自分から申請する' : (mockHidden ? '📸 模擬の取り込み' : '📸 模擬を見る')}</div>
+                    <div class="dc-plan-empty-cta">${canAsk ? '＋ 枠を予約する' : (mockHidden ? '📸 模擬の取り込み' : '📸 模擬を見る')}</div>
                 </button>`;
             }
             if (slot.kind === 'done') {
@@ -8451,7 +8449,7 @@
                     : (slot.inPlan ? '🔒 予約' : '🔒 予約 (組み直し待ち)');
                 return `
                 <button type="button" onclick="_homeGotoResvCard()" class="dc-plan-card fixed${pending ? ' pending' : ''}${slot.unmet ? ' unmet' : ((slot.inPlan || slot.laterBlock) ? '' : ' notin')}${slot.done ? ' done' : ''}${on}"
-                        title="予約で固定された凸 — タップで予約の状態へ">
+                        title="🔒 予約した凸 — タップで予約の状態へ">
                     <span class="dc-plan-lock">${lock}</span>
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
                         ${chip}
@@ -9118,8 +9116,8 @@
                         const w = t.window ? dom.rangeLabel(t.window) : `${hour}時〜`;
                         try {
                             await window.sendPushNotification({
-                                title: '⏰ 戦闘可能時間になりました',
-                                body: `${w} はあなたが登録した戦闘可能時間です。残り ${remaining} 凸。割当はホームで確認できます。`,
+                                title: '⏰ 参加可能時間になりました',
+                                body: `${w} はあなたが登録した参加可能時間です。残り ${remaining} 凸。割当はホームで確認できます。`,
                                 url: './?tab=mypage',
                                 tag: `avail-start-${season.id}-${t.id}-${curSlot}`,
                                 ignoreAvailability: true,                 // 本人が登録した時刻そのものなのでフィルタは要らない
@@ -9612,7 +9610,7 @@
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
-            renderMyAvailStrip(id);          // ⏰ あなたの戦闘可能時間 (2026-09-08)
+            renderMyAvailStrip(id);          // ⏰ ユニオンレイド参加可能時間 (2026-09-08)
             renderMyGrowthNotice(id);        // 🧬 育成データが未公開です (B3・2026-09-09)
             renderMyPushCheckCard(id);       // 🔔 通知の疎通確認 (2026-10-07)
             _reportMemberDevice('identity');   // 📱 端末の状態 (2026-10-08)
@@ -9662,7 +9660,7 @@
             const summary = dom.labelOf(slots, {});
             const w = dom.windowAt(slots, curHour);
             const nowText = nowOn
-                    ? `いま (${curHour}時) は戦闘可能時間です${w ? ` — ${dom.rangeLabel(w)}` : ''}`
+                    ? `いま (${curHour}時) は参加可能時間です${w ? ` — ${dom.rangeLabel(w)}` : ''}`
                     : (set.size > 0
                         ? `いま (${curHour}時) は時間外です。赤い枠がいまの時刻、紫が登録した時間帯です`
                         : '時間帯が未登録です。登録すると通知とプランの割当に使われます');
@@ -10286,7 +10284,7 @@
                     await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
                         characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
                     window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${window.reservationsDomain?.whenOf(row) || row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
-                    showNotification('🔒 引き受けました。運営が組み直したプランに固定で入ります');
+                    showNotification('🔒 引き受けました。運営が組み直したプランに予約として入ります');
                     _notifyOps({ title: '🔒 お願いを引き受けました', body: `${me.name || '#' + me.id}: ${_resvRowJp(row)}`, tag: 'ops-pin-answer', except: me.id });
                 } else {
                     await window.supabaseSetReservationStatus(Number(id), 'released', { expectFrom: 'pinned', actor: me.name || '本人', reason: 'member_declined' });
@@ -10450,19 +10448,19 @@
                 : HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
                     chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
             const timeNote = st.slotsFailed
-                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--bad-deep);line-height:1.55;">戦闘可能時間を取得できませんでした。シートを開き直してください。</p>'
+                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--bad-deep);line-height:1.55;">参加可能時間を取得できませんでした。シートを開き直してください。</p>'
                 : st.slots.length === 0
-                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--warn-deep);line-height:1.55;">戦闘可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
+                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--warn-deep);line-height:1.55;">参加可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
                 : byBlock
                 ? `<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">出られるブロックから選べます。${st.block ? `<b>${escapeHtml(st.block.label)}</b> のどこかで、運営が時刻を決めます。` : '時刻は運営がブロックの中で決めます。'}</p>`
-                : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">戦闘可能時間に登録している中から選べます。</p>';
+                : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">参加可能時間に登録している中から選べます。</p>';
             // どの編成で (提出済みの全属性から。行き先のボスは属性で決まる)
             const los = st.loadouts.filter(l => bossOrder.has(l.attribute))
                 .sort((a, b) => (bossOrder.get(a.attribute) - bossOrder.get(b.attribute)) || (a.slot - b.slot));
             const loHtml = los.length === 0
                 ? ((typeof _memberLite === 'function' && _memberLite())
-                    ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">まだ模擬が登録されていません。模擬のスクショを Discord に貼ると運営が登録します。登録されると、その編成で申請できます。</p>'
-                    : '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">模擬を提出すると、その編成で申請できます。</p>')
+                    ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">まだ模擬が登録されていません。模擬のスクショを Discord に貼ると運営が登録します。登録されると、その編成で予約できます。</p>'
+                    : '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">模擬を提出すると、その編成で予約できます。</p>')
                 : los.map(l => {
                     const on = st.lo && st.lo.attribute === l.attribute && st.lo.slot === l.slot;
                     const ac = DC_ATTR_COLORS[l.attribute] || '#7A7C81';
@@ -10490,9 +10488,9 @@
             let blocker = '';
             if (d.ok) {
                 const chk = rv.canRequest(st.mine, { playerId: getCurrentIdentity()?.id, level: st.level, bossNumber: Number(st.boss.boss_number), loadoutSlot: st.lo.slot, doneAttacks: st.done, characters: st.lo.characters });
-                if (!chk.ok) blocker = chk.reason === 'already' ? 'この内容の申請はもう出ています'
-                    : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では申請できません (同じキャラは1日1回)'
-                    : '残りの凸数を超えるため申請できません';
+                if (!chk.ok) blocker = chk.reason === 'already' ? 'この内容の予約はもう出ています'
+                    : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では予約できません (同じキャラは1日1回)'
+                    : '残りの凸数を超えるため予約できません';
             }
             const canSend = d.ok && !blocker;
             body.innerHTML = `
@@ -10502,7 +10500,7 @@
                 </div>
                 ${blocker ? `<p style="margin:14px 2px 0;font-size:11.5px;font-weight:800;color:var(--bad-deep);">${esc(blocker)}</p>` : ''}
                 <div style="margin-top:${blocker ? '10' : '22'}px;display:flex;flex-direction:column;gap:9px;">
-                    <button type="button" onclick="handleResvReqSubmit()" ${canSend ? '' : 'disabled'} style="width:100%;border:none;border-radius:999px;padding:14px;font-family:inherit;font-size:13px;font-weight:900;color:${canSend ? 'var(--on-fill)' : 'var(--t-muted)'};cursor:${canSend ? 'pointer' : 'default'};background:${canSend ? 'linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b))' : 'var(--s2)'};box-shadow:${canSend ? '0 4px 13px rgba(108,66,240,0.32)' : 'none'};">この内容で申請する</button>
+                    <button type="button" onclick="handleResvReqSubmit()" ${canSend ? '' : 'disabled'} style="width:100%;border:none;border-radius:999px;padding:14px;font-family:inherit;font-size:13px;font-weight:900;color:${canSend ? 'var(--on-fill)' : 'var(--t-muted)'};cursor:${canSend ? 'pointer' : 'default'};background:${canSend ? 'linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b))' : 'var(--s2)'};box-shadow:${canSend ? '0 4px 13px rgba(108,66,240,0.32)' : 'none'};">この内容で予約する</button>
                     <button type="button" onclick="closeMyResvRequestModal()" style="width:100%;border:none;border-radius:999px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">やめる</button>
                 </div>`;
         }
@@ -10523,8 +10521,8 @@
             const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, block: st.block, loadout: st.lo, currentLevel: cur });
             if (!d.ok) { _resvReqRender(); return; }
             const when = d.draft.block ? `${st.block?.label || ''} のどこか (時刻は運営が決めます)` : d.draft.flex ? '⏳時刻は約束しない' : `${Number(d.draft.timeSlot.slice(1))}時`;
-            if (!confirm(`この内容で申請します。\n\n${st.boss.name || 'B' + d.draft.bossNumber} / ${when} / 編成${SLOT_JP[d.draft.loadoutSlot] || '①'} (${d.draft.expectedDamageB.toFixed(1)}B)`
-                + (d.note ? `\n\n${d.note}` : '') + '\n\n運営が承認すると、この凸は固定されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            if (!confirm(`この内容で予約します。\n\n${st.boss.name || 'B' + d.draft.bossNumber} / ${when} / 編成${SLOT_JP[d.draft.loadoutSlot] || '①'} (${d.draft.expectedDamageB.toFixed(1)}B)`
+                + (d.note ? `\n\n${d.note}` : '') + '\n\n運営が承認すると予約が決まります。\n\n[OK] 予約する / [キャンセル] やめる')) return;
             st.busy = true;
             try {
                 // ★ 開いた時点の残凸・重複ではなく、**いま**の状態で見直す (Codex指摘 2026-09-07)。
@@ -10539,18 +10537,18 @@
                 const chk = rv.canRequest(st.mine, { playerId: me.id, level: d.draft.raidLevel, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: st.done, characters: d.draft.characters });
                 if (!chk.ok) {
                     _resvReqRender();
-                    alert(chk.reason === 'already' ? 'この内容の申請はもう出ています'
-                        : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では申請できません (同じキャラは1日1回)'
-                        : '残りの凸数を超えるため申請できません');
+                    alert(chk.reason === 'already' ? 'この内容の予約はもう出ています'
+                        : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では予約できません (同じキャラは1日1回)'
+                        : '残りの凸数を超えるため予約できません');
                     return;
                 }
                 await window.supabaseCreateReservation({
                     seasonId: st.ctx.season.id, playerId: me.id,
                     ...d.draft, requestedBy: me.name || null,
                 });
-                _notifyOps({ title: '🔒 予約の申請', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });
+                _notifyOps({ title: '🔒 予約 (承認待ち)', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });
                 if (seq !== st.seq) return;   // 完了前に閉じて別の世代が開いていたら、そちらは触らない
-                showNotification('🔒 申請しました (運営の承認待ちです)');
+                showNotification('🔒 予約しました (運営の承認待ちです)');
                 closeMyResvRequestModal();
                 renderMyReservations(me);
                 if (typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(me);
@@ -10573,8 +10571,8 @@
             if (!draft.ok) { alert('この割当は時刻が決まっていないため、引き受けられません。'); return; }
             const when = draft.draft.flex ? '⏳隙間時間' : (row.hourLabel || draft.draft.timeSlot);
             if (!confirm(`この凸を引き受けます。\n\nLv${level} / ${row.bossName || 'B' + bossNumber} / ${when} / 編成${SLOT_JP[loadoutSlot] || '①'}\n\n`
-                + '運営が承認すると、この凸は**固定**されます (プランを組み直しても動きません)。\n'
-                + '取り消したくなったら運営に申し出てください。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+                + '運営が承認すると予約が決まります (プランを組み直しても動きません)。\n'
+                + '取り消したくなったら運営に申し出てください。\n\n[OK] 予約する / [キャンセル] やめる')) return;
             const me0 = getCurrentIdentity();
             // ★ 画面を開いたあとにプレイヤーを切り替えると、古い viewerId のまま申請できてしまう
             //   (別メンバー名義の申請になる — Codex指摘 2026-09-07)
@@ -10596,9 +10594,9 @@
                         doneAttacks: Number(st.todayAttacks) || 0, characters: draft.draft.characters,
                     });
                     if (!chk.ok) {
-                        alert(chk.reason === 'already' ? 'この内容の申請はもう出ています'
-                            : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では申請できません (同じキャラは1日1回)'
-                            : '残りの凸数を超えるため申請できません');
+                        alert(chk.reason === 'already' ? 'この内容の予約はもう出ています'
+                            : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では予約できません (同じキャラは1日1回)'
+                            : '残りの凸数を超えるため予約できません');
                         _renderMyPubBody();
                         return;
                     }
@@ -10609,8 +10607,8 @@
                     sourcePlanId: st.planId,
                     requestedBy: me?.name || null,
                 });
-                _notifyOps({ title: '🔒 予約の申請 (配信の凸を引き受け)', body: `${me?.name || '#' + st.viewerId}: ${_resvDraftJp(draft.draft)} (承認待ち)`, tag: 'ops-resv-request', except: st.viewerId });
-                showNotification('🔒 申請しました (運営の承認待ちです)');
+                _notifyOps({ title: '🔒 予約 (配信の凸を引き受け)', body: `${me?.name || '#' + st.viewerId}: ${_resvDraftJp(draft.draft)} (承認待ち)`, tag: 'ops-resv-request', except: st.viewerId });
+                showNotification('🔒 予約しました (運営の承認待ちです)');
                 // 一覧を取り直して、同じ行を「申請中」に変える
                 st.resv = await window.supabaseLoadMyReservations?.(st.seasonId, st.viewerId) ?? st.resv;
                 _renderMyPubBody();
@@ -10685,11 +10683,11 @@
                 else right = `<div style="flex:none;text-align:right;">${dmgHtml}${a.level != null ? `<div style="font-size:8.5px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}になったら</div>` : ''}</div>`;
                 let status = '';
                 if (a.kind === 'fixed') {
-                    const jp = a.status === 'pinned' ? `📣 運営からのお願い${a.pinnedBy ? ` (${esc(String(a.pinnedBy))})` : ''} — 「引き受けた凸」から返事してください`
+                    const jp = a.status === 'pinned' ? `📣 運営からのお願い${a.pinnedBy ? ` (${esc(String(a.pinnedBy))})` : ''} — ホームの「🔒 予約」から返事してください`
                         : a.unmet ? `⚠ 置けていません — ${esc(a.unmetText || '')}`
                         : a.status === 'cancel_requested' ? '取り消し希望中'
-                        : a.laterBlock ? '🔒 予約で固定 (あとのブロック)' : a.outOfScope ? '🔒 予約で固定 (この配信の計算に入っていません)'
-                        : (a.inPlan ? '🔒 予約で固定' : '🔒 予約で固定 (運営が組み直し中)');
+                        : a.laterBlock ? '🔒 予約 (あとのブロック)' : a.outOfScope ? '🔒 予約 (この配信の計算に入っていません)'
+                        : (a.inPlan ? '🔒 予約' : '🔒 予約 (運営が組み直し中)');
                     const col = (a.unmet || a.status === 'cancel_requested' || a.status === 'pinned') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
@@ -10860,8 +10858,8 @@
                             catch (e2) { console.warn('[finish→予約] 取り消しに失敗:', e2?.message || e2); }
                         }
                         if (!returned) {
-                            showNotification(`⚠ 了承は届きませんでしたが、凸の固定 (#${held.created.id}) が残っています。運営に外してもらってください`);
-                            window.supabaseLogActivity?.('reservation', `締め凸の了承が届かず、固定 #${held.created.id} (B${Number(bossNumber)}) を返せませんでした — 運営が外してください`, { playerId: id.id, actorName: id.name || null });
+                            showNotification(`⚠ 了承は届きませんでしたが、凸の予約 (#${held.created.id}) が残っています。運営に外してもらってください`);
+                            window.supabaseLogActivity?.('reservation', `締め凸の了承が届かず、予約 #${held.created.id} (B${Number(bossNumber)}) を返せませんでした — 運営が外してください`, { playerId: id.id, actorName: id.name || null });
                         }
                     }
                     throw e;
@@ -11835,7 +11833,7 @@
             }
             if (rsv) {
                 const jp = window.reservationsDomain?.STATUS_JP?.[rsv.status] || rsv.status;
-                alert(`🔒 ${ptName}PT 編成${SLOT_JP[slot]} は凸を予約しています (${jp})。\n削除すると予約と食い違うので、先にホームの「引き受けた凸」から取り消しを希望してください。`);
+                alert(`🔒 ${ptName}PT 編成${SLOT_JP[slot]} は凸を予約しています (${jp})。\n削除すると予約と食い違うので、先にホームの「🔒 予約」から取り消しを希望してください。`);
                 return;
             }
             let others = [];
@@ -17289,7 +17287,7 @@
             mock_exclude: { label: '模擬 除外',    color: '#F59E0B' },
             notify_on:    { label: '通知ON',       color: '#18C26B' },
             notify_off:   { label: '通知OFF',      color: '#8A9097' },
-            avail_change: { label: '戦闘可能時間', color: '#9B4DFF' },
+            avail_change: { label: '参加可能時間', color: '#9B4DFF' },
             ops:          { label: '運営',         color: '#14161A' },
         };
         const _SETLOG_FILTERS = [
@@ -17453,7 +17451,7 @@
             const countEl = document.getElementById('settingsActivityCount');
             if (countEl) countEl.textContent = `${events.length}件`;
             el.innerHTML = `
-                <p style="margin:0 0 10px 0;padding:8px 11px;border-radius:10px;background:rgba(245,158,11,0.08);font-size:11px;color:var(--warn-deep);line-height:1.5;">💡 supabase/19_activity_log.sql を SQL Editor で適用すると、模擬戦提出・通知/戦闘可能時間の変更・代理凸まで記録される詳細ログ (種別・人別フィルタ付き) に切り替わります。</p>
+                <p style="margin:0 0 10px 0;padding:8px 11px;border-radius:10px;background:rgba(245,158,11,0.08);font-size:11px;color:var(--warn-deep);line-height:1.5;">💡 supabase/19_activity_log.sql を SQL Editor で適用すると、模擬戦提出・通知/参加可能時間の変更・代理凸まで記録される詳細ログ (種別・人別フィルタ付き) に切り替わります。</p>
                 <div style="position:relative;padding-left:20px;">
                     <div style="position:absolute;left:4px;top:4px;bottom:14px;width:1.5px;background:var(--s2);"></div>
                     ${rows}
@@ -17566,7 +17564,7 @@
                     return `<div class="ops-recent-row" title="${esc(at)} に依頼 · ${esc(STATE_JP[a.state] || '')}${a.offer ? ' · 同時打診' : ''}"><span class="t">${esc(at)}</span>${bossChip(a.boss)}<span class="n">${names}</span><span class="d ${bad ? 'bad' : ''}">${bad ? esc(STATE_JP[a.state]) : esc(dl)}</span></div>`;
                 }).join('')
                 : '<p class="ops-recent-empty">いま出している打診はありません。</p>';
-            const more = m.asksTotal > m.asks.length ? `<p class="ops-recent-empty">ほか ${m.asksTotal - m.asks.length} 件は締め凸候補検索で。</p>` : '';
+            const more = m.asksTotal > m.asks.length ? `<p class="ops-recent-empty">ほか ${m.asksTotal - m.asks.length} 件は締め凸検索で。</p>` : '';
             const atks = m.attacks.length
                 ? m.attacks.map(a =>
                     `<div class="ops-recent-row"><span class="t">${esc(_opsHm(a.atMs))}</span>${bossChip(a.boss)}<span class="n">${esc(a.name)}</span><span class="v">${(a.damageRaw / 1e9).toFixed(1)}B</span></div>`).join('')
@@ -18419,7 +18417,7 @@
             }).join('') : '<p style="color:var(--t-body);font-size:12px;margin:6px 0;">要対応のメンバーはいません 🎉</p>';
             if (legEl) legEl.innerHTML = isDay
                 ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:var(--ops);">紫 = 代理登録</span><span>赤枠 = 現在時刻 (${nowH}時)</span><span>● 得意属性</span>`
-                : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の戦闘可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
+                : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の参加可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
         }
         // ========== 🔒 凸の予約 (L2 / 課題E・運営ONのみ) ==========
         // 承認するとソルバーの固定制約になる。承認は運営の誰か1人でよく、
@@ -18490,7 +18488,7 @@
             const pins = rows.filter(r => r.status === 'pinned');   // 📌 運営の下書き (パズル盤 ③)
             const done = rows.filter(r => ['fulfilled', 'released', 'rejected'].includes(r.status));
             const expiredPins = rv.expiredPins ? rv.expiredPins(pins) : [];   // ⏰ 返事の無い 📣 (全体監査 #7)
-            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}${expiredPins.length ? ` · ⏰ 期限切れ ${expiredPins.length}` : ''}`;
+            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 予約 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}${expiredPins.length ? ` · ⏰ 期限切れ ${expiredPins.length}` : ''}`;
 
             const who = (r) => escapeHtml(r.player_name || `#${r.player_id}`);
             const what = (r) => escapeHtml(rv.describe(r, bossName));
@@ -18526,20 +18524,20 @@
                     + btn('続行してもらう', `handleReservationKeep(${Number(r.id)})`, '', r.id), 'pending')).join(''));
             }
             if (approved.length) {
-                sections.push(`<div class="dc-resv-head">固定中 (${approved.length})</div>` + approved.map(r => card(r,
+                sections.push(`<div class="dc-resv-head">🔒 予約 (${approved.length})</div>` + approved.map(r => card(r,
                     btn('取り下げる', `handleReservationRelease(${Number(r.id)}, 'ops')`, '', r.id)
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.approved_by || '')}${r.approved_by ? ' が承認' : ''}</span>`,
                     'approved')).join(''));
             }
             if (pins.length) {
                 // ⏰ 期限が過ぎても返事の無い 📣 は目立たせ、まとめて外せる (全体監査 #7。自動では外さない — 本人が遅れて引き受けることもある)
-                sections.push(`<div class="dc-resv-head">📌 運営の固定 (${pins.length})${expiredPins.length ? ` <button type="button" class="dc-resv-btn" style="margin-left:8px;" onclick="_opsReleaseExpiredPins()">⏰ 期限切れ ${expiredPins.length} 件をまとめて外す</button>` : ''}</div>` + pins.map(r => card(r,
+                sections.push(`<div class="dc-resv-head">📌 運営の仮置き (${pins.length})${expiredPins.length ? ` <button type="button" class="dc-resv-btn" style="margin-left:8px;" onclick="_opsReleaseExpiredPins()">⏰ 期限切れ ${expiredPins.length} 件をまとめて外す</button>` : ''}</div>` + pins.map(r => card(r,
                     (r.asked_at
                         ? `<span style="font-size:10px;font-weight:800;color:${rv.isExpiredPin && rv.isExpiredPin(r) ? 'var(--bad-deep)' : 'var(--warn-deep)'};align-self:center;">${rv.isExpiredPin && rv.isExpiredPin(r) ? '⏰ 期限切れ' : '📣 お願い中'}${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
                         : (_homeSimple() ? '' : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id)))
                     + btn('🔒 確定', `_opsPlanConfirmPin(${Number(r.id)})`, 'primary', r.id)
                     + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
-                    + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が固定' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
+                    + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が仮置き' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
                     'pending')).join(''));
             }
             if (done.length) {
@@ -18687,7 +18685,7 @@
             // ★ 候補そのものが置けない (約束の時刻にそのボスがいない見込み 等) なら承認しない。
             //   理由は日本語で (ユーザー決定 C の置き換え・D)
             if (impact && impact.cannotPlace) {
-                alert(`❌ この予約は固定できません。\n\n${impact.cannotPlaceText}\n\n本人と時刻を相談するか、「見送る」を押してください。`);
+                alert(`❌ この予約は承認できません。\n\n${impact.cannotPlaceText}\n\n本人と時刻を相談するか、「見送る」を押してください。`);
                 return;
             }
             // ★ 承認すると本人の固定済みの予約が置けなくなる (キャラ被り) = 物理的に両方できない → 承認不可 (2026-09-08 実機で発覚)
@@ -18710,14 +18708,14 @@
                 + '・ほかのメンバーには何も届きません\n'
                 + '・取り消したくなったら「取り下げる」で外せます (本人に通知が届きます)';
             if (impact) {
-                msg += `\n\n【固定した場合の影響 — いまの提出 (${impact.mockCount != null ? impact.mockCount + ' 人分' : '模擬だけ'}) で仮に組んだ参考値】\n`
+                msg += `\n\n【承認した場合の影響 — いまの提出 (${impact.mockCount != null ? impact.mockCount + ' 人分' : '模擬だけ'}) で仮に組んだ参考値】\n`
                     + `・Lv${impact.clearBefore} 完全攻略の見込み → ${impact.clearAfter >= impact.clearBefore ? '変わりません' : `Lv${impact.clearAfter} に下がります`}\n`
                     + `・未消化の凸 ${impact.unusedBefore} → ${impact.unusedAfter}\n`
                     + `・総与ダメ ${impact.creditedDiffB >= 0 ? '+' : ''}${impact.creditedDiffB.toFixed(1)}B`
                     + (impact.movedCount != null ? `\n・仮のプランの中で割当が動く人: ${impact.movedCount} 名 (本人たちには見えません)` : '');
                 if (impact.warnings.length) msg += `\n\n⚠️ ${impact.warnings.join('\n⚠️ ')}`;
                 if (impact.clearAfter < impact.clearBefore) msg += '\n\n※ 攻略の見込みが下がります。それでも承認しますか？';
-                if (impact.breaks && impact.breaks.length) msg += '\n\n※ 固定済みの予約が置けなくなります (上の ⚠️)。それでも承認しますか？';
+                if (impact.breaks && impact.breaks.length) msg += '\n\n※ 承認済みの予約が置けなくなります (上の ⚠️)。それでも承認しますか？';
             }
             // ★ 承認時点の提出 (snap — 上で影響の算出にも使った) が申請時と違えば運営に見せてから固定する
             const changed = snap && (
@@ -18725,9 +18723,9 @@
                 || snap.characters.slice().sort().join('\u0001')
                    !== (Array.isArray(row.characters_snapshot) ? row.characters_snapshot.slice().sort().join('\u0001') : ''));
             if (changed) {
-                msg += `\n\n【申請後に本人が編成を変えています】\n`
-                    + `・申請時 ${Number(row.expected_damage_b || 0).toFixed(1)}B → いま ${Number(snap.expectedDamageB).toFixed(1)}B\n`
-                    + '承認すると、いまの内容で固定されます。';
+                msg += `\n\n【予約のあとに本人が編成を変えています】\n`
+                    + `・予約したとき ${Number(row.expected_damage_b || 0).toFixed(1)}B → いま ${Number(snap.expectedDamageB).toFixed(1)}B\n`
+                    + '承認すると、いまの内容で予約が決まります。';
             }
             if (!confirm(msg)) return;
             const ok = await _resvTransition(id, 'approved', {
@@ -18749,7 +18747,7 @@
                 showNotification(`🔒 承認しました。残り ${remaining} 件を承認してから配信へ進みます`);
                 return;
             }
-            await _recomputeAndOfferPublish('承認した予約を固定して組み直しました');
+            await _recomputeAndOfferPublish('承認した予約を入れて組み直しました');
         }
 
         // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
@@ -18779,7 +18777,7 @@
             const label = row ? (row.player_name || `#${row.player_id}`) : `#${id}`;
             const from = row?.status === 'cancel_requested' ? 'cancel_requested' : 'approved';
             const jp = rv?.RELEASE_JP[reason] || reason;
-            if (!confirm(`${label} の予約を取り下げますか？ (${jp})\n\n固定が外れ、次の算出からその枠は自由に使われます。`)) return;
+            if (!confirm(`${label} の予約を取り下げますか？ (${jp})\n\n予約が外れ、次の算出からその枠は自由に使われます。`)) return;
             const ok = await _resvTransition(id, 'released', { expectFrom: from, reason, done: '予約を取り下げました' });
             if (ok) _notifyMemberResv(row, '予約が取り下げられました', `${_resvRowJp(row)} (${jp})`);
             if (ok) showNotification('取り下げた枠を使うには、プランを算出し直して配信してください');
@@ -19916,7 +19914,7 @@
         async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
             const fresh = scenario === 'fresh';
             const msg = fresh
-                ? '🧪 予約テスト (序盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (予約の申請→承認→固定→凸報告を練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約・締め凸依頼・配信も一緒に消えます。ただし送った Push の履歴と、端末に届いた通知は残ります)'
+                ? '🧪 予約テスト (序盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (予約→承認→配信→結果の取り込みを練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約・締め凸依頼・配信も一緒に消えます。ただし送った Push の履歴と、端末に届いた通知は残ります)'
                 : '🧪 クイックテスト (中盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元';
             if (!confirm(msg)) return;
             try {
@@ -20417,7 +20415,7 @@
                     const idxs = slotIdxsOf(p);
                     if (idxs.length === 0) {
                         if (p.flexTime) return `<div data-ops-only style="margin:5px 0 0 37px;"><span style="font-size:9.5px;font-weight:800;color:var(--warn-deep);background:rgba(245,158,11,0.12);border-radius:999px;padding:2px 8px;">⏳ 隙間型 — 時間指定なしで3凸対応</span></div>`;
-                        return `<div data-ops-only style="margin:5px 0 0 37px;font-size:9.5px;font-weight:800;color:var(--t-muted);">戦闘可能時間 未登録</div>`;
+                        return `<div data-ops-only style="margin:5px 0 0 37px;font-size:9.5px;font-weight:800;color:var(--t-muted);">参加可能時間 未登録</div>`;
                     }
                     const runs = [];
                     let s = idxs[0], prev = idxs[0];
@@ -20660,10 +20658,10 @@
                     <div class="js-avatars" style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${P.avatarsHtml}</div>
                     ${editPanel}
                     <!-- 操作ボタン行は運営専用: OFF時に「押せるのに何も起きない」を防ぐ (実機FB)。
-                         押した先の締め凸候補検索カード自体が data-ops-only のため -->
+                         押した先の締め凸検索カード自体が data-ops-only のため -->
                     <div data-ops-only style="display:flex;gap:6px;margin-top:10px;">
                         <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
-                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? 'var(--s2)' : P.c};color:${P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c)};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索'}</button>
+                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? 'var(--s2)' : P.c};color:${P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c)};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締め凸検索'}</button>
                     </div>
                     <div class="js-reqs">${P.reqs}</div>
                 </div>`;
@@ -20699,9 +20697,9 @@
             const fin = card.querySelector('.js-finish');
             if (fin) {
                 fin.disabled = P.finDisabled;
-                fin.dataset.weakness = b.weakness || '';   // 弱点変更が締凸検索の対象に反映されるように
+                fin.dataset.weakness = b.weakness || '';   // 弱点変更が締め凸検索の対象に反映されるように
                 fin.title = P.finTitle;
-                fin.textContent = P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索';
+                fin.textContent = P.lv4B5 ? '♾️ 締め凸不要' : '締め凸検索';
                 fin.style.background = P.finDisabled ? 'var(--s2)' : P.c;
                 fin.style.color = P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c);
                 fin.style.cursor = P.finDisabled ? 'not-allowed' : 'pointer';
@@ -21015,7 +21013,7 @@
             return `
                 <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:var(--s1);">
                     <summary style="cursor:pointer;font-size:13px;font-weight:700;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
-                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--t-body);">戦闘可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
+                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--t-body);">参加可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
                     <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.8;">${itemsHtml}</ul>
                 </details>`;
         }
@@ -21771,7 +21769,7 @@
             ctx.beginPath(); ctx.moveTo(PAD, y + 6); ctx.lineTo(W - PAD, y + 6); ctx.stroke();
             ctx.font = f(13, 700);
             ctx.fillStyle = COL.faint;
-            ctx.fillText('Generated by しりすこPAD · 時刻は戦闘可能時間からの想定です', PAD, y + 32);
+            ctx.fillText('Generated by しりすこPAD · 時刻は参加可能時間からの想定です', PAD, y + 32);
 
             return new Promise((resolve, reject) => {
                 canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
@@ -22135,7 +22133,7 @@
                 // 🧱 ブロックの人だけ (2026-10-18): その時間帯のどれかに出られる人 (⏳隙間・未登録はいつでも) に絞る
                 availableAtSlots: Array.isArray(options.availableAtSlots) && options.availableAtSlots.length ? options.availableAtSlots : undefined,
                 availableAtLabel: options.availableAtLabel || undefined,
-                timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
+                timeAware: true,   // 参加可能時間からレベル進行の実現可能性をスケジュール
                 timeStrict: _opsPlanTimeMode === 'strict',   // ⏰ 時間厳守: 時間外のベストエフォート組み込みをしない
                 // ★ L1 安定化 (2026-09-07): **いま配信中のプラン** をソルバーに渡す。
                 //   メンバーへの約束は「配信したもの」なので、手元で何度算出し直しても基準は動かない。
@@ -22489,9 +22487,9 @@
                 // ★ 予約は押した時点の DB から取り直す (別の運営が承認・固定していたら、それを見て判断する)
                 let rows = null;
                 try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
-                if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため固定できません'); return; }
+                if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため仮置きできません'); return; }
                 // ★ 45 未適用はここで止める (insert まで行くと 39 未適用と誤読する。読み出しが列の有無を覚えている)
-                if (window.supabaseReservationPinColsMissing?.() === true) { showNotification('📌 固定を置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql で確認できます)'); return; }
+                if (window.supabaseReservationPinColsMissing?.() === true) { showNotification('📌 仮置きを置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql で確認できます)'); return; }
                 const chk = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
                                               doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
                 if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
@@ -22507,7 +22505,7 @@
                         if (ans.mode === 'pick') keeps = sw.free.filter(r => r.key !== ans.key);
                         // ★ 確認している間に別の運営・本人が予約や固定を作ったかもしれない → 予約を取り直して、置けるかを見直す (Codex指摘 2026-09-12)
                         try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
-                        if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため固定できません'); return; }
+                        if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため仮置きできません'); return; }
                         const again = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
                                                         doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
                         if (!again.ok) { showNotification(`置けません (確認している間に状況が変わりました): ${again.label}`); return; }
@@ -22532,7 +22530,7 @@
                 for (const k of keeps) {
                     // ★ 残す凸も置けるかを見直す (本人の申請と同じカード / キャラ被り / 上限)。置けないものは固定せず算出に任せる (Codex指摘 2026-09-12)
                     const ok = rv.canPin(rows, { playerId: player.id, bossNumber: k.bossNumber, loadoutSlot: k.loadoutSlot, characters: k.team, doneAttacks: Number(player.attackCount) || 0 });
-                    if (!ok.ok) { showNotification(`⚠ B${k.bossNumber} の凸は固定せず算出に任せます: ${ok.label}`); continue; }
+                    if (!ok.ok) { showNotification(`⚠ B${k.bossNumber} の凸は仮置きせず算出に任せます: ${ok.label}`); continue; }
                     try {
                         const kr = await window.supabaseCreateReservation({
                             seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber: k.bossNumber,
@@ -22542,10 +22540,10 @@
                         });
                         if (kr) rows = rows.concat([kr]);
                         kept += 1;
-                    } catch (e) { showNotification(`⚠ B${k.bossNumber} の凸を残す固定に失敗: ${e?.message || e}`); }
+                    } catch (e) { showNotification(`⚠ B${k.bossNumber} の凸を残す仮置きに失敗: ${e?.message || e}`); }
                 }
-                window.supabaseLogActivity?.('ops', `📌 固定: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}${kept ? ` / 残す ${kept} 凸も固定` : ''}`, { actorName: me?.name || null });
-                showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に固定して組み直します${kept ? ` (残す ${kept} 凸も固定)` : ''}`);
+                window.supabaseLogActivity?.('ops', `📌 仮置き: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}${kept ? ` / 残す ${kept} 凸も仮置き` : ''}`, { actorName: me?.name || null });
+                showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に仮置きして組み直します${kept ? ` (残す ${kept} 凸も仮置き)` : ''}`);
                 _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
                 opsStore.invalidate();
                 if (typeof renderOpsReservations === 'function') renderOpsReservations(true).catch(() => { /* 次の周期で */ });
@@ -22574,11 +22572,11 @@
             let note;
             if (sw.over > 1) note = `残り凸 ${sw.capacity} に対して ${sw.over} つ多くなります。外す凸は<b>算出に任せて</b>ください`;
             else if (sw.over === 1) note = sw.pickable
-                ? `1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で固定して残します (算出で動かないように)`
-                : `1 つ外す必要がありますが、選べる凸がありません (約束・固定だけ)。外す凸は<b>算出に任せて</b>ください`;
-            else note = `同じキャラの凸が外れます。残りは 📌 で固定して残します`;
+                ? `1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で仮置きして残します (算出で動かないように)`
+                : `1 つ外す必要がありますが、選べる凸がありません (予約・仮置きだけ)。外す凸は<b>算出に任せて</b>ください`;
+            else note = `同じキャラの凸が外れます。残りは 📌 で仮置きして残します`;
             return `${head}<p class="ps-note" style="font-weight:900;color:var(--t-strong);">${title}</p><div class="ps-list">${rows}</div>`
-                + `<p class="ps-note">${note}。「算出に任せる」は新しい固定だけ置き、どれを外すかは算出が決めます (総与ダメが最大になる組み合わせ)</p>`;
+                + `<p class="ps-note">${note}。「算出に任せる」は新しい仮置きだけ置き、どれを外すかは算出が決めます (総与ダメが最大になる組み合わせ)</p>`;
         }
         let _planSwapResolver = null;
         function _opsPlanSwapModal(sw, piece) {
@@ -22591,7 +22589,7 @@
                 body.innerHTML = _opsPlanSwapHtml(sw, piece);
                 modal.dataset.pick = sw.pickable ? '1' : '0';
                 const go = document.getElementById('planSwapGoBtn');
-                // 「入れ替えて固定する」は 選べるとき か 何も選ばなくてよいとき (被りが外れるだけ) に押せる
+                // 「入れ替えて仮置きする」は 選べるとき か 何も選ばなくてよいとき (被りが外れるだけ) に押せる
                 if (go) { const can = sw.pickable || sw.over === 0; go.disabled = !can; go.style.opacity = can ? '' : '0.45'; }
                 modal.classList.add('open');
             });
@@ -22611,9 +22609,9 @@
         // 固定を外す (下書きなので確認は軽く)。約束 (approved) はここでは扱わない
         async function _opsPlanUnpin(id) {
             const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
-            if (row && row.status !== 'pinned') { showNotification('この固定はもう下書きではありません (本人が引き受けた / 外れた)'); return; }
-            if (row && row.asked_at && !confirm('本人にお願い済みの固定です。外すと本人の画面からも消えます。外しますか？')) return;
-            const ok = await _resvTransition(Number(id), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 固定を外しました' });
+            if (row && row.status !== 'pinned') { showNotification('この仮置きはもう下書きではありません (本人が引き受けた / 外れた)'); return; }
+            if (row && row.asked_at && !confirm('本人にお願い済みの仮置きです。外すと本人の画面からも消えます。外しますか？')) return;
+            const ok = await _resvTransition(Number(id), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 仮置きを外しました' });
             if (ok) { _opsPlanSel = null; _opsPlanFocus = null; await computeAndRenderOptimalPlan(); }
         }
         // ⏰ 期限切れの 📣 お願い (返事の無い 📌) をまとめて外す (全体監査 2026-09-14 #7)。
@@ -22621,12 +22619,12 @@
         async function _opsReleaseExpiredPins() {
             const rv = window.reservationsDomain;
             const targets = rv && rv.expiredPins ? rv.expiredPins(_resv.rows || []) : [];
-            if (!targets.length) { showNotification('期限切れの固定はありません'); return; }
+            if (!targets.length) { showNotification('期限切れの仮置きはありません'); return; }
             if (!confirm(`⏰ 期限切れのお願い ${targets.length} 件を外しますか？ 本人の画面からも消えます (遅れて引き受けたい人がいれば、その人だけ残してください)`)) return;
             let n = 0;
             for (const r of targets) { if (await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ask_expired', quiet: true })) n++; }
             const failed = targets.length - n;   // 別の運営が先に外した / 本人が引き受けた 等 (RPC が期待状態で弾く)
-            showNotification(failed ? `⏰ 期限切れの固定を ${n} 件外しました (${failed} 件は先に状態が変わっていました)` : `⏰ 期限切れの固定を ${n} 件外しました`);
+            showNotification(failed ? `⏰ 期限切れの仮置きを ${n} 件外しました (${failed} 件は先に状態が変わっていました)` : `⏰ 期限切れの仮置きを ${n} 件外しました`);
             if (n) { _opsPlanSel = null; _opsPlanFocus = null; if (typeof computeAndRenderOptimalPlan === 'function') await computeAndRenderOptimalPlan(); }
         }
         // 🔒 確定: 📌 (運営の下書き) を本人の返事を待たずに約束 (approved) にする (2026-10-10 運営チーム「お互いの締結なしで仮置きを確定したい」)。
@@ -22635,7 +22633,7 @@
         async function _opsPlanConfirmPin(id) {
             const rv = window.reservationsDomain;
             const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
-            if (!row || row.status !== 'pinned') { showNotification('この固定はもう下書きではありません (本人が引き受けた / 外れた)'); return; }
+            if (!row || row.status !== 'pinned') { showNotification('この仮置きはもう下書きではありません (本人が引き受けた / 外れた)'); return; }
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             const what = rv.describe(row, bossName);
             const who = row.player_name || '#' + row.player_id;
@@ -22653,23 +22651,23 @@
         async function _opsPlanAsk(id) {
             const rv = window.reservationsDomain;
             const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
-            if (!row || row.status !== 'pinned') { showNotification('この固定はもう下書きではありません'); return; }
+            if (!row || row.status !== 'pinned') { showNotification('この仮置きはもう下書きではありません'); return; }
             if (row.asked_at) { showNotification('もうお願い済みです'); return; }
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             const what = rv.describe(row, bossName);
-            if (!confirm(`📣 ${row.player_name || '#' + row.player_id} さんに「${what}」をお願いしますか？\n\n本人のホームに出て、引き受けると 🔒 (約束) になります。返事の期限は 15 分です。`)) return;
+            if (!confirm(`📣 ${row.player_name || '#' + row.player_id} さんに「${what}」をお願いしますか？\n\n本人のホームに出て、引き受けると 🔒 (予約) になります。返事の期限は 15 分です。`)) return;
             const me = getCurrentIdentity();
             try {
                 await window.supabaseAskPin(row.id, { deadlineAt: new Date(Date.now() + 15 * 60000).toISOString(), expectUpdatedAt: row.updated_at });   // 楽観ロック (全体監査 #8)
                 try {
                     await window.sendPushNotification({
                         title: '📣 運営から凸のお願い',
-                        body: `${what} をお願いできますか？ ホームの「引き受けた凸」から返事してください (期限 15 分)`,
+                        body: `${what} をお願いできますか？ ホームの「🔒 予約」から返事してください (期限 15 分)`,
                         playerIds: [row.player_id], tag: 'pin-ask', ignoreAvailability: true,
                     }, { senderPlayerId: me?.id });
                 } catch (e) { console.warn('[pin ask push]', e?.message || e); }
                 window.supabaseLogActivity?.('ops', `📣 凸のお願い: ${row.player_name || '#' + row.player_id} に ${what}`, { actorName: me?.name || null });
-                showNotification('📣 お願いしました (返事はホームの「引き受けた凸」に届きます)');
+                showNotification('📣 お願いしました (返事はホームの「🔒 予約」に届きます)');
                 _opsPlanSel = null;
                 if (typeof renderOpsReservations === 'function') await renderOpsReservations(true);
                 renderOpsPlanView();
@@ -22699,7 +22697,7 @@
                 if (p.flexTime) return `⏳ ${label || 'いつでも'}`;
                 return label || '時間 未登録';
             };
-            const body = groups.map(g => `<div class="mem">${esc(g.name)}<span class="rem${g.remaining <= 0 ? ' zero' : ''}">残${g.remaining}</span><span class="hrs" title="出られる時間">${esc(hoursOf(g.memberId))}</span></div>`
+            const body = groups.map(g => `<div class="mem">${esc(g.name)}<span class="rem${g.remaining <= 0 ? ' zero' : ''}">残${g.remaining}</span><span class="hrs" title="参加可能時間">${esc(hoursOf(g.memberId))}</span></div>`
                 + g.items.map(x => {
                     const v = ATTR_VISUAL[x.attr] || null;
                     const cls = ['plan-piece']; if (x.placed) cls.push('placed');
@@ -22714,7 +22712,7 @@
             const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
             // ★ 45 未適用なら箱の頭で言う (置こうとして初めて分かるのでは遅い。読み出しが列の有無を覚えている)
             const noPins = (typeof window !== 'undefined' && typeof window.supabaseReservationPinColsMissing === 'function') ? window.supabaseReservationPinColsMissing() === true : false;
-            const noPinsHtml = noPins ? '<p class="hint warn">⚠ 📌 固定を置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql の 45 が true になれば OK)</p>' : '';
+            const noPinsHtml = noPins ? '<p class="hint warn">⚠ 📌 仮置きを置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql の 45 が true になれば OK)</p>' : '';
             return `<div class="plan-tray${_opsPlanTrayOpen ? '' : ' closed'}">${noPinsHtml}`
                 + `<div class="th"><h4>🧩 模擬ピース</h4><span class="n">提出された模擬カード · 未使用 ${unused}</span><button type="button" class="tog" onclick="_opsPlanTrayToggle()">${_opsPlanTrayOpen ? '畳む' : '開く'}</button></div>`
                 + `<div class="filt"><button type="button" onclick="_opsPlanTrayFilter('')" aria-pressed="${!_opsPlanTrayAttr}">全部</button>`
@@ -22738,22 +22736,22 @@
                 const row = sel.reservationId != null && typeof _resv !== 'undefined' && Array.isArray(_resv.rows) ? _resv.rows.find(r => Number(r.id) === Number(sel.reservationId)) : null;
                 if (sel.pinned && sel.reservationId != null) {
                     const asked = !!(row && row.asked_at);
-                    acts = `<small>📌 運営の固定${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
+                    acts = `<small>📌 運営の仮置き${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
                         + (asked || _homeSimple() ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
                         + `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人に通知して 🔒 予約にする">🔒 確定する</button>`
-                        + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">固定を外す</button>`;
+                        + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">仮置きを外す</button>`;
                 } else {
-                    acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 固定して組み直します (レベルは算出が決めます)</small>`;
+                    acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 仮置きして組み直します (レベルは算出が決めます)</small>`;
                 }
             } else if (_opsPlanPromiseNote === 'done') {
                 acts = '<small>✓ 報告済みの計画 — もう凸権限は残っていないので動かしません (実際の凸は ✓ の札で同じ表に出ています)</small>';
             } else if (_opsPlanPromiseNote === 'spent') {
                 acts = '<small>✗ 3凸を使い切った人の計画 — 別のボスに凸したので、この計画は実行されません (置き直す相手は他の人から)</small>';
             } else if (_opsPlanPromiseNote) {
-                acts = '<small>🔒 本人が引き受けた約束 — 運営の手では動かしません (取り下げは「凸の予約」カードから)</small>';
+                acts = '<small>🔒 本人の予約 — 運営の手では動かしません (取り下げは「凸の予約」カードから)</small>';
             }
             return `<div class="plan-focus"><span>${esc(p.name)}${p.flexTime ? ' · ⏳隙間型' : ''}</span>`
-                + `<small>出られる時間 ${esc(hours || (p.flexTime ? 'いつでも' : '未登録'))} · 動かせる幅 <b>${esc(st.label)}</b> (これから ${st.count} コマ)</small>`
+                + `<small>参加可能時間 ${esc(hours || (p.flexTime ? 'いつでも' : '未登録'))} · 動かせる幅 <b>${esc(st.label)}</b> (これから ${st.count} コマ)</small>`
                 + acts
                 + `<button type="button" class="x" onclick="_opsPlanClearSel()">閉じる</button></div>`;
         }
@@ -22864,7 +22862,7 @@
                     ? ` data-member="${esc(String(a.memberId ?? ''))}" data-slot="${Number(a.loadoutSlot) || 1}" data-attr="${esc(String(b.weakness || ''))}" data-resv="${esc(String(a.reservationId ?? ''))}" data-pinned="${kind === 'pin' ? 1 : 0}" data-promise="${promise ? 1 : 0}" draggable="${_opsPlanDragOk() && !promise ? 'true' : 'false'}"`
                     : '';
                 const focused = ops && _opsPlanFocus != null && String(a.memberId) === String(_opsPlanFocus);
-                const tip = `${a.memberName} ${Number(a.dmgB).toFixed(1)}B${a.hourLabel ? ' · ' + a.hourLabel : ''}${kind === 'pin' ? ' · 📌 運営が固定' : promise ? ' · 🔒 本人の約束' : ''}`;
+                const tip = `${a.memberName} ${Number(a.dmgB).toFixed(1)}B${a.hourLabel ? ' · ' + a.hourLabel : ''}${kind === 'pin' ? ' · 📌 運営が仮置き' : promise ? ' · 🔒 本人の予約' : ''}`;
                 return `<div class="bb-piece bb-${kind}${mine ? ' mine' : ''}${focused ? ' focus' : ''}"${attrs} title="${esc(tip)}" style="${w ? `width:${w};` : ''}background:${(_BB_FILL[b.weakness] || _BB_FILL.iron)[0]};color:${(_BB_FILL[b.weakness] || _BB_FILL.iron)[1]};">`
                     + `<span class="h">${esc(a.hourLabel || '')}</span><span class="n">${KIND_JP[kind]}${esc(a.memberName || '')}</span><span class="d">${Number(a.dmgB).toFixed(1)}B</span></div>`;
             };
@@ -22892,14 +22890,14 @@
                     const list = dom.boardCandidates(r, { pieces: trayPieces, players: snap?.players || [], hourIdxs: railHours, hourOrder: HOUR_ORDER, plan }).slice(0, 3);
                     _opsBoardCands[ri] = list.map(c => ({ ...c, bossNumber: r.bossNumber }));
                     if (list.length) {
-                        cands = `<div class="bb-cands"><span class="k">候補</span>${list.map((c, k) => `<button type="button" class="bb-cand${c.killed ? ' kill' : ''}" onclick="_opsBoardCandPlace(${ri}, ${k})" title="押すとこの時刻に置いて 📌 で固定します (置く前に残凸・キャラ被り・🔒 約束を確かめます)">`
+                        cands = `<div class="bb-cands"><span class="k">候補</span>${list.map((c, k) => `<button type="button" class="bb-cand${c.killed ? ' kill' : ''}" onclick="_opsBoardCandPlace(${ri}, ${k})" title="押すとこの時刻に置いて 📌 で仮置きします (置く前に残凸・キャラ被り・🔒 予約を確かめます)">`
                             + `${esc(c.piece.name)} ${esc(pt?.name || '')} ${Number(c.piece.dmgB).toFixed(1)}B · ${esc(_planHourHeadLabel(c.hourIdx))}`
                             + `<small>${c.killed ? `撃破 ✓ · 余り ${c.overB.toFixed(1)}B` : `あと ${c.gapAfterB.toFixed(1)}B`} · 残凸 ${Number(c.piece.remaining)}${c.needsSwap ? ' · 入れ替えが要る' : ''}</small></button>`).join('')}</div>`;
                     }
                 }
                 return `<div class="bb-row${r.infinite ? ' inf' : ''}">${head}${bar}${rail}${cands}</div>`;
             }).join('');
-            const legend = `<div class="bb-legend">枠の長さ = 残り HP · ピースの幅 = 模擬ダメージの目安 · 角の数字 = 時刻 · <span class="bb-key auto">自動で置いた</span><span class="bb-key pin">📌 運営が固定</span><span class="bb-key promise">🔒 本人の約束</span>${hl != null ? '<span class="bb-key mine">あなた</span>' : ''}</div>`;
+            const legend = `<div class="bb-legend">枠の長さ = 残り HP · ピースの幅 = 模擬ダメージの目安 · 角の数字 = 時刻 · <span class="bb-key auto">自動で置いた</span><span class="bb-key pin">📌 運営が仮置き</span><span class="bb-key promise">🔒 本人の予約</span>${hl != null ? '<span class="bb-key mine">あなた</span>' : ''}</div>`;
             return `<div class="bb">${legend}${html}</div>`;
         }
         // ② 候補を押す = その模擬ピースを選んで、その時刻に置く (置く関数は時間割と同じ _opsPlanPlace: 残凸・キャラ被り・約束を押した時点で確かめる)
@@ -23030,10 +23028,10 @@
                         ${statChip('想定総凸数', plan.totalAttacks)}
                         ${statChip('オーバーキル', plan.totalWaste.toFixed(2) + ' B', plan.totalWaste > 5 ? '#F59E0B' : '#18C26B')}
                         ${statChip('未消化凸', plan.unusedAttacks, plan.unusedAttacks > 0 ? '#F59E0B' : '#8A9097')}
-                        ${Number(plan.reservationCount) > 0 ? statChip('🔒予約を固定', plan.reservationCount + '件', '#6C42F0') : ''}
+                        ${Number(plan.reservationCount) > 0 ? statChip('🔒 予約', plan.reservationCount + '件', '#6C42F0') : ''}
                     </div>
-                    ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を固定して計算しました。固定した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
-                    ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:var(--bad-deep);line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
+                    ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を入れて計算しました。予約した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
+                    ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:var(--bad-deep);line-height:1.55;">⚠ 置けなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
                     ${Array.isArray(plan.outOfScopeReservations) && plan.outOfScopeReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。<br>${plan.outOfScopeReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} B${Number(u.bossNumber)}${u.flex ? ' ⏳隙間' : (/^h\d\d$/.test(String(u.timeSlot || '')) ? ` ${Number(String(u.timeSlot).slice(1))}時` : '')}`).join('<br>')}<br>その人が出られるブロックで組むときに置きます。</div>` : ''}
                 </div>`;
 
@@ -23080,11 +23078,11 @@
                             // 左端の固定幅 時刻カラム (配信版「わたしの凸」と同じ設計)。
                             // 時刻・⏳・⚠ を本文と別カラムに隔離することで、編成アイコンと重ならない
                             const timeCol = a.timeMismatch
-                                ? `<div style="width:54px;flex:none;text-align:center;" title="戦闘可能時間がレベル開放と合わないため最寄り扱いで組み込み (本人と時間調整を)"><div style="font-size:11px;font-weight:900;color:var(--warn-deep);">⚠時間外</div><div style="font-size:10px;font-weight:800;color:var(--warn-deep);margin-top:1px;">希望${esc(a.nearestHourLabel || '?')}</div></div>`
+                                ? `<div style="width:54px;flex:none;text-align:center;" title="参加可能時間がレベル開放と合わないため最寄り扱いで組み込み (本人と時間調整を)"><div style="font-size:11px;font-weight:900;color:var(--warn-deep);">⚠時間外</div><div style="font-size:10px;font-weight:800;color:var(--warn-deep);margin-top:1px;">希望${esc(a.nearestHourLabel || '?')}</div></div>`
                                 : a.flex
                                 ? `<div style="width:54px;flex:none;text-align:center;" title="隙間時間型: 時間帯は本人の都合次第 (3凸は行う)"><div style="font-size:12px;font-weight:900;color:var(--warn-deep);">⏳隙間</div></div>`
                                 : a.hourLabel
-                                ? `<div style="width:54px;flex:none;text-align:center;" title="${a.isBottleneck ? 'この凸がこのレベルのクリア時刻を決めています (律速)' : ''}${a.timeUnknown ? '戦闘可能時間が未登録のため、開放後の最速枠に仮置き (この時刻に居られる保証はない)' : (a.isBottleneck ? '' : '凸予定の時間帯')}">
+                                ? `<div style="width:54px;flex:none;text-align:center;" title="${a.isBottleneck ? 'この凸がこのレベルのクリア時刻を決めています (律速)' : ''}${a.timeUnknown ? '参加可能時間が未登録のため、開放後の最速枠に仮置き (この時刻に居られる保証はない)' : (a.isBottleneck ? '' : '凸予定の時間帯')}">
                                         <div style="font-size:14px;font-weight:900;color:${a.isBottleneck ? 'var(--bad-deep)' : 'var(--t-ink)'};font-variant-numeric:tabular-nums;">${esc(a.hourLabel)}</div>
                                         ${a.isBottleneck ? '<div style="font-size:10px;font-weight:900;color:var(--bad-deep);margin-top:1px;">⏱律速</div>' : ''}
                                         ${a.timeUnknown ? '<div style="margin-top:2px;"><span style="display:inline-block;font-size:10px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.14);border-radius:999px;padding:1px 7px;">未登録</span></div>' : ''}
@@ -23094,7 +23092,7 @@
                             const meTag = isMe ? '<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);padding:1px 7px;border-radius:999px;">あなた</span>' : '';
                             const reservedTag = a.reserved ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);padding:1px 7px;border-radius:999px;" title="踏破には使わずボス5(無限)へ温存 — 全額スコアに入る">🔒温存</span>` : '';
                             // 予約で固定した凸 (モック④)。組み直しても動かない
-                            const resvPin = a.fromReservation ? (a.pinned ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="運営が時間割に置いた固定 (下書き)。本人が引き受けると 🔒 になります">📌固定</span>` : `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="本人が引き受け、運営が承認した凸。組み直しても動きません">🔒予約</span>`) : '';
+                            const resvPin = a.fromReservation ? (a.pinned ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="📌 運営の仮置き (本人には見えません)。🔒 確定で予約になります">📌仮置き</span>` : `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="🔒 予約 (運営が承認した凸)。組み直しても動きません">🔒予約</span>`) : '';
                             // 編成は専用の2行目 (flex-wrap) — 他の要素と同じ行に置くと潰し合う
                             const teamRow = a.team
                                 ? `<div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;margin-top:4px;">${renderTeamSnippet(a.team, { size: 18 })}</div>`
@@ -23151,10 +23149,10 @@
 
             const warnings = [];
             if (plan.anyTimeConstrained) {
-                warnings.push('⏰ 火力はあるのに戦闘可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、戦闘可能時間の更新依頼を。');
+                warnings.push('⏰ 火力はあるのに参加可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、参加可能時間の更新依頼を。');
             }
             if (plan.membersTimeUnknown.length > 0) {
-                warnings.push(`戦闘可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（時間が無い人は凸プランの候補にしていません。時間の登録を依頼してください）`);
+                warnings.push(`参加可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（時間が無い人は凸プランの候補にしていません。時間の登録を依頼してください）`);
             }
             if (plan.fullyClearedThrough < 3 && !plan.anyTimeConstrained) {
                 warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。'
@@ -23212,7 +23210,7 @@
             const cc = window.planBoardDomain ? window.planBoardDomain.chipCounts(plan) : { promise: 0, pinned: 0, auto: 0 };
             const filtBtn = (f, label) => `<button type="button" onclick="setOpsPlanChipFilter('${f}')" aria-pressed="${_opsPlanChipFilter === f}" style="flex:none;padding:5px 9px;border-radius:999px;border:none;cursor:pointer;font-family:inherit;font-size:10.5px;font-weight:900;${_opsPlanChipFilter === f ? 'background:var(--t-ink);color:var(--card);' : 'background:var(--s2);color:var(--t-body);'}">${label}</button>`;
             const chipFilter = (_opsPlanViewMode === 'timetable' && _opsMode)
-                ? `<div class="plan-chipfilt" style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:-6px 0 10px;"><span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">表示</span>${filtBtn('all', 'すべて')}${filtBtn('promise', `🔒 約束 ${cc.promise}`)}${filtBtn('pinned', `📌 固定 ${cc.pinned}`)}${filtBtn('fixed', '🔒📌 両方')}</div>`
+                ? `<div class="plan-chipfilt" style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:-6px 0 10px;"><span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">表示</span>${filtBtn('all', 'すべて')}${filtBtn('promise', `🔒 予約 ${cc.promise}`)}${filtBtn('pinned', `📌 仮置き ${cc.pinned}`)}${filtBtn('fixed', '🔒📌 両方')}</div>`
                 : '';
             const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${viewBtn('board', '🧱', '盤')}${teamsBtn}</div>${chipFilter}`;
             // ② 時間割の読みやすさ (運営だけ): 選んだ人の戦闘可能時間を光らせ、チップに「硬い / 狭い」を出す
@@ -23363,7 +23361,7 @@
             const label = opts.label || esc(a.memberName);
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
                 ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;row-gap:2px;margin-top:2px;">${renderTeamSnippet(a.team, { size: 12 })}</div>` : '';
-            const tip = done ? _planDoneTip(a, done) : `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
+            const tip = done ? _planDoneTip(a, done) : `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (参加可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
             // ② 動かせる幅 (運営の時間割だけ): 硬い / 狭い の人にだけ小さく書く (パズル盤・2026-09-11)
             const stiff = typeof opts.stiffOf === 'function' ? opts.stiffOf(a.memberId) : null;
             const stiffRow = stiff ? `<div style="font-size:8px;font-weight:900;color:${hl ? nameColor : 'var(--warn-deep)'};text-align:center;line-height:1.1;">${esc(stiff)}</div>` : '';
@@ -23688,7 +23686,7 @@
             if (rv.fingerprint(nowRows) !== fp) {
                 alert('⚠️ 算出のあとに予約が変わりました (承認・解除・取り消し希望など)。\n\n'
                     + 'いま表示しているプランはその予約を知らないため、そのまま配信すると'
-                    + '固定したはずの凸が動く/外れたはずの凸が残る、が起きます。\n\n'
+                    + '予約した凸が動く/外れたはずの凸が残る、が起きます。\n\n'
                     + 'プランを算出し直してから配信してください。');
                 return false;
             }
@@ -24051,7 +24049,7 @@
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
             el.style.color = stale ? 'var(--warn-deep)' : 'var(--ok-deep)';
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
-                + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。固定して組み直し、配信し直してください`
+                + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。予約を入れて組み直し、配信し直してください`
                     : (stale ? ' — 盤面が動いていないか確認してください' : ''));
         }
 
@@ -25013,7 +25011,7 @@
 🆕 **できるようになったこと**
 ━━━━━━━━━━━━━━
 ✨ **模擬を5属性出すとレーダーチャートが完成!** 自分の属性別の強さ(模擬ふるり値)が五角形で見えます。しかも**ユニレ終了を待たずに今すぐ**見れる(今までは終了翌日まで出せなかった数値です)
-✨ **🔒 凸の予約** — 「この時間にこのボスをこの編成で」を先に申請できます。運営が承認するとその凸は固定され、プランを組み直しても動きません。「好きじゃない属性に回された…」は予約で防げます!
+✨ **🔒 凸の予約** — 「この時間にこのボスをこの編成で」を先に申請できます。運営が承認すると予約が決まり、プランを組み直しても動きません。「好きじゃない属性に回された…」は予約で防げます!
 ✨ **1属性に2編成登録OK** — 同属性2凸したい属性特化勢に対応。カードが2枚重なってめくれます
 ✨ **📚人気編成** — みんなの模擬から「その属性の人気キャラ・最高ダメ編成」が見れて、**ワンタップで自分の編成にコピー**できます。編成組むの苦手な人はこれ使って!
 ✨ 当日は**運営から凸プランがホームに配信**されます。自分が「いつ・どのボスに・何B」出せばいいか一目で分かる
@@ -25023,7 +25021,7 @@
 ━━━━━━━━━━━━━━
 1. PADをホーム画面に追加(アプリ化)→ 🔔通知ON ※iPhoneはアプリ化しないと通知が来ません
 2. ホームで **SLvを設定**(上の方のSLvチップをタップ)
-3. **戦闘可能時間**を塗る(時間が読めない人は「⏳隙間時間型」をONでOK)
+3. **参加可能時間**を塗る(時間が読めない人は「⏳隙間時間型」をONでOK)
 4. 出たい時間・ボスが決まっている人は、ホームの空き枠から**🔒 凸を予約**(運営が承認すると固定されます)
 
 ━━━━━━━━━━━━━━
@@ -25049,7 +25047,7 @@
 「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AIのお任せではなく、全部ルールで決まる計算**です(何回押しても同じ条件なら同じ答えが出ます)。
 
 **📥 材料にしているもの**
-みんなの模擬ダメージ(1属性につき最大2編成)/SLv/戦闘可能時間(⏳隙間型含む)/🔒承認済みの予約/ボスの残HP/いまの時刻。
+みんなの模擬ダメージ(1属性につき最大2編成)/SLv/参加可能時間(⏳隙間型含む)/🔒承認済みの予約/ボスの残HP/いまの時刻。
 **つまり、みんなの提出データの質 = プランの質**です。模擬とSLvが正確なほど、無駄のないプランになります。
 
 **⚖️ 割り当てのルール**
@@ -25059,7 +25057,7 @@
 3. **🔒 承認済みの予約は、その時刻・そのボス・その編成で固定**(組み直しても動きません)。得意属性の申告は計算に使いません
 4. **序盤の低レベルには控えめなダメージの人、終盤の高レベルには高火力の人を温存** — SLv順で役割分担します
 5. **オーバーキル(削りすぎ)が最小になる人を優先** — 残HP4Bのボスに30B出せる人を当てるのはもったいない、という計算です
-6. **時間も込みで組みます** — あなたの戦闘可能時間の中で、そのレベルが開く時刻以降の一番早い枠に割り当て。レベルのクリア時刻を決めている凸には「⏱律速」マークが付きます(その人が早く動けると全体が前倒しになる目印)。⏳隙間型の人は時刻を約束しない「できるとき枠」として扱います
+6. **時間も込みで組みます** — あなたの参加可能時間の中で、そのレベルが開く時刻以降の一番早い枠に割り当て。レベルのクリア時刻を決めている凸には「⏱律速」マークが付きます(その人が早く動けると全体が前倒しになる目印)。⏳隙間型の人は時刻を約束しない「できるとき枠」として扱います
 
 **🔄 途中で状況が変わったら?**
 運営が再計算ボタンを押すと、**その時点の残HP・消化済みの凸・残り時間だけ**から組み直して再配信します。あなたのホームのプランに⚠️が付いていたら「新しいのが来るまで目安として見てね」の合図です。

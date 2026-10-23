@@ -196,7 +196,7 @@ test('予約: 状態は RPC 経由でしか変えられない / 遷移表は 47 
         assert.equal(!res.error, (ALLOW[from] || []).includes(to), `${from} → ${to} の扱いが 47 と違う`);
     }
 });
-test('📌 運営の固定: 約束 + 固定 + 実凸 ≤ 3 (47 pin_check) / 承認の瞬間に同じカードの 📌 を外す', async () => {
+test('📌 運営の仮置き: 約束 + 固定 + 実凸 ≤ 3 (47 pin_check) / 承認の瞬間に同じカードの 📌 を外す', async () => {
     const sb = mini();
     const pin = (b, extra = {}) => sb.from('plan_reservations').insert(resvRow({ boss_number: b, status: 'pinned', pinned_by: '運営', ...extra })).select('id').single();
     for (const b of [1, 2, 3]) assert.equal((await pin(b)).error, null);
@@ -852,7 +852,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // ★ 2026-10-22 の作り直し (🧱 ブロック制・段階 2.5): メンバーは「出られる時間と凸数」と「いつ・どの PT で」だけ、運営はブロックの頭の手順
     assert.deepEqual(Array.from(P.steps.member, s => s.key), ['avail', 'wait', 'ack', 'report']);   // (別の実行環境の配列なので写してから比べる)
     assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'compute', 'pin', 'request', 'publish']);
-    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締凸検索');
+    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締め凸検索');
     assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
     for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
     for (const sc of Object.keys(P.steps)) for (const s of P.steps[sc]) assert.ok(s.title && typeof s.done === 'function' && typeof s.guide === 'function', `${sc}/${s.key} の形が違う`);
@@ -910,7 +910,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
         assert.ok(/real: '/.test(around), `${m[1]} の仮定に「本番では」の断りが付いていない`);
     }
     // 相手役が送る通知は本番と同じ文面・同じ送り方
-    for (const w of ['🔒 予約の申請', '(承認待ち)']) assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
+    for (const w of ['🔒 予約 (承認待ち)', '(承認待ち)']) assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
     // 案内の要所

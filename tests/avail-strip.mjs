@@ -76,14 +76,14 @@ async function test(name, f) {
     catch (e) { console.error(`  ❌ ${name}\n     ${e.constructor.name}: ${e.message}`); fail++; }
 }
 
-console.log('ホームの戦闘可能時間の帯:\n');
+console.log('ホームの参加可能時間の帯:\n');
 
 await test('★ 要約・24コマ・いまの時刻・確認バッジが実際に描ける', async () => {
     const t = run({ slots: H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2), nowSlot: 'h07' });
     await t.render({ id: 7 });
     const out = t.els.myAvailStripBody.innerHTML;
     assert.ok(out.includes('5〜9時・21〜翌2時 (11時間)'), `要約が無い: ${out.slice(0, 200)}`);
-    assert.ok(out.includes('いま (7時) は戦闘可能時間です — 5〜9時'), '今の時刻の説明が無い');
+    assert.ok(out.includes('いま (7時) は参加可能時間です — 5〜9時'), '今の時刻の説明が無い');
     assert.equal((out.match(/height:14px/g) || []).length, 24, '24コマ出ていない');
     assert.equal((out.match(/outline:2px solid var\(--attr-fire-solid\)/g) || []).length, 1, 'いまの時刻の印が1つでない');
     assert.equal((out.match(/background:var\(--ops-solid\)/g) || []).length, 11, 'ON のコマ数が違う');

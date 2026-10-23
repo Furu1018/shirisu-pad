@@ -161,7 +161,7 @@ await test('★ きっかけ: 前回の算出のあとに模擬が更新され�
     assert.equal(env2.els.opsPlanCue.style.display, 'none', '遅い応答が新しい結果を上書きした');
 });
 
-await test('★ 選んだ人: 出られる時間と動かせる幅 (硬い / 狭い / 柔らかい)。選んでいなければ空', async () => {
+await test('★ 選んだ人: 参加可能時間と動かせる幅 (硬い / 狭い / 柔らかい)。選んでいなければ空', async () => {
     const plan = {};
     const b = run({ snap: { season, players }, lastPlan: plan, focus: 2 });
     const out = b._opsPlanFocusBarHtml(plan);
@@ -172,7 +172,7 @@ await test('★ 選んだ人: 出られる時間と動かせる幅 (硬い / 狭
     const f = run({ snap: { season, players }, lastPlan: plan, focus: 1 });
     const fo = f._opsPlanFocusBarHtml(plan);
     assert.ok(fo.includes('動かせる幅 <b>狭い</b> (これから 3 コマ)'), `21時以降 21/22/23 の 3 コマ: ${fo}`);
-    assert.ok(/出られる時間 20〜/.test(fo), '出られる時間の要約が無い');
+    assert.ok(/参加可能時間 20〜/.test(fo), '参加可能時間の要約が無い');
     assert.equal(run({ snap: { season, players }, lastPlan: plan, focus: null })._opsPlanFocusBarHtml(plan), '');
     assert.equal(run({ snap: { season, players }, lastPlan: plan, focus: 999 })._opsPlanFocusBarHtml(plan), '', '盤面にいない人で落ちる/出る');
 });
@@ -184,22 +184,22 @@ await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする /
     const a = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 21, pinned: true } });
     const oa = a._opsPlanFocusBarHtml(plan);
     noUndef(oa);
-    assert.ok(oa.includes('📌 運営の固定 (本人にはまだ見えていません) · 別のマスをタップで置き直し'), `下書きの説明が無い: ${oa}`);
-    assert.ok(oa.includes('onclick="_opsPlanAsk(21)">📣 お願いする') && oa.includes('onclick="_opsPlanUnpin(21)">固定を外す'), 'お願いする / 外す のボタンが無い');
+    assert.ok(oa.includes('📌 運営の仮置き (本人にはまだ見えていません) · 別のマスをタップで置き直し'), `下書きの説明が無い: ${oa}`);
+    assert.ok(oa.includes('onclick="_opsPlanAsk(21)">📣 お願いする') && oa.includes('onclick="_opsPlanUnpin(21)">仮置きを外す'), 'お願いする / 外す のボタンが無い');
     // 🧱 シンプルな画面: 📣 お願いは出さず、🔒 確定する / 固定を外す だけ
     const sa = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], simple: true, sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 21, pinned: true } })._opsPlanFocusBarHtml(plan);
-    assert.ok(!sa.includes('_opsPlanAsk(') && sa.includes('onclick="_opsPlanConfirmPin(21)"') && sa.includes('onclick="_opsPlanUnpin(21)">固定を外す'), 'シンプルな画面で 📣 お願いを出した / 確定・外す が無い');
+    assert.ok(!sa.includes('_opsPlanAsk(') && sa.includes('onclick="_opsPlanConfirmPin(21)"') && sa.includes('onclick="_opsPlanUnpin(21)">仮置きを外す'), 'シンプルな画面で 📣 お願いを出した / 確定・外す が無い');
     const b = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 22, pinned: true } });
     const ob = b._opsPlanFocusBarHtml(plan);
     assert.ok(ob.includes('📣 お願い中 〜21:15') && !ob.includes('_opsPlanAsk('), 'お願い中なのに二重にお願いできる / 期限が無い');
-    assert.ok(ob.includes('onclick="_opsPlanUnpin(22)">固定を外す'), 'お願い中でも外せること');
+    assert.ok(ob.includes('onclick="_opsPlanUnpin(22)">仮置きを外す'), 'お願い中でも外せること');
     const c = run({ snap: { season, players }, lastPlan: plan, focus: 4, sel: { kind: 'piece', memberId: 4, loadoutSlot: 2, attr: 'fire', reservationId: null, pinned: false } });
     const oc = c._opsPlanFocusBarHtml(plan);
     assert.ok(oc.includes('🧩 模擬ピース') && oc.includes('マスをタップ') && oc.includes('レベルは算出が決めます'), `ピースの案内が無い: ${oc}`);
     assert.ok(!oc.includes('_opsPlanAsk(') && !oc.includes('_opsPlanUnpin('), 'まだ置いていない駒に お願い / 外す が出ている');
     const d = run({ snap: { season, players }, lastPlan: plan, focus: 1, sel: null, promiseNote: true });
     const od = d._opsPlanFocusBarHtml(plan);
-    assert.ok(od.includes('🔒 本人が引き受けた約束 — 運営の手では動かしません'), '約束を動かさない注意が無い');
+    assert.ok(od.includes('🔒 本人の予約 — 運営の手では動かしません'), '約束を動かさない注意が無い');
     assert.ok(od.includes('onclick="_opsPlanClearSel()">閉じる'), '閉じるが選択も捨てる形になっていない');
 });
 
@@ -220,10 +220,10 @@ await test('★ 入れ替えの確認 (⑤): 自由な凸だけ選べる / 約�
     assert.ok(out.includes('<b>📌 置く</b> ふるり · 鉄甲PT② 22.0B → B4 22時'), `置くものの見出しが無い: ${out}`);
     assert.equal((out.match(/name="planSwapPick"/g) || []).length, 2, '自由な 2 つだけにラジオ');
     assert.ok(out.includes('<label class="ps-row promise"><span class="ps-ic">🔒</span><span class="ps-main"><b>Lv1 B1</b> A&lt;b&gt; · 5時 · 灼熱PT 20.0B'), `約束の行 (エスケープ込み・ラジオ無し) が無い: ${out}`);
-    assert.ok(out.includes('🔒 本人の約束 — 入れ替えられません'), '約束の理由が無い');
+    assert.ok(out.includes('🔒 本人の予約 — 入れ替えられません'), '約束の理由が無い');
     assert.ok(/value="2:3:2"[^>]*>[\s\S]*?<b>Lv2 B3<\/b> C · ⏳ 隙間 · 電撃PT② 15\.0B/.test(out), '隙間の凸が ⏳ で出ていない');
     assert.ok(out.includes('<i>1人</i>'), '編成を出していない');
-    assert.ok(out.includes('1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で固定して残します'), '入れ替えの意味 (残りは固定) を言っていない');
+    assert.ok(out.includes('1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で仮置きして残します'), '入れ替えの意味 (残りは固定) を言っていない');
     assert.ok(!out.includes(' checked'), '2 つから選ぶのに片方が選ばれている');
     // 選べるのが 1 つ (自由 1 + 約束 2 のような形) なら選んでおく
     const plan2 = { levels: [{ level: 1, bosses: [
@@ -236,10 +236,10 @@ await test('★ 入れ替えの確認 (⑤): 自由な凸だけ選べる / 約�
     out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['w1'], doneAttacks: 0 }), piece);
     assert.ok(!out.includes('name="planSwapPick"'), '被りで外れるのにラジオが出ている');
     assert.ok(/<label class="ps-row conflict"><span class="ps-ic">✕<\/span>/.test(out) && out.includes('同じキャラ — 必ず外れます'), '被りの行が無い');
-    assert.ok(out.includes('同じキャラの凸が外れます。残りは 📌 で固定して残します'), '被りのときの説明が無い');
+    assert.ok(out.includes('同じキャラの凸が外れます。残りは 📌 で仮置きして残します'), '被りのときの説明が無い');
     // 本人の申請中のカードは 📝 で選べない (Codex指摘)
     out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['q1'], doneAttacks: 0, reservations: [{ player_id: 1, boss_number: 2, loadout_slot: 1, status: 'requested' }] }), piece);
-    assert.ok(/<label class="ps-row requested"><span class="ps-ic">📝<\/span>/.test(out) && out.includes('📝 本人の申請中 — 承認か却下で決めます'), '申請中の行が無い');
+    assert.ok(/<label class="ps-row requested"><span class="ps-ic">📝<\/span>/.test(out) && out.includes('📝 本人の予約 (承認待ち) — 承認か却下で決めます'), '申請中の行が無い');
     assert.ok(/name="planSwapPick" value="2:3:2" checked/.test(out) && (out.match(/name="planSwapPick"/g) || []).length === 1, '申請中を外して残りの 1 つを選んでおく形になっていない');
     // 2 つ多い → 算出に任せる
     out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['q1'], doneAttacks: 1 }), piece);

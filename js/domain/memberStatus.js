@@ -348,19 +348,19 @@
                 : `模擬戦データ (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・')})`);
         }
         if (keys.has('slv')) parts.push('シンクロレベル');
-        if (keys.has('slots')) parts.push('戦闘可能時間');
+        if (keys.has('slots')) parts.push('参加可能時間');
         if (!parts.length) {
             // 未登録は無いが「今期まだ確認していない」だけの人には、確認のお願いを送る
             if (keys.has('availConfirm')) {
                 return {
-                    title: '⏰ 戦闘可能時間の確認をお願いします',
+                    title: '⏰ 参加可能時間の確認をお願いします',
                     body: '今回のレイドでその時間に動けるか、ホームから確認をお願いします🙏 前回のままでOKならボタン1つで終わります。',
                     url: './?tab=mypage',
                 };
             }
             if (keys.has('availChanged')) {
                 return {
-                    title: '⏰ 戦闘可能時間が変わっています',
+                    title: '⏰ 参加可能時間が変わっています',
                     body: '確認したあとに時間帯を変更したようです。今の設定でよければ、ホームからもう一度確認をお願いします🙏',
                     url: './?tab=mypage',
                 };

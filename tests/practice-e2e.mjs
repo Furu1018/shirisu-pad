@@ -194,7 +194,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 finish: T.finish_requests.length, offers: titles.filter(t => /締め凸/.test(t)).length, level: T.seasons[0].current_level }; })())`));
         if (!(w.plans >= 2) || !(w.others >= 10)) problems.push(`当日の盤面 (朝からの配信と 18 時までの凸) ができていない: ${JSON.stringify(w)}`);
         if (!(w.setupAt && w.hpSavedAt && w.hpSavedAt > w.setupAt)) problems.push(`B1 の HP を保存していない: ${JSON.stringify(w)}`);
-        if (!(w.confirmed >= 1) || w.scope !== '夕方' || w.copied !== '1') problems.push(`結果の取り込み・夕方のぶんの配信・締凸検索のコピー のどれかが欠けている: ${JSON.stringify(w)}`);
+        if (!(w.confirmed >= 1) || w.scope !== '夕方' || w.copied !== '1') problems.push(`結果の取り込み・夕方のぶんの配信・締め凸検索のコピー のどれかが欠けている: ${JSON.stringify(w)}`);
         if (w.finish !== 0 || w.offers !== 0) problems.push(`締め凸を PAD から頼んだ (探すだけのはず): ${JSON.stringify(w)}`);
     }
     if (done && scenario === 'member' && !startAt) {
@@ -259,7 +259,7 @@ try {
     const want = (sc, at = '') => !ONLY || ONLY === sc + (at ? ':' + at : '');
     if (want('member')) ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
     if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
-    if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締凸検索で探してコピー) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
+    if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締め凸検索で探してコピー) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
     if (want('member', 'report')) ok = await run('スマホ幅: ツアーから「凸したら Discord へ」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'report') && ok;
     if (want('member', 'ack')) ok = await run('スマホ幅: 「「いつ・どの PT で凸するか」を確かめる」から入る (配信まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'ack') && ok;
     if (process.env.PC && want('member')) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;

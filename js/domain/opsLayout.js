@@ -38,7 +38,7 @@
         { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 12, tab: null },
         { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12, tab: 'members' },
         { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7, tab: 'battle' },
-        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5, tab: 'battle' },
+        { id: 'opsSecFinish',    title: '締め凸検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5, tab: 'battle' },
         // 段階4 (2026-09-11): 交代して入った運営が 10 秒で状況を読むための2枚。純ロジックは js/domain/pace.js
         { id: 'opsSecPace',      title: '消化のペース',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 7, tab: null },
         { id: 'opsSecRecent',    title: '直近の動き',            group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 5, tab: null },
@@ -72,9 +72,9 @@
      *   日によって変わるのは「開いたときのタブ」(defaultTab) と「いちばん急ぐこと」だけ。モック docs/運営タブ整理モック_2026-10-22.html
      */
     const TABS = [
-        { key: 'members', label: '👥 メンバー', sub: '模擬・出られる時間と凸数・通知の準備' },
+        { key: 'members', label: '👥 メンバー', sub: '模擬・参加可能時間と凸数・通知の準備' },
         { key: 'build',   label: '🧱 組む',     sub: '次のブロックを組んで配信' },
-        { key: 'battle',  label: '⚔️ 戦況',     sub: 'ボスの HP・凸の報告・締凸検索' },
+        { key: 'battle',  label: '⚔️ 戦況',     sub: 'ボスの HP・凸の報告・締め凸検索' },
         { key: 'master',  label: '👑 マスター', sub: '準備と管理 (マスター運営だけ)', masterOnly: true },
     ];
     const TAB_KEYS = TABS.map(t => t.key);
@@ -195,7 +195,7 @@
             opsSecMembers: { text: todo == null ? '' : `未完 ${todo}${finPending ? ` · 締め凸未返答 ${finPending}` : ''}`, bad: (todo || 0) > 0 || (finPending || 0) > 0 },
             // 承認待ちは「運営が見ていないと予約が成立しない」状態なので bad 扱いにする
             opsSecReserve: reservations
-                ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}${(reservations.expired || 0) > 0 ? ` · ⏰ 期限切れ ${reservations.expired}` : ''}`, bad: (reservations.pending || 0) > 0 || (reservations.expired || 0) > 0 }   // ⏰ = 返事の無い 📣 (全体監査 #7)
+                ? { text: `承認待ち ${reservations.pending} · 予約 ${reservations.approved}${(reservations.expired || 0) > 0 ? ` · ⏰ 期限切れ ${reservations.expired}` : ''}`, bad: (reservations.pending || 0) > 0 || (reservations.expired || 0) > 0 }   // ⏰ = 返事の無い 📣 (全体監査 #7)
                 : { text: '', bad: false },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
             opsSecPace: { text: season ? `${doneAttacks} / ${capacity}凸` : '', bad: false },

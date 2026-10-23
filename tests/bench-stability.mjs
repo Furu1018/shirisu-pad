@@ -169,7 +169,7 @@ const PERTURB = {
         }
         return { label: '実凸(対象なし)', fulfilled: [] };
     },
-    avail: (inp) => {   // 誰かが戦闘可能時間を変えた
+    avail: (inp) => {   // 誰かが参加可能時間を変えた
         const p = inp.players.find(x => (x.availableSlots || []).length > 0);
         if (p) p.availableSlots = [HOURS[HOURS.length - 1]];
         return { label: '時間帯', fulfilled: [] };
