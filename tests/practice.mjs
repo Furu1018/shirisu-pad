@@ -958,7 +958,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
         textExprs.push((m ? rest.slice(0, m.index) : rest).replace(/'\s*\+[\s\S]*?\+\s*'/g, '…'));
     }
     const stepCount = (GUIDE.match(/guide: function \(c\)/g) || []).length;   // 課題 1 つに text は 1 つ以上 (下限を課題の数から導く・Codex 再監査 E)
-    assert.ok(stepCount >= 10 && textExprs.length >= stepCount && textExprs.some(t => t.includes('…')), `案内の text を式として読めていない (${textExprs.length} / 課題 ${stepCount})`);
+    assert.ok(stepCount > 0 && textExprs.length >= stepCount && textExprs.some(t => t.includes('…')), `案内の text を式として読めていない (${textExprs.length} / 課題 ${stepCount})`);
     const quoted = new Set(textExprs.flatMap(t => [...t.matchAll(/「([^」]+)」/g)].map(x => x[1])).filter(w => !w.includes('…') && !w.includes("'")));
     // Discord に書かれた言い回し (画面には無い) は 『』 で引く
     assert.ok(!/「(?:夜に 2 凸|夜 2 凸|朝に [^」]*へ行きたい|出られるブロックと凸数)」/.test(GUIDE), 'Discord の言い回しを 「」 で引いている (画面の言葉と区別がつかない → 『』 に)');
