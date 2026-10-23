@@ -29397,7 +29397,7 @@
         const _homeSimple = () => !_memberInputFull();
         // ★ 最後に付けた見せ方。切り替わったときだけ描き直す (初回は描き直さない — 起動時の描画と重ねない)。
         //   var で初期値なし = この行が後から実行されても値を null に戻さない (切り替えの検知を壊さない)。
-        //   ★ _applyMemberLite は上の const (_memberInputFull / _memberLite / _homeSimple) を使うので、この位置より前に呼ばないこと (従来どおり)
+        //   ★ _applyMemberLite は上の const (_memberInputFull / _memberLite / _mockTabHidden / _homeSimple) を使うので、この位置より前に呼ばないこと (従来どおり)
         var _homeSimpleLast;
         function _rerenderHomeForSimple() {
             // シーズンが読めたあと (renderMyTodayBlocks の中) からも呼ばれるので、いまの描画が終わってから
