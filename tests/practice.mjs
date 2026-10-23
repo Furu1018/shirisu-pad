@@ -927,6 +927,12 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // 相手役が送る通知は本番と同じ文面・同じ送り方
     // 🗣 9c/9f (2026-10-24): メンバーは PAD で予約を出さない → 練習も「申請が来た」を仮定しない。運営発の予約の通知は本物の関数 (handleOpsResvCreateSubmit → _notifyMemberResv) が送る
     assert.ok(!GUIDE.includes('🔒 予約 (承認待ち)') && !GUIDE.includes('memberRequest'), '練習がメンバーの申請を「来たことにする」で送っている (メンバーは PAD で予約を出さない)');
+    // 運営編・前日 resv の済んだ形は運営発の予約だけ (📌 → 🔒 確定や本人の申請では済まない・Codex 9c/9f D)。案内は状態を変えない (相手は「誰の予約か」で選ばせる)
+    const resvStep = GUIDE.slice(GUIDE.indexOf("{ key: 'resv',"), GUIDE.indexOf("{ key: 'compute',"));
+    assert.match(resvStep, /e\.to_status === 'approved' && e\.reason === 'ops_registered'/, 'resv の完了判定が遷移の理由 ops_registered を見ていない');
+    assert.match(resvStep, /r\.status === 'approved' && r\.source_type === 'self' && r\.pinned_by && ops\[String\(r\.id\)\]/, 'resv の完了判定が 📌 → 🔒 確定でも真になる');
+    assert.ok(!resvStep.includes('_opsResvCreateSet('), 'resv の案内 (描写) が状態を変えている');
+    assert.match(resvStep, /target: q\('#opsResvCreateBody select'\)/, 'resv の案内が「誰の予約か」を選ばせていない');
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
     // 案内の要所
@@ -944,7 +950,18 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(code, /if \(k === 'back'\) \{[\s\S]*?if \(!window\.confirm\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？/);
     assert.match(rd('js/practice/boot.js'), /set: function \(k, v\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE && window\.PAD_PRACTICE\.closed\) return;/);
     // 案内の文が「」で引いている画面の言葉は、画面に実在する
-    const quoted = new Set([...GUIDE.matchAll(/text: '([^']*)'/g)].flatMap(m => [...m[1].matchAll(/「([^」]+)」/g)].map(x => x[1])));
+    // text は文字列の連結 (' + 名前 + ') や三項のこともある (Codex 9c/9f E) → 次の鍵 (real/target/assume/where) か閉じ括弧までを式として取り、連結の差し込みは … に畳んでから 「」 を拾う (… を含む言葉は差し込みなので見ない)
+    const textExprs = [];
+    for (let i = GUIDE.indexOf('text: '); i >= 0; i = GUIDE.indexOf('text: ', i + 6)) {
+        const rest = GUIDE.slice(i + 6, i + 1500);
+        const m = rest.match(/,\s*(?:real|target|assume|where):|\s*\}/);
+        textExprs.push((m ? rest.slice(0, m.index) : rest).replace(/'\s*\+[\s\S]*?\+\s*'/g, '…'));
+    }
+    const stepCount = (GUIDE.match(/guide: function \(c\)/g) || []).length;   // 課題 1 つに text は 1 つ以上 (下限を課題の数から導く・Codex 再監査 E)
+    assert.ok(stepCount >= 10 && textExprs.length >= stepCount && textExprs.some(t => t.includes('…')), `案内の text を式として読めていない (${textExprs.length} / 課題 ${stepCount})`);
+    const quoted = new Set(textExprs.flatMap(t => [...t.matchAll(/「([^」]+)」/g)].map(x => x[1])).filter(w => !w.includes('…') && !w.includes("'")));
+    // Discord に書かれた言い回し (画面には無い) は 『』 で引く
+    assert.ok(!/「(?:夜に 2 凸|夜 2 凸|朝に [^」]*へ行きたい|出られるブロックと凸数)」/.test(GUIDE), 'Discord の言い回しを 「」 で引いている (画面の言葉と区別がつかない → 『』 に)');
     // ブロックの名前と、ブロックの名前を差し込んで作るボタン (画面では区切りの設定から出る → 作り方のほうを見る)
     const NOT_ON_SCREEN = ['夜 2', '夜', '朝', '夕方', '📤 朝のぶんを配信', '📤 夕方のぶんを配信'];
     assert.match(HTML, /`📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(/, 'ブロックの配信ボタンの名前の作り方が変わった (案内の「📤 ○○のぶんを配信」とずれる)');

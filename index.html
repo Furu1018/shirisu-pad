@@ -4351,7 +4351,7 @@
                     <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">
-                    運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。
+                    <span data-member-input>運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。</span><span data-member-input-lite>Discord で伝えた希望を運営が登録すると、ここに <b>🔒 予約</b> として出ます (通知も届きます)。プランを組み直しても動きません。</span>
                 </p>
                 <div id="myReservationsBody"></div>
             </div>
@@ -5396,15 +5396,15 @@
                         <h2>🏠 3. ホームの使い方 <span class="help-pill">メンバー</span></h2>
                         <p>ホームは「自分のことは全部ここ」の場所です。上から順に、いま必要なものが並びます。</p>
                         <h3>⓪ 📌 次にやること</h3>
-                        <p>いちばん上のカードが、あなたがいまやるべきことを1つだけ案内します。通知が未設定なら通知、参加可能時間が未確認なら確認、模擬が届いていなければ「Discord に模擬のスクショを貼ってください」— 順に片づけるとカードが消えます。</p>
+                        <p>いちばん上のカードが、あなたがいまやるべきことを1つだけ案内します。通知が未設定なら通知、参加可能時間がまだ登録されていなければ「出られるブロックを Discord で運営に伝えてください」、模擬が届いていなければ「Discord に模擬のスクショを貼ってください」— 順に片づけるとカードが消えます。</p>
                         <h3>① 名乗る</h3>
                         <p>上の帯 (PC のサイドバーなら左下の足元) の名前をタップして、自分を選びます。端末ごとに覚えるので、機種変更やブラウザ変更のときだけ選び直してください。</p>
-                        <h3>② ⏰ 参加可能時間と「何凸するか」</h3>
+                        <h3>② ⏰ 参加可能時間と「何凸するか」(Discord で報告)</h3>
                         <ul>
-                            <li><strong>MY設定 › ユニオンレイド参加可能時間</strong>で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。一部だけ ON の古い登録は「一部」と出て、押すと丸ごと ON になります</li>
-                            <li>ON にしたブロックに<strong>何凸するか</strong>を − / + で入れられます (合計 3 まで)。たとえば「朝 1・夕方 2」。入れなければ運営におまかせです。運営の算出はこの数を<strong>上限</strong>にして置きます</li>
-                            <li>シーズンごとに <strong>「この時間で参加します」</strong> か <strong>「今回は難しい」</strong> を押してください。押すと運営に届きます。確認したあとに時間や凸数を変えたら、もう一度押します</li>
-                            <li>時間を登録していない人は、運営の算出の候補に入りません (催促が届きます)。「今回は難しい」の人は算出・催促のすべてから外れます</li>
+                            <li>レイドの前日までに、<strong>出られるブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) と、できれば<strong>何凸するか</strong> (「朝 1・夜 2」など・合計 3 まで) を <strong>Discord で運営に伝えます</strong>。PAD に入力する操作はありません</li>
+                            <li><strong>運営が PAD に登録</strong>すると、ホームの <strong>⏰ ユニオンレイド参加可能時間</strong> にブロックと凸数が出ます。違っていたら Discord で運営へ — 運営が直します</li>
+                            <li>凸数は運営の算出の<strong>上限</strong>です。入れなければ運営におまかせ (そのブロックのどこかに割り当てます)</li>
+                            <li>報告していない人は、運営の算出の候補に入りません (催促が届きます)。出られないシーズンは「今回は難しい」と一言 — 算出・催促のすべてから外れます</li>
                         </ul>
                         <h3>③ 📅 きょうの凸 / 配信された凸プラン</h3>
                         <p>運営はブロックごとに「次のブロックのぶん」だけを配信します。配信されると<strong>割当のある人に通知</strong>が届き (「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)、ホームに<strong>いつ・どのボスへ・どの PT と編成で</strong>が出ます。読んだら <strong>✅ 確認しました</strong> を押してください。</p>
@@ -5416,7 +5416,7 @@
                         <h3>④ 📘 登録された模擬</h3>
                         <p>運営が登録したあなたの模擬 (属性 × 編成① / ②) が読み取り専用で出ます。直したいときは Discord に模擬のスクショを貼り直してください (<a href="#help-mock">§4</a>)。</p>
                         <h3>⑤ 🔒 予約 (希望がある人だけ)</h3>
-                        <p>「このブロックにこの PT で凸したい」希望がある人だけ、ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong> から (<a href="#help-reserve">§5</a>)。</p>
+                        <p>「このブロックにこの PT で凸したい」希望がある人だけ、Discord で運営に伝えます。運営が登録すると、ホームの <strong>🔒 予約</strong> に出ます (<a href="#help-reserve">§5</a>)。</p>
                         <h3>⑥ 通知</h3>
                         <ul>
                             <li>🧬 育成データの公開のお願い — BlaBlaLINK のゲームカードが非公開だと育成くらべに載らないので、公開してほしいときに届きます</li>
@@ -5459,21 +5459,23 @@
 
                     <section id="help-reserve" class="help-section">
                         <h2>🔒 5. 凸の予約 <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
-                        <p>予約は<strong>「このブロックに・この PT で凸したい」を運営に出しておくこと</strong>です。運営が承認すると決まり、組み直しても動きません。<strong>希望がある人だけ</strong>で大丈夫です。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
-                        <h3>枠を予約する (メンバー)</h3>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong>。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>どの PT・編成で</strong> (登録された模擬から) → <strong>どのブロックで</strong> (出られるブロックから) を選びます。行き先のボスは PT で決まります。何時に凸するかは、運営がブロックの中で決めて配信します。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>予約すると運営に通知が飛び、「承認待ち」になります。承認・却下は通知で届きます。</div></div>
+                        <p>予約は<strong>「このブロックに・この PT で凸したい」を 🔒 として先に押さえておくこと</strong>です。組み直しても動きません。<strong>希望がある人だけ</strong>で大丈夫です。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
+                        <h3>希望は Discord へ (メンバー)</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>「夕方に 風圧PT で行きたい」のように、<strong>どの PT で → どのブロックで</strong> を Discord で運営に伝えます。行き先のボスは PT で決まります。何時に凸するかは、運営がブロックの中で決めて配信します。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>運営が PAD に登録</strong>します。登録した時点で 🔒 予約です (承認待ちはありません)。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>本人に「🔒 運営があなたの予約を登録しました」の通知が届き、ホームの <strong>🔒 予約</strong> に出ます。</div></div>
                         <ul>
                             <li>予約はレベルを持ちません。そのブロックの時刻にそのボスがいるレベルへ、算出が置きます</li>
                             <li>予約中の編成とキャラが被る編成は予約できません (同じキャラは1日1回)</li>
-                            <li>やめたいときは「取り消しを希望」→ 運営が解除します</li>
+                            <li>やめたいとき・変えたいときも Discord で運営へ (運営が解除・登録し直します)</li>
                         </ul>
-                        <h3>承認 (運営)</h3>
+                        <h3>＋ 予約を登録 (運営)</h3>
                         <ul>
-                            <li>🧱 組む の 🔒 凸の予約カードで 承認 / 却下。承認すると<strong>承認して組み直す → 差分 → 📤配信は明示の1タップ</strong> (自動配信はしません)</li>
-                            <li>1人の枠は 予約 (🔒) + 仮置き (📌) + 実凸 ≤ 3。超える承認は止まります。予約は本人の凸数の上限より強く効きます</li>
+                            <li>🧱 組む の 🔒 凸の予約カードの <strong>＋ 予約を登録</strong> → <strong>誰の予約か → どの編成で</strong> (その人の登録された模擬から) <strong>→ どのブロックで</strong> (丸ごと出られるブロックだけ) → 登録。📸 模擬の取り込みで保存した直後の「🔒 この編成で予約する」からも開けます</li>
+                            <li>登録した時点で 🔒 予約 (📌 を置いてすぐ確定)。本人に通知が届きます。配信はされません (配信は別に押します)</li>
+                            <li>1人の枠は 予約 (🔒) + 仮置き (📌) + 実凸 ≤ 3。超える登録・キャラ被り・一部しか出られないブロックは理由が出て止まります。予約は本人の凸数の上限より強く効きます</li>
                             <li>置けなくなった予約は未達として画面に出ます。運営が解除しないとその人の枠を押さえたままです</li>
+                            <li>PAD から予約を出せる設定 (シーズン編集の「従来の画面にする」) の人には「枠を予約する」が残り、承認待ちで届きます → 同じカードで 承認 / 却下 (承認すると組み直し → 差分 → 📤 配信は明示の1タップ)</li>
                         </ul>
                     </section>
 
@@ -5566,7 +5568,7 @@
                             <li>📌 は運営の<strong>仮置き</strong> (算出は動かせない・本人には見えない)。<strong>🔒 確定</strong> で本人に通知して予約にします</li>
                             <li>3凸が埋まっている人に置くと 🔁 入れ替えの確認 (🔒 と 📌 は外せず、同じキャラの凸は必ず外れる)</li>
                         </ul>
-                        <h3>③ 承認 → 組み直し → 📤 配信</h3>
+                        <h3>③ 組み直し → 📤 配信</h3>
                         <ul>
                             <li>📤 夕方のぶんを配信 — メンバーのホームにはこのブロックの割当だけが出て、<strong>割当のある人に「あなたの凸」の通知</strong>が届きます。同じブロックの配信し直しは、割当が変わった人にだけ。配信はブロックごとに残り、メンバーはチップで切り替えて見られます</li>
                             <li><strong>🧱 残りのブロックを一気に組む</strong> — 模擬が早くそろったとき。いまのブロックから最後まで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信します (🔭 予想の印・通知は人ごとに 1 通)。実際の結果でずれたら、そのブロックか次のブロックの頭で組み直してください</li>
@@ -5602,7 +5604,7 @@
 
                     <section id="help-notify" class="help-section">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
-                        <p>ブロックで配信された「あなたの凸」・予約の承認・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
+                        <p>ブロックで配信された「あなたの凸」・予約の登録・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
                             <span class="ico">📲</span>
                             <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取るなら、それぞれで設定してください。</p>
@@ -5630,7 +5632,7 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび・変わった人だけ)・予約の承認/却下・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび・変わった人だけ)・予約の登録・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
                             <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
@@ -5690,7 +5692,7 @@
                         <h3>運営タブの中のタブ (カードはいつも同じ場所)</h3>
                         <ul>
                             <li><strong>👥 メンバー</strong>: メンバー状況 (模擬 / SLv / 時間帯・凸数 / 通知 / B5×2) と催促 ・ 📸 模擬の取り込み ・ 一斉通知</li>
-                            <li><strong>🧱 組む</strong>: このブロックの手順 ・ 🔒 凸の予約 (承認) ・ 最適凸プラン算出 (🧱 盤 / 🗓 時間割)</li>
+                            <li><strong>🧱 組む</strong>: このブロックの手順 ・ 🔒 凸の予約 (＋ 予約を登録) ・ 最適凸プラン算出 (🧱 盤 / 🗓 時間割)</li>
                             <li><strong>⚔️ 戦況</strong>: ボス状況 (HP の更新) ・ 締め凸検索 ・ 📥 結果の取り込み</li>
                             <li><strong>👑 マスター</strong> (ふるりだけ): シーズン制御・育成データ・バックアップ・任命・復元・版のしめ切り</li>
                         </ul>
@@ -5725,9 +5727,9 @@
 
                     <section id="help-data" class="help-section">
                         <h2>16. データの流れ</h2>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>⏰ 参加可能時間 + 凸数 + 今期の確認 (ホーム) → 運営の算出 (ブロックの人・凸数の上限)・催促の対象</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>⏰ 参加可能時間 + 凸数 (Discord の報告を運営が登録・今期の確認) → 運営の算出 (ブロックの人・凸数の上限)・催促の対象</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div>模擬 (Discord) → 運営の 📸 模擬の取り込み → 算出・締め凸検索・ふるり値レーダー・ホームの 📘 登録された模擬</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>🔒 予約 → 承認で決まる → 🧱 そのブロックを算出 → 📤 配信 (割当のある人に通知) → 各自のホーム (確認しました)</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>🔒 予約 (Discord の希望を運営が登録) → 🧱 そのブロックを算出 → 📤 配信 (割当のある人に通知) → 各自のホーム (確認しました)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div>凸の結果 (Discord) → 運営の 📥 結果の取り込み → 残HP の更新・予約の消し込み・✓ → 撃破やレベル開放の通知 → 次のブロックの算出</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>レイド終了 → 月次の JSON にスナップショット (次のふるり値の基準・確定 SLv の同期) → 🧬 育成データの取り込み → 育成くらべ</div></div>
                         <div class="help-callout">
@@ -5749,13 +5751,13 @@
                         <h3>Q. 締め凸でダメージが低く記録されました</h3>
                         <p>本番の記録はそのままで構いません (「締」バッジが付き、平均から外れます)。模擬の値は本来のベスト出力にしておいてください (<a href="#help-finisher">§7</a>)。</p>
                         <h3>Q. 予約したのにプランに載っていません</h3>
-                        <p>承認待ちか、置けなくなっている (⚠ 置けていません) か、まだそのブロックが配信されていない (🔒 予約 (あとのブロック)) かです。ホームの枠に理由が出ます。そのブロックを過ぎた予約は運営が解除します (<a href="#help-reserve">§5</a>)。</p>
+                        <p>置けなくなっている (⚠ 置けていません) か、まだそのブロックが配信されていない (🔒 予約 (あとのブロック)) かです。ホームの枠に理由が出ます。そのブロックを過ぎた予約は運営が解除します (<a href="#help-reserve">§5</a>)。</p>
                         <h3>Q. 配信されたプランが「組み直し中」のままです</h3>
                         <p>運営が配信を止めています。前の割当は見えたままで、新しい配信が入ると自動で置き換わります (<a href="#help-plan">§9</a>)。</p>
                         <h3>Q. 通知が来ません</h3>
                         <p>あなた宛ての通知は時間帯に関係なく届きます。届かないなら端末側の設定です。<a href="#help-notify">§13</a> のチェックリストを上から。</p>
                         <h3>Q. 参加可能時間を毎回入れ直すのですか？</h3>
-                        <p>時間帯と凸数は残ります。シーズンごとに <strong>今期の確認</strong> (この時間で参加します / 今回は難しい) だけ押してください (<a href="#help-mypage">§3</a>)。</p>
+                        <p>出られる時間は残ります。シーズンごとの <strong>今期の確認</strong> (この時間で参加します / 今回は難しい) は、Discord の報告を見た運営が登録します — 変わるときだけ Discord で一言。PAD から入れる設定 (従来の画面) の人は、自分で今期の確認を押してください (<a href="#help-mypage">§3</a>)。</p>
                         <h3>Q. 最適プランで Lv3 まで届きません</h3>
                         <p>いまの模擬のダメージでは火力不足という判定です。届かないレベルではオーバーキルの出ない配り方に切り替わります。模擬や SLv を最新にすると届くことがあります。</p>
                         <h3>Q. 「⏱ 律速」って？</h3>
@@ -5917,11 +5919,11 @@
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
                     <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (メンバー編)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 参加可能時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — Discord で出られるブロックを伝える → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
                     </button>
                     <button onclick="startPractice('ops-eve')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・前日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 🧱 朝のブロックを組む → 📌 仮置き → 予約の承認 → 朝のぶんを配信・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 仮置き → 朝のぶんを配信・約5分</span>
                     </button>
                     <button onclick="startPractice('ops-day')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・当日)
@@ -7287,10 +7289,10 @@
                 emoji: '⏰',
                 chapterTag: '② 参加可能時間',
                 stepLabel: 'CHAPTER 03',
-                title: '参加可能時間と\n何凸するか',
-                body: 'ホームの <strong>MY設定 → ⏰ 参加可能時間</strong> で、レイドの日の<strong>ブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) をタップして、<strong>確実に動ける時間</strong>だけを ON にします。ON にしたブロックには<strong>何凸するか</strong>を − / + で (合計 3 まで・入れなければおまかせ)。下から練習で触れます👇<br><br>シーズンごとに <strong>「この時間で参加します」</strong> か <strong>「今回は難しい」</strong> を押すのも忘れずに。',
+                title: '出られるブロックを\nDiscord で伝える',
+                body: 'レイドの前日までに、<strong>出られるブロック</strong> (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) と、できれば<strong>何凸するか</strong> (「朝 1・夜 2」など・合計 3 まで・入れなければおまかせ) を <strong>Discord に書く</strong>だけ。運営が PAD に登録すると、ホームの <strong>⏰ ユニオンレイド参加可能時間</strong> に出ます。PAD に入力する操作はありません。下から練習で触れます👇<br><br>出られないシーズンは「今回は難しい」と Discord に一言。',   // 🗣 9c (2026-10-24 Q1): メンバーは PAD に入力しない
                 demo: 'avail',
-                tip: '時間を登録していない人は、運営の算出の候補に入りません (催促が届きます)。運営はこの時間と凸数を上限にして、ブロックごとにあなたの凸を組みます。',
+                tip: '報告していない人は、運営の算出の候補に入りません (催促が届きます)。運営はこの時間と凸数を上限にして、ブロックごとにあなたの凸を組みます。登録された時間が違っていたら Discord で運営へ。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
             },
             {
@@ -7307,9 +7309,9 @@
                 emoji: '🔒',
                 chapterTag: '④ 凸の予約',
                 stepLabel: 'CHAPTER 05',
-                title: '「このブロックに\nこの PT で」枠を予約する',
-                body: '予約は<strong>希望がある人だけ</strong>で大丈夫です (予約しなくても、運営が参加可能時間と凸数から割り当てます)。ホームの <strong>🔒 予約</strong> の <strong>枠を予約する</strong> から、<strong>どの PT・編成で → どのブロックで</strong> を選ぶだけ。ボスは PT で決まり、何時に凸するかは運営がブロックの中で決めます。<br><br>運営が承認すると <strong>🔒 予約</strong> が決まり、組み直しても<strong>動きません</strong>。',
-                tip: '予約中の編成とキャラが被る編成は予約できません (同じキャラは1日1回)。やめたいときは「取り消しを希望」→ 運営が解除します。',
+                title: '凸先の希望も\nDiscord へ',
+                body: '予約は<strong>希望がある人だけ</strong>で大丈夫です (無ければ、運営が参加可能時間と凸数から割り当てます)。「夕方に 風圧PT で行きたい」のように <strong>Discord で運営に伝える</strong>と、運営が PAD に <strong>🔒 予約</strong> として登録します。登録されると通知が届き、ホームの <strong>🔒 予約</strong> に出ます。<br><br>ボスは PT で決まり、何時に凸するかは運営がブロックの中で決めます。<strong>🔒 予約</strong> は組み直しても<strong>動きません</strong>。',   // 🗣 9c: 希望も Discord → 運営が登録 (9b)
+                tip: '予約中の編成とキャラが被る編成は予約できません (同じキャラは1日1回)。やめたいときも Discord で運営へ (運営が解除します)。',
                 accentColor: 'var(--attr-water-solid)', accentDark: 'var(--attr-water-deep)',   // 色はトークン (直値の上限に数えない)
             },
             {
@@ -7337,7 +7339,7 @@
                 chapterTag: '⑦ 運営のしごと',
                 stepLabel: 'CHAPTER 08',
                 title: '運営担当の\n1日の流れ',
-                body: '運営担当 (👑 マスターが任命) には <strong>運営</strong> タブがあり、中が <strong>👥 メンバー / 🧱 組む / ⚔️ 戦況</strong> に分かれます。<br><br><strong>前日</strong>: 👥 で時間と模擬の届いていない人を催促 → <strong>📸 模擬の取り込み</strong> → 🔒 予約の承認 → 🧱 朝のぶんを組んで <strong>📤 配信</strong>。<br><strong>当日 (ブロックの頭ごと)</strong>: ⚔️ HP を直す → <strong>📥 前のブロックの結果を取り込む</strong> → 🧱 組む (盤で足りないボスに候補を置く) → 📤 配信 → 🏁 締め凸検索で探して Discord で声かけ。',
+                body: '運営担当 (👑 マスターが任命) には <strong>運営</strong> タブがあり、中が <strong>👥 メンバー / 🧱 組む / ⚔️ 戦況</strong> に分かれます。<br><br><strong>前日</strong>: 👥 で報告の届いていない人を催促 → Discord の報告を PAD に登録 (👥 の <strong>⏰</strong> で時間と凸数・<strong>📸 模擬の取り込み</strong>・🔒 凸の予約の <strong>＋ 予約を登録</strong>) → 🧱 朝のぶんを組んで <strong>📤 配信</strong>。<br><strong>当日 (ブロックの頭ごと)</strong>: ⚔️ HP を直す → <strong>📥 前のブロックの結果を取り込む</strong> → 🧱 組む (盤で足りないボスに候補を置く) → 📤 配信 → 🏁 締め凸検索で探して Discord で声かけ。',
                 tip: '🧱 組む の頭の「このブロックの手順」がいまやることを光らせます。予約 (🔒) は算出で動きません。配信は自動では出ません — 差分を見てから明示の1タップで。練習モードの運営編で通せます (ヘルプ §10・§11・§15)。',
                 accentColor: 'var(--grad-ops-a)', accentDark: 'var(--grad-ops-b)',
             },
@@ -8514,7 +8516,7 @@
         function _homeGotoResvCard() {
             const el = document.getElementById('myReservationsCard');
             if (el && el.style.display !== 'none') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            else openMyResvRequest();
+            else if (!(typeof _memberLite === 'function' && _memberLite())) openMyResvRequest();   // 🗣 9c: lite では申請シートを開かない
         }
         // ヒーロー内の「あなたの3凸」ストリップ。配信の割当だけでなく、予約で固定した枠と空き枠 (理由つき) を並べる
         function _heroPlanStripHtml(identity, hero) {
@@ -9691,7 +9693,7 @@
                 <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>
-                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">運営が登録した時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>`;
+                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>`;
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
@@ -10266,7 +10268,7 @@
                     ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 // 取り消しは**希望を出すだけ** — 解除には運営の承認が要る (ユーザー決定)
                 const cancel = (r.status === 'requested' || r.status === 'approved')
-                    ? `<button onclick="handleRequestCancelReservation(${Number(r.id)})" style="flex:none;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:6px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消したい</button>`
+                    ? `<button data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})" style="flex:none;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:6px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消したい</button>`
                     : '';
                 return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${rv.isActive(r) ? '' : 'opacity:0.55;'}">
                     <span style="flex:none;font-size:10px;font-weight:900;color:${col};background:${bg};padding:4px 9px;border-radius:999px;">${escapeHtml(jp)}</span>
@@ -10280,7 +10282,7 @@
             };
             // 🧱 段階 3 (2026-10-22 ユーザー決定「予約したい人だけ申請」): 申請の導線は lite (模擬タブなし) でも出す (data-member-resv。模擬の入力 data-member-input とは別)
             // 🗣 9c (2026-10-24 Q1): lite では「枠を予約する」を出さない (CSS)。希望は Discord → 運営が登録 (9b) → ここに 🔒 予約として出る
-            const cta = `<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください。運営が登録すると、ここに 🔒 予約として出て通知が届きます。</p>
+            const cta = `<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください。運営が登録すると、ここに 🔒 予約として出て通知が届きます。やめたい・変えたいときも Discord で運営へ (運営が解除・登録し直します)。</p>
                 <div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
                     <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">枠を予約する</button>
                     <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
@@ -10296,11 +10298,11 @@
                     <div style="font-size:12px;font-weight:900;color:var(--warn-deep);">📣 運営からのお願い${r.pinned_by ? ` (${escapeHtml(String(r.pinned_by))})` : ''}${dl}</div>
                     <div style="margin-top:6px;font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
                     ${team ? `<div style="margin-top:6px;display:flex;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
-                    <div style="display:flex;gap:8px;margin-top:10px;">
+                    <div data-member-input style="display:flex;gap:8px;margin-top:10px;">
                         <button type="button" onclick="handleAcceptPin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">引き受ける</button>
                         <button type="button" onclick="handleDeclinePin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;">難しい</button>
                     </div>
-                    <p style="margin:8px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;line-height:1.5;">引き受けると予約 (🔒) になり、運営が組み直しても動きません。難しければ遠慮なく。</p>
+                    <p style="margin:8px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;line-height:1.5;"><span data-member-input>引き受けると予約 (🔒) になり、運営が組み直しても動きません。難しければ遠慮なく。</span><span data-member-input-lite>返事は Discord で運営へ。引き受けるなら運営が 🔒 予約にし、難しければ外します (PAD で答える操作はありません)。</span></p>   <!-- 🗣 9c (Codex 再監査 A): lite では PAD で答えない -->
                 </div>`;
             }).join('');
             body.innerHTML = askRows + ((live.length + done.length)
@@ -10714,7 +10716,7 @@
                 const lvHtml = a.level != null ? `<div style="font-size:9px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}</div>` : '';
                 const mark = (fill) => `<span style="flex:none;width:24px;height:24px;border-radius:8px;${fill};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--on-fill);">${done ? '✓' : ''}</span>`;
                 if (a.kind === 'empty') {
-                    const canAsk = Array.isArray(_myResvRows);
+                    const canAsk = Array.isArray(_myResvRows) && !(typeof _memberLite === 'function' && _memberLite());   // 🗣 9c: lite では予約の入口を出さない (希望は Discord → 運営が登録)
                     return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(var(--ink-rgb), 0.05);">
                         ${mark('border:2px dashed var(--track);')}
                         <div style="flex:1;min-width:0;">
@@ -10750,7 +10752,7 @@
                     const col = (a.unmet || a.status === 'cancel_requested' || a.status === 'pinned') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
-                        ? `<button type="button" onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
+                        ? `<button type="button" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
                         : '';
                     status = `<div style="margin-top:6px;font-size:10.5px;font-weight:900;color:${col};">${jp}${who}${cancel}</div>`;
                 } else if (!done) {
@@ -25563,9 +25565,9 @@
 ⏰ **前日までに**
 ━━━━━━━━━━━━━━
 1. PAD をホーム画面に追加 (アプリ化) → 🔔 通知 ON ※iPhone はアプリ化しないと通知が来ません
-2. ホームの **MY設定 › ユニオンレイド参加可能時間** で、レイドの日に **確実に動けるブロック** (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) を ON にして、できれば **何凸するか** (朝 1・夕方 2 など) も入れる → **「この時間で参加します」** を押す
+2. レイドの日に **確実に動けるブロック** (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) と、できれば **何凸するか** (朝 1・夕方 2 など) を **このチャンネルに書く** → 運営が PAD に登録します (ホームの **⏰ ユニオンレイド参加可能時間** に出ます。PAD で入力する操作はありません)
 3. 模擬戦をしたら **結果のスクショを Discord に貼る** (編成 5 キャラとダメージが写っているもの)。運営が PAD に登録します。最低ラインは **キャラ被りなしで 3 属性**、**18 時以降に出られる人は ボス 5 の弱点の模擬を 2 編成**
-4. 「このブロックに この PT で凸したい」希望がある人だけ、ホームの **🔒 予約 › 枠を予約する** (しなくても運営が割り当てます)
+4. 「このブロックに この PT で凸したい」希望がある人だけ、**ここに書く** (「夕方に 風圧PT で行きたい」など) → 運営が **🔒 予約** として登録します (しなくても運営が割り当てます)
 
 ━━━━━━━━━━━━━━
 ⚔️ **当日**
@@ -25574,7 +25576,7 @@
 2. その時刻に配信どおりに凸 → **結果のスクショを Discord に貼る**だけ (PAD に凸を報告する操作はありません。運営が取り込むと ✓ が付きます)
 3. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
 
-PAD の中で入力するものは減りました (模擬と凸の結果は Discord へ)。分からないことは PAD のヘルプか、ここで聞いてください!`;
+PAD の中で入力するものは無くなりました (時間・模擬・希望・凸の結果はすべて Discord へ)。PAD は「見る・✅ 確認しました を押す」だけです。分からないことは PAD のヘルプか、ここで聞いてください!`;
 
         const _ANNOUNCE_LOGIC = `🧠 **【読みたい人だけ】最適凸プランはどうやって決まってるの?**
 

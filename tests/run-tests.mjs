@@ -5724,8 +5724,9 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/async function openOpsAttacksEditModal\(\)/.test(html), '凸履歴・編集のモーダルが無い');
         // Discord 用の文面は 👥 メンバーのタブにあり、古い流れの言葉が無い
         const ann = html.slice(html.indexOf('const _ANNOUNCE_MAIN = `'), html.indexOf('async function copyAnnouncementText'));
-        for (const old of ['模擬タブ', '戦闘準備', '凸報告', '隙間', '締め凸のお願い', '引き受け', '戦闘可能時間', '申請']) assert.ok(!ann.includes(old), 'Discord 用の文面に古い言葉「' + old + '」');
-        for (const w of ['ユニオンレイド参加可能時間', 'Discord に貼る', '枠を予約する', '📅 きょうの凸', 'ブロック']) assert.ok(ann.includes(w), 'Discord 用の文面に「' + w + '」が無い');
+        // 🗣 9c (2026-10-24 Q1): メンバーは PAD に入力しない → 告知も「このチャンネルに書く → 運営が登録」。MY設定・枠を予約する・この時間で参加します は入口として言わない
+        for (const old of ['模擬タブ', '戦闘準備', '凸報告', '隙間', '締め凸のお願い', '引き受け', '戦闘可能時間', '申請', 'MY設定', '枠を予約する', 'この時間で参加します']) assert.ok(!ann.includes(old), 'Discord 用の文面に古い言葉「' + old + '」');
+        for (const w of ['ユニオンレイド参加可能時間', 'Discord に貼る', 'このチャンネルに書く', '運営が PAD に登録', '🔒 予約', '📅 きょうの凸', 'ブロック', 'PAD で入力する操作はありません']) assert.ok(ann.includes(w), 'Discord 用の文面に「' + w + '」が無い');
         assert.ok(html.includes('>📣 Discord 用の文面</div>'), 'カードの名前');
         // 設定の練習 (運営編) は運営だけ
         assert.ok(html.includes("<button onclick=\"startPractice('ops-eve')\" data-ops-only") && html.includes("<button onclick=\"startPractice('ops-day')\" data-ops-only"), '運営編の練習がメンバーにも出ている');
@@ -9922,6 +9923,22 @@ console.log('\ngrowthDomain:');
         // 🗣 9c (2026-10-24 Q1「メンバーの PAD 入力はゼロ」): lite では「枠を予約する」を隠し、Discord への案内を出す (希望は 9b の運営発の予約で)
         assert.ok(/body\.member-lite \[data-member-resv\] \{ display: none !important; \}/.test(html), '申請の導線を lite で隠していない (9c)');
         assert.ok(html.includes('<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;') && html.includes('予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください'), 'lite の予約の案内が無い');
+        // 残っていた予約の入口 (📅 きょうの凸の空き枠の「予約する」・🔒 予約カードが無いときの申請シート) も lite では出さない / 🔒 予約カードの頭の一文は lite と full で分ける (Codex 9c/9f 対応 2026-10-24)
+        assert.ok(html.includes("const canAsk = Array.isArray(_myResvRows) && !(typeof _memberLite === 'function' && _memberLite());"), '📅 きょうの凸の空き枠の「予約する」が lite でも出る (9c)');
+        assert.ok(html.includes("else if (!(typeof _memberLite === 'function' && _memberLite())) openMyResvRequest();"), '🔒 予約カードが無いときの申請シートが lite でも開く (9c)');
+        assert.ok(html.includes('<span data-member-input>運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。</span><span data-member-input-lite>Discord で伝えた希望を運営が登録すると、ここに <b>🔒 予約</b> として出ます'), '🔒 予約カードの頭の一文が lite で承認の話をしている (9c)');
+        assert.ok(html.includes('登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。') && !html.includes('運営が登録した時間です'), '⏰ 帯の一文が「運営が登録した」と言い切っている (full で本人が登録した時間にも出る・Codex B)');
+        // 既にある予約への PAD 入力 (取り消しの希望・📣 お願いの返事) も lite では出さない (Codex 9c 再監査 A 2026-10-24)。Discord で運営へ → 運営が解除 / 🔒 / 外す
+        assert.ok(html.includes('? `<button data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})"'), '🔒 予約カードの「取り消し」が lite でも出る (9c)');
+        assert.ok(html.includes('? `<button type="button" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})"'), '📅 きょうの凸の「取り消し」が lite でも出る (9c)');
+        assert.ok(/<div data-member-input style="display:flex;gap:8px;margin-top:10px;">\s*\n\s*<button type="button" onclick="handleAcceptPin\(\$\{Number\(r\.id\)\}\)"/.test(html), '📣 お願いの返事 (引き受ける / 難しい) が lite でも出る (9c)');
+        assert.ok(html.includes('<span data-member-input-lite>返事は Discord で運営へ。引き受けるなら運営が 🔒 予約にし、難しければ外します'), '📣 お願いの lite の案内が無い');
+        assert.ok(html.includes('やめたい・変えたいときも Discord で運営へ (運営が解除・登録し直します)。</p>'), '🔒 予約カードの lite の案内に、やめたいときの行き先が無い');
+        assert.ok(html.includes('は、Discord の報告を見た運営が登録します — 変わるときだけ Discord で一言。'), 'FAQ「参加可能時間を毎回入れ直すのですか」が本人の操作のまま (Codex 再監査 D)');
+        // ツアー・ヘルプ・練習の入口の要約も新運用 (Discord で報告 → 運営が登録)。旧運用の入口を案内する言い回しは残さない (Codex 9c/9f F)
+        for (const w of ['出られるブロックを\\nDiscord で伝える', '凸先の希望も\\nDiscord へ', '<h3>② ⏰ 参加可能時間と「何凸するか」(Discord で報告)</h3>', '<h3>希望は Discord へ (メンバー)</h3>', '<h3>＋ 予約を登録 (運営)</h3>',
+            'Discord で出られるブロックを伝える → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分', '催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 仮置き → 朝のぶんを配信・約5分']) assert.ok(html.includes(w), 'ツアー/ヘルプ/練習の入口に「' + w + '」が無い (9c/9f)');
+        for (const old of ['参加可能時間が未確認なら確認', '🔒 予約</strong> の <strong>枠を予約する</strong> から', '予約の承認 → 朝のぶんを配信', 'MY設定 → ⏰ 参加可能時間</strong> で', '参加可能時間と\\n何凸するか', '<h3>③ 承認 → 組み直し → 📤 配信</h3>', '🔒 予約 → 承認で決まる']) assert.ok(!html.includes(old), 'ツアー/ヘルプに旧運用の入口「' + old + '」が残っている (9c)');
         // 🧱 段階 3 (2026-10-22): 申請の導線を lite でも出すので、「隠しているときの一文」は無い (ブロックで申請できる案内に替えた)
         assert.ok(/「このブロックに この PT で凸したい」を先に出しておけます。/.test(html), '申請の導線の案内がブロックの言い方になっていない');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');

@@ -306,7 +306,7 @@
                     return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
                         : { text: '前日: 出られるブロック (と凸数・凸先の希望) を Discord で運営に伝えます。あなたは 19 時から出られるので『夜に 2 凸』と書きます。PAD には何も入れません。',
                             real: '運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。違っていたら Discord で運営へ (PAD で直す操作はありません)。',
-                            assume: ['opsAvail', '⏩ 運営が「夜 2 凸」を登録したことにする'] });
+                            assume: ['opsAvail', '⏩ 運営が『夜に 2 凸』を登録したことにする'] });
                 } },
             { key: 'wait', title: '運営の配信を待つ',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope); },
@@ -353,23 +353,31 @@
                         real: '報告が来ない人には「催促」。参加可能時間が登録されていない人は、算出の候補になりません。', target: q('#opsMbRows button[onclick="openOpsAvailModal(' + P.me.id + ')"]') };
                 } },
             { key: 'resv', title: '🔒 Discord の希望を予約として登録する',
-                // 🗣 9b: 凸先の希望 (「朝に この PT で行きたい」) も Discord で来る。運営が 🔒 凸の予約カードの「＋ 予約を登録」から本人の代わりに登録する (登録した時点で予約・本人に通知)
-                done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.pinned_by && r.source_type !== 'finish_request'; }); },
+                // 🗣 9b: 凸先の希望 (『朝に この PT で行きたい』) も Discord で来る。運営が 🔒 凸の予約カードの「＋ 予約を登録」から本人の代わりに登録する (登録した時点で予約・本人に通知)
+                // 済んだ形 = 運営発の予約だけ: source_type self (本人の編成から) + pinned_by (📌 を置いてすぐ 🔒) + 遷移の理由 ops_registered。📌 → 🔒 確定 (source_type plan) や本人の申請 (pinned_by 無し) では済まない (Codex 9c/9f D)
+                done: function (c) {
+                    var ops = {};
+                    (c.T.plan_reservation_events || []).forEach(function (e) { if (e.to_status === 'approved' && e.reason === 'ops_registered') ops[String(e.reservation_id)] = true; });
+                    return c.allResv.some(function (r) { return r.status === 'approved' && r.source_type === 'self' && r.pinned_by && ops[String(r.id)]; });
+                },
                 guide: function (c) {
                     var who = pickRequester(c);
+                    var wish = who ? '『朝に ' + (who.boss.name || ('B' + who.boss.boss_number)) + ' へ行きたい』' : '';
                     if (c.modalId === 'opsResvCreateModal') {
                         var st = (typeof _opsResvCreate !== 'undefined') ? _opsResvCreate : null;
-                        if (st && st.playerId == null && who && typeof _opsResvCreateSet === 'function') _opsResvCreateSet('playerId', who.player.id);   // 練習では相手を選んであります (本番では「誰の予約か」で選ぶ)
-                        if (st && st.playerId != null && st.attr == null) return { text: (who ? who.player.name + 'さん' : 'この人') + 'の希望は「朝に ' + (who ? who.boss.name || ('B' + who.boss.boss_number) : 'ボス') + ' へ行きたい」。合う編成を押します (行き先のボスは編成の属性で決まります)。',
-                            real: '編成はその人の模擬 (📸 で登録したもの) から選びます。模擬が無い人の予約は登録できません。', target: pick('resvCreateLo') };
-                        if (st && st.attr != null && st.blockIdx == null) return { text: '「朝」のブロックを押します。丸ごと出られるブロックだけ押せます (時刻はブロックの中で運営が決めます)。', target: q('#opsResvCreateBody .avail-blk[data-state="on"]') };
+                        if (!who) return { text: '予約できる人が見つかりません (朝に出られて模擬のある人が居ません)。閉じて次へ。', real: '本番では Discord で希望が来た人を選びます。' };
+                        // 相手は本番と同じく「誰の予約か」で選ぶ (案内は状態を変えない — Codex 9c/9f D)
+                        if (!st || st.playerId == null || Number(st.playerId) !== Number(who.player.id)) return { text: '「誰の予約か」で「' + who.player.name + '」さんを選びます (Discord に希望を書いた人)。', real: 'Discord に書いた人をここで選びます。模擬が無い人は編成が出ず、登録できません。', target: q('#opsResvCreateBody select') };
+                        if (st.attr == null) return { text: who.player.name + 'さんの希望は ' + wish + '。合う編成を押します (行き先のボスは編成の属性で決まります)。',
+                            real: '編成はその人の模擬 (📸 で登録したもの) から選びます。', target: pick('resvCreateLo') };
+                        if (st.blockIdx == null) return { text: '「朝」のブロックを押します。丸ごと出られるブロックだけ押せます (時刻はブロックの中で運営が決めます)。', target: q('#opsResvCreateBody .avail-blk[data-state="on"]') };
                         return { text: '「🔒 予約を登録する」を押します。確認が出たら OK → 登録した時点で予約になり、本人に通知が届きます (承認待ちはありません)。',
                             real: '置けない (3 凸済み・キャラ被り・一部しか出られないブロック) ときは理由が出ます。', target: pick('resvCreateSubmit') };
                     }
                     if (!who) return stray(c, []) || { text: '予約できる人が見つかりません (朝に出られて模擬のある人が居ません)。この課題は飛ばします。', real: '本番では Discord で希望が来た人を選びます。' };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
-                    return stray(c, []) || { text: 'Discord で ' + who.player.name + 'さんから「朝に ' + (who.boss.name || ('B' + who.boss.boss_number)) + ' へ行きたい」と来た、とします。「🔒 凸の予約」の「＋ 予約を登録」を押します。',
+                    return stray(c, []) || { text: 'Discord で ' + who.player.name + 'さんから ' + wish + ' と来た、とします。「🔒 凸の予約」の「＋ 予約を登録」を押します。',
                         real: 'メンバーは PAD で予約を出しません。希望は Discord → 運営が登録 (登録した時点で予約・本人に通知)。', target: pick('resvCreateOpen') };
                 } },
             { key: 'compute', title: '🧱 朝のブロックを組む',

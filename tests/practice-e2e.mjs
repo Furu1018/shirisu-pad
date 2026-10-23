@@ -97,9 +97,10 @@ const STATE = `(() => {
     text: d.querySelector('.pm-in p')?.innerText || '', assume: d.querySelector('[data-pm=assume]')?.innerText || null, where: !!d.querySelector('[data-pm=where]'), ring: shown, under, tag,
     toast: (() => { const n = document.getElementById('notification'); if (!n) return null; const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })() };
 })()`;
-// 案内の枠の真ん中にあるものを押す (入力欄なら、案内の文が言う数字を入れる)。枠は pointer-events:none なので、拾うのは本物の画面の要素
-const PRESS = (value) => `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+// 案内の枠の真ん中にあるものを押す (入力欄なら、案内の文が言う数字を入れる / 選択肢なら、案内の文に出ている名前を選ぶ)。枠は pointer-events:none なので、拾うのは本物の画面の要素
+const PRESS = (value, text = '') => `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
   if (!el) return 'none';
+  if (el.tagName === 'SELECT') { const t = ${JSON.stringify(String(text))}; const o = Array.from(el.options).find(o => o.value && o.textContent.trim() && t.includes(o.textContent.trim())); if (!o) return 'select:none'; el.value = o.value; el.dispatchEvent(new Event('change', { bubbles: true })); return '選ぶ ' + o.textContent.trim(); }
   if (el.tagName === 'INPUT') { el.focus(); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return '入力'; }
   (el.closest('button,[onclick],a,label') || el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); return '押す'; })()`;
 // ★ 読み込みは時計でなく状態で待つ (この機では 6〜10 秒ぶれる・読み込み直しの最中は eval が落ちる): 練習の DB と案内が揃うまで最大 ms
@@ -149,7 +150,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
         if (same >= 5) { problems.push(`案内どおりに押しても進まない: ${JSON.stringify(s)}`); break; }
         let act;
         if (s.assume) { act = '仮定 ' + s.assume; await wait((await tap(p, '[data-pm=assume]')) ? 4500 : 600); }
-        else if (s.ring) { act = (await p.eval(PRESS(valueOf(s.text)))) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
+        else if (s.ring) { act = (await p.eval(PRESS(valueOf(s.text), s.text))) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
         else if (s.where) { act = 'どこ？'; await tap(p, '[data-pm=where]'); await wait(900); }
         else { act = '(待つ)'; await wait(900); }
         trail.push(`${s.cnt} ${s.title} | ${s.text.slice(0, 40)} | ${act}`);
@@ -211,7 +212,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 if (!s) { await wait(1000); continue; }
                 if (s.cnt === 'DONE') { again = true; break; }
                 if (s.assume) { await wait((await tap(p, '[data-pm=assume]')) ? 4000 : 600); }
-                else if (s.ring) { await p.eval(PRESS(valueOf(s.text))); await wait(1200); }
+                else if (s.ring) { await p.eval(PRESS(valueOf(s.text), s.text)); await wait(1200); }
                 else if (s.where) { await tap(p, '[data-pm=where]'); await wait(900); }
                 else await wait(900);
             }
@@ -250,6 +251,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
     } catch (e) { problems.push(`確認の途中で例外: ${String(e && e.message || e).slice(0, 200)}`); }
     await p.close();
     console.log(problems.length ? `  ❌ ${label}\n     ${problems.join('\n     ')}\n     --- ここまでの手順\n     ${trail.slice(-8).join('\n     ')}\n     --- 読み込み直し\n     ${p.navs.slice(-6).join('\n     ')}` : `  ✅ ${label} (${trail.length} 手で最後まで)`);
+    if (process.env.TRACE) console.log('     ' + trail.join('\n     '));   // TRACE=1: 通っても手順を全部出す (手数が変わった理由を見るとき)
     return problems.length === 0;
 }
 
