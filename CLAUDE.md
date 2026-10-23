@@ -1258,6 +1258,13 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ブロックごとに効いている配信の id (`effectiveId`・尊重しなくても組んだときに控える) — どれかが動いていたら積まない。1 行ずつの配信が途中で失敗したら、配信できたぶんの通知は送って「どこまで配信できたか」を知らせる (1 件も配信できなければ「通知は送っていません」。押し直しで同じブロックは新しい配信が勝つ)。
   二重押しの印 (`_opsChainBusy`) は**最初の await より前**。ブロックごとに `_yieldToPaint()` で描画へ返し、ボタンに進み具合。押した時点の `sticky` で組む (待っている間の切り替えを混ぜない)。
   ずれたら運営がそのブロック (時間があれば) か次のブロックの頭で組み直す (ユーザー決定)。実行テスト `tests/run-tests.mjs` の 段階 7・8 の節・`tests/practice.mjs` の撃破の宛先
+  ★ **🗣 運用の見直し 9a: 運営が参加可能時間と凸数を登録** (2026-10-24 ユーザー決定 Q1「メンバーの PAD 入力はゼロ」・設計と決定は `docs/ブロック制_運用の見直し_2026-10-24.md`):
+  メンバーは Discord に「出られるブロック (+ 凸数・凸先の希望)」を報告し、運営が本人の代わりに PAD へ登録する。**本人の時間のシート (`#myAvailModal`) をそのまま使い、「誰のぶんか」`_availUI.forPlayer` だけを持たせる** —
+  `_availTarget()` (forPlayer か名乗っている本人) が唯一の口で、保存 (`_availDoSaveInner`) と 今期の確認 (`handleConfirmAvailability`) はその人に書く。活動ログは `actorName` で「(運営が代理で登録)」。
+  ★ 保存のデバウンス (`_availScheduleSave`) は**予約したときの相手**を `opts.target` で渡す — 運営がシートを閉じて自分に戻ったあとに走っても、名乗っている本人のぶんに書かない。閉じるとき (`closeMyAvailModal`) は残った保存をその相手で流し切ってから forPlayer を外し、
+  共有の確認状態 (`_myAvailConfirm`) を本人のものに戻して 👥 メンバー状況・📸 模擬の取り込みを描き直す。運営の登録中は本人の MY設定のバッジに触らない (`_renderMyAvailConfirmBadge`)。本人向けの描き直し (`_invalidateSetupNeeds` / `renderMyNextAction`) は本人のときだけ。
+  入口は 👥 メンバー状況の行の ⏰ (`openOpsAvailModal(id)`) と 📸 模擬の取り込みの「⏰ 時間を登録」(選んだ人・`openOpsAvailModalFromIntake`)。催促の文面は「Discord で運営に伝えてください」。
+  メンバー側の入口 (時間シート・予約) を隠すのは 9c (9b 運営発の予約 と 9f 練習の作り直し とまとめて — 練習のメンバー編が時間のシートを使っているため)。実行テスト `tests/avail-save.mjs` (forPlayer の確認と保存)・配線は `tests/run-tests.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

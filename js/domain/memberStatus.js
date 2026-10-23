@@ -354,7 +354,7 @@
             if (keys.has('availConfirm')) {
                 return {
                     title: '⏰ 参加可能時間の確認をお願いします',
-                    body: '今回のレイドでその時間に動けるか、ホームから確認をお願いします🙏 前回のままでOKならボタン1つで終わります。',
+                    body: '今回のレイドに出られるブロックと凸数を Discord で運営に伝えてください🙏 前回と同じなら「同じ」で OK です (運営が登録します)。',
                     url: './?tab=mypage',
                 };
             }
@@ -367,7 +367,7 @@
             }
             return null;
         }
-        return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。模擬は Discord にスクショを貼ってください (運営が登録します)。参加可能時間はホームの MY設定 から🙏`, url: './?tab=mypage' };
+        return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。模擬は Discord にスクショを貼ってください (運営が登録します)。参加可能時間 (出られるブロックと凸数) も Discord で運営に伝えてください🙏 (運営が登録します)`, url: './?tab=mypage' };
     }
 
     root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs, deviceKind, latestDeviceByPlayer };

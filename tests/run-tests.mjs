@@ -4796,7 +4796,8 @@ console.log('\n運営除外の配線 (ソース突合):');
         // setTimeout(_availDoSave, 250) だと第2引数の遅延時間が opts に渡り、opts.rethrow が
         // undefined になるだけでなく将来のオプション追加で誤動作する
         assert.ok(!/setTimeout\(_availDoSave,/.test(html));
-        assert.ok(/setTimeout\(\(\) => _availDoSave\(\), \d+\)/.test(html));
+        // 🗣 9a (2026-10-24): 予約したときの相手 (target) を渡す — 運営のシートを閉じて自分に戻ったあとに走っても、本人のぶんに書く
+        assert.ok(/const target = _availTarget\(\);[\s\S]{0,200}setTimeout\(\(\) => _availDoSave\(\{ target \}\), \d+\)/.test(html), 'デバウンスが予約したときの相手を渡していない');
     });
     test('★ 37未適用は「未確認」と区別する (unsupported センチネル)', () => {
         const body = client.match(/window\.supabaseLoadMyAvailabilityConfirmation = async function[\s\S]*?\n};\n/)?.[0] || '';
@@ -4847,7 +4848,7 @@ console.log('\n運営除外の配線 (ソース突合):');
         // 保存の後で _availUI.slots を読み直すと、保存中に本人が時間を変えた場合に
         // 「availability は h21 なのに確認済みの記録は h22」というずれが残る (Codex指摘 2026-09-07)。
         // 振る舞いは tests/avail-save.mjs が実行して確かめる
-        assert.ok(/const slots = await _availDoSaveInner\(\{ rethrow: true \}\);/.test(html),
+        assert.ok(/const slots = await _availDoSaveInner\(\{ rethrow: true, target: id \}\);/.test(html),
             '保存の戻り値をスナップショットに使っていない');
         assert.ok(/if \(!Array\.isArray\(slots\)\) throw new Error/.test(html), '保存できなかった場合に確認を書かない');
     });
@@ -9833,7 +9834,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/_availUI\.counts = rbd\.stepCount\([^\n]*\n\s*_availUI\.countsPending = false;/.test(step), '−/+ のあとも確認の行の取り込みを待っている (押した凸数が上書きされる)');
         const cfm = html.match(/\n        async function handleConfirmAvailability\(unavailable\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/counts = \(!unavailable && rbd\) \? rbd\.normalizeCounts\(countsAtPress, rbd\.blocksOfSeason\(_availUI\.season \|\| ctx\.season\), slots\) : null;/.test(cfm), '凸数を保存した時間帯で詰め直していない');
-        assert.ok(/slots: unavailable \? null : slots, blockCounts: counts \}\);/.test(cfm) && /countsDropped = !!\(res && res\.blockCountsDropped\);/.test(cfm), '確認で凸数を渡していない / 落ちたことを見ていない');
+        assert.ok(/slots: unavailable \? null : slots, blockCounts: counts,\s*\n\s*actorName: forOther \? \(getCurrentIdentity\(\)\?\.name \|\| '運営'\) : null \}\);/.test(cfm) && /countsDropped = !!\(res && res\.blockCountsDropped\);/.test(cfm), '確認で凸数を渡していない / 落ちたことを見ていない');
         assert.ok(/\.\.\.\(countsDropped \? \{\} : \{ block_counts: counts \}\)/.test(cfm), '落ちたときに凸数を持つ (「凸数を変えました」が出続ける)');
         assert.ok(/const changedCounts = !!\(c && !c\.unavailable && 'block_counts' in c && _cKey\(c\.block_counts\) !== _cKey\(_availUI\.counts\)\);/.test(html), '確認したあとに凸数を変えたことを知らせていない');
         assert.ok(!/myAvailFlexTime|⏳ 隙間時間型 \(時間の約束はできないが3凸はする\)/.test(html), '⏳隙間時間型のスイッチが残っている');
@@ -12896,6 +12897,36 @@ console.log('\ngrowthDomain:');
         assert.ok(/const ref = `chain\|\$\{m\.memberId\}\|\$\{m\.lines\.join\(' \/ '\)\}`;/.test(nf) && /playerIds: \[m\.memberId\]/.test(nf), '人ごとに 1 通 (二重送信よけ) になっていない');
         assert.ok(/const chainLine = plan\?\.chained\s*\n/.test(html) && /🔭 前のブロックが模擬どおり削れたと仮定して組んだ予想です/.test(html), 'メンバーに予想の印が無い');
         assert.ok(/if \(_opsChainBusy\) return;/.test(fn) && /_opsChainBusy = true;/.test(fn) && /_opsChainBusy = false;/.test(fn), '二重押しを止めていない');
+    });
+    test('★ 配線: 🗣 運用の見直し 9a (2026-10-24) — 運営が参加可能時間と凸数を登録: 時間のシートは「誰のぶんか」(forPlayer) を持つ / 保存と確認はその人に・活動ログに代理の印 / 閉じたら本人の状態に戻して 👥・📸 を描き直す / 入口は 👥 の行と 📸 / 催促は Discord へ', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
+        const ms = _grRd('js', 'domain', 'memberStatus.js');
+        assert.ok(/function _availTarget\(\) \{\s*\n\s*return _availUI\.forPlayer \|\| getCurrentIdentity\(\);/.test(html), '誰のぶんか (forPlayer か本人) の口が無い');
+        assert.ok(/forPlayer: null,/.test(html) && /savePending: false,/.test(html), '_availUI に forPlayer / savePending が無い');
+        // 保存: デバウンスは予約したときの相手を渡し、本体は opts.target を優先。本人以外なら actorName を渡し、本人向けの描き直し (次にやること) はしない
+        assert.ok(/const id = opts\.target \|\| _availTarget\(\);/.test(html) && /await window\.supabaseSaveAvailability\(id\.id, slots, forOther \? \{ actorName: getCurrentIdentity\(\)\?\.name \|\| '運営' \} : \{\}\);/.test(html), '保存が相手と代理の印を渡していない');
+        assert.ok(/if \(!forOther\) \{ _invalidateSetupNeeds\(\); renderMyNextAction\(id\); \}/.test(html), '運営の登録で本人の「次にやること」を描き直している');
+        // 確認: 相手を控えて保存にも渡す。actorName
+        assert.ok(/async function handleConfirmAvailability\(unavailable\) \{\s*\n\s*const id = _availTarget\(\);/.test(html), '確認が forPlayer を見ていない');
+        assert.ok(/actorName: forOther \? \(getCurrentIdentity\(\)\?\.name \|\| '運営'\) : null \}\);/.test(html), '確認に代理の印が無い');
+        // 開く・閉じる
+        const op = html.match(/function openOpsAvailModal\(playerId\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_availUI\.forPlayer = \(me && String\(me\.id\) === String\(p\.id\)\) \? null : \{ id: p\.id, name: p\.name \};/.test(op) && /renderMyAvailabilitySettings\(\{ id: p\.id, name: p\.name \}\);/.test(op) && /_loadMyAvailConfirm\(p\.id\);/.test(op), '運営の登録が相手のぶんを開いていない');
+        const cl = html.match(/function closeMyAvailModal\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/const pending = _availUI\.savePending \? _availDoSave\(\{ target: forPlayer \|\| getCurrentIdentity\(\) \}\) : null;/.test(cl), '閉じるときに残った保存をその相手で流していない');
+        assert.ok(/_availUI\.forPlayer = null;/.test(cl) && /_loadMyAvailConfirm\(me\.id\);/.test(cl) && /renderOpsMemberStatus\(null, true\);/.test(cl) && /renderOpsMockIntake\(true\);/.test(cl), '閉じたあとに本人の状態へ戻して 👥・📸 を描き直していない');
+        assert.ok(/function openMyAvailModal\(\) \{[\s\S]{0,300}_availUI\.forPlayer = null;/.test(html), '本人が開くときに forPlayer を外していない');
+        assert.ok(/if \(_availUI\.forPlayer\) return;\s*\/\/ 🗣 9a/.test(html), '運営の登録中に本人の MY設定のバッジへ書いている');
+        // 入口
+        assert.ok(html.includes('onclick="openOpsAvailModal(${r.id})"'), '👥 メンバー状況の行に ⏰ が無い');
+        assert.ok(html.includes('onclick="openOpsAvailModalFromIntake()"') && /function openOpsAvailModalFromIntake\(\) \{\s*\n\s*const pid = _mockIntake\.picked;/.test(html), '📸 模擬の取り込みに「時間を登録」が無い');
+        assert.ok(html.includes('id="myAvailForWho"') && /function _renderAvailForWho\(\)/.test(html), 'シートに「誰のぶんか」の見出しが無い');
+        // クライアント: 活動ログに代理の印
+        assert.ok(/window\.supabaseSaveAvailability = async function \(playerId, slots, opts = \{\}\)/.test(client) && client.includes("${opts.actorName ? ' (運営が代理で登録)' : ''}`, { playerId, actorName: opts.actorName || null });"), '保存の活動ログに代理の印が無い');
+        assert.ok(/blockCounts = null, actorName = null \} = \{\}\) \{/.test(client) && client.includes("(actorName ? ' (運営が代理で登録)' : ''), { playerId, actorName });"), '確認の活動ログに代理の印が無い');
+        // 催促は Discord へ (メンバーは PAD に入力しない)
+        assert.ok(!ms.includes('MY設定 から') && ms.includes('参加可能時間 (出られるブロックと凸数) も Discord で運営に伝えてください') && ms.includes('出られるブロックと凸数を Discord で運営に伝えてください'), '催促がホームからの入力を促している');
     });
     test('★ 🧱 段階 7 publishedPlansDomain: ブロックごとの最新 (ブロックの行と 1 日ぶんの行は新しいほう) / 1 つ前 / ブロックの並び / 既定のブロック', () => {
         const d = globalThis.publishedPlansDomain;

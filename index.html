@@ -4668,6 +4668,7 @@
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の模擬か
                         <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
                     </label>
+                    <button type="button" onclick="openOpsAvailModalFromIntake()" title="選んだ人の参加可能時間と凸数を登録する (Discord の報告を写す)" style="flex:none;padding:7px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-family:inherit;font-size:12px;font-weight:900;cursor:pointer;">⏰ 時間を登録</button>
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
                         <div class="btn-nikke-inner">
@@ -6703,6 +6704,7 @@
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> ユニオンレイド参加可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
+                    <div id="myAvailForWho" style="display:none;margin:6px 0 2px;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:12px;font-weight:900;color:var(--ops-deep);line-height:1.5;"></div>
                     <p class="subtitle">🧱 ブロックで選びます。1 時間でも出られるブロックを ON に。ON にした時間帯は <strong>①凸プランの割当 ②締め凸の候補 (その時間に出られる人)</strong> に使われます。<br>※通知は時間帯で絞られません (あなた宛の連絡と、レイド当日のチームの状況が届きます)。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
                     <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
@@ -11252,6 +11254,8 @@
         function openMyAvailModal() {
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            _availUI.forPlayer = null;
+            _renderAvailForWho();
             document.getElementById('myAvailModal').classList.add('open');
             _availUI.counts = null;
             _availUI.countsPending = true;   // 🧱 凸数は確認の行から読む (開いたときに 1 回だけ取り込む — ホームの帯の読み込みで編集中の凸数を上書きしない)
@@ -11260,9 +11264,53 @@
         }
         function closeMyAvailModal() {
             document.getElementById('myAvailModal').classList.remove('open');
+            const forPlayer = _availUI.forPlayer;
+            // 残っている保存の予約は、閉じる前に**その相手で**流し切る (閉じたあとに走ると名乗っている本人のぶんになる)
+            const pending = _availUI.savePending ? _availDoSave({ target: forPlayer || getCurrentIdentity() }) : null;
+            _availUI.forPlayer = null;
+            _renderAvailForWho();
+            if (forPlayer) {
+                // 🗣 9a 運営の登録を閉じた: 共有の確認状態 (_myAvailConfirm) を名乗っている本人のものに戻し、👥 メンバー状況と 📸 模擬の取り込みを描き直す
+                _availUI.countsPending = false;
+                const me = getCurrentIdentity();
+                Promise.resolve(pending).catch(() => { }).then(() => {
+                    if (me?.id) _loadMyAvailConfirm(me.id);
+                    opsStore.invalidate();
+                    if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true);
+                    if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake(true);
+                });
+                return;
+            }
             // 変えた直後にホームの帯へ反映する (保存はモーダル内で済んでいる)
             const id = getCurrentIdentity();
             if (id?.id && typeof renderMyAvailStrip === 'function') renderMyAvailStrip(id);
+        }
+        // 🗣 運用の見直し 9a (2026-10-24 ユーザー決定 Q1「メンバーの PAD 入力はゼロ」): メンバーは Discord に「出られるブロック (+ 凸数)」を報告し、運営が本人の代わりに登録する。
+        //   本人の時間のシートをそのまま使い、「誰のぶんか」(_availUI.forPlayer) だけを持たせる — 保存 (supabaseSaveAvailability) と 今期の確認 (supabaseConfirmAvailability) はその人に書き、活動ログに「運営が代理で登録」。
+        //   入口は 👥 メンバー状況の行の ⏰ と、📸 模擬の取り込みの「⏰ 時間を登録」(選んだ人)。本人の確認状態の表示 (MY設定のバッジ) には触らない
+        function openOpsAvailModal(playerId) {
+            const p = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(playerId));
+            if (!p) { showNotification('メンバーが見つかりません (↻ で盤面を取り直してください)'); return; }
+            const me = getCurrentIdentity();
+            _availUI.forPlayer = (me && String(me.id) === String(p.id)) ? null : { id: p.id, name: p.name };   // 自分のぶんなら本人の登録と同じ
+            _renderAvailForWho();
+            document.getElementById('myAvailModal').classList.add('open');
+            _availUI.counts = null;
+            _availUI.countsPending = true;
+            renderMyAvailabilitySettings({ id: p.id, name: p.name });
+            _loadMyAvailConfirm(p.id);
+        }
+        function openOpsAvailModalFromIntake() {
+            const pid = _mockIntake.picked;
+            if (!pid) { showNotification('先に「誰の模擬か」で人を選んでください'); return; }
+            openOpsAvailModal(pid);
+        }
+        function _renderAvailForWho() {
+            const el = document.getElementById('myAvailForWho');
+            if (!el) return;
+            const fp = _availUI.forPlayer;
+            el.style.display = fp ? '' : 'none';
+            el.textContent = fp ? `👑 運営の登録: ${fp.name} さんの参加可能時間と凸数 (Discord の報告を写す。本人の画面の ⏰ に出ます)` : '';
         }
 
         // ===== 今期の戦闘可能時間の確認 (37_availability_confirmations) =====
@@ -11312,6 +11360,7 @@
         function _renderMyAvailConfirmBadge() {
             const el = document.getElementById('myAvailConfirmBadge');
             if (!el) return;
+            if (_availUI.forPlayer) return;   // 🗣 9a: 運営の登録中は、名乗っている本人の MY設定のバッジに相手の状態を書かない
             const c = _myAvailConfirm;
             // 37未適用 / シーズン無し: 確認できない環境で「未確認」と急かさない
             // (押しても「SQL を適用してください」「アクティブなシーズンがありません」になるだけ)
@@ -11357,6 +11406,8 @@
             }
             const nowSlots = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
             const n = nowSlots.length;
+            const fp = _availUI.forPlayer || null;   // 🗣 9a: 運営が本人の代わりに登録しているなら、文言に相手の名前
+            const who = fp ? `${escapeHtml(fp.name)} さん: ` : '';
             // 枠数だけでなく中身も見る (h21→h22 の付け替えを見逃さない)
             const snap = Array.isArray(c && c.slots_snapshot) ? c.slots_snapshot : null;
             const changedSlots = !!(c && !c.unavailable && (snap
@@ -11371,11 +11422,11 @@
                 box.style.background = 'rgba(245,158,11,0.08)';
                 box.style.border = '1px solid rgba(245,158,11,0.30)';
                 box.innerHTML = `
-                    <div style="font-size:12.5px;font-weight:900;color:var(--warn-deep);">${changed ? (changedSlots ? '確認したあとに時間帯を変えました' : '確認したあとに凸数を変えました') : '今回のレイドの確認がまだです'}</div>
+                    <div style="font-size:12.5px;font-weight:900;color:var(--warn-deep);">${who}${changed ? (changedSlots ? '確認したあとに時間帯を変えました' : '確認したあとに凸数を変えました') : '今回のレイドの確認がまだです'}</div>
                     <div style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:3px;">
                         ${changed
                             ? (changedSlots ? `いまは <b>${n}枠</b> です (確認時は ${snap ? snap.length : c.slot_count}枠)。この内容でよければ確認しなおしてください。` : 'この凸数でよければ確認しなおしてください。押すと運営に届きます。')
-                            : 'いまの設定で今回も動けるなら「この時間で参加します」を押してください。運営はこれを見て凸プランを組みます。'}
+                            : (fp ? 'Discord の報告どおりにブロックと凸数を入れたら「この時間で参加します」を押してください (本人の画面の ⏰ に出ます)。出られない人は「今回は難しい」。' : 'いまの設定で今回も動けるなら「この時間で参加します」を押してください。運営はこれを見て凸プランを組みます。')}
                     </div>
                     <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
                         <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));">この時間で参加します</button>
@@ -11389,7 +11440,7 @@
             box.style.border = c.unavailable ? '1px solid rgba(var(--ink-rgb), 0.08)' : '1px solid rgba(24,194,107,0.28)';
             box.innerHTML = `
                 <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? 'var(--t-body)' : 'var(--ok-deep)'};">
-                    ${c.unavailable ? '今回は難しいと伝えています' : '今回のレイドの確認が済んでいます'}
+                    ${who}${c.unavailable ? '今回は難しいと伝えています' : '今回のレイドの確認が済んでいます'}
                 </div>
                 <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
                     ${escapeHtml(when)} に確認${c.unavailable ? '' : ` (${n}枠)`}。変える場合は上で時間帯を直してから、下のボタンを押してください。
@@ -11412,8 +11463,9 @@
             });
         }
         async function handleConfirmAvailability(unavailable) {
-            const id = getCurrentIdentity();
+            const id = _availTarget();   // 🗣 9a: 運営が本人の代わりに登録するときは forPlayer
             if (!id?.id) return;
+            const forOther = String(id.id) !== String(getCurrentIdentity()?.id);
             if (_availConfirmBusy) return;   // 二重クリックよけ (押した1回だけを通す)
             _availConfirmBusy = true;
             _availConfirmSetBusy(true);
@@ -11431,13 +11483,14 @@
                 const cur = await _availEnqueue(async () => {
                     // ★ 保存が実際にサーバへ載せた内容をそのまま確認スナップショットにする。
                     //   ここで _availUI.slots を読み直すと、保存中に時間を変えた場合にずれる
-                    const slots = await _availDoSaveInner({ rethrow: true });
+                    const slots = await _availDoSaveInner({ rethrow: true, target: id });
                     if (!Array.isArray(slots)) throw new Error('時間帯を保存できませんでした');
                     // 🧱 凸数は実際に保存した時間帯で詰め直す (保存中に ON/OFF を変えた分を持ち込まない)
                     const rbd = window.raidBlocksDomain;
                     counts = (!unavailable && rbd) ? rbd.normalizeCounts(countsAtPress, rbd.blocksOfSeason(_availUI.season || ctx.season), slots) : null;
                     const res = await window.supabaseConfirmAvailability(ctx.season.id, id.id,
-                        { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots, blockCounts: counts });
+                        { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots, blockCounts: counts,
+                          actorName: forOther ? (getCurrentIdentity()?.name || '運営') : null });
                     countsDropped = !!(res && res.blockCountsDropped);
                     return slots;
                 });
@@ -14022,7 +14075,13 @@
             blocksReady: false,
             saveTimer: null,
             saving: false,
+            forPlayer: null,       // 🗣 運用の見直し 9a (2026-10-24): 運営が本人の代わりに登録するとき { id, name }。null = 名乗っている本人
+            savePending: false,    // 保存のデバウンスが残っている (閉じるときに流し切る — 相手を控えた保存)
         };
+        // 時間のシートの「誰のぶんか」。保存・今期の確認はこれに書く (運営の登録中に名乗っている本人へ書かない)
+        function _availTarget() {
+            return _availUI.forPlayer || getCurrentIdentity();
+        }
 
         async function renderMyAvailabilitySettings(identity) {
             const groupEl = document.getElementById('mypageAvailGroup');
@@ -14219,7 +14278,9 @@
 
         function _availScheduleSave() {
             clearTimeout(_availUI.saveTimer);
-            _availUI.saveTimer = setTimeout(() => _availDoSave(), 250);
+            const target = _availTarget();   // ★ 走るときではなく予約したときの相手 (運営のシートを閉じて自分に戻ったあとに走っても、本人のぶんに書く)
+            _availUI.savePending = true;
+            _availUI.saveTimer = setTimeout(() => _availDoSave({ target }), 250);
         }
 
         // 保存を**直列化**するキュー。clearTimeout は未開始のタイマーしか止められないので、
@@ -14239,6 +14300,7 @@
         //   (「今期の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
         function _availDoSave(opts = {}) {
             clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
+            _availUI.savePending = false;
             return _availEnqueue(() => _availDoSaveInner(opts));
         }
         // @returns {string[]|null} 実際にサーバへ載せた時間帯。
@@ -14246,16 +14308,17 @@
         //     保存の後で _availUI.slots を読み直すと、保存中に本人が時間を変えた場合に
         //     「availability は h21 なのに確認済みの記録は h22」というずれが残る (Codex指摘 2026-09-07)
         async function _availDoSaveInner(opts = {}) {
-            const id = getCurrentIdentity();
+            const id = opts.target || _availTarget();   // 誰のぶんか (予約したときの相手が優先)
             if (!id?.id) return null;
+            const forOther = String(id.id) !== String(getCurrentIdentity()?.id);   // 運営が本人の代わりに書いている
             const msgEl = document.getElementById('mypageAvailMessage');
             const slots = HOUR_ORDER
                 .map((h, i) => _availUI.slots[i] ? _hourKey(h) : null)
                 .filter(Boolean);
             _availUI.saving = true;
             try {
-                await window.supabaseSaveAvailability(id.id, slots);
-                _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS2を即解除
+                await window.supabaseSaveAvailability(id.id, slots, forOther ? { actorName: getCurrentIdentity()?.name || '運営' } : {});
+                if (!forOther) { _invalidateSetupNeeds(); renderMyNextAction(id); }   // 📌次にやることのS2を即解除 (本人のときだけ)
                 if (msgEl) {
                     msgEl.style.color = slots.length === 0 ? 'var(--warn)' : 'var(--ok)';
                     msgEl.textContent = slots.length === 0
@@ -18440,10 +18503,11 @@
                 const nudgeTitle = r.availUnavailable ? '今回は難しいと申告しているため催促しません'
                     : r.pushUnknown ? 'Push の購読状況を取得できていません (↻ で取り直し)'
                     : r.push ? 'この人だけに催促Push' : 'Push未購読のため届きません';
-                const acts = r.todo
+                const timeBtn = `<button class="dc-mb-btn sub" onclick="openOpsAvailModal(${r.id})" title="参加可能時間と凸数を登録する (Discord の報告を写す)">⏰</button>`;   // 🗣 9a
+                const acts = timeBtn + (r.todo
                     ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${escapeHtml(nudgeTitle)}">催促</button>` +
                       (isDay && r.atkCount < dom.MAX_ATTACKS && !_homeSimple() ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')   // シンプルな画面では 📥 結果の取り込みで登録する
-                    : '<span class="dc-mb-c ok">✓</span>';
+                    : '<span class="dc-mb-c ok">✓</span>');
                 const av = r.avatarUrl
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.avatarUrl)}" alt="">`
                     : escapeHtml((r.avatarChar || r.name).slice(0, 1));

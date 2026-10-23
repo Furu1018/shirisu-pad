@@ -60,6 +60,7 @@ const SRC = [
     cut('        function _renderMyAvailConfirmBadge('),
     cut('        function _renderMyAvailConfirm('),
     cut('        async function handleConfirmAvailability('),
+    cut('        function _availTarget('),   // 🗣 9a: 誰のぶんか (forPlayer か本人)
 ].join('\n');
 
 // ---- 依存スタブ ------------------------------------------------------------
@@ -70,6 +71,7 @@ let log = [];                 // 実際にサーバへ着地した順の記録
 let saved = null;             // availability の最終状態 (最後に着地した保存)
 let confirmRows = [];         // availability_confirmations への書き込み
 let saveGate = null;          // 保存を止めておくためのフック
+let saveTargets = [];         // 🗣 9a: 保存に渡された相手 (opts.target) の id
 
 // innerHTML を代入するとボタン要素が作り直される箱 (実物と同じ挙動)。
 // querySelectorAll('button') は「その瞬間の」ボタンを返す
@@ -87,13 +89,13 @@ function makeBox() {
 }
 
 function makeEnv() {
-    log = []; saved = null; confirmRows = []; saveGate = null;
+    log = []; saved = null; confirmRows = []; saveGate = null; saveTargets = [];
     const box = makeBox();
     const env = {
         HOUR_ORDER, _hourKey,
         _availUI: { slots: new Array(24).fill(false), saveTimer: null, counts: null },
         clearTimeout: () => { },
-        getCurrentIdentity: () => ({ id: 7 }),
+        getCurrentIdentity: () => ({ id: 7, name: 'me' }),
         ensureActiveSeasonLoaded: async () => ({ season: { id: 44 } }),
         opsStore: { invalidate() { } },
         escapeHtml: (x) => String(x),
@@ -117,6 +119,7 @@ function makeEnv() {
         // 通信 (gate) を挟んでから着地し、**実際に載せた slots を返す**。
         // ★ 戻り値は確認スナップショットの正 — 契約が変わったらここも直すこと
         async _availDoSaveInner(opts = {}) {
+            saveTargets.push(opts.target ? opts.target.id : null);   // 🗣 9a: 相手が渡っているか
             const slots = HOUR_ORDER.map((h, i) => env._availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
             const tag = slots.join('|') || '(空)';
             if (saveGate) { const g = saveGate; saveGate = null; await g.promise; }
@@ -184,6 +187,25 @@ await test('★ 確認の書き込みは自分の保存の直後に来る (間�
     assert.equal(log[j - 1], `save(${snap})`, `確認の直前が自分の保存でない (間に割り込まれた): ${log.join(' → ')}`);
     assert.deepEqual(saved, confirmRows[0].slots, '確認した内容とサーバの availability がずれている');
     assert.equal(log[log.length - 1], 'save(h23)', `後からの自動保存が最後に来ていない: ${log.join(' → ')}`);
+});
+
+await test('★ 🗣 9a 運営が本人の代わりに登録: 確認と保存は forPlayer の人に書き、活動ログ用に actorName を渡す / 本人のときは actorName なし', async () => {
+    const env = makeEnv();
+    env._availUI.forPlayer = { id: 9, name: 'B' };   // 運営 (id 7) が B さん (id 9) のぶんを開いている
+    setSlots(env, [21]);
+    await env.handleConfirmAvailability(false);
+    assert.equal(confirmRows[0].playerId, 9, `確認を名乗っている本人 (7) に書いた: ${JSON.stringify(confirmRows[0])}`);
+    assert.equal(confirmRows[0].actorName, 'me', '運営が代理で登録した印 (actorName) が無い');
+    assert.deepEqual(saveTargets, [9], `確認の保存に相手 (9) が渡っていない: ${JSON.stringify(saveTargets)}`);
+    // 本人のとき
+    const env2 = makeEnv();
+    setSlots(env2, [21]);
+    await env2.handleConfirmAvailability(false);
+    assert.equal(confirmRows[0].playerId, 7); assert.equal(confirmRows[0].actorName, null, '本人の確認に actorName が付いている');
+    assert.deepEqual(saveTargets, [7]);
+    // 保存のデバウンスから来た相手も通す
+    await env2._availDoSave({ target: { id: 9 } });
+    assert.deepEqual(saveTargets, [7, 9], '_availDoSave の opts.target が _availDoSaveInner に渡っていない');
 });
 
 await test('★ 確認の保存中に時間を変えても、記録は「実際に保存した内容」と一致する', async () => {

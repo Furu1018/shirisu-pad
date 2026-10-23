@@ -1184,7 +1184,7 @@ window.supabaseLoadAvailability = async function (playerId) {
 //   ここが持つのは「いつ確認したか」と「今回は難しいか」だけ — 時間帯はコピーしない
 //   (二重に持つと、片方だけ直したときにどちらが正かで揉める)。
 //   未確認は空欄と同じ **未確定** として扱う (勝手に「前回のまま有効」とみなさない)
-window.supabaseConfirmAvailability = async function (seasonId, playerId, { unavailable = false, slotCount = null, slots = null, blockCounts = null } = {}) {
+window.supabaseConfirmAvailability = async function (seasonId, playerId, { unavailable = false, slotCount = null, slots = null, blockCounts = null, actorName = null } = {}) {
     if (!seasonId || !playerId) throw new Error('シーズン/プレイヤーが特定できません');
     const row = {
         season_id: seasonId, player_id: playerId,
@@ -1215,7 +1215,7 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
         throw error;
     }
     window.supabaseLogActivity?.('avail_confirm',
-        unavailable ? '今期は参加が難しいと申告' : `今期の参加可能時間を確認 (${slotCount ?? '?'}枠${row.block_counts ? ` · 凸数 ${JSON.stringify(row.block_counts)}` : ''})`, { playerId });
+        (unavailable ? '今期は参加が難しいと申告' : `今期の参加可能時間を確認 (${slotCount ?? '?'}枠${row.block_counts ? ` · 凸数 ${JSON.stringify(row.block_counts)}` : ''})`) + (actorName ? ' (運営が代理で登録)' : ''), { playerId, actorName });
     return { blockCountsDropped };   // 53 未適用で凸数を保存できなかった (本人に知らせる)
 };
 // 自分の確認状態。未確認なら null。
@@ -1252,7 +1252,7 @@ window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
 };
 
 // プレイヤーの availability を slots[] で上書き (hXX 形式のみ)
-window.supabaseSaveAvailability = async function (playerId, slots) {
+window.supabaseSaveAvailability = async function (playerId, slots, opts = {}) {
     const clean = (slots || []).filter(_isValidHourSlot);
     // 一旦全削除して入れ直し (旧キー も含めて全消去 → 新キーのみ保存される)
     const { error: dErr } = await supabase
@@ -1260,7 +1260,8 @@ window.supabaseSaveAvailability = async function (playerId, slots) {
         .delete()
         .eq('player_id', playerId);
     if (dErr) throw dErr;
-    window.supabaseLogActivity?.('avail_change', `参加可能時間を更新 (${clean.length}枠)`, { playerId });
+    // 🗣 9a: 運営が本人の代わりに書いたら actorName (活動ログに「運営が代理で登録」)
+    window.supabaseLogActivity?.('avail_change', `参加可能時間を更新 (${clean.length}枠)${opts.actorName ? ' (運営が代理で登録)' : ''}`, { playerId, actorName: opts.actorName || null });
     if (clean.length === 0) return;
     const rows = clean.map(s => ({ player_id: playerId, time_slot: s }));
     const { error: iErr } = await supabase
