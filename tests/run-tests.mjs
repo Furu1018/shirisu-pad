@@ -18,6 +18,8 @@ import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
 import '../js/domain/availability.js';    // globalThis.availabilityDomain (参加可能時間の読み方)
+import '../js/domain/planChain.js';   // globalThis.planChainDomain (🧱 残りのブロックを一気に組む — 段階 8・2026-10-23)
+import '../js/domain/publishedPlans.js';   // globalThis.publishedPlansDomain (🧱 配信をブロックごとの最新で読む — 段階 7・2026-10-23)
 import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
 import '../js/domain/mockIntake.js';      // globalThis.mockIntakeDomain (📸 運営の模擬取り込み — ブロック制 ③-e 2026-10-18)
 import '../js/domain/attackCheck.js';     // globalThis.attackCheckDomain (✅ 凸報告の確認 — ブロック制 ③-f 2026-10-18)
@@ -957,8 +959,18 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.deepEqual(t.rows.map(r => r.state), ['past', 'past', 'past', 'past', 'now', 'next', 'later']);
     assert.deepEqual(t.rows[1].done.map(x => [x.bossNumber, x.damageB]), [[2, 24.3]], '済んだ凸がその時刻のブロックに居ない');
     assert.deepEqual(t.rows[4].planned.map(x => [x.bossNumber, x.level, x.dmgB, x.hourLabel]), [[3, 2, 22.1, '18時']], '配信の割当がそのブロックに居ない (他人の凸が混ざる)');
-    assert.deepEqual(t.rows[5].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の ⏳隙間の割当が居ない');
+    // 🧱 段階 7: 夕方のぶんの配信に入っている 22時 (夜) の予想は出さない — 夜は夜の配信が持つ (配信はブロックごとの行)
+    assert.deepEqual(t.rows[5].planned, [], 'ブロックのぶんの配信から、後ろのブロックの予想を出した');
     assert.deepEqual(t.rows.map(r => r.covered), [false, false, false, false, true, false, false], 'ブロックのぶんの配信は、そのブロックだけ「決まっている」');
+    // 複数の配信 (plans): 夕方の配信 + 夜の配信 → それぞれのブロックに / 1 日ぶんの配信 (blockScope なし) は全部に効く
+    const nightPlan = { blockScope: { from: 21, to: 23 }, levels: [{ level: 3, bosses: [{ bossNumber: 1, weakness: 'water', attacks: [{ memberId: 7, hourIdx: 17, dmgB: 25, flex: true }, { memberId: 7, hourIdx: 13, dmgB: 9 }] }] }] };
+    const t2 = d.todayRows({ blocks: B, nowHour: 19, plans: [myPlan, nightPlan], viewerId: '7', attacks: myAtks, hourOfIso: jst });
+    assert.deepEqual(t2.rows[4].planned.map(x => [x.bossNumber, x.level]), [[3, 2]], '夜の配信の 18時の凸 (範囲外) を夕方に混ぜた');
+    assert.deepEqual(t2.rows[5].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の配信の割当が夜に居ない');
+    assert.deepEqual(t2.rows.map(r => r.covered), [false, false, false, false, true, true, false], '配信のあるブロックだけ「決まっている」');
+    const allDay = { levels: [{ level: 1, bosses: [{ bossNumber: 5, weakness: 'wind', attacks: [{ memberId: 7, hourIdx: 2, dmgB: 11 }] }] }] };
+    const t3 = d.todayRows({ blocks: B, nowHour: 19, plans: [allDay], viewerId: '7', attacks: [], hourOfIso: jst });
+    assert.deepEqual([t3.rows[0].planned.length, t3.rows.every(r => r.covered)], [1, true], '1 日ぶんの配信は全部のブロックに効く');
     assert.equal(t.unknownTime.length, 1); assert.equal(t.total, 2); assert.equal(t.nowIdx, 4);
     // 深夜 (JST 0時・4時) の凸は深夜ブロックに (UTC 前日の 15時・19時)
     const mid = d.todayRows({ blocks: B, nowHour: 3, plan: null, viewerId: 7, attacks: [{ boss_number: 1, reported_at: '2026-10-10T15:05:00Z' }, { boss_number: 2, reported_at: '2026-10-10T19:30:00Z' }, { boss_number: 3, reported_at: '2026-10-10T20:10:00Z' }], hourOfIso: jst });
@@ -7463,8 +7475,9 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(!/\.delete\(\)/.test(fn), `配信が旧行を削除している: ${fn.slice(0, 160)}`);
         assert.ok(fn.includes('旧配信は**消さない**'));
     });
-    test('L3: 最新の配信は id 降順だけで選ぶ (端末の時計ずれで最新が入れ替わらない)', () => {
-        const fn = client.match(/window\.supabaseGetPublishedPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
+    test('L3: 最新の配信は id 降順だけで選ぶ (端末の時計ずれで最新が入れ替わらない) — 🧱 段階 7: 一覧 (supabaseGetPublishedPlans) が本体', () => {
+        const fn = client.match(/window\.supabaseGetPublishedPlans = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/window\.supabaseGetPublishedPlan = async function \(\) \{\s*\n\s*const rows = await window\.supabaseGetPublishedPlans\(1\);/.test(client), '最新の 1 行は一覧の先頭');
         assert.ok(!/order\('published_at'/.test(fn), 'published_at で並べると時計ずれに弱い');
         assert.ok(/order\('id', \{ ascending: false \}\)/.test(fn));
         // 38未適用環境では frozen 列を落として再試行 = 「常に配信中」に静かに劣化
@@ -7512,7 +7525,8 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // ★ 手元の直前の算出結果ではなく**配信したもの**が基準。
         //   メンバーへの約束は配信したものなので、何度算出し直しても基準は動かない
         assert.ok(/previousPlan: options\.previousPlan \|\| null,/.test(html), 'ソルバーへ渡していない');
-        assert.ok(/const pub = typeof window\.supabaseGetPublishedPlan === 'function'/.test(html));
+        assert.ok(/pubRows = typeof window\.supabaseGetPublishedPlans === 'function' \? await window\.supabaseGetPublishedPlans\(\) : \[\];/.test(html), '配信の行を読んでいない');
+        assert.ok(/const pub = blk \? pd\.effectiveFor\(pubRows, pd\.keyOfBlock\(blk\)\) : pd\.latest\(pubRows\);/.test(html), 'そのブロックに効いている配信を基準にしていない (🧱 段階 7)');
         assert.ok(/if \(pub && Number\(pub\.season_id\) === Number\(snapshot\?\.season\?\.id\)\) \{/.test(html),
             '別シーズンの配信を基準にしてしまう');
         // ★ 何を基準に組んだかを焼き込み、配信直前に照合する (並行配信で相手の約束を壊さない)
@@ -9648,8 +9662,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/pubBtn\.textContent = plan\.blockScope && window\.raidBlocksDomain\s*\n\s*\? `📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(\$\{window\.raidBlocksDomain\.attackCountIn\(plan, plan\.blockScope\)\}凸\)` : '📤 このプランを配信';/.test(html), '配信ボタンの文言が無い');
         // ホーム: 配信を読んだ直後にその範囲だけに絞る (以後の 3 つの表示・ヒーローはみな絞ったプランを見る)
         const home = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const plan = \(pub\.plan\?\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(pub\.plan, pub\.plan\.blockScope\) : pub\.plan;/.test(home), 'ホームで範囲に絞っていない');
-        assert.ok(/🧱 <b>\$\{escapeHtml\(plan\.blockScope\.label\)\}<\/b> のぶんの配信です。次のブロックの割当はまだ決まっていません/.test(html), 'どのブロックの配信かの案内が無い');
+        assert.ok(/const pubScope = pubSel \? pubSel\.block : \(pub\.plan\?\.blockScope \|\| null\);\s*\n\s*const plan = \(pubScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(pub\.plan, pubScope\) : pub\.plan;/.test(home), 'ホームで範囲に絞っていない (選んだブロック)');
+        assert.ok(/🧱 <b>\$\{escapeHtml\(plan\.blockScope\.label\)\}<\/b> のぶんの配信です。\$\{laterPublished \? '上のチップでほかのブロックの配信も見られます' : ''\}次のブロックの割当はまだ決まっていません/.test(html), 'どのブロックの配信かの案内が無い');
         assert.ok(/\$\{scopeLine\}\$\{condLine\}/.test(html), '案内を出していない');
         assert.ok(/このブロック \(\$\{escapeHtml\(plan\.blockScope\.label\)\}\) にあなたの凸はありません。次のブロックの配信を待ってください。/.test(html), '割当なしの文言がブロックを知らない');
         // 配信: 差分 (L5 の提示・L4 の通知) は範囲で見る / 確認の文言
@@ -9676,8 +9690,8 @@ console.log('\ngrowthDomain:');
         assert.ok(hs.length >= 2 && hs.every(h => h >= night.fromIdx), `ブロックの頭より前に置かれている: ${JSON.stringify(hs)}`);
         assert.equal(rbd2.attackCountIn(ip, night), hs.filter(h => h <= night.toIdx).length);
         assert.ok(!ip.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.map(a => a.memberName))).includes('夕方だけ'), '夜のブロックに夕方だけの人が居る');
-        assert.ok(/myResv = window\.raidBlocksDomain\.scopeReservations\(myResv, pub\.plan\.blockScope\);/.test(home), '予約を範囲に絞っていない');
-        assert.ok(/const scoped = \(pub\.plan\?\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(prev\.plan, pub\.plan\.blockScope\) : prev\.plan;\s*\n\s*const d = dd\.diffPlans\(scoped, plan\);/.test(home), 'L3 の前回を範囲に絞っていない');
+        assert.ok(/myResv = window\.raidBlocksDomain\.scopeReservations\(myResv, pubScope\);/.test(home), '予約を範囲に絞っていない (選んだブロック)');
+        assert.ok(/const scoped = \(pubScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(prev\.plan, pubScope\) : prev\.plan;\s*\n\s*const d = dd\.diffPlans\(scoped, plan\);/.test(home), 'L3 の前回を範囲に絞っていない (選んだブロック)');
         assert.ok(/const imgPlan = \(_opsLastPlan\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(_opsLastPlan, _opsLastPlan\.blockScope\) : _opsLastPlan;/.test(html) && /_renderPlanToImageTimetable\(imgPlan,/.test(html) && /_renderPlanToImage\(imgPlan\)/.test(html), '共有画像を範囲に絞っていない');
         // 古い版 (2 を読む端末) は 3 の配信を読まない
         const cg = globalThis.clientGateDomain;
@@ -9742,10 +9756,10 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!identity\?\.id\) \{ card\.style\.display = 'none'; renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\); return; \}/.test(pub), '名乗りなしで消していない (きょうの凸 + 登録された模擬)');
         assert.ok(/if \(!pub\?\.plan\) \{\s*\n\s*card\.style\.display = 'none';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信なしでも描いていない');
         assert.ok(/_renderMyPubBody\(\);\s*\n\s*card\.style\.display = '';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信ありで描いていない');
-        assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows \};/.test(pub), 'その日の凸の行を使い回していない');
+        assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows,\s*\n\s*pubs: pubList, pubKey: pubSel \? pubSel\.key : null, pubRows \};/.test(pub), 'その日の凸の行を使い回していない / ブロックごとの配信を状態に持っていない');
         const fn = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn, 'renderMyTodayBlocks が無い');
-        assert.ok(/rbd\.todayRows\(\{ blocks, nowHour, plan: st \? st\.plan : null, viewerId: identity\.id, attacks: rows \|\| \[\], hourOfIso: _planJstHour \}\)/.test(fn), '判定をドメインに任せていない');
+        assert.ok(/rbd\.todayRows\(\{ blocks, nowHour, plans, viewerId: identity\.id, attacks: rows \|\| \[\], hourOfIso: _planJstHour \}\)/.test(fn), '判定をドメインに任せていない');
         assert.ok(/String\(_myPubState\.viewerId\) === String\(identity\.id\) && String\(_myPubState\.seasonId\) === String\(season\.id\)/.test(fn), '別人・別シーズンの配信を使ってしまう');
         assert.ok(/Array\.isArray\(st\?\.myAttackRows\) \? st\.myAttackRows\s*\n\s*: \(typeof window\.supabaseLoadMyAttacks === 'function' \? await window\.supabaseLoadMyAttacks\(identity\.id, season\.id, season\.hard_date\) : \[\]\);/.test(fn), '配信カードの凸の行を使い回さず二度読む / 無いときに読まない');
         assert.ok(/if \(seq !== _todayBlocksSeq\) return;/.test(fn), '世代ガードが無い');
@@ -12778,6 +12792,124 @@ console.log('\ngrowthDomain:');
         const flexRow = d.blockBoardRows({ startLevel: 1, levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'B1', targetHpB: 30, attacks: [
             { memberId: 1, memberName: 'あ', dmgB: 20, hourIdx: 13, loadoutSlot: 1 }, { memberId: 2, memberName: 'い', dmgB: 15, hourIdx: 14, flex: true, loadoutSlot: 1 }] }] }] }, { fromIdx: 13, toIdx: 15 })[0];
         assert.deepEqual([flexRow.killed, flexRow.killHourIdx], [true, null], '⏳ の凸の仮の時刻を撃破の時刻にした');
+    });
+    test('★ 🧱 段階 8 planChainDomain.projectBoard: ブロックの凸を実行したことにして盤面を進める — 残 HP は min(ダメージ, 残り) / 5 体倒れたら次のレベル (HP は表) / Lv3 踏破で Lv4 はボス 5 無限 / 済んだ凸と使ったキャラを人に足す / 予想の報告時刻はその時刻', () => {
+        const d = globalThis.planChainDomain;
+        const hp = { 1: { lord: 10, tyrant: 20 }, 2: { lord: 30, tyrant: 40 }, 3: { lord: 50, tyrant: 60 } };
+        const hpOf = (l, t) => hp[l][t];
+        const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, tier: n === 3 || n === 5 ? 'tyrant' : 'lord', total_hp_raw: (n === 3 || n === 5 ? 20 : 10) * 1e9, remaining_hp_raw: (n === 3 || n === 5 ? 20 : 10) * 1e9 }));
+        bosses[0].remaining_hp_raw = 4e9;   // B1 は残り 4B
+        const players = [{ id: 'A', attackCount: 0, attacks: [] }, { id: 'B', attackCount: 2, attacks: [{ boss_number: 2, characters: ['x1'] }, { boss_number: 4, characters: ['x2'] }] }, { id: 'C', attackCount: 0, attacks: [] }, { id: 'D', attackCount: 3, attacks: [] }];
+        const blk = { fromIdx: 13, toIdx: 15, from: 18, to: 20 };
+        const at = (memberId, hourIdx, dmgB, team) => ({ memberId, hourIdx, dmgB, team, loadoutSlot: 1 });
+        const plan = { levels: [{ level: 1, bosses: [
+            { bossNumber: 1, attacks: [at('A', 13, 9, ['a1', 'a2'])] },      // 4B しか残っていない → 削ったのは 4B
+            { bossNumber: 2, attacks: [at('B', 14, 10, ['x1']), at('D', 14, 10, ['d1'])] },   // B はキャラ x1 を使用済み / D は 3 凸済み → 置かない
+            { bossNumber: 3, attacks: [at('C', 16, 50, ['c1'])] },           // 21時 = ブロックの外 → 実行しない
+            { bossNumber: 4, attacks: [{ ...at('A', 14, 10, ['a3']), fromReservation: true, reservationId: 77 }] },
+            { bossNumber: 5, attacks: [at('C', 15, 25, ['c2'])] },
+        ] }] };
+        const board = { season: { id: 1, current_level: 1, hard_date: '2026-10-25' }, bosses, players };
+        const r = d.projectBoard(board, plan, blk, { hpOf });
+        assert.deepEqual(r.done.map(x => [x.memberId, x.bossNumber, x.dealtB]), [['A', 1, 4], ['A', 4, 10], ['C', 5, 20]], '実行したことにした凸 (範囲外・キャラ被り・倒れたボスは置かない / 削ったのは残りまで)');
+        assert.deepEqual(r.done.map(x => x.reservationId), [null, 77, null], '実行したことにした予約の id を返していない');
+        assert.equal(r.level, 1, '5 体倒れていないのでレベルは上がらない');
+        assert.deepEqual(r.bosses.map(b => b.remaining_hp_raw / 1e9), [0, 10, 20, 0, 0]);
+        const A = r.players.find(p => p.id === 'A');
+        assert.equal(A.attackCount, 2); assert.deepEqual(A.attacks.map(x => [x.boss_number, x.characters, x.predicted]), [[1, ['a1', 'a2'], true], [4, ['a3'], true]]);
+        assert.equal(A.attacks[0].reported_at, '2026-10-25T09:00:00.000Z', '18時 JST = 09:00Z');
+        assert.deepEqual(board.players[0].attacks, [], '入力を変えていない'); assert.equal(board.bosses[0].remaining_hp_raw, 4e9);
+        // 5 体倒れる → 次のレベル (HP は表) / 翌 2 時はレイド日の翌日
+        const lordAll = () => [1, 2, 3, 4, 5].map(n => ({ boss_number: n, tier: 'lord', total_hp_raw: 1e9, remaining_hp_raw: 1e9 }));
+        const board2 = { season: { id: 1, current_level: 1, hard_date: '2026-10-25' }, bosses: lordAll(), players: [{ id: 'A', attackCount: 0, attacks: [] }, { id: 'B', attackCount: 0, attacks: [] }] };
+        const plan2 = { levels: [{ level: 1, bosses: [1, 2, 3, 4, 5].map(n => ({ bossNumber: n, attacks: [at(n <= 3 ? 'A' : 'B', 21, 5, ['k' + n])] })) }] };
+        const r2 = d.projectBoard(board2, plan2, { fromIdx: 19, toIdx: 23, from: 0, to: 4 }, { hpOf });
+        assert.deepEqual([r2.level, r2.cleared, r2.done.length], [2, [1], 5]);
+        assert.deepEqual(r2.bosses.map(b => b.remaining_hp_raw / 1e9), [30, 30, 30, 30, 30], '次のレベルの HP に');
+        assert.equal(r2.players[0].attacks[0].reported_at, '2026-10-25T17:00:00.000Z', '翌 2 時 JST = 26 日 02:00 JST = 25 日 17:00Z');
+        // Lv3 踏破 → Lv4 (ボス 5 だけ無限)。Lv4 の凸はボス 5 だけ実行したことにする
+        const board3 = { season: { id: 1, current_level: 3, hard_date: '2026-10-25' }, bosses: lordAll(), players: [{ id: 'A', attackCount: 0, attacks: [] }, { id: 'B', attackCount: 0, attacks: [] }] };
+        board3.players.push({ id: 'C', attackCount: 0, attacks: [] });
+        const plan3 = { levels: [{ level: 3, bosses: [1, 2, 3, 4, 5].map(n => ({ bossNumber: n, attacks: [at(n <= 3 ? 'A' : 'B', 13, 5, ['k' + n])] })) }, { level: 4, infinite: true, bosses: [{ bossNumber: 5, attacks: [at('B', 14, 30, ['z'])] }, { bossNumber: 3, attacks: [at('C', 14, 30, ['y'])] }] }] };
+        const r3 = d.projectBoard(board3, plan3, blk, { hpOf });
+        assert.deepEqual([r3.level, r3.cleared], [4, [3]]);
+        assert.deepEqual(r3.bosses.map(b => b.remaining_hp_raw / 1e9), [0, 0, 0, 0, 1e6], 'Lv4 はボス 5 だけ・HP 無限');
+        assert.equal(r3.done.filter(x => x.level === 4).length, 1, 'Lv4 の凸も実行したことにする (ボス 5 だけ)');
+        assert.equal(r3.players.find(p => p.id === 'C').attackCount, 0, 'Lv4 でボス 5 以外の凸を実行した');
+        assert.equal(d.isoAt('bad', 13), null);
+        assert.equal(r.players.find(p => p.id === 'D').attackCount, 3, '3 凸済みの人を実行した');
+        assert.deepEqual(d.summarize(plan, blk, r), { attacks: 5, executed: 3, levelAfter: 1, cleared: [], unassigned: 0 });
+    });
+    test('★ 配線: 🧱 段階 8 残りのブロックを一気に組む — ボタン / ブロックごとに 組む → 盤面を進める → 次 / 予約の指紋 / ブロックごとに配信 / 人ごとに 1 通 / 予想の印', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/<script defer src="\.\/js\/domain\/planChain\.js"><\/script>/.test(html), 'planChain.js を読んでいない');
+        assert.ok(/root\.HARD_LEVEL_HP_B = HARD_LEVEL_HP_B;/.test(_grRd('js', 'optimal-plan.js')), 'HP の表を公開していない');
+        assert.ok(/<button id="opsPlanChainBtn" onclick="handleOpsChainPlan\(\)"/.test(html), 'ボタンが無い');
+        const fn = html.match(/async function handleOpsChainPlan\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.length > 1000, 'handleOpsChainPlan が無い');
+        assert.ok(/const rest = blocks\.filter\(b => b\.fromIdx >= Number\(start\.fromIdx\)\);/.test(fn), 'いまのブロックから最後までになっていない');
+        assert.ok(/const plan = computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan, reservations \}, board\);/.test(fn), 'そのブロックの人だけで・進めた盤面で組んでいない');
+        assert.ok(/const proj = pc\.projectBoard\(board, plan, blk, \{ hpOf \}\);[\s\S]*?board = \{ season: proj\.season, bosses: proj\.bosses, players: proj\.players \};/.test(fn), '盤面を進めていない');
+        assert.ok(/plan\.chained = true;/.test(fn) && /plan\.blockScope = \{ idx: blocks\.indexOf\(blk\)/.test(fn), '予想の印・ブロックの焼き込みが無い');
+        assert.ok(/const executed = new Set\(proj\.done\.map\(x => x\.reservationId\)\.filter\(v => v != null\)\.map\(Number\)\);\s*\n\s*if \(executed\.size\) reservations = reservations\.filter\(r => !executed\.has\(Number\(r\.id\)\)\);/.test(fn), '実行したことにした予約を次のブロックの拘束に渡している');
+        assert.ok(/rv\.fingerprint\(nowRows\) !== fp0/.test(fn), '配信の直前に予約の指紋を照合していない');
+        assert.ok(/for \(const r of results\) \{\s*\n\s*const pub = await window\.supabasePublishPlan\(r\.plan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, _planSchemaOf\(r\.plan\)\);/.test(fn), 'ブロックごとに配信していない');
+        assert.ok(/await _notifyChainPublish\(\{ pubs, seasonId, me \}\);/.test(fn), '通知していない');
+        const nf = html.match(/async function _notifyChainPublish\(\{ pubs, seasonId, me \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const ref = `chain\|\$\{m\.memberId\}\|\$\{m\.lines\.join\(' \/ '\)\}`;/.test(nf) && /playerIds: \[m\.memberId\]/.test(nf), '人ごとに 1 通 (二重送信よけ) になっていない');
+        assert.ok(/const chainLine = plan\?\.chained\s*\n/.test(html) && /🔭 前のブロックが模擬どおり削れたと仮定して組んだ予想です/.test(html), 'メンバーに予想の印が無い');
+        assert.ok(/if \(_opsChainBusy\) return;/.test(fn) && /_opsChainBusy = true;/.test(fn) && /_opsChainBusy = false;/.test(fn), '二重押しを止めていない');
+    });
+    test('★ 🧱 段階 7 publishedPlansDomain: ブロックごとの最新 (ブロックの行と 1 日ぶんの行は新しいほう) / 1 つ前 / ブロックの並び / 既定のブロック', () => {
+        const d = globalThis.publishedPlansDomain;
+        const P = (id, scope) => ({ id, season_id: 1, plan: scope ? { blockScope: scope, levels: [] } : { levels: [] } });
+        const M = { from: 5, to: 8 }, E = { from: 18, to: 20 }, N = { from: 21, to: 23 };
+        const rows = [P(3, E), P(1, M), P(5, N), P(2, null), P(4, E)];
+        assert.equal(d.keyOf(P(9, E)), '18-20'); assert.equal(d.keyOf(P(9, null)), 'all'); assert.equal(d.keyOfBlock({ from: 0, to: 4 }), '0-4'); assert.equal(d.keyOfPlan(null), 'all');
+        assert.equal(d.latest(rows).id, 5);
+        assert.equal(d.effectiveFor(rows, '18-20').id, 4, '夕方はその行の最新 (4)');
+        assert.equal(d.effectiveFor(rows, '5-8').id, 2, '朝 (1) より新しい 1 日ぶん (2) が勝つ');
+        assert.equal(d.effectiveFor(rows, '12-14'), rows.find(r => r.id === 2), '配信の無いブロックには 1 日ぶんの行が効く');
+        assert.equal(d.effectiveFor([P(1, M)], '18-20'), null, '別のブロックの行は効かない');
+        assert.equal(d.effectiveFor(rows, 'all').id, 5);
+        assert.equal(d.previousFor(rows, P(4, E)).id, 3, '同じブロックの 1 つ前');
+        assert.equal(d.previousFor(rows, P(3, E)).id, 2, '同じブロックが無ければ 1 日ぶん');
+        assert.equal(d.previousFor(rows, P(1, M)), null);
+        const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
+        const list = d.byBlocks(rows, blocks);
+        assert.deepEqual(list.map(x => [x.block.name, x.pub.id]), [['朝', 2], ['午前', 2], ['昼', 2], ['午後', 2], ['夕方', 4], ['夜', 5], ['深夜', 2]], 'ブロックの並びと効いている配信');
+        assert.equal(d.distinctCount(list), 3);
+        assert.deepEqual(d.byBlocks([P(7, E)], blocks).map(x => x.block.name), ['夕方'], '配信の無いブロックは並べない');
+        // 既定: いまのブロック → 次に配信のあるブロック → 最新
+        const two = d.byBlocks([P(1, M), P(5, N)], blocks);
+        assert.equal(d.pickDefault(two, 1).block.name, '朝', 'いまのブロック (6時) に配信がある');
+        assert.equal(d.pickDefault(two, 8).block.name, '夜', 'いま (13時) に配信が無ければ次に配信のあるブロック');
+        const rev = d.byBlocks([P(5, M), P(1, N)], blocks);   // 朝のほうが新しい配信 — いま 13 時なら「次に配信のあるブロック」= 夜 (最新の配信ではない)
+        assert.equal(d.pickDefault(rev, 8).block.name, '夜', '次に配信のあるブロックより最新の配信を優先した');
+        assert.equal(d.pickDefault(two, 19).block.name, '夜', '後ろに無ければ最新');
+        assert.equal(d.pickDefault(two, null).block.name, '夜');
+        assert.equal(d.pickDefault([], 1), null);
+    });
+    test('★ 配線: 🧱 段階 7 配信をブロック別に — メンバーはブロックのチップで切り替え・きょうの凸は全部の配信 / 運営の「いまの配信」は選んでいるブロックのもの / 配信時の照合は同じブロック / 凍結の stale も同じブロック', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
+        assert.ok(/<script defer src="\.\/js\/domain\/publishedPlans\.js"><\/script>/.test(html), 'publishedPlans.js を読んでいない');
+        // メンバー: 配信のあるブロックを並べて選ぶ / チップ / きょうの凸は全部
+        assert.ok(html.includes('pubList = pd.byBlocks(pubRows, rbd.blocksOfSeason(ctx0?.season));') && html.includes('pubSel = pubList.find(x => x.key === _myPubBlockKey) || pd.pickDefault(pubList, nowIdx >= 0 ? nowIdx : null);'), 'ブロックごとの配信を並べて選んでいない');
+        assert.ok(/function setMyPubBlock\(key\) \{ _myPubBlockKey = String\(key \|\| ''\) \|\| null; renderMyPublishedPlan\(getCurrentIdentity\(\)\); \}/.test(html), 'チップで切り替えられない');
+        assert.ok(/const chips = pubsNow\.length > 1\s*\n/.test(html) && /onclick="setMyPubBlock\('\$\{escapeHtml\(x\.key\)\}'\)" aria-pressed="\$\{on\}"/.test(html) && /\$\{chips\}\$\{chainLine\}\$\{scopeLine\}\$\{condLine\}/.test(html), 'チップが無い');
+        assert.ok(html.includes("const plans = st ? ((Array.isArray(st.pubs) && st.pubs.length) ? st.pubs.map(x => rbd.scopePlan(x.pub.plan, x.block)) : [st.plan]) : null;"), 'きょうの凸に全部の配信を渡していない');
+        assert.ok(html.includes('const prev = window.publishedPlansDomain.previousFor(pubRows, pub);'), '前回から変わったか が同じブロックの 1 つ前でない');
+        // 運営
+        assert.ok(/function _opsPickPublished\(rows\) \{[\s\S]*?return _opsPlanWho === 'block' \? pd\.effectiveFor\(rows, pd\.keyOfBlock\(_opsPlanBlock\(\)\)\) : pd\.latest\(rows\);/.test(html), '運営の「いまの配信」がブロックのものでない');
+        for (const a of ["published = (await _loadOpsPublished()).pub;", "try { pub = (await _loadOpsPublished()).pub; }", "const pub = (await _loadOpsPublished()).pub;", "_loadOpsPublished().then(r => r.pub).catch(() => null)"]) assert.ok(html.includes(a), '運営の配信の取得が一覧を通っていない: ' + a);
+        assert.ok(/if \(typeof _syncOpsUnpublishBtn === 'function'\) _syncOpsUnpublishBtn\(\);\s*\/\/ 🧱 段階 7/.test(html), 'ブロックを選び直しても「いまの配信」を取り直さない');
+        assert.ok(html.includes('const prevPub = window.publishedPlansDomain ? window.publishedPlansDomain.effectiveFor(prevRows, window.publishedPlansDomain.keyOfPlan(_opsLastPlan)) : (prevRows[0] || null);'), '配信時の前回が同じブロックの配信でない');
+        assert.ok(/const pub = blk \? pd\.effectiveFor\(rows, pd\.keyOfBlock\(blk\)\) : pd\.latest\(rows\);\s*\/\/ 🧱 段階 7/.test(html), '承認の影響の前回が同じブロックの配信でない');
+        // クライアント: 一覧 (id 降順・limit) / 凍結の stale は同じブロック
+        assert.ok(/window\.supabaseGetPublishedPlans = async function \(limit = 60\)/.test(client) && /\.limit\(Math\.max\(1, Number\(limit\) \|\| 60\)\);/.test(client), '一覧を読む関数が無い');
+        assert.ok(/const latest = \(pd && me\) \? pd\.effectiveFor\(rows, pd\.keyOf\(me\)\) : \(rows\[0\] \|\| null\);/.test(client), '凍結の stale が全体の最新と比べている');
+        assert.ok(!/const latest = await window\.supabaseGetPublishedPlan\(\);/.test(client));
     });
     test('★ 配線: 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23) — 尊重するのは いま組むブロックの範囲の凸だけ / 別のブロックの配信は尊重しない (焼き込みは ゼロから・基準の照合は残す)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');

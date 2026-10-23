@@ -64,7 +64,7 @@ const HEAD1 = `
 const SEC1 = `
   <div class="card">
     <h2><span class="n">1</span>1 日を「ブロック」に分けて、次のブロックのぶんだけ配信します</h2>
-    <p>レイドの日 (5時〜翌4時) を 7 つに区切ります。運営は<b>ブロックの頭</b>に、そのブロックに出られる人だけで組んで配信します。後ろのブロックはまだ決めないので、途中で組み直しても<b>誰も振り回されません</b>。</p>
+    <p>レイドの日 (5時〜翌4時) を 7 つに区切ります。運営は<b>ブロックの頭</b>に、そのブロックに出られる人だけで組んで配信します。配信はブロックごとに残り、途中で組み直しても<b>ほかのブロックは動きません</b>。模擬が早くそろえば、先のブロックも「前のブロックが模擬どおり削れたら」の<b>予想</b> (🔭) として先に配信することがあります。</p>
     <div class="blocks">
       <div class="blk done"><b>朝</b><small>5〜8時</small></div>
       <div class="blk done"><b>午前</b><small>9〜11時</small></div>
@@ -74,7 +74,7 @@ const SEC1 = `
       <div class="blk"><b>夜</b><small>21〜23時</small></div>
       <div class="blk"><b>深夜</b><small>翌0〜4時</small></div>
     </div>
-    <p class="note">↑ 例: いまが夕方なら、夕方のぶんだけが配信済み。夜以降は「まだ決まっていません」</p>
+    <p class="note">↑ 例: いまが夕方。配信のあるブロックは、配信カードの上のチップで切り替えて見られます</p>
     <div class="steps">
       <div class="step">⚔️ HP を直す<small>ゲームの画面と合わせる</small></div>
       <div class="step">📥 前のブロックの結果を取り込む<small>Discord のスクショから</small></div>
@@ -135,6 +135,7 @@ const SEC5 = `
       <div><span class="t">自分の凸が入っていない</span><span class="d">そのブロックに参加可能時間が無い / 凸数の上限に達した / 模擬が未登録の属性しか残っていない / 3 凸済み のどれかです。ホームの空き枠に理由が出ます。</span></div>
       <div><span class="t">想定より出なかった・出すぎた</span><span class="d">全然 OK。結果のスクショを Discord に貼れば、次のブロックの計算で吸収されます。</span></div>
       <div><span class="t">この時間、無理になった</span><span class="d">Discord で一言ください。運営が次のブロックで組み直します (凸していない凸は「凸していない」にして、残りの凸数に戻します)。</span></div>
+      <div><span class="t">🔭 の印がある配信って?</span><span class="d">前のブロックが模擬どおり削れたと仮定して、先に組んだ予想です。実際の結果でずれたら運営が組み直し、変わった人には通知が届きます。</span></div>
       <div><span class="t">「運営が組み直し中です」が出ている</span><span class="d">運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます。</span></div>
       <div><span class="t">なんで自分がこのボスなの?</span><span class="d">あなたの模擬のダメージが、そのボスの残り HP に「いちばん無駄なく収まる」からです。ホームの配信カードの 🧱 盤 で、ボスごとにどう組まれたかが見られます。</span></div>
     </div>

@@ -242,21 +242,32 @@
     function todayRows(a) {
         const blocks = Array.isArray(a && a.blocks) ? a.blocks : [];
         const nowIdx = blockIndexOfHour(blocks, a && a.nowHour);
-        const plan = a && a.plan ? a.plan : null;
-        const scope = plan && plan.blockScope ? plan.blockScope : null;
+        // 🧱 段階 7 (2026-10-23): 配信はブロックごとに最新を持つので、複数の配信 (plans) を受ける。1 つだけ (plan) の呼び方も残す。
+        //   ブロックのぶんの配信 (blockScope あり) はその範囲の凸だけを見る (後ろのブロックの予想を出さない)。1 日ぶんの配信は全部
+        const plans = Array.isArray(a && a.plans) ? a.plans.filter(Boolean) : (a && a.plan ? [a.plan] : []);
         const sameId = (x, y) => x != null && y != null && String(x) === String(y);
+        const inScope = (plan, hourIdx) => {
+            const s = plan && plan.blockScope;
+            if (!s) return true;
+            const a0 = idxOfHour(s.from), a1 = idxOfHour(s.to);
+            return a0 < 0 || a1 < 0 || a1 < a0 || (hourIdx >= a0 && hourIdx <= a1);
+        };
         const planned = [];
-        for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
-            for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
-                for (const at of (Array.isArray(b.attacks) ? b.attacks : [])) {
-                    if (!sameId(at.memberId, a.viewerId) || !Number.isInteger(at.hourIdx)) continue;
-                    const bi = blocks.findIndex(bk => at.hourIdx >= bk.fromIdx && at.hourIdx <= bk.toIdx);
-                    if (bi < 0) continue;
-                    planned.push({ block: bi, bossNumber: b.bossNumber, bossName: b.name || null, weakness: b.weakness || null, level: lv.level,
-                        dmgB: Number(at.dmgB) || 0, hourLabel: at.hourLabel || null, flex: !!at.flex, loadoutSlot: at.loadoutSlot || 1, team: Array.isArray(at.team) ? at.team : null });
+        for (const plan of plans) {
+            for (const lv of (Array.isArray(plan.levels) ? plan.levels : [])) {
+                for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
+                    for (const at of (Array.isArray(b.attacks) ? b.attacks : [])) {
+                        if (!sameId(at.memberId, a.viewerId) || !Number.isInteger(at.hourIdx) || !inScope(plan, at.hourIdx)) continue;
+                        const bi = blocks.findIndex(bk => at.hourIdx >= bk.fromIdx && at.hourIdx <= bk.toIdx);
+                        if (bi < 0) continue;
+                        planned.push({ block: bi, bossNumber: b.bossNumber, bossName: b.name || null, weakness: b.weakness || null, level: lv.level,
+                            dmgB: Number(at.dmgB) || 0, hourLabel: at.hourLabel || null, flex: !!at.flex, loadoutSlot: at.loadoutSlot || 1, team: Array.isArray(at.team) ? at.team : null });
+                    }
                 }
             }
         }
+        // covered = そのブロックに効いている配信がある (ブロックのぶんの配信はそのブロックだけ・1 日ぶんの配信は全部)
+        const coveredAt = (b) => plans.some(p => !p.blockScope || (Number(p.blockScope.from) === Number(b.from) && Number(p.blockScope.to) === Number(b.to)));
         const done = [];
         for (const r of (Array.isArray(a && a.attacks) ? a.attacks : [])) {
             if (!r) continue;
@@ -269,7 +280,7 @@
             state: nowIdx < 0 ? 'later' : (i < nowIdx ? 'past' : (i === nowIdx ? 'now' : (i === nowIdx + 1 ? 'next' : 'later'))),
             planned: planned.filter(x => x.block === i),
             done: done.filter(x => x.block === i),
-            covered: plan ? (scope ? (b.from === scope.from && b.to === scope.to) : true) : false,
+            covered: coveredAt(b),
         }));
         return { rows, nowIdx, unknownTime: done.filter(x => x.block < 0), total: done.length };
     }

@@ -1238,6 +1238,18 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   いま = 済んでいない最初。見出しに未解決の「あと ◯B」と最終配信 (だれ・いつ・どのブロック)。押すとその作業へ (`_opsBlockStepGo`)。プランを描いたとき・結果の取り込みを描いたとき・ブロックを選び直したときに描き直す。
   ④ メンバー: 配信カードに「🧱 盤」タブ (ブロックのぶんの配信だけ・`_myPlanBoardHtml`)。同じ描画を読み取り専用 (`ops: false`・札も時刻のマスも候補も無い)・あなたの凸は青い縁。
   純ロジック `planBoardDomain.blockBoardRows / boardCandidates / blockSteps`。実行テスト `tests/block-board.mjs`
+  ★ **🧱 段階 7: 配信をブロック別に** (2026-10-23 ユーザー決定「配信はブロック別に見れるようにしたい」): 保存 (published_plans に行を積む) は変えず、**読み方**を変えた。
+  行をブロックの鍵 (`from-to` の時・1 日ぶんは 'all') でまとめ、ブロックごとに id 最大を「効いている配信」とする (`js/domain/publishedPlans.js`: keyOf / effectiveFor (ブロックの行と 'all' の行の新しいほう) / previousFor / byBlocks / pickDefault)。
+  読みは `supabaseGetPublishedPlans(limit=60)` (id 降順の一覧)。`supabaseGetPublishedPlan` (最新 1 行) は練習の案内など「どれか 1 つ」でよい所だけ。
+  メンバー: 配信カードは配信のあるブロックを並べ (既定 = いまのブロック → 次に配信のあるブロック → 最新)、2 つ以上ならチップで切り替え (`_myPubBlockKey` / `setMyPubBlock`)。選んだブロックの範囲だけを見せる (1 日ぶんの配信も)。
+  📅 きょうの凸は配信のあるブロック全部 (`todayRows({ plans })`。ブロックのぶんの配信から後ろのブロックの予想は出さない)。「前回から変わったか」は同じブロックの 1 つ前 (previousFor)。
+  運営: 「いまの配信」(`_opsPublishedPlan` = 配信の状況・結果の取り込み・手順の帯・配信後の予約) は条件パネルで選んでいるブロックに効いている配信 (`_opsPickPublished` / `_loadOpsPublished`。ブロックを選び直したら取り直す)。
+  算出の基準 (前回どおり) と配信時の照合 (basisPlanId) も同じ配信と行う — **別のブロックの配信があっても止めない** (別の行として残る)。凍結の stale も同じブロック。
+  ★ **🧱 段階 8: 残りのブロックを一気に組む** (2026-10-23 ユーザー決定「早い段階で模擬が出そろったら一気に最後まで」「前のブロックは模擬のスコアどおり削れたと仮定」): 🧱 組む の `handleOpsChainPlan`。
+  いまのブロックから最後まで、ブロックごとに ① そのブロックの人だけで組む (computeOptimalPlan・基準はそのブロックに効いている配信) → ② `planChainDomain.projectBoard` でそのブロックの凸を実行したことにして盤面を進める
+  (残 HP を min(ダメージ, 残り) 削る・5 体倒れたら次のレベル (HP は `window.HARD_LEVEL_HP_B`)・Lv3 踏破で Lv4 = ボス 5 無限・済んだ凸と使ったキャラを人に足す・予想の凸の報告時刻はその時刻 (凸数の上限が時刻で数えるため)) → ③ 次へ。
+  確認 (ブロックごとの凸数・踏破の見込み・未割当) → ブロックごとに 1 行ずつ配信。`plan.chained = true` の印でメンバーには「🔭 予想です。ずれたら組み直し…」。通知は**人ごとに 1 通** (`_notifyChainPublish`・ref 'chain|人|凸の文')。
+  予約は押した時点の DB で組み、配信の直前に指紋を照合。ずれたら運営がそのブロック (時間があれば) か次のブロックの頭で組み直す (ユーザー決定)。実行テスト `tests/run-tests.mjs` の 段階 7・8 の節
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

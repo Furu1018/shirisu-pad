@@ -3384,7 +3384,11 @@ window.supabaseSetPlanFrozen = async function (planId, frozen, actorName = null)
     //   旧行に残った frozen_at は読まれないので害はない (取り消す操作は増やさない)
     let stale = false;
     try {
-        const latest = await window.supabaseGetPublishedPlan();
+        // 🧱 段階 7: 配信はブロックごとの行。「最新」は**同じブロックに効いている配信** (publishedPlansDomain) で見る
+        const rows = await window.supabaseGetPublishedPlans();
+        const pd = window.publishedPlansDomain;
+        const me = rows.find(r => Number(r.id) === pid) || null;
+        const latest = (pd && me) ? pd.effectiveFor(rows, pd.keyOf(me)) : (rows[0] || null);
         stale = !!(latest && Number(latest.id) !== pid);
     } catch { /* 確認できないときは黙って成功扱い (操作自体は通っている) */ }
     return { ok: true, stale };
@@ -3530,13 +3534,15 @@ window.supabaseGetSeasonLastChange = async function (seasonId) {
 };
 
 // アクティブシーズンの最新配信プランを取得 (無ければ null)
-window.supabaseGetPublishedPlan = async function () {
+// 🧱 段階 7 (2026-10-23): 配信はブロックごとに最新を選ぶので、シーズンの配信の行を**まとめて**読む (id 降順・既定 60 行)。
+//   どの行が「いまの配信」かは publishedPlansDomain (effectiveFor / byBlocks) が決める。画面はこれを読んで選ぶ
+window.supabaseGetPublishedPlans = async function (limit = 60) {
     // ★ error を見ないと、取得失敗を「配信プランなし」と混同する (Codex指摘)。
     //   撃破通知の宛先計算で「割当ゼロ」に化けて通知が消えるため throw する
     const { data: season, error: sErr } = await supabase
         .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
     if (sErr) throw sErr;
-    if (!season) return null;
+    if (!season) return [];
     // ★ 並びは **id 降順だけ** にする (L3・2026-09-07)。履歴を消さなくなったので
     //   「最新の1件」の決め方が効いてくる。published_at は DB 側の NOW() なので端末の時計とは無関係だが、
     //   ほぼ同時の2件で**同値になり得る** (同値だと最新が不定)。id は BIGSERIAL で必ず一意・単調なので
@@ -3551,8 +3557,7 @@ window.supabaseGetPublishedPlan = async function () {
         .from('published_plans').select(sel)
         .eq('season_id', season.id)
         .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(Math.max(1, Number(limit) || 60));
     // frozen_at/by (38) と plan_schema (41) は未適用環境では列ごと落として再試行。
     // plan_schema が無い = 版を持たない旧配信なので、読む側は 0 として扱う
     // ★ 列を1つずつ外す (Codex指摘 2026-09-07)。まとめて外すと、38だけ未適用の環境で
@@ -3572,7 +3577,13 @@ window.supabaseGetPublishedPlan = async function () {
             + (want.schema ? ', plan_schema' : ''));
     }
     if (r.error) throw r.error;
-    return r.data ? { ...r.data, month_key: season.month_key } : null;
+    return (Array.isArray(r.data) ? r.data : []).map(x => ({ ...x, month_key: season.month_key }));
+};
+// シーズンの最新の 1 行 (従来の読み方)。練習の案内・配信の無いときの判定など「どれか 1 つ」でよい所だけに使う。
+//   ブロックごとに見る所 (メンバーの配信カード・運営の配信の状況・算出の基準・配信時の照合) は supabaseGetPublishedPlans + publishedPlansDomain
+window.supabaseGetPublishedPlan = async function () {
+    const rows = await window.supabaseGetPublishedPlans(1);
+    return rows[0] || null;
 };
 
 // ============ 戦況の通知 (撃破 / レベル開放) ============

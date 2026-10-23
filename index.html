@@ -105,6 +105,8 @@
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
+    <script defer src="./js/domain/publishedPlans.js"></script>
+    <script defer src="./js/domain/planChain.js"></script>        <!-- 🧱 残りのブロックを一気に組む: 前のブロックを模擬どおり削れたことにして盤面を進める (段階 8・2026-10-23) -->   <!-- 🧱 配信をブロックごとの最新で読む (段階 7・2026-10-23) -->
     <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
     <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
     <script defer src="./js/domain/attackCheck.js"></script>     <!-- ✅ 凸報告の確認 (配信プランとの突き合わせ・未報告・ブロック制 ③-f 2026-10-18) -->
@@ -4759,6 +4761,7 @@
                 <div id="opsPlanNext" class="plan-next" style="display:none;">
                     <span class="k">次にやること</span>
                     <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:9px 14px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;">📤 このプランを配信</button>
+                    <button id="opsPlanChainBtn" onclick="handleOpsChainPlan()" title="いまのブロックから最後のブロックまで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信する (予想。ずれたら組み直す)" style="padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;">🧱 残りのブロックを一気に組む</button>
                     <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:8px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11.5px;font-weight:800;cursor:pointer;">📸 共有画像</button>
                 </div>
             </div>
@@ -5404,7 +5407,7 @@
                         <p>運営はブロックごとに「次のブロックのぶん」だけを配信します。配信されると<strong>割当のある人に通知</strong>が届き (「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)、ホームに<strong>いつ・どのボスへ・どの PT と編成で</strong>が出ます。読んだら <strong>✅ 確認しました</strong> を押してください。</p>
                         <ul>
                             <li><strong>📅 きょうの凸</strong>: ブロックごとに1行。配信されたあなたの凸 (時刻・ボス・PT・編成と 5 キャラ)、運営が結果を取り込んだ凸は ✓、まだ配信されていないブロックは「まだ決まっていません」</li>
-                            <li>配信された凸プラン: 🧱 盤 (このブロックがボスごとにどう組まれたか・<a href="#help-plan">§9</a>) と <strong>✅ 確認しました</strong></li>
+                            <li>配信された凸プラン: 🧱 盤 (このブロックがボスごとにどう組まれたか・<a href="#help-plan">§9</a>) と <strong>✅ 確認しました</strong>。配信のあるブロックが 2 つ以上なら、上のチップで切り替えて見られます (ブロックごとに最新の配信が残ります)。🔭 の印がある配信は「前のブロックが模擬どおり削れたら」の予想で、ずれたら運営が組み直します</li>
                             <li>「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます</li>
                         </ul>
                         <h3>④ 📘 登録された模擬</h3>
@@ -5562,7 +5565,8 @@
                         </ul>
                         <h3>③ 承認 → 組み直し → 📤 配信</h3>
                         <ul>
-                            <li>📤 夕方のぶんを配信 — メンバーのホームにはこのブロックの割当だけが出て、<strong>割当のある人に「あなたの凸」の通知</strong>が届きます。同じブロックの配信し直しは、割当が変わった人にだけ</li>
+                            <li>📤 夕方のぶんを配信 — メンバーのホームにはこのブロックの割当だけが出て、<strong>割当のある人に「あなたの凸」の通知</strong>が届きます。同じブロックの配信し直しは、割当が変わった人にだけ。配信はブロックごとに残り、メンバーはチップで切り替えて見られます</li>
+                            <li><strong>🧱 残りのブロックを一気に組む</strong> — 模擬が早くそろったとき。いまのブロックから最後まで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信します (🔭 予想の印・通知は人ごとに 1 通)。実際の結果でずれたら、そのブロックか次のブロックの頭で組み直してください</li>
                             <li>配信は前の配信を消しません。「配信中止」は削除ではなく凍結 (メンバーには前の割当と「組み直し中」の帯)</li>
                             <li>📸 共有画像は表示に連動 (盤のときはリスト)。Discord に貼る紙です</li>
                         </ul>
@@ -7307,7 +7311,7 @@
                 chapterTag: '⑥ きょうの凸',
                 stepLabel: 'CHAPTER 07',
                 title: 'あなたの凸は\nこう決まる',
-                body: '運営はレイドの日をブロックに分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。ホームの <strong>📅 きょうの凸</strong> に、ブロックごとに あなたの凸 (時刻・ボス・PT・編成) が並びます。<br><br>割当は 参加可能時間と凸数・登録された模擬・予約・ボスの残HP から<strong>決まった手順の計算</strong>で組まれ、<strong>前回の配信を尊重</strong>します。読んだら <strong>✅ 確認しました</strong>。配信された凸プランの <strong>🧱 盤</strong> で、ボスごとにどう組まれたかも見られます。',
+                body: '運営はレイドの日をブロックに分け、<strong>次のブロックのぶんだけ</strong>を組んで配信します。ホームの <strong>📅 きょうの凸</strong> に、ブロックごとに あなたの凸 (時刻・ボス・PT・編成) が並びます。<br><br>割当は 参加可能時間と凸数・登録された模擬・予約・ボスの残HP から<strong>決まった手順の計算</strong>で組まれ、<strong>前回の配信を尊重</strong>します。読んだら <strong>✅ 確認しました</strong>。配信された凸プランの <strong>🧱 盤</strong> で、ボスごとにどう組まれたかも見られます。配信はブロックごとに残るので、チップで切り替えればほかのブロックの配信も見られます。',
                 tip: '「運営が組み直し中です」の帯が出ている間も前の割当は見えます。後ろのブロックは「まだ決まっていません」— そのブロックの前に配信されます。',
                 accentColor: '#18C26B', accentDark: '#0EA055',
                 showMiniScreen: true,
@@ -8198,7 +8202,7 @@
                 try {
                     const [rows, pub] = await Promise.all([
                         window.supabaseLoadReservations?.(season.id).catch(() => null) ?? null,
-                        window.supabaseGetPublishedPlan?.().catch(() => null) ?? null,
+                        (typeof _loadOpsPublished === 'function' ? _loadOpsPublished().then(r => r.pub).catch(() => null) : null),   // 🧱 段階 7: 選んでいるブロックの配信
                     ]);
                     if (seq !== _nextActionSeq) return;
                     const rv = window.reservationsDomain;
@@ -9750,7 +9754,9 @@
                 if (seq !== _todayBlocksSeq || String(getCurrentIdentity()?.id ?? '') !== String(identity.id)) return;
                 const blocks = rbd.blocksOfSeason(season);
                 const nowHour = Number(String(getCurrentSlotJST()).slice(1));
-                const t = rbd.todayRows({ blocks, nowHour, plan: st ? st.plan : null, viewerId: identity.id, attacks: rows || [], hourOfIso: _planJstHour });
+                // 🧱 段階 7: 配信はブロックごと。効いている配信をそれぞれのブロックの範囲に絞って全部渡す (選んでいるブロックだけでなく)
+                const plans = st ? ((Array.isArray(st.pubs) && st.pubs.length) ? st.pubs.map(x => rbd.scopePlan(x.pub.plan, x.block)) : [st.plan]) : null;
+                const t = rbd.todayRows({ blocks, nowHour, plans, viewerId: identity.id, attacks: rows || [], hourOfIso: _planJstHour });
                 const esc = escapeHtml;
                 const bossName = (bn) => { const b = (ctx?.bosses || []).find(x => Number(x.boss_number) === Number(bn)); return b ? `B${bn} ${b.name || ''}`.trim() : `B${bn}`; };
                 const stateChip = (r) => r.state === 'now' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
@@ -9784,7 +9790,7 @@
                 }).join('');
                 body.innerHTML = html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
                 body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
-                if (meta) meta.textContent = `${t.total} / 3 凸 済み${st?.plan?.blockScope ? ` · 配信は ${st.plan.blockScope.name} のぶん` : ''}`;
+                if (meta) meta.textContent = `${t.total} / 3 凸 済み${Array.isArray(st?.pubs) && st.pubs.length ? ` · 配信あり: ${st.pubs.map(x => x.block.name).join('・')}` : (st?.plan?.blockScope ? ` · 配信は ${st.plan.blockScope.name} のぶん` : '')}`;
                 card.style.display = '';
             } catch (e) {
                 console.warn('[きょうの凸] 描画失敗:', e?.message || e);
@@ -9799,13 +9805,24 @@
             const body = document.getElementById('myPublishedPlanBody');
             const metaEl = document.getElementById('myPublishedPlanMeta');
             if (!identity?.id) { card.style.display = 'none'; renderMyTodayBlocks(null); renderMyMocksReadonly(null); return; }
-            let pub = null;
+            // 🧱 段階 7 (2026-10-23 ユーザー決定「配信はブロック別に見れるように」): 配信の行はブロックごとに最新を持つ。
+            //   シーズンのブロックに効いている配信を並べ (publishedPlansDomain.byBlocks)、見るブロックを選ぶ (チップ・既定はいまのブロック)。
+            //   選んだブロックの範囲だけを見せる (1 日ぶんの配信もその範囲に絞る)。どのブロックにも配信が無ければ従来どおり最新の 1 枚
+            let pub = null, pubList = [], pubRows = [], pubSel = null;
             try {
-                pub = await window.supabaseGetPublishedPlan();
+                const [rows, ctx0] = await Promise.all([window.supabaseGetPublishedPlans(), ensureActiveSeasonLoaded().catch(() => null)]);
+                pubRows = Array.isArray(rows) ? rows : [];
+                const pd = window.publishedPlansDomain, rbd = window.raidBlocksDomain;
+                if (pd && rbd) {
+                    pubList = pd.byBlocks(pubRows, rbd.blocksOfSeason(ctx0?.season));
+                    const nowIdx = HOUR_ORDER.indexOf(Number(String(getCurrentSlotJST()).slice(1)));
+                    pubSel = pubList.find(x => x.key === _myPubBlockKey) || pd.pickDefault(pubList, nowIdx >= 0 ? nowIdx : null);
+                    pub = pubSel ? pubSel.pub : pd.latest(pubRows);
+                } else pub = pubRows[0] || null;
             } catch (e) {
                 // テーブル未作成環境などは静かに非表示 (DOMはガード後に触る)
                 console.warn('[配信プラン] 取得失敗:', e?.message || e);
-                pub = null;
+                pub = null; pubList = []; pubSel = null;
             }
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら、古い結果で DOM を触らず破棄
             // ★ 互換ゲート (L2 ⑦): 止められている / 自分には新しすぎる配信は**描かない**。
@@ -9851,8 +9868,10 @@
                 }
                 return;
             }
-            // 🧱 ブロックのぶんだけの配信 (2026-10-18): メンバーの画面はそのブロックの割当だけを見る。後ろのブロックはまだ約束していない
-            const plan = (pub.plan?.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(pub.plan, pub.plan.blockScope) : pub.plan;
+            // 🧱 ブロックのぶんだけの配信 (2026-10-18): メンバーの画面はそのブロックの割当だけを見る。後ろのブロックはまだ約束していない。
+            //   段階 7: 選んだブロックの範囲に絞る (1 日ぶんの配信も)。ブロックを選んでいなければ配信の範囲 (従来)
+            const pubScope = pubSel ? pubSel.block : (pub.plan?.blockScope || null);
+            const plan = (pubScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(pub.plan, pubScope) : pub.plan;
 
             // 「報告済み ✓」判定用に、自分がこのシーズンで既に凸したボス番号ごとの件数を集める。
             // (プランは配信時点の残り凸の想定 → 実際に報告した回数ぶんだけ予定行を消し込む。
@@ -9919,11 +9938,11 @@
             let myChange = null;
             try {
                 const dd = window.planDiffDomain;
-                if (dd && pub.season_id && typeof window.supabaseGetPreviousPublishedPlan === 'function') {
-                    const prev = await window.supabaseGetPreviousPublishedPlan(pub.season_id, pub.id);
+                if (dd && pub.season_id && window.publishedPlansDomain) {
+                    const prev = window.publishedPlansDomain.previousFor(pubRows, pub);   // 🧱 段階 7: 同じブロック (か 1 日ぶん) の 1 つ前と比べる
                     if (prev && prev.plan) {
                         // 🧱 今回がブロックのぶんなら、前回も同じ範囲に絞ってから比べる (後ろのブロックは約束ではない — L4/L5 と同じ)
-                        const scoped = (pub.plan?.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(prev.plan, pub.plan.blockScope) : prev.plan;
+                        const scoped = (pubScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(prev.plan, pubScope) : prev.plan;
                         const d = dd.diffPlans(scoped, plan);
                         const mine = d.changed.find(c => String(c.memberId) === String(identity.id));
                         myChange = mine
@@ -9938,7 +9957,7 @@
             try {
                 myResv = await window.supabaseLoadMyReservations?.(pub.season_id, identity.id) ?? null;
                 // 🧱 ブロックのぶんの配信では、後ろのブロックの約束を「配信に入っていない (組み直し中)」に見せない (⏳隙間型は残す)
-                if (Array.isArray(myResv) && pub.plan?.blockScope && window.raidBlocksDomain) myResv = window.raidBlocksDomain.scopeReservations(myResv, pub.plan.blockScope);
+                if (Array.isArray(myResv) && pubScope && window.raidBlocksDomain) myResv = window.raidBlocksDomain.scopeReservations(myResv, pubScope);
             } catch (e) { console.warn('[my plan] 予約の取得skip:', e?.message || e); myResv = null; }
             if (mySeq !== _myPubRenderSeq) return;
             // ★ 済み凸を混ぜてよいのは「配信中のプランと同じシーズン」のときだけ。
@@ -9949,7 +9968,8 @@
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
                             planId: pub.id, seasonId: pub.season_id, doneSeason, ack: ackState,
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
-                            resv: myResv, todayAttacks, myAttackRows };
+                            resv: myResv, todayAttacks, myAttackRows,
+                            pubs: pubList, pubKey: pubSel ? pubSel.key : null, pubRows };   // 🧱 段階 7: ブロックごとの配信 (きょうの凸・チップ)
             // 済んだ凸を時間割に混ぜるため読む (2026-09-11)。失敗しても本体は描く
             await _ensurePlanDoneAttacks(seasonStore.get()?.season);
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら降りる
@@ -9971,6 +9991,8 @@
         }
 
         // ===== メンバー向け配信プラン: 3モード (🙋わたしの凸 / 🗺全体 / 🗓時間割) =====
+        let _myPubBlockKey = null;   // 🧱 段階 7: 配信カードで見ているブロックの鍵 ('5-8' など。null = 既定 = いまのブロック)
+        function setMyPubBlock(key) { _myPubBlockKey = String(key || '') || null; renderMyPublishedPlan(getCurrentIdentity()); }
         let _myPlanViewMode = 'mine';
         try { _myPlanViewMode = localStorage.getItem('shirisuko_myplan_view') || 'mine'; } catch { /* storage無効環境でも動くように */ }
         if (!['mine', 'overview', 'timetable', 'board'].includes(_myPlanViewMode)) _myPlanViewMode = 'mine';
@@ -10021,8 +10043,18 @@
             // 🔄 自分が確認したあとに運営が組み直した → 割当が変わっている可能性がある
             // 「この条件で組んだ」(パズル盤 ①): 運営が焼き込んだ条件を本人にも1行で見せる (無い古いプランは何も出さない)
             // 🧱 ブロックのぶんだけの配信: どのブロックか・次はまだ決まっていないこと
+            // 🧱 段階 7: 配信のあるブロックが 2 つ以上ならチップで切り替える。後ろのブロックに配信があれば「まだ決まっていません」とは言わない
+            const pubsNow = Array.isArray(_myPubState.pubs) ? _myPubState.pubs : [];
+            const chips = pubsNow.length > 1
+                ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" aria-label="配信のあるブロック">${pubsNow.map(x => { const on = x.key === _myPubState.pubKey; return `<button type="button" onclick="setMyPubBlock('${escapeHtml(x.key)}')" aria-pressed="${on}" style="font:inherit;font-size:11.5px;font-weight:${on ? 900 : 800};padding:6px 11px;border-radius:999px;border:1.5px solid ${on ? 'var(--t-ink)' : 'var(--line)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};cursor:pointer;">🧱 ${escapeHtml(x.block.name)}</button>`; }).join('')}</div>`
+                : '';
+            const laterPublished = !!(plan?.blockScope && pubsNow.some(x => Number(x.block.fromIdx) > Number(plan.blockScope.toIdx ?? -1)));
+            // 🧱 段階 8: 一気に組んだ配信は「前のブロックが模擬どおり削れたら」の予想 — ずれたら運営が組み直す
+            const chainLine = plan?.chained
+                ? `<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:var(--warn-bg);font-size:11px;font-weight:800;color:var(--warn-deep);line-height:1.55;">🔭 前のブロックが模擬どおり削れたと仮定して組んだ予想です。実際の結果でずれたら運営が組み直し、変わった人には通知が届きます</p>`
+                : '';
             const scopeLine = plan?.blockScope
-                ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)</p>`
+                ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。${laterPublished ? '上のチップでほかのブロックの配信も見られます' : ''}次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)</p>`
                 : '';
             const condLine = (!simple && plan?.conditions && window.planBoardDomain)
                 ? `<p style="margin:0 0 8px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
@@ -10050,7 +10082,7 @@
                     : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:11.5px;font-weight:800;color:var(--ok-deep);">✅ 前回の配信から、あなたの割当は変わっていません</p>';
             body.innerHTML = `
                 ${resvStaleBanner}${frozenBanner}${changeBanner}
-                ${scopeLine}${condLine}
+                ${chips}${chainLine}${scopeLine}${condLine}
                 ${updatedBanner}
                 ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:var(--warn-deep);">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 ${tabs}
@@ -18807,8 +18839,12 @@
             const blk = recomputeOpts && recomputeOpts.who === 'block' ? recomputeOpts.block : null;
             // 前回の配信も算出と同じに渡す (尊重する設定のとき・いま組むブロックの範囲だけ)。取れなければ尊重なしで解く (算出と同じ倒し方: Codex 再監査)
             let previousPlan = null;
-            if (_opsPlanSticky && typeof window.supabaseGetPublishedPlan === 'function') {
-                try { const pub = await window.supabaseGetPublishedPlan(); if (pub && Number(pub.season_id) === Number(snap.season?.id)) previousPlan = _scopePreviousPlan(pub.plan || null, blk); }
+            if (_opsPlanSticky && typeof window.supabaseGetPublishedPlans === 'function' && window.publishedPlansDomain) {
+                try {
+                    const pd = window.publishedPlansDomain, rows = await window.supabaseGetPublishedPlans();
+                    const pub = blk ? pd.effectiveFor(rows, pd.keyOfBlock(blk)) : pd.latest(rows);   // 🧱 段階 7: 算出と同じ「そのブロックに効いている配信」
+                    if (pub && Number(pub.season_id) === Number(snap.season?.id)) previousPlan = _scopePreviousPlan(pub.plan || null, blk);
+                }
                 catch (e) { console.warn('[reservation] 影響: 配信中プランの取得skip (尊重なしで解く):', e?.message || e); }
             }
             // 実際のソルバー条件と同じ集合。★ ただし**同じカードの 📌 (運営の下書き) は外す** (Codex指摘 2026-09-11) —
@@ -22077,6 +22113,7 @@
             _opsPlanBlockIdx = Number.isInteger(n) && n >= 0 ? n : null;
             _syncOpsPlanCondUi();
             _renderOpsBlockSteps();
+            if (typeof _syncOpsUnpublishBtn === 'function') _syncOpsUnpublishBtn();   // 🧱 段階 7: 「いまの配信」はブロックごと — 選び直したら取り直す
         }
         // 条件パネルの3つのセグメントを状態に合わせる (どれを押しても、ここが唯一の描き直し)
         function _syncOpsPlanCondUi() {
@@ -22268,15 +22305,10 @@
             let previousPlan = null;
             let basisPlanId = null;   // 何を基準に組んだか。配信直前に「基準が変わっていないか」を照合する
             let basisPub = null;      // 条件の焼き込み用 (誰が・いつ配信したものを尊重したか)
+            let pubRows = [];         // 🧱 段階 7: シーズンの配信の行。どれを基準にするかは下でブロックが決まってから選ぶ
             if (_opsPlanSticky) {
                 try {
-                    const pub = typeof window.supabaseGetPublishedPlan === 'function'
-                        ? await window.supabaseGetPublishedPlan() : null;
-                    if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) {
-                        previousPlan = pub.plan || null;
-                        basisPlanId = pub.id ?? null;
-                        basisPub = pub;
-                    }
+                    pubRows = typeof window.supabaseGetPublishedPlans === 'function' ? await window.supabaseGetPublishedPlans() : [];
                 } catch (e) { console.warn('[plan] 配信中プランの取得skip (安定化なしで算出):', e?.message || e); }
                 if (seq !== _opsPlanSeq) return;
             }
@@ -22320,7 +22352,17 @@
             const onlyNow = who !== 'all';
             // 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23): 配信の JSON は 1 日ぶんで、いま組むブロックより後ろの凸 (まだ約束していない予想) も入っている。
             //   そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。尊重するのは **いま組むブロックの範囲の凸だけ**、前回の配信が別のブロックのぶんなら尊重しない
-            //   ★ 基準の照合 (basisPlanId / stickyOn) は尊重しなくても残す — 算出中に別の運営が**同じブロック**を配信したら止めるため (Codex 再監査)
+            // 🧱 段階 7: 基準にする配信 = そのブロックに効いている配信 (ブロックの行か 1 日ぶんの行の新しいほう)。ブロックで組んでいなければ全体の最新。
+            //   配信時の照合 (basisPlanId) も同じ配信と行う — 別のブロックの配信は別の行として残るので、それでは止めない
+            if (_opsPlanSticky && window.publishedPlansDomain && Array.isArray(pubRows)) {
+                const pd = window.publishedPlansDomain;
+                const pub = blk ? pd.effectiveFor(pubRows, pd.keyOfBlock(blk)) : pd.latest(pubRows);
+                if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) {
+                    previousPlan = pub.plan || null;
+                    basisPlanId = pub.id ?? null;
+                    basisPub = pub;
+                }
+            }
             previousPlan = _scopePreviousPlan(previousPlan, blk);
             options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null, blockStartSlot: blk ? _hourKey(blk.from) : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
@@ -22816,8 +22858,8 @@
             if (_opsLastPlan) return;   // 手元の算出結果が優先 (運営がいま見ているもの)
             const seq = ++_opsPlanPicksSeq;
             try {
-                if (typeof window.supabaseGetPublishedPlan !== 'function') return;
-                const pub = await window.supabaseGetPublishedPlan();
+                if (typeof window.supabaseGetPublishedPlans !== 'function') return;
+                const pub = (await _loadOpsPublished()).pub;   // 🧱 段階 7: 選んでいるブロックの配信
                 if (seq !== _opsPlanPicksSeq || _opsLastPlan) return;
                 _setOpsPlanPicks(pub?.plan || null, 'published');
             } catch { /* 取れなければ枠取り無しのまま */ }
@@ -23767,6 +23809,137 @@
             else if (out.failed) showNotification(`⚠️ 配信はできましたが、${scope.label} の割当の通知を送れませんでした (次の配信で送り直します)`);
             return out;
         }
+        // 🧱 段階 8 (2026-10-23 ユーザー決定): いまのブロックから最後まで、前のブロックは**模擬のスコアどおり削れたと仮定**して順に組み、ブロックごとに配信する。
+        //   盤面の進め方は planChainDomain.projectBoard (残 HP・レベル・済んだ凸・使ったキャラ)。配信は 1 ブロック 1 行 (段階 7 でブロックごとに残る)。
+        //   予想なので plan.chained を付け、メンバーには「ずれたら組み直す」と出す。通知は人ごとに 1 通にまとめる (ブロックごとに送ると 1 人に何通も届く)
+        let _opsChainBusy = false;
+        async function handleOpsChainPlan() {
+            if (_opsChainBusy) return;
+            const pc = window.planChainDomain, rb = window.raidBlocksDomain, pd = window.publishedPlansDomain, rv = window.reservationsDomain;
+            if (!pc || !rb || !pd || !rv || typeof computeOptimalPlan !== 'function') { showNotification('この版では一気に組めません'); return; }
+            if (!_gateAllows('publish')) { alert('この版のアプリからは配信できません。ページを再読み込みしてください。'); return; }
+            const snap = await opsStore.load();
+            if (!snap?.season?.id) { showNotification('盤面を読み込めませんでした'); return; }
+            const seasonId = snap.season.id;
+            const blocks = rb.blocksOfSeason(snap.season);
+            const start = _opsPlanBlock();
+            const rest = blocks.filter(b => b.fromIdx >= Number(start.fromIdx));
+            if (!rest.length) { showNotification('組むブロックがありません'); return; }
+            if (!confirm(`🧱 ${rest.map(b => b.name).join(' → ')} の ${rest.length} ブロックを一気に組みますか？\n\n`
+                + '・各ブロックは「そのブロックに出られる人」だけで組みます\n'
+                + '・前のブロックの凸は、模擬のスコアどおり削れた**と仮定**して次のブロックの盤面に進めます\n'
+                + '・組んだあと、ブロックごとに配信するかを確認します (予想の印つき)。ずれたら、そのブロックか次のブロックの頭で組み直してください')) return;
+            _opsChainBusy = true;
+            const btn = document.getElementById('opsPlanChainBtn');
+            if (btn) btn.disabled = true;
+            try {
+                // 予約は押した時点の DB から (算出と同じ鮮度)。読めなければ組まない (予約を無視したプランを配信しない)
+                let reservations = null;
+                try { reservations = await window.supabaseLoadReservations(seasonId); } catch { reservations = null; }
+                if (!Array.isArray(reservations)) { alert('⚠️ 予約を読めないため止めました。もう一度お試しください。'); return; }
+                const fp0 = rv.fingerprint(reservations);
+                // 前回の配信 (ブロックごとに効いている配信) を尊重する材料
+                let pubRows = [];
+                if (_opsPlanSticky) { try { pubRows = await window.supabaseGetPublishedPlans(); } catch { pubRows = []; } }
+                const hpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
+                let board = { season: snap.season, bosses: snap.bosses, players: snap.players };
+                const results = [];
+                for (const blk of rest) {
+                    const basis = _opsPlanSticky ? pd.effectiveFor(pubRows, pd.keyOfBlock(blk)) : null;
+                    const previousPlan = (basis && Number(basis.season_id) === Number(seasonId)) ? _scopePreviousPlan(basis.plan || null, blk) : null;
+                    const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan, reservations }, board);
+                    if (!plan) { alert(`❌ ${blk.name} のプランを組めませんでした`); return; }
+                    plan.seasonId = seasonId;
+                    plan.reservationFingerprint = fp0;
+                    plan.basisPlanId = basis ? (basis.id ?? null) : null;
+                    plan.stickyOn = !!_opsPlanSticky;
+                    plan.chained = true;   // 🔭 予想 (前のブロックが模擬どおり削れたら)
+                    plan.blockScope = { idx: blocks.indexOf(blk), name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
+                    plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
+                        who: 'block', block: blk.label, from: 'block', prev: (_opsPlanSticky && previousPlan) ? 'keep' : 'fresh', time: plan.timeStrict ? 'strict' : 'damage',
+                        reservations: reservations.filter(r => rv.isFixed(r)).length,
+                        excluded: (board.players || []).reduce((n, p) => n + Object.keys(p.excludedByAttr || {}).length, 0),
+                        unavailable: (board.players || []).filter(p => p.unavailableThisSeason).length,
+                        publishedBy: basis?.published_by_name ?? null, publishedAt: basis?.published_at ?? null,
+                        computedBy: getCurrentIdentity()?.name ?? null, computedAt: new Date().toISOString(),
+                    }) : null;
+                    const proj = pc.projectBoard(board, plan, blk, { hpOf });
+                    results.push({ blk, plan, sum: pc.summarize(plan, blk, proj) });
+                    board = { season: proj.season, bosses: proj.bosses, players: proj.players };
+                    // 実行したことにした予約は次のブロックの拘束に渡さない (渡すと同じ予約をまた置こうとして「置けなかった予約」に出る)。配信の指紋 (fp0) は DB の予約で見るので変えない
+                    const executed = new Set(proj.done.map(x => x.reservationId).filter(v => v != null).map(Number));
+                    if (executed.size) reservations = reservations.filter(r => !executed.has(Number(r.id)));
+                }
+                const lines = results.map(r => `・${r.blk.name} (${r.blk.label}): ${r.sum.executed} 凸${r.sum.cleared.length ? ` → Lv${r.sum.cleared.join('・')} 踏破の見込み` : ''}${r.sum.unassigned ? ` · 未割当 ${r.sum.unassigned}` : ''}`);
+                const lastLv = results.length ? results[results.length - 1].sum.levelAfter : null;
+                if (!confirm(`🧱 組めました。ブロックごとに配信しますか？ (${results.length} 件の配信・予想の印つき)\n\n${lines.join('\n')}\n\n1 日の終わりの見込み: Lv${lastLv ?? '?'}\n\n`
+                    + '配信すると、割当のある人へ「きょうのあなたの凸」を 1 通ずつ送ります (ブロックごとではなく、人ごとにまとめて)')) {
+                    // 配信しなくても、最初のブロックの結果は画面に出す (見比べられるように)
+                    _opsLastPlan = results[0].plan; _opsPlanSel = null; _opsPlanFocus = null; renderOpsPlanView(); _renderOpsBlockSteps();
+                    return;
+                }
+                // 配信の直前に予約が変わっていないか (算出と同じ照合)
+                let nowRows = null;
+                try { nowRows = await window.supabaseLoadReservations(seasonId); } catch { nowRows = null; }
+                if (!Array.isArray(nowRows) || rv.fingerprint(nowRows) !== fp0) { alert('⚠️ 組んでいる間に予約が変わりました。もう一度「一気に組む」を押してください。'); return; }
+                seasonStore.invalidate();
+                const after = await ensureActiveSeasonLoaded();
+                if (Number(after?.season?.id) !== Number(seasonId)) { alert('❌ 操作中にアクティブシーズンが変わりました。'); return; }
+                const me = getCurrentIdentity();
+                const pubs = [];
+                for (const r of results) {
+                    const pub = await window.supabasePublishPlan(r.plan, me?.id || null, me?.name || null, seasonId, _planSchemaOf(r.plan));
+                    pubs.push({ pub, plan: r.plan, blk: r.blk });
+                }
+                showNotification(`✅ ${pubs.length} ブロックを配信しました`);
+                await _notifyChainPublish({ pubs, seasonId, me });
+                _opsLastPlan = results[0].plan; _opsPlanSel = null; _opsPlanFocus = null;
+                renderOpsPlanView();
+                await _syncOpsUnpublishBtn();
+                _renderOpsBlockSteps();
+                if (typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(me);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            } finally {
+                _opsChainBusy = false;
+                if (btn) btn.disabled = false;
+            }
+        }
+        // 一気に組んだ配信の通知: 人ごとに 1 通 (全ブロックの自分の凸をまとめて)。二重送信よけは kind 'block_publish' / ref 'chain|人|凸の文'
+        async function _notifyChainPublish({ pubs, seasonId, me }) {
+            const rb = window.raidBlocksDomain, dom = window.resultIntakeDomain;
+            if (!rb || !dom || typeof window.sendPushNotification !== 'function' || !pubs.length) return { sent: 0, failed: 0 };
+            let bosses = [];
+            try { bosses = (await ensureActiveSeasonLoaded())?.bosses || []; } catch { /* PT 名を補えないだけ */ }
+            const byMember = new Map();
+            for (const { plan, blk } of pubs) {
+                const notices = dom.publishNotices(rb.scopePlan(plan, blk), { label: blk.label, bosses, changedIds: new Set(), ptName: (w) => PT_ATTRS.find(x => x.key === w)?.name || '' });
+                for (const n of notices) {
+                    if (!byMember.has(String(n.memberId))) byMember.set(String(n.memberId), { memberId: n.memberId, lines: [] });
+                    byMember.get(String(n.memberId)).lines.push(...n.lines.map(l => `[${blk.name}] ${l}`));
+                }
+            }
+            const claim = typeof window.supabaseClaimRaidNotice === 'function' ? window.supabaseClaimRaidNotice : null;
+            const out = { sent: 0, failed: 0 };
+            const label = `${pubs[0].blk.name}〜${pubs[pubs.length - 1].blk.name}`;
+            for (const m of byMember.values()) {
+                const ref = `chain|${m.memberId}|${m.lines.join(' / ')}`;
+                const st = claim ? await claim(seasonId, 'block_publish', ref, me?.id || null) : 'claimed';
+                if (st !== 'claimed') continue;
+                try {
+                    const res = await window.sendPushNotification({ title: `🧱 きょうのあなたの凸が決まりました (${label}・予想)`, body: m.lines.join(' / ') + ' — 前のブロックの結果でずれたら組み直します', url: './?tab=mypage&focus=plan', playerIds: [m.memberId] }, { senderPlayerId: me?.id || null });
+                    await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', ref);
+                    if (!res?.skipped) out.sent++;
+                } catch (e) {
+                    out.failed++;
+                    console.warn('[chain] 通知に失敗:', e?.message || e);
+                    await window.supabaseReleaseRaidNotice?.(seasonId, 'block_publish', ref);
+                }
+            }
+            if (out.sent > 0) showNotification(`📣 ${out.sent} 人に「きょうのあなたの凸」を通知しました`);
+            else if (out.failed) showNotification('⚠️ 配信はできましたが、通知を送れませんでした');
+            return out;
+        }
         async function handleOpsPublishPlan() {
             if (!_opsLastPlan) {
                 showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
@@ -23802,8 +23975,9 @@
             let prevPlanId = null;   // 差分を取った相手。ack の引き継ぎをこの行に限定するのに使う
             let prevScope = null;    // 前の配信のブロック (🧱 段階 4: 同じブロックの配信し直しは、割当が変わった人だけに通知する)
             try {
-                const prevPub = typeof window.supabaseGetPublishedPlan === 'function'
-                    ? await window.supabaseGetPublishedPlan() : null;
+                // 🧱 段階 7: 前回 = **このプランのブロック**に効いている配信 (ブロックの行か 1 日ぶんの行の新しいほう)。別のブロックの配信は別の行として残る
+                const prevRows = typeof window.supabaseGetPublishedPlans === 'function' ? await window.supabaseGetPublishedPlans() : [];
+                const prevPub = window.publishedPlansDomain ? window.publishedPlansDomain.effectiveFor(prevRows, window.publishedPlansDomain.keyOfPlan(_opsLastPlan)) : (prevRows[0] || null);
                 // 別シーズンの配信を前回扱いにしない (シーズンを跨いだ差分は意味を持たない)
                 const sameSeason = prevPub && Number(prevPub.season_id) === Number(seasonId);
                 const prevPlan = sameSeason ? prevPub.plan : null;
@@ -23818,9 +23992,8 @@
                 //   算出時に尊重した配信と、いま生きている配信が違う = 別の運営が間に配信している。
                 //   そのまま出すと相手の約束を知らないまま壊す。安定化 OFF のときは元から
                 //   「前回を尊重しない」と決めて算出しているので照合しない
-                // ★ 🧱 ブロック (2026-10-23 判断): 算出のあとに別の運営が**別のブロック**を配信していても止める (ブロックの範囲で緩めない)。
-                //   配信は全員が見る「最新の 1 枚」を置き換えるので、相手の配信を知らない盤をそのまま出せば相手のブロックの約束が消える。
-                //   別のブロックの配信を「尊重しなかった」(_scopePreviousPlan が null) ときも同じ理由で照合する (安全側)
+                // ★ 🧱 段階 7 (2026-10-23): 配信はブロックごとの行なので、照合は**同じブロックに効いている配信**と行う。別のブロックの配信があっても止めない
+                //   (その配信は別の行として残り、メンバーはブロックを切り替えて見られる)
                 const basis = _opsLastPlan?.basisPlanId ?? null;
                 if (_opsLastPlan?.stickyOn && Number(basis || 0) !== Number(prevPlanId || 0)) {
                     alert('⚠️ 別の運営が新しいプランを配信しました。\n\n'
@@ -23970,7 +24143,7 @@
                 return;
             }
             let pub = null;
-            try { pub = await window.supabaseGetPublishedPlan(); }
+            try { pub = (await _loadOpsPublished()).pub; }   // 🧱 段階 7: 選んでいるブロックに効いている配信を凍結する
             catch (e) { alert(`❌ 配信の状況を取得できませんでした: ${e?.message || e}`); return; }
             if (!pub || Number(pub.season_id) !== Number(seasonId)) {
                 showNotification('配信中のプランはありません');
@@ -24016,7 +24189,7 @@
             let published = null;
             let failed = false;
             try {
-                if (typeof window.supabaseGetPublishedPlan === 'function') published = await window.supabaseGetPublishedPlan();
+                if (typeof window.supabaseGetPublishedPlans === 'function') published = (await _loadOpsPublished()).pub;   // 🧱 段階 7: 選んでいるブロックに効いている配信
             } catch { failed = true; /* 取得できないときは出さない (誤操作防止側に倒す) */ }
             if (seq !== _unpublishBtnSeq) return;
             if (btn) {
@@ -24082,7 +24255,8 @@
             const stale = (mins != null && mins >= 180) || pending > 0;
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
             el.style.color = stale ? 'var(--warn-deep)' : 'var(--ok-deep)';
-            el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
+            const blkName = published.plan?.blockScope ? ` (🧱 ${published.plan.blockScope.name || published.plan.blockScope.label || ''})` : '';   // 🧱 段階 7: どのブロックの配信か
+            el.textContent = `${stale ? '⚠️' : '📤'} 配信中${blkName}: ${when}${ago}${who}`
                 + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。承認済みの予約を反映して組み直し、配信し直してください`
                     : (stale ? ' — 盤面が動いていないか確認してください' : ''));
         }
@@ -29593,7 +29767,21 @@ PAD の中で入力するものは減りました (模擬と凸の結果は Disc
         //   「その他 › メンテナンス」へ移す (ユーザー決定 B)。運営OFF (メンバー) では何もせず、カードを元の並びに戻す。
         let _opsStage = null;            // detect の結果 { stage, auto, overridden }
         let _opsStageApplied = null;     // 最後にカードを出し入れした段階 (null = 運営OFF の並び)
-        let _opsPublishedPlan = null;    // 直近の配信 (_syncOpsUnpublishBtn が更新) — 配信後の予約の数に使う
+        let _opsPublishedPlan = null;    // 直近の配信 (_syncOpsUnpublishBtn が更新) — 配信後の予約の数に使う。🧱 段階 7: 選んでいるブロックに効いている配信
+        let _opsPublishedRows = null;    // 🧱 段階 7: シーズンの配信の行 (ブロックごとの最新を選ぶ材料)
+        // 🧱 段階 7 (2026-10-23): 配信はブロックごとの行。運営が「いまの配信」として見るのは、条件パネルで選んでいるブロックに効いている配信
+        //   (ブロックの行か 1 日ぶんの行の新しいほう)。「全員 / 今動ける人」のときは全体の最新。判定は publishedPlansDomain が唯一
+        function _opsPickPublished(rows) {
+            const pd = window.publishedPlansDomain;
+            if (!Array.isArray(rows)) return null;
+            if (!pd) return rows[0] || null;
+            return _opsPlanWho === 'block' ? pd.effectiveFor(rows, pd.keyOfBlock(_opsPlanBlock())) : pd.latest(rows);
+        }
+        async function _loadOpsPublished() {
+            const rows = typeof window.supabaseGetPublishedPlans === 'function' ? await window.supabaseGetPublishedPlans() : [];
+            _opsPublishedRows = Array.isArray(rows) ? rows : [];
+            return { rows: _opsPublishedRows, pub: _opsPickPublished(_opsPublishedRows) };
+        }
         let _opsPublishedKnown = false;  // 配信の有無を取得できたか (取れていなければ「不明」として出す)
         let _opsEtcRendered = false;     // その他 › メンテナンス を描いたか (開いたときに1回)
         const _OPS_BACKUP_AT_KEY = 'shirisuko_backup_saved_at_v1';

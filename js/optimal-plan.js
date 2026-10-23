@@ -2196,4 +2196,5 @@
     root.doneAttacksByHour = doneAttacksByHour;
     root.planDoneMarks = planDoneMarks;
     root.computeOptimalPlanCore = computeOptimalPlanCore;
+    root.HARD_LEVEL_HP_B = HARD_LEVEL_HP_B;   // 🧱 段階 8: 残りのブロックを一気に組むとき、踏破したあとの HP をこの表で進める (planChainDomain.projectBoard)
 })(typeof window !== 'undefined' ? window : globalThis);
