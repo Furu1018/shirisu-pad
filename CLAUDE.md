@@ -122,7 +122,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ **🧱 ブロックで組むときは、前回の配信のうち いま組むブロックの範囲の凸だけを渡す** (`raidBlocksDomain.scopePlan(previousPlan, blk)`・全体監査 C 2026-10-23)。
   配信の JSON は 1 日ぶんで、ブロックより後ろの凸 (まだ約束していない予想) も入っている — そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。
   前回の配信が**別のブロック**のぶんなら尊重しない (`_scopePreviousPlan` が null・焼き込みは prev='fresh')。★ 配信時の基準の照合 (basisPlanId / stickyOn) は尊重しなくても残す —
-  算出中に別の運営が**同じブロック**を配信したら止めるため (Codex 再監査)。承認の影響 (`_reservationImpact`) も同じ絞り方で前回の配信を渡し、起点モード ('day' = h05) も算出と同じにする。
+  算出中に別の運営が配信したら止めるため (同じブロックでも**別のブロックでも**: 配信は全員が見る「最新の 1 枚」を置き換えるので、相手の配信を知らない盤を出せば相手のブロックの約束が消える — 安全側の判断 2026-10-23。Codex 再監査)。承認の影響 (`_reservationImpact`) も同じ絞り方で前回の配信を渡し、起点モード ('day' = h05) も算出と同じにする。
   ★ **承認の影響 (`_reservationImpact`) は承認後の組み直し (`_recomputeOptsAfterApproval`) と同じ条件** (ブロックの人だけ・起点はブロックの頭・`availableAtSlot` は壁時計) で解く。
   その条件 (`recomputeOpts`) は `handleReservationApprove` の**最初の await より前**に写し、影響・`_recomputeOnly`・`_recomputeAndOfferPublish` に渡す (待っている間に運営が条件を切り替えても承認時の条件で)。
   対象外の人 (そのブロックに出られない人) の予約は影響 0 で承認でき、その人のブロックで組むときに置く。
