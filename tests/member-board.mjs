@@ -40,6 +40,7 @@ function extract(marker) {
 const els = {};
 const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
     classList: { contains: () => false, add() {}, remove() {}, toggle() {} } });
+globalThis._homeSimple = () => false;   // 従来の画面 (代理凸のボタンが出る側)
 globalThis._finishAskOn = () => true;   // 🏁 段階 2.5: 本番は締め凸の依頼を読まない (練習だけ)。ここは従来の表示 (締め凸 未返答) を見るので true
 globalThis.document = { getElementById: (id) => el(id) };
 globalThis.escapeHtml = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

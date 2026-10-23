@@ -323,13 +323,13 @@
                 done: function (c) { return c.pub && c.mine('plan_acks').some(function (a) { return eq(a.plan_id, c.pub.id); }); },
                 guide: function (c) {
                     return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
-                        : { text: 'ホームの「あなたの凸」に、夜の何時にどのボスへどの PT で行くかが出ています。読んだら「✅ 確認しました」を押します。',
+                        : { text: 'ホームの「📅 きょうの凸」に、夜の何時にどのボスへどの PT で行くかが出ています。読んだら「✅ 確認しました」を押します。',
                             real: '配信されるのは次のブロックのぶんだけです。後ろのブロックの割当は、そのブロックの前に運営が配信します。', target: pick('planAck') });
                 } },
             { key: 'report', title: '凸したら Discord へ',
                 done: function (c) { return c.mine('attacks').length > 0 || store.get('member:noAssign') === '1'; },
                 guide: function (c) {
-                    return stray(c, []) || { text: '割当の時刻になったらゲームで凸をして、結果の画面のスクショを Discord の #凸報告 へ貼ります。PAD には何も入れません。',
+                    return stray(c, []) || { text: '割当の時刻になったらゲームで凸をして、結果の画面のスクショを Discord へ貼ります。PAD には何も入れません。',
                         real: '凸の登録は運営がスクショを見てまとめて行います。登録されるとホームの「きょうの凸」に ✓ が付きます。',
                         assume: ['opsRegister', '⏩ 凸をして、運営があなたの凸を登録したことにする'] };
                 } },

@@ -4094,7 +4094,7 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: { pending: 1 }, remainingTotal: 10 }).action, 'reserve');
         assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, pendingRepublish: 1, remainingTotal: 10 }).action, 'republish');
         const r = dom.hero({ stage: 'day', freshMin: 5, finPending: 0, remainingTotal: 41 });
-        assert.equal(r.action, 'remaining'); assert.match(r.lead, /41 凸/);
+        assert.equal(r.action, 'members'); assert.match(r.lead, /41 凸/);   // 残り戦闘可能のカードは外した → 👥 メンバー状況 (2026-10-23)
         // 当日の全員完了は終了へ飛ばさない (Codex指摘 2026-09-08) — 終了は翌日5時以降の「終了」の段階で
         const done = dom.hero({ stage: 'day', freshMin: null, finPending: 0, remainingTotal: 0 });
         assert.match(done.lead, /全員 3 凸完了/); assert.equal(done.action, 'members');
@@ -4366,10 +4366,11 @@ console.log('\nmemberStatusDomain:');
         assert.deepEqual(dom.sortRows(rows, 'name').map(r => r.name), ['あ', 'い']);
         assert.equal(dom.nudgeMessage(rows.find(r => r.id === 1), 'pre'), null, '通知未購読には文面を作らない');
         const m = dom.nudgeMessage({ ...rows.find(r => r.id === 1), push: true }, 'pre');
-        assert.match(m.body, /模擬戦データ \(キャラ被りなしで3属性必要・あと2属性: 水冷・電撃・鉄甲・風圧\)/);
+        assert.match(m.body, /模擬 \(キャラ被りなしで3属性必要・あと2属性: 水冷・電撃・鉄甲・風圧\)/);
+        assert.match(m.body, /Discord にスクショを貼ってください/, '模擬の催促が模擬タブを前提にしている');
         assert.match(m.body, /シンクロレベル/);
         const d = dom.nudgeMessage({ ...rows.find(r => r.id === 1), push: true, reasons: [{ key: 'attacks' }], atkCount: 1 }, 'day');
-        assert.match(d.title, /凸報告/); assert.match(d.body, /残り2件/);
+        assert.match(d.title, /凸の結果/); assert.match(d.body, /残り2件/);
     });
 }
 
@@ -5679,7 +5680,10 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(html.includes("const view = simple ? (plan?.blockScope ? 'board' : 'today') : _myPlanViewMode;") && /const tabs = simple \? '' : `/.test(html), '配信カードのタブを出している');
         // 📣 お願い: 運営の 2 か所 (予約カードの 📌 の行・焦点の帯) と 本人の返事の箱
         assert.ok(html.includes("(_homeSimple() ? '' : btn('📣 お願いする'") && html.includes("(asked || _homeSimple() ? '' : `<button type=\"button\" class=\"act ask\" onclick=\"_opsPlanAsk("), '運営の 📣 お願いする を出している');
-        assert.ok(html.includes("const askRows = _homeSimple() ? '' : asks.map(r => {"), '本人に 📣 お願いの返事を出している');
+        // 本人の 📣 の返事の箱は残す (運営が新しく出せないので、出るのは切り替え前のお願いだけ。消すと仮置きが残り続ける: Codex 全体監査 B)
+        assert.ok(html.includes('const askRows = asks.map(r => {') && !html.includes("const askRows = _homeSimple() ? '' : asks.map"), '切り替え前の 📣 お願いに返事できない');
+        // ✏️ シーズン編集で member_input を切り替えたら、その場で見せ方を決め直す
+        assert.ok(/await window\.supabaseUpdateSeasonMemberInput\(ctx\.seasonId, memberInputFull\);\s*\n\s*seasonStore\.invalidate\(\);[^\n]*\n[^\n]*\n\s*try \{ await ensureActiveSeasonLoaded\(\); _applyMemberLite\(\); \}/.test(html), 'シーズン編集の直後に見せ方を決め直していない');
         // 予約: カードの名前 / 入口 / シート
         assert.ok(html.includes('letter-spacing:0.2px;">🔒 予約</div>') && !html.includes('🔒 引き受けた凸</div>'), 'カードの名前が「🔒 予約」でない');
         assert.ok(html.includes('>枠を予約する</button>') && !html.includes('>自分から凸を申請する</button>'), '入口が「枠を予約する」でない');
@@ -5687,6 +5691,26 @@ console.log('\nreservationsDomain (凸の予約):');
         // 📅 きょうの凸: 割当の行に 時刻・Lv・PT・編成・5 キャラ
         const today = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(_homeSimple\(\)\) \{[\s\S]*?renderTeamSnippet\(pz\.team, \{ size: 22 \}\)[\s\S]*?編成\$\{Number\(pz\.loadoutSlot\) === 2 \? '②' : '①'\}/.test(today), 'きょうの凸に編成と 5 キャラが無い');
+    });
+    test('★ 配線: 全体監査 2026-10-23 (A シンプル化): 隠したものの描画と通信を止める / 代理凸のボタンを出さない / 凸の編集・削除の入口 / Discord 用の文面は新しい流れ / 運営編の練習は運営だけ', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        // ホームの描画: 戦闘カード・状態ボタン・ボス状況のための描画はシンプルな画面では呼ばない (きょうの凸・配信・予約・通知は呼ぶ)
+        assert.ok(/renderMyNotificationsInbox\(id\);\s*\n\s*if \(!_homeSimple\(\)\) \{[^}]*renderMyAttacks\(id\);[^}]*renderMyFinishCoord\(id\);[^}]*renderMyNextAttackBosses\(id\);[^}]*renderMyBossStrip\(id\); renderMyBossBoard\(id\);\s*\n\s*\}/.test(html), '隠した戦闘カードのために描画・通信している');
+        assert.ok(html.includes("if (typeof renderMyNextAttackBosses === 'function' && !_homeSimple()) {"), '調整中の取り直しで隠したボス帯を描き直している');
+        // 👥 メンバー状況の「代理凸」はシンプルな画面では出さない (📥 結果の取り込みで登録する)
+        assert.ok(html.includes('(isDay && r.atkCount < dom.MAX_ATTACKS && !_homeSimple() ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy('), '代理凸のボタンをシンプルな画面でも出している');
+        // 誤って登録した凸を直す・消す入口 (凸履歴・編集のモーダル) が 📥 結果の取り込みにある
+        assert.ok(/登録された凸 <button type="button"[^>]*onclick="openOpsAttacksEditModal\(\)"[^>]*>✏️ 編集・削除<\/button>/.test(html), '登録した凸を直す・消す入口が無い');
+        assert.ok(/async function openOpsAttacksEditModal\(\)/.test(html), '凸履歴・編集のモーダルが無い');
+        // Discord 用の文面は 👥 メンバーのタブにあり、古い流れの言葉が無い
+        const ann = html.slice(html.indexOf('const _ANNOUNCE_MAIN = `'), html.indexOf('async function copyAnnouncementText'));
+        for (const old of ['模擬タブ', '戦闘準備', '凸報告', '隙間', '締め凸のお願い', '引き受け', '戦闘可能時間', '申請']) assert.ok(!ann.includes(old), 'Discord 用の文面に古い言葉「' + old + '」');
+        for (const w of ['ユニオンレイド参加可能時間', 'Discord に貼る', '枠を予約する', '📅 きょうの凸', 'ブロック']) assert.ok(ann.includes(w), 'Discord 用の文面に「' + w + '」が無い');
+        assert.ok(html.includes('>📣 Discord 用の文面</div>'), 'カードの名前');
+        // 設定の練習 (運営編) は運営だけ
+        assert.ok(html.includes("<button onclick=\"startPractice('ops-eve')\" data-ops-only") && html.includes("<button onclick=\"startPractice('ops-day')\" data-ops-only"), '運営編の練習がメンバーにも出ている');
+        // 当日ヒーローの「残り N 凸」は 👥 メンバー状況へ (残り戦闘可能のカードは外した)
+        assert.ok(html.includes("case 'remaining': _opsJump('opsSecMembers'); break;"), '残りメンバーの行き先が外したカード');
     });
     test('★ ⑧配線: ホームの「🔒 予約」(旧 引き受けた凸) / 取り消しは希望を出すだけ', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
@@ -7515,7 +7539,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // 検知系 (撃破・予約の点検・時間の通知) は _onHomeOrOps で止めていない
         const tail = body.slice(body.indexOf('_coordPollTick === 0 && (_opsSeasonLoaded'));
         assert.ok(tail && !/_onHomeOrOps/.test(tail), '撃破の検知・盤面の差し替えまでタブで止めている (運営端末が別タブだと通知が止まる)');
-        const mk = (activeTabs) => {
+        const mk = (activeTabs, simple = false) => {
             const calls = { finish: 0, coord: 0, role: 0, hp: 0 };
             let cb = null;
             const api = {
@@ -7525,13 +7549,14 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
                 _refreshFinishRequests: async () => { calls.finish++; },
                 _refreshClientGateIfStale: async () => {},
                 _refreshCoordOnce: () => { calls.coord++; },
+                _homeSimple: () => simple,   // 🧱 シンプルなメンバーのホームは 調整中一覧・ボス HP を取りに行かない (2026-10-23)
                 _syncOpsRole: () => { calls.role++; },
                 getCurrentIdentity: () => ({ id: 7 }),
                 renderMyFinishRequestBanner: () => {}, renderOpsBossSummary: () => {}, renderOpsRecent: () => {},
                 renderOpsReservations: async () => {}, renderMyPublishedPlan: () => {}, renderMyReservations: async () => {},
                 _checkRaidEvents: async () => {}, _releaseInfeasibleReservations: async () => {}, _checkAvailReminders: async () => {},
                 renderMyNextAttackBosses: async () => {}, renderMyBossStrip: () => {}, renderMyBossBoard: () => {},
-                opsStore: { get: () => ({ season: { id: 1 } }), patchBosses: () => false },
+                opsStore: { get: () => (simple ? null : { season: { id: 1 } }), patchBosses: () => false },   // シンプルなメンバーの端末は運営の盤面を持たない
                 seasonStore: { get: () => ({ season: { id: 1 } }), patchBosses: () => false },
                 window: { supabaseLoadActiveSeasonWithBosses: async () => { calls.hp++; return null; } },
                 _opsMode: false, _resv: { unsupported: false, busy: new Set() }, _COORD_POLL_INTERVAL_MS: 10000,
@@ -7540,7 +7565,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
             new Function('api', `const { document, setInterval, _stopCoordPolling, _refreshFinishRequests, _refreshClientGateIfStale, _refreshCoordOnce, _syncOpsRole, getCurrentIdentity,
                 renderMyFinishRequestBanner, renderOpsBossSummary, renderOpsRecent, renderOpsReservations, renderMyPublishedPlan, renderMyReservations,
                 _checkRaidEvents, _releaseInfeasibleReservations, _checkAvailReminders, renderMyNextAttackBosses, renderMyBossStrip, renderMyBossBoard,
-                opsStore, seasonStore, window, _opsMode, _resv, _COORD_POLL_INTERVAL_MS } = api;
+                opsStore, seasonStore, window, _opsMode, _resv, _COORD_POLL_INTERVAL_MS, _homeSimple } = api;
                 let _coordPollingTimer = null, _coordPollTick = 0;
                 ${body}
                 _startCoordPolling();`)(api);
@@ -7558,6 +7583,12 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         const b = mk(['tab-mypage']);
         b.tick(); b.tick(); b.tick();
         assert.equal(b.calls.finish, 3); assert.equal(b.calls.coord, 3);
+        // 🧱 シンプルなメンバーのホーム: 調整中一覧 (状態ボタン・戦闘カード用) と ボス HP (ボス状況カード用) は取りに行かない。締め凸依頼・役割は従来どおり
+        const s = mk(['tab-mypage'], true);
+        s.tick(); s.tick(); s.tick();
+        assert.equal(s.calls.coord, 0, 'シンプルな画面なのに調整中一覧を取りに行っている');
+        assert.equal(s.calls.hp, 0, 'シンプルな画面なのにボス HP を取りに行っている (表示先が無い)');
+        assert.equal(s.calls.role, 1);
         // 運営タブ: 同じ
         const c = mk(['tab-ops']);
         c.tick();
@@ -9863,7 +9894,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
         // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
         const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 参加可能時間を確認する'\)\s*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
+        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? ''   \/\/ 模擬は Discord に貼る[^\n]*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
         assert.ok(/const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden\(\);/.test(hero), 'ヒーローが模擬タブの判定を見ていない');
         assert.ok(!/heroBtn\("switchTab\('mock'\)"/.test(hero) && !/softBtn\("switchTab\('mock'\)"/.test(hero), '模擬タブへの直の導線が残っている');
         assert.equal((hero.match(/mockCta\(/g) || []).length, 6, 'mockCta を使う場所が 6 か所 (B1 / C0 / C1 / B2 / C3 / C2) でない');
@@ -10434,12 +10465,12 @@ console.log('\ngrowthDomain:');
         const L = globalThis.opsLayoutDomain;
         const byTab = (t) => L.CARDS.filter(c => c.tab === t).map(c => c.id);
         assert.deepEqual(L.TAB_KEYS, ['members', 'build', 'battle', 'master']);
-        assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く');
+        assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く / Discord 用の文面も (2026-10-23)');
         assert.deepEqual(byTab('build'), ['opsSecReserve', 'opsSecPlan']);
         assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定)');
         assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecGrowth']);
         assert.deepEqual(L.CARDS.filter(c => c.tab === null).map(c => c.id).sort(),
-            ['opsSecActions', 'opsSecCoord', 'opsSecDiscord', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining'], '画面から外すカードが違う');
+            ['opsSecActions', 'opsSecCoord', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining'], '画面から外すカードが違う');
         assert.ok(L.CARDS.every(c => c.tab === null || L.TAB_KEYS.includes(c.tab)), '知らないタブのカードがある');
         // 開いたときのタブ: 当日・終了 = 戦況 / それより前 = メンバー。記憶は同じ段階のあいだだけ・マスターでない人の 👑 は既定へ
         assert.deepEqual(['prep', 'pre', 'day', 'end'].map(L.defaultTab), ['members', 'members', 'battle', 'battle']);
@@ -11414,7 +11445,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/_hpFreshHtml\(/.test(fn), 'HP更新の鮮度を出していない');
         // 30 秒ごとのボスHP取り直しをホームにも (戦況タブを開いたことのない端末でも動く)
         const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/\(_opsSeasonLoaded \|\| seasonStore\.get\(\)\?\.season\)/.test(poll), 'ホームだけの端末がボスHPを取り直していない');
+        assert.ok(/\(_opsSeasonLoaded \|\| \(seasonStore\.get\(\)\?\.season && !_homeSimple\(\)\)\)/.test(poll), 'ホームだけの端末がボスHPを取り直していない (シンプルな画面は除く)');
         assert.ok(/homePatched && document\.getElementById\('tab-mypage'\)/.test(poll), 'ホームのボス状況を描き直していない');
         // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。async の描画は catch する
         assert.ok(/contains\('active'\)\s*\n\s*&& getCurrentIdentity\(\)\?\.id === id\.id\) \{\s*\n\s*renderMyNextAttackBosses\(id\)\.catch\(/.test(poll), '本人の切り替えを見ずに前の人のホームを描く / 描画の失敗を catch していない');

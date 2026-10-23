@@ -335,7 +335,7 @@
         if (row.availUnavailable) return null;
         const keys = new Set((row.reasons || []).map(r => r.key));
         if (phase === 'day' && keys.has('attacks')) {
-            return { title: '📝 凸報告のお願い', body: `凸が残り${MAX_ATTACKS - row.atkCount}件です。凸したらホーム → ⚔️ 凸報告 から提出お願いします🙏`, url: './?tab=mypage' };
+            return { title: '📷 凸の結果のお願い', body: `凸が残り${MAX_ATTACKS - row.atkCount}件です。凸したら結果のスクショを Discord に貼ってください🙏 (運営が PAD に登録します)`, url: './?tab=mypage' };
         }
         if (phase === 'day' && keys.has('finish')) {
             return { title: '🔔 締め凸依頼の返答をお願いします', body: '締め凸の依頼が届いています。ホームから 受ける / 見送る を選んでください🙏', url: './?tab=mypage' };
@@ -344,8 +344,8 @@
         if (keys.has('mock')) {
             const need = Math.max(0, MOCK_REQUIRED - (row.mockUsable || 0));
             parts.push(row.mockUsable < row.mockCount
-                ? `模擬戦データ (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性。未提出: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・') || 'なし'})`
-                : `模擬戦データ (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・')})`);
+                ? `模擬 (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性。未登録: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・') || 'なし'})`
+                : `模擬 (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・')})`);
         }
         if (keys.has('slv')) parts.push('シンクロレベル');
         if (keys.has('slots')) parts.push('参加可能時間');
@@ -367,7 +367,7 @@
             }
             return null;
         }
-        return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。ホーム・模擬タブから登録お願いします🙏`, url: './?tab=mypage' };
+        return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。模擬は Discord にスクショを貼ってください (運営が登録します)。参加可能時間はホームの MY設定 から🙏`, url: './?tab=mypage' };
     }
 
     root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs, deviceKind, latestDeviceByPlayer };

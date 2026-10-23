@@ -54,7 +54,7 @@
         // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
         { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 12, tab: 'build' },
         // 前日 (告知) と終了 (結果報告) の両方で使う
-        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 5, tab: null },
+        { id: 'opsSecDiscord',   title: 'Discord 用の文面',      group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 12, tab: 'members' },   // 2026-10-23: 新しい流れの案内とプランの説明 (画面に戻した)
         { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12, tab: 'build' },
         { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12, tab: 'master' },
         // 一斉通知は準備段階の道具に (告知を出す段階。2026-09-11 ユーザー判断)

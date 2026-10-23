@@ -1,0 +1,79 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>最適凸プランはこう決まる 2/2</title><style>
+  :root { --ink:#14161A; --strong:#3D4249; --body:#52575E; --muted:#62666e; --bg:#F1F3F6; --card:#fff; --s1:#F7F8F9; --line:#E3E5E8;
+    --ops:#6C42F0; --ops-deep:#4b17ed; --ops-bg:#f0ecfe; --ok:#107e45; --ok-bg:#e8f9f0; --warn:#724905; --warn-bg:#fef5e7; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1080px; background:var(--bg); color:var(--ink); font-family:"Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif; font-weight:700; -webkit-font-smoothing:antialiased; }
+  .page { width:1080px; padding:44px 48px 40px; display:flex; flex-direction:column; gap:26px; }
+  h1 { margin:0; font-size:46px; font-weight:900; letter-spacing:.3px; line-height:1.25; }
+  .sub { font-size:21px; color:var(--body); line-height:1.6; margin-top:10px; }
+  .card { background:var(--card); border-radius:22px; padding:28px 30px; border:1px solid rgba(20,22,26,.05); box-shadow:0 2px 10px rgba(20,22,26,.04); }
+  h2 { margin:0 0 16px; font-size:28px; font-weight:900; display:flex; align-items:center; gap:12px; }
+  h2 .n { width:40px; height:40px; border-radius:50%; background:var(--ink); color:#fff; font-size:21px; display:flex; align-items:center; justify-content:center; flex:none; }
+  p { margin:0; font-size:21px; line-height:1.7; color:var(--strong); }
+  .blocks { display:grid; grid-template-columns:4fr 3fr 3fr 3fr 3fr 3fr 5fr; gap:6px; margin:14px 0 8px; }
+  .blk { border-radius:12px; padding:12px 8px; text-align:center; background:var(--s1); border:1.5px solid var(--line); }
+  .blk b { display:block; font-size:22px; font-weight:900; }
+  .blk small { display:block; font-size:15px; color:var(--muted); margin-top:3px; font-weight:800; }
+  .blk.now { background:var(--ops-bg); border-color:var(--ops); }
+  .blk.now b { color:var(--ops-deep); }
+  .blk.done { opacity:.55; }
+  .steps { display:flex; gap:8px; align-items:stretch; margin-top:14px; }
+  .step { flex:1; background:var(--s1); border-radius:12px; padding:12px 10px; font-size:17px; font-weight:800; text-align:center; line-height:1.45; color:var(--strong); }
+  .step.cur { background:var(--ink); color:#fff; }
+  .step small { display:block; font-size:14px; color:var(--muted); font-weight:700; margin-top:4px; }
+  .step.cur small { color:rgba(255,255,255,.7); }
+  .mats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+  .mat { background:var(--s1); border-radius:14px; padding:16px 12px; text-align:center; border:1.5px solid var(--line); }
+  .mat .ic { font-size:34px; line-height:1; }
+  .mat b { display:block; font-size:18px; font-weight:900; margin:10px 0 6px; line-height:1.35; }
+  .mat small { display:block; font-size:14.5px; color:var(--muted); font-weight:700; line-height:1.5; }
+  ol.rules { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:12px; }
+  ol.rules li { display:grid; grid-template-columns:44px 1fr; gap:14px; align-items:start; }
+  ol.rules .k { width:44px; height:44px; border-radius:12px; background:var(--ops-bg); color:var(--ops-deep); font-size:21px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  ol.rules .t { font-size:21px; font-weight:900; display:block; line-height:1.4; }
+  ol.rules .d { display:block; font-size:18px; color:var(--body); line-height:1.6; margin-top:3px; }
+  .flow { display:grid; grid-template-columns:1fr 36px 1fr 36px 1fr 36px 1fr; gap:6px; align-items:center; }
+  .fb { background:var(--s1); border-radius:14px; padding:16px 14px; text-align:center; border:1.5px solid var(--line); min-height:150px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
+  .fb b { font-size:19px; font-weight:900; line-height:1.35; }
+  .fb small { font-size:15px; color:var(--muted); font-weight:700; line-height:1.5; }
+  .arr { text-align:center; font-size:26px; color:var(--muted); font-weight:900; }
+  .notice { background:var(--ink); color:#fff; border-radius:14px; padding:16px 20px; font-size:19px; line-height:1.6; margin-top:14px; }
+  .notice small { color:rgba(255,255,255,.65); font-size:15px; display:block; margin-top:4px; }
+  .faq { display:flex; flex-direction:column; gap:12px; }
+  .faq div { background:var(--s1); border-radius:14px; padding:14px 18px; }
+  .faq .t { font-size:20px; font-weight:900; display:block; line-height:1.4; }
+  .faq .d { font-size:18px; color:var(--body); display:block; margin-top:4px; line-height:1.6; }
+  .pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:16px; font-weight:900; vertical-align:middle; }
+  .pill.ops { background:var(--ops-bg); color:var(--ops-deep); }
+  .pill.warn { background:var(--warn-bg); color:var(--warn); }
+  .foot { font-size:17px; color:var(--muted); text-align:center; line-height:1.6; }
+  .tag { display:inline-block; font-size:16px; font-weight:900; padding:4px 12px; border-radius:999px; background:var(--ops); color:#fff; margin-bottom:12px; }
+  .note { font-size:17px; color:var(--muted); margin-top:10px; }
+</style></head><body><div class="page">
+  <div>
+    <span class="tag">しりすこPAD · 2026-10 から 🧱 ブロック制 (2/2)</span>
+    <h1>🧮 最適凸プラン — あなたに届くもの</h1>
+  </div>
+  <div class="card">
+    <h2><span class="n">4</span>あなたに届くもの・やること</h2>
+    <div class="flow">
+      <div class="fb"><b>🔔 通知が届く</b><small>ブロックの配信のたび (割当のある人だけ)</small></div>
+      <div class="arr">→</div>
+      <div class="fb"><b>📅 きょうの凸 を見る</b><small>ホームに 時刻・ボス・PT・編成 (5 キャラ)。読んだら「✅ 確認しました」</small></div>
+      <div class="arr">→</div>
+      <div class="fb"><b>⚔️ その時刻に凸</b><small>配信どおりのボス・PT・編成で。時刻がずれても同じブロックの中なら OK</small></div>
+      <div class="arr">→</div>
+      <div class="fb"><b>📷 結果を Discord へ</b><small>スクショを貼るだけ。運営が取り込むと ✓ が付きます</small></div>
+    </div>
+    <div class="notice">🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②<small>↑ 通知はこんな形で届きます。同じブロックを配信し直したときは、変わった人にだけ届きます</small></div>
+  </div>
+  <div class="card">
+    <h2><span class="n">?</span>よくある疑問</h2>
+    <div class="faq">
+      <div><span class="t">自分の凸が入っていない</span><span class="d">そのブロックに参加可能時間が無い / 凸数の上限に達した / 模擬が未登録の属性しか残っていない / 3 凸済み のどれかです。ホームの空き枠に理由が出ます。</span></div>
+      <div><span class="t">想定より出なかった・出すぎた</span><span class="d">全然 OK。結果のスクショを Discord に貼れば、次のブロックの計算で吸収されます。</span></div>
+      <div><span class="t">この時間、無理になった</span><span class="d">Discord で一言ください。運営が次のブロックで組み直します (凸していない凸は「凸していない」にして、残りの凸数に戻します)。</span></div>
+      <div><span class="t">「運営が組み直し中です」が出ている</span><span class="d">運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます。</span></div>
+      <div><span class="t">なんで自分がこのボスなの?</span><span class="d">あなたの模擬のダメージが、そのボスの残り HP に「いちばん無駄なく収まる」からです。ホームの配信カードの 🧱 盤 で、ボスごとにどう組まれたかが見られます。</span></div>
+    </div>
+  </div><div class="foot">模擬が正確なほど、無駄のないプランになります。<br>詳しくは PAD のヘルプ §9「あなたの凸はこう決まる」· 練習は 設定 › ガイド › 練習する</div></div></body></html>

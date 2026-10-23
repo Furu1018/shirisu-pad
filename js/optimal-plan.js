@@ -1052,7 +1052,9 @@
             };
 
             let levelResult = runLevel(false);
-            if (!levelResult.levelCleared) {
+            // [実験 2026-10-23] frontierKill: 踏破できないレベルでも吸収モードに落とさず撃破狙いのまま (ブロック制の検証用。渡さなければ従来どおり)
+            if (!levelResult.levelCleared && input.frontierKill) frontierLevel = L;
+            else if (!levelResult.levelCleared) {
                 // フロンティア (踏破できないレベル): 撃破狙いをやめて吸収割当でやり直す
                 restoreSnapshot();
                 // trace は巻き戻さない: 破棄したのは「割当」であって「決定点」ではない。

@@ -4417,7 +4417,7 @@
             <div class="dc-card" data-span="7">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
                     <div>
-                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">模擬戦データ</div>
+                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">模擬</div>
                         <div id="mypageDmgOcrStatus" style="font-size:10.5px;color:var(--t-muted);margin-top:2px;min-height:14px;">&nbsp;</div>
                     </div>
                     <!-- NIKKE風 画像で提出 ピル (青)。手動入力は各属性カードをタップ = 別の入り口 -->
@@ -4641,7 +4641,7 @@
                 <div id="opsResultDraft" style="display:none;"></div>
                 <p id="opsResultStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
                 <div id="opsAtkCheckMissing"></div>
-                <p class="ops-recent-h" style="margin-top:10px;">登録された凸 <span style="font-weight:700;color:var(--t-muted);">(配信と突き合わせて食い違いに印。本人が報告した凸は見て ✓)</span></p>
+                <p class="ops-recent-h" style="margin-top:10px;">登録された凸 <button type="button" class="dc-mb-btn sub" style="margin:0 6px 0 2px;vertical-align:middle;" onclick="openOpsAttacksEditModal()" title="誤って登録した凸を直す・消す">✏️ 編集・削除</button><span style="font-weight:700;color:var(--t-muted);">(配信と突き合わせて食い違いに印。本人が報告した凸は見て ✓)</span></p>
                 <div id="opsAtkCheckFilters" class="ops-atk-f">
                     <button type="button" data-f="all" aria-pressed="true" onclick="_opsAtkCheckFilter('all')">全部</button>
                     <button type="button" data-f="flagged" aria-pressed="false" onclick="_opsAtkCheckFilter('flagged')">要確認</button>
@@ -4820,7 +4820,7 @@
 
             <!-- 📣 Discord 告知テンプレ (運営用) -->
             <div class="dc-card" data-ops-only>
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">📣 Discord 告知テンプレ</div>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">📣 Discord 用の文面</div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">メンバー向けの「前日まで/前日/当日にやること」案内と、凸プランのロジック解説。コピーしてDiscordに貼るだけ (模擬デーの日付などは適宜書き換えてください)。</p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <button onclick="copyAnnouncementText('main')" class="dc-ops-action">📋 メンバー向け案内</button>
@@ -5419,7 +5419,7 @@
                     </section>
 
                     <section id="help-mock" class="help-section">
-                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬戦データ (Discord に貼る) <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
+                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬 (Discord に貼る) <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
                         <p>模擬戦 = 本戦と同じ条件で出せる「あなたの最高ダメージ」。<strong>1編成 = ダメージ1つ</strong>で、どのレベルにも使われます。</p>
                         <div class="help-flow-step">
                             <div class="help-flow-num">1</div>
@@ -5912,13 +5912,13 @@
                         🎮 練習する (メンバー編)
                         <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 参加可能時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
                     </button>
-                    <button onclick="startPractice('ops-eve')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                    <button onclick="startPractice('ops-eve')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・前日)
                         <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 🧱 朝のブロックを組む → 📌 仮置き → 予約の承認 → 朝のぶんを配信・約5分</span>
                     </button>
-                    <button onclick="startPractice('ops-day')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                    <button onclick="startPractice('ops-day')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・当日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 18 時 (夕方のブロックの頭) の運営役として — ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締め凸検索・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 18 時 (夕方のブロックの頭) の運営役として — ⚔️ HP → 📥 結果の取り込み → 🧱 夕方を組む → 配信 → 締め凸検索・約5分</span>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
@@ -6326,7 +6326,7 @@
                 <h2><span data-sp-icon="clipboardCheck" data-sp-size="17"></span> 模擬提出チェック</h2>
                 <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">今シーズンの模擬戦データ提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
+            <p class="subtitle">今シーズンの模擬提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
             <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:var(--t-body);min-height:14px;">&nbsp;</p>
             <div id="opsMockAuditList" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsMockAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
@@ -6476,7 +6476,7 @@
             <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:var(--s1);">
                 <div style="font-size:12px;color:var(--t-body);line-height:1.5;">
                     🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
-                    新シーズンの最適プランや締め凸候補は、提出された模擬戦データに基づいて算出されます。
+                    新シーズンの最適プランや締め凸候補は、提出された模擬に基づいて算出されます。
                 </div>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
@@ -8181,7 +8181,7 @@
             const liteNote = lite ? ' 模擬は Discord にスクショを貼ってください。運営が PAD に登録します。' : '';
             const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 運営モードでも模擬タブは隠れる → 📸 模擬の取り込みへ (2026-10-22)
             const mockCta = (label, soft = false) => lite
-                ? (soft ? softBtn : heroBtn)('openMyAvailModal()', '⏰ 参加可能時間を確認する')
+                ? ''   // 模擬は Discord に貼る (liteNote が言う)。関係のないボタンを出さない (Codex 全体監査 A 2026-10-23)
                 : mockHidden ? (soft ? softBtn : heroBtn)('_gotoOpsMockIntake()', '📸 模擬の取り込み (戦況タブ) で登録する')
                 : (soft ? softBtn : heroBtn)("switchTab('mock')", label);
             const maxPick = _maxDisjointSquads(squads);
@@ -9602,11 +9602,13 @@
             _refreshFinishRequests().then(() => renderMyFinishRequestBanner(id));
             renderMySlvChip(id);
             renderMyNextAction(id);
-            renderMyAttacks(id);
             renderMyNotificationsInbox(id);
-            renderMyFinishCoord(id);
-            renderMyNextAttackBosses(id);
-            renderMyBossStrip(id); renderMyBossBoard(id);
+            if (!_homeSimple()) {   // 🧱 シンプルな画面: 戦闘カード・状態ボタン・ボス状況は隠れている (描画も通信もしない: Codex 全体監査 A 2026-10-23)
+                renderMyAttacks(id);
+                renderMyFinishCoord(id);
+                renderMyNextAttackBosses(id);
+                renderMyBossStrip(id); renderMyBossBoard(id);
+            }
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
@@ -10229,7 +10231,9 @@
                     <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
                 </div>`;
             // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
-            const askRows = _homeSimple() ? '' : asks.map(r => {   // 🧱 シンプルな画面では 📣 お願いは使わない (2026-10-23 ユーザー決定)
+            // 🧱 シンプルな画面では運営が 📣 お願いを出せない (ボタンが無い) ので、ここに出るのは切り替え前に出したお願いだけ —
+            //   出ている間は返事できるようにしておく (通知の文も「🔒 予約から返事」と言う。返事の箱を消すと仮置きが残り続ける: Codex 全体監査 B 2026-10-23)
+            const askRows = asks.map(r => {
                 const when = window.reservationsDomain?.whenOf(r) || (r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定'));
                 const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
@@ -14500,7 +14504,7 @@
                     renderOpsBossSummary();
                 }
                 // ホームの「次の凸」も同期
-                if (typeof renderMyNextAttackBosses === 'function') {
+                if (typeof renderMyNextAttackBosses === 'function' && !_homeSimple()) {   // シンプルな画面では隠れている
                     renderMyNextAttackBosses(identity);
                     renderMyBossStrip(identity); renderMyBossBoard(identity);   // 細いボス帯も同じ材料で更新
                 }
@@ -14717,7 +14721,7 @@
                 }
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
-                if (_onHomeOrOps) _refreshCoordOnce(id);   // 調整中一覧も表示のためだけ (#11)
+                if (_onHomeOrOps && (_opsMode || !_homeSimple())) _refreshCoordOnce(id);   // 調整中一覧も表示のためだけ (#11)。シンプルなメンバーのホームには表示先が無い
                 // 配信プランの取り下げ/再配信をホーム表示中の人にも追従させる (Codex指摘)。
                 // renderMyPublishedPlan は世代ガード付きなので多重呼び出しでも安全
                 if (document.getElementById('tab-mypage')?.classList.contains('active')
@@ -14733,7 +14737,7 @@
                 //   開いたことのある端末 (opsStore あり) しか取り直さず、ホームのボス状況が止まっていた。
                 //   撃破の検知・予約の点検・時間の通知は従来どおり運営側 (opsStore あり) だけ
                 const _opsSeasonLoaded = !!opsStore.get()?.season;
-                if (_coordPollTick === 0 && (_opsSeasonLoaded || seasonStore.get()?.season)) {
+                if (_coordPollTick === 0 && (_opsSeasonLoaded || (seasonStore.get()?.season && !_homeSimple()))) {   // シンプルなメンバーのホームはボス状況を出さないので取り直さない
                     // 撃破/レベル開放の検知 (30秒ごと)。報告した本人以外の端末でも気づけるように。
                     // 誰が気づいても送信は DB の一意制約で1回だけになる
                     if (_opsSeasonLoaded) _checkRaidEvents().catch(() => { /* noop */ });
@@ -18403,7 +18407,7 @@
                     : r.push ? 'この人だけに催促Push' : 'Push未購読のため届きません';
                 const acts = r.todo
                     ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${escapeHtml(nudgeTitle)}">催促</button>` +
-                      (isDay && r.atkCount < dom.MAX_ATTACKS ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')
+                      (isDay && r.atkCount < dom.MAX_ATTACKS && !_homeSimple() ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')   // シンプルな画面では 📥 結果の取り込みで登録する
                     : '<span class="dc-mb-c ok">✓</span>';
                 const av = r.avatarUrl
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.avatarUrl)}" alt="">`
@@ -24737,8 +24741,8 @@
         async function handleOpsMockAuditPush() {
             const targets = _opsMockAuditRows.filter(r => r.attrCount === 0);
             if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
-            const title = '🪞 模擬戦データ提出のお願い';
-            const bodyText = '今シーズンの模擬戦データが未提出です。模擬タブの「模擬戦データ」から提出お願いします🙏';
+            const title = '🪞 模擬のお願い';
+            const bodyText = '今シーズンの模擬が未登録です。Discord に模擬のスクショを貼ってください🙏 (運営が PAD に登録します)';
             const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.id, name: r.name })) }]);
             if (!ok) return;
             try {
@@ -25003,69 +25007,54 @@
         }
 
         // ========== 運営: Discord 告知テンプレ (ワンボタンコピー) ==========
+        // ★ 2026-10-23 🧱 ブロック制の流れに書き直した (Codex 全体監査 A: 旧テンプレは 模擬タブ・戦闘準備・凸報告・⏳隙間型・締め凸のお願い が前提だった)。
+        //   画像版は docs/最適凸プランの説明_2026-10-23_1.png / _2.png (元は docs/最適凸プランの説明_src_2026-10-23/)
         const _ANNOUNCE_MAIN = `@everyone
-📣 **しりすこPADが大幅パワーアップしました!**
-次のユニレから使える新機能と、みんなにやってほしいことをまとめます。**これだけ読めばOK**です👇
+📣 **しりすこPAD が「🧱 ブロック制」になりました**
+次のユニレから、みんなにやってほしいことは **2 つだけ** です👇
 
 ━━━━━━━━━━━━━━
-🆕 **できるようになったこと**
+⏰ **前日までに**
 ━━━━━━━━━━━━━━
-✨ **模擬を5属性出すとレーダーチャートが完成!** 自分の属性別の強さ(模擬ふるり値)が五角形で見えます。しかも**ユニレ終了を待たずに今すぐ**見れる(今までは終了翌日まで出せなかった数値です)
-✨ **🔒 凸の予約** — 「この時間にこのボスをこの編成で」を先に予約できます。運営が承認すると予約が決まり、プランを組み直しても動きません。「好きじゃない属性に回された…」は予約で防げます!
-✨ **1属性に2編成登録OK** — 同属性2凸したい属性特化勢に対応。カードが2枚重なってめくれます
-✨ **📚人気編成** — みんなの模擬から「その属性の人気キャラ・最高ダメ編成」が見れて、**ワンタップで自分の編成にコピー**できます。編成組むの苦手な人はこれ使って!
-✨ 当日は**運営から凸プランがホームに配信**されます。自分が「いつ・どのボスに・何B」出せばいいか一目で分かる
+1. PAD をホーム画面に追加 (アプリ化) → 🔔 通知 ON ※iPhone はアプリ化しないと通知が来ません
+2. ホームの **MY設定 › ユニオンレイド参加可能時間** で、レイドの日に **確実に動けるブロック** (朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜) を ON にして、できれば **何凸するか** (朝 1・夕方 2 など) も入れる → **「この時間で参加します」** を押す
+3. 模擬戦をしたら **結果のスクショを Discord に貼る** (編成 5 キャラとダメージが写っているもの)。運営が PAD に登録します。最低ラインは **キャラ被りなしで 3 属性**、**18 時以降に出られる人は ボス 5 の弱点の模擬を 2 編成**
+4. 「このブロックに この PT で凸したい」希望がある人だけ、ホームの **🔒 予約 › 枠を予約する** (しなくても運営が割り当てます)
 
 ━━━━━━━━━━━━━━
-📅 **前日までに(まだの人だけ)**
+⚔️ **当日**
 ━━━━━━━━━━━━━━
-1. PADをホーム画面に追加(アプリ化)→ 🔔通知ON ※iPhoneはアプリ化しないと通知が来ません
-2. ホームで **SLvを設定**(上の方のSLvチップをタップ)
-3. **参加可能時間**を塗る(時間が読めない人は「⏳隙間時間型」をONでOK)
-4. 出たい時間・ボスが決まっている人は、ホームの空き枠から**🔒 凸を予約**(運営が承認すると固定されます)
+1. ブロックの前に **「🧱 夕方 18〜20時 のあなたの凸が決まりました」** の通知が届きます → ホームの **📅 きょうの凸** に 時刻・ボス・PT・編成 (5 キャラ) が出るので **✅ 確認しました** を押す
+2. その時刻に配信どおりに凸 → **結果のスクショを Discord に貼る**だけ (PAD に凸を報告する操作はありません。運営が取り込むと ✓ が付きます)
+3. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
 
-━━━━━━━━━━━━━━
-🪞 **前日(模擬デー)にやること**
-━━━━━━━━━━━━━━
-**模擬戦をやって、模擬タブの「模擬戦データ」に提出!**
-・スクショを投げるだけでAIが読み取ります(手入力なら10秒)
-・**5属性全部出すとレーダーチャート完成**の特典つき✨ 最低でも3属性はお願いします
-・SLv設定済みなら、SLvが低くても**「ふるり値トップ」**に載るチャンスあり(補正されるので全員にトップの可能性があります)
-・提出がないと催促Pushが飛びます😉
-
-━━━━━━━━━━━━━━
-⚔️ **当日にやること(3つだけ)**
-━━━━━━━━━━━━━━
-1. **ホームの「配信された凸プラン」を見る** → 自分の凸予定(時間・ボス・想定ダメージ)が書いてあります
-2. 凸する前にボスをタップして**戦闘準備**(被り防止)→ 凸したら**すぐ凸報告**(結果スクショを投げるだけ)。報告が早いほどプランの精度が上がります!
-3. **🔔締め凸のお願い通知**が来たら協力お願いします🙏
-
-分からないことがあればPADの**ヘルプタブ**か、ここで聞いてください!`;
+PAD の中で入力するものは減りました (模擬と凸の結果は Discord へ)。分からないことは PAD のヘルプか、ここで聞いてください!`;
 
         const _ANNOUNCE_LOGIC = `🧠 **【読みたい人だけ】最適凸プランはどうやって決まってるの?**
 
-「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AIのお任せではなく、全部ルールで決まる計算**です(何回押しても同じ条件なら同じ答えが出ます)。
+「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AI のおまかせではなく、決まった手順の計算**です (同じ材料なら何度組んでも同じ結果)。
 
-**📥 材料にしているもの**
-みんなの模擬ダメージ(1属性につき最大2編成)/SLv/参加可能時間(⏳隙間型含む)/🔒承認済みの予約/ボスの残HP/いまの時刻。
-**つまり、みんなの提出データの質 = プランの質**です。模擬とSLvが正確なほど、無駄のないプランになります。
+**🧱 1 日をブロックに分けて、次のブロックのぶんだけ配信**
+レイドの日 (5時〜翌4時) を 朝 / 午前 / 昼 / 午後 / 夕方 / 夜 / 深夜 に区切り、運営はブロックの頭に「そのブロックに出られる人だけ」で組んで配信します。後ろのブロックはまだ決めないので、途中で組み直しても誰も振り回されません。
+
+**📥 材料にしているもの (5 つ)**
+参加可能時間と凸数 / 登録された模擬 (属性ごとに編成①・②) / 🔒 承認済みの予約 / ボスの残り HP / 済んだ凸 (運営が取り込んだ結果)
+**つまり、みんなの登録の質 = プランの質**です。
 
 **⚖️ 割り当てのルール**
-1. **各レベルは5体全部倒さないと次に進めない**ので、レベル1から順に「誰の凸で削り切るか」を組みます
-2. **1つの編成は1回だけ使える**(ゲームと同じでキャラの使い回し不可)。同じ属性に複数の編成を出していれば、キャラが被っていなければ同属性2凸も組み込みます
-2-2. **提出したダメージは、どのレベルのボスにも同じ値で使います** — 「Lv1で測った値はLv3では出せない」と考えて記録レベル以下に絞っていた時期がありますが、実データで差が出ませんでした(同じ編成でレベル違いを測った6件すべてがLv1比96〜105%)。2026-09-06 に測定レベルの区別をやめています
-3. **🔒 承認済みの予約は、その時刻・そのボス・その編成で固定**(組み直しても動きません)。得意属性の申告は計算に使いません
-4. **序盤の低レベルには控えめなダメージの人、終盤の高レベルには高火力の人を温存** — SLv順で役割分担します
-5. **オーバーキル(削りすぎ)が最小になる人を優先** — 残HP4Bのボスに30B出せる人を当てるのはもったいない、という計算です
-6. **時間も込みで組みます** — あなたの参加可能時間の中で、そのレベルが開く時刻以降の一番早い枠に割り当て。レベルのクリア時刻を決めている凸には「⏱律速」マークが付きます(その人が早く動けると全体が前倒しになる目印)。⏳隙間型の人は時刻を約束しない「できるとき枠」として扱います
-
-**🔄 途中で状況が変わったら?**
-運営が再計算ボタンを押すと、**その時点の残HP・消化済みの凸・残り時間だけ**から組み直して再配信します。あなたのホームのプランに⚠️が付いていたら「新しいのが来るまで目安として見てね」の合図です。
+1. **各レベルは 5 体全部倒さないと次に進めない**ので、Lv1 から順に「誰の凸で削り切るか」を組みます。Lv3 を踏破すると **Lv4 = ボス 5 だけ・HP 無限** が開き、そこへの凸は全額スコアに入ります
+2. **そのブロックに出られる人だけで組み、凸数は上限**として守ります (「朝 1・夕方 2」なら朝は 1 凸だけ)
+3. **1 つの編成は 1 回だけ・同じキャラは 1 日 1 回** (ゲームと同じ)
+4. **🔒 承認済みの予約はそのまま置き**、残りの枠だけ計算します (何時に凸するかは運営がブロックの中で決めます)
+5. **オーバーキル (削りすぎ) が小さい人を優先** — 残り 4B のボスに 30B 出せる人を当てるのはもったいない、という計算
+6. **参加可能時間の中で、そのレベルが開く時刻以降のいちばん早い時刻に**。登録した時間の外には置きません (⏰ 時間厳守)
+7. **前回の配信を尊重** — 盤面が動いていなければ人の割当は動きません
+＋ **ボス 5 の弱点の編成② は Lv4 でだけ使います** (18 時以降に出られる人は 2 編成を)
 
 **🙋 よくある疑問**
-・**「自分の凸が入ってない」** → 模擬未提出の属性には割り当てられません。あと3凸済みの人は当然出てきません
-・**「想定ダメージより出なかった/出すぎた」** → 全然OK。凸報告さえ早くくれれば次の再計算で吸収されます
-・**「この時間無理になった」** → 運営に一言ください。再計算で組み直せます`;
+・**「自分の凸が入ってない」** → そのブロックに参加可能時間が無い / 凸数の上限 / 模擬が未登録の属性しか残っていない / 3 凸済み のどれか。ホームの空き枠に理由が出ます
+・**「想定ダメージより出なかった / 出すぎた」** → 全然 OK。結果のスクショさえ貼ってくれれば次のブロックの計算で吸収されます
+・**「この時間、無理になった」** → Discord で一言ください。次のブロックで組み直します`;
 
         async function copyAnnouncementText(kind) {
             const text = kind === 'logic' ? _ANNOUNCE_LOGIC : _ANNOUNCE_MAIN;
@@ -25316,7 +25305,9 @@
                 }
                 if (memberInputChanged) {
                     await window.supabaseUpdateSeasonMemberInput(ctx.seasonId, memberInputFull);
-                    seasonStore.invalidate();  // この端末のメンバー画面の見せ方も決め直す (_applyMemberLite はシーズンを読み直したときに走る)
+                    seasonStore.invalidate();  // この端末のメンバー画面の見せ方も決め直す
+                    // ★ 読み直してすぐ決め直す (待つと、次にホームを描くまで古い見せ方のまま: Codex 全体監査 B 2026-10-23)。失敗しても保存は済んでいる
+                    try { await ensureActiveSeasonLoaded(); _applyMemberLite(); } catch { /* 次にホームを描いたときに決め直す */ }
                 }
                 set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0) + (memberInputChanged ? 1 : 0)}件)`);
                 opsStore.invalidate();
@@ -29911,7 +29902,7 @@
                 case 'pushcheck': openOpsPushCheckModal(); break;
                 case 'plan': _opsJump('opsSecPlan'); break;
                 case 'hp': openOpsBossHpModal(); break;
-                case 'remaining': setOpsTab('battle'); break;   // 段階 2.5: 残り戦闘可能のカードは外した → 戦況の見出しの 1 行
+                case 'remaining': _opsJump('opsSecMembers'); break;   // 残り戦闘可能のカードは外した → 👥 メンバー状況 (Codex 全体監査 A 2026-10-23)
                 case 'end': handleOpsEndSeason(); break;
                 case 'backup': _opsJumpEtc('opsMaintBackup'); break;
                 case 'reset': handleOpsResetDamages(); break;

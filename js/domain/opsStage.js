@@ -253,7 +253,7 @@
             //   [] に潰すと残り0凸 = 全員完了に見えて、当日のうちに終了処理へ誘導してしまう
             if (remainingTotal == null) return { lead: '盤面を読み込んでいます', why: 'ボスとメンバーが読めると、残り凸と締め凸がここに出ます', action: 'members', label: '👥 状況を見る' };
             const rem = Number(remainingTotal) || 0;
-            if (rem > 0) return { lead: `残り ${rem} 凸`, why: '残り戦闘可能メンバーから、いま出られる人と締め凸を見ます', action: 'remaining', label: '👥 残りメンバーを見る' };
+            if (rem > 0) return { lead: `残り ${rem} 凸`, why: 'メンバー状況で まだ凸していない人を、⚔️ 戦況で 結果がまだの凸を見ます', action: 'members', label: '👥 メンバー状況を見る' };   // 残り戦闘可能のカードは外した (2026-10-23)
             // ★ 締め凸の返答 (finPending) が未取得 (null) のうちは「全員完了」と断定しない (Codex再監査 2026-09-08)。
             //   メンバー状況は運営画面の描画で必ず読みに行くので、null は読み込み中か取得失敗のどちらか
             if (finPending == null) return { lead: 'メンバー状況を読み込んでいます', why: '締め凸の返答が読めると、全員完了かどうかが決まります', action: 'members', label: '👥 メンバー状況を見る' };

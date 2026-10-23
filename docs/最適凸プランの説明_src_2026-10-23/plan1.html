@@ -1,0 +1,102 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>最適凸プランはこう決まる 1/2</title><style>
+  :root { --ink:#14161A; --strong:#3D4249; --body:#52575E; --muted:#62666e; --bg:#F1F3F6; --card:#fff; --s1:#F7F8F9; --line:#E3E5E8;
+    --ops:#6C42F0; --ops-deep:#4b17ed; --ops-bg:#f0ecfe; --ok:#107e45; --ok-bg:#e8f9f0; --warn:#724905; --warn-bg:#fef5e7; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:1080px; background:var(--bg); color:var(--ink); font-family:"Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif; font-weight:700; -webkit-font-smoothing:antialiased; }
+  .page { width:1080px; padding:44px 48px 40px; display:flex; flex-direction:column; gap:26px; }
+  h1 { margin:0; font-size:46px; font-weight:900; letter-spacing:.3px; line-height:1.25; }
+  .sub { font-size:21px; color:var(--body); line-height:1.6; margin-top:10px; }
+  .card { background:var(--card); border-radius:22px; padding:28px 30px; border:1px solid rgba(20,22,26,.05); box-shadow:0 2px 10px rgba(20,22,26,.04); }
+  h2 { margin:0 0 16px; font-size:28px; font-weight:900; display:flex; align-items:center; gap:12px; }
+  h2 .n { width:40px; height:40px; border-radius:50%; background:var(--ink); color:#fff; font-size:21px; display:flex; align-items:center; justify-content:center; flex:none; }
+  p { margin:0; font-size:21px; line-height:1.7; color:var(--strong); }
+  .blocks { display:grid; grid-template-columns:4fr 3fr 3fr 3fr 3fr 3fr 5fr; gap:6px; margin:14px 0 8px; }
+  .blk { border-radius:12px; padding:12px 8px; text-align:center; background:var(--s1); border:1.5px solid var(--line); }
+  .blk b { display:block; font-size:22px; font-weight:900; }
+  .blk small { display:block; font-size:15px; color:var(--muted); margin-top:3px; font-weight:800; }
+  .blk.now { background:var(--ops-bg); border-color:var(--ops); }
+  .blk.now b { color:var(--ops-deep); }
+  .blk.done { opacity:.55; }
+  .steps { display:flex; gap:8px; align-items:stretch; margin-top:14px; }
+  .step { flex:1; background:var(--s1); border-radius:12px; padding:12px 10px; font-size:17px; font-weight:800; text-align:center; line-height:1.45; color:var(--strong); }
+  .step.cur { background:var(--ink); color:#fff; }
+  .step small { display:block; font-size:14px; color:var(--muted); font-weight:700; margin-top:4px; }
+  .step.cur small { color:rgba(255,255,255,.7); }
+  .mats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+  .mat { background:var(--s1); border-radius:14px; padding:16px 12px; text-align:center; border:1.5px solid var(--line); }
+  .mat .ic { font-size:34px; line-height:1; }
+  .mat b { display:block; font-size:18px; font-weight:900; margin:10px 0 6px; line-height:1.35; }
+  .mat small { display:block; font-size:14.5px; color:var(--muted); font-weight:700; line-height:1.5; }
+  ol.rules { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:12px; }
+  ol.rules li { display:grid; grid-template-columns:44px 1fr; gap:14px; align-items:start; }
+  ol.rules .k { width:44px; height:44px; border-radius:12px; background:var(--ops-bg); color:var(--ops-deep); font-size:21px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  ol.rules .t { font-size:21px; font-weight:900; display:block; line-height:1.4; }
+  ol.rules .d { display:block; font-size:18px; color:var(--body); line-height:1.6; margin-top:3px; }
+  .flow { display:grid; grid-template-columns:1fr 36px 1fr 36px 1fr 36px 1fr; gap:6px; align-items:center; }
+  .fb { background:var(--s1); border-radius:14px; padding:16px 14px; text-align:center; border:1.5px solid var(--line); min-height:150px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
+  .fb b { font-size:19px; font-weight:900; line-height:1.35; }
+  .fb small { font-size:15px; color:var(--muted); font-weight:700; line-height:1.5; }
+  .arr { text-align:center; font-size:26px; color:var(--muted); font-weight:900; }
+  .notice { background:var(--ink); color:#fff; border-radius:14px; padding:16px 20px; font-size:19px; line-height:1.6; margin-top:14px; }
+  .notice small { color:rgba(255,255,255,.65); font-size:15px; display:block; margin-top:4px; }
+  .faq { display:flex; flex-direction:column; gap:12px; }
+  .faq div { background:var(--s1); border-radius:14px; padding:14px 18px; }
+  .faq .t { font-size:20px; font-weight:900; display:block; line-height:1.4; }
+  .faq .d { font-size:18px; color:var(--body); display:block; margin-top:4px; line-height:1.6; }
+  .pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:16px; font-weight:900; vertical-align:middle; }
+  .pill.ops { background:var(--ops-bg); color:var(--ops-deep); }
+  .pill.warn { background:var(--warn-bg); color:var(--warn); }
+  .foot { font-size:17px; color:var(--muted); text-align:center; line-height:1.6; }
+  .tag { display:inline-block; font-size:16px; font-weight:900; padding:4px 12px; border-radius:999px; background:var(--ops); color:#fff; margin-bottom:12px; }
+  .note { font-size:17px; color:var(--muted); margin-top:10px; }
+</style></head><body><div class="page">
+  <div>
+    <span class="tag">しりすこPAD · 2026-10 から 🧱 ブロック制 (1/2)</span>
+    <h1>🧮 最適凸プランは こう決まる</h1>
+    <div class="sub">AI のおまかせではなく、<b>決まった手順の計算</b>です (同じ材料なら何度組んでも同じ結果)。<br>あなたがやることは <b>「参加可能時間と凸数を伝える」「配信された自分の凸を見る」</b> の 2 つだけ。</div>
+  </div>
+  <div class="card">
+    <h2><span class="n">1</span>1 日を「ブロック」に分けて、次のブロックのぶんだけ配信します</h2>
+    <p>レイドの日 (5時〜翌4時) を 7 つに区切ります。運営は<b>ブロックの頭</b>に、そのブロックに出られる人だけで組んで配信します。後ろのブロックはまだ決めないので、途中で組み直しても<b>誰も振り回されません</b>。</p>
+    <div class="blocks">
+      <div class="blk done"><b>朝</b><small>5〜8時</small></div>
+      <div class="blk done"><b>午前</b><small>9〜11時</small></div>
+      <div class="blk done"><b>昼</b><small>12〜14時</small></div>
+      <div class="blk done"><b>午後</b><small>15〜17時</small></div>
+      <div class="blk now"><b>夕方</b><small>18〜20時</small></div>
+      <div class="blk"><b>夜</b><small>21〜23時</small></div>
+      <div class="blk"><b>深夜</b><small>翌0〜4時</small></div>
+    </div>
+    <p class="note">↑ 例: いまが夕方なら、夕方のぶんだけが配信済み。夜以降は「まだ決まっていません」</p>
+    <div class="steps">
+      <div class="step">⚔️ HP を直す<small>ゲームの画面と合わせる</small></div>
+      <div class="step">📥 前のブロックの結果を取り込む<small>Discord のスクショから</small></div>
+      <div class="step cur">🧱 このブロックを組む<small>下のルールで計算</small></div>
+      <div class="step">📤 配信<small>割当のある人に通知</small></div>
+      <div class="step">🔎 締め凸検索<small>足りなければ Discord で声かけ</small></div>
+    </div>
+    <p class="note">↑ ブロックの頭に運営がやること (左から順に)</p>
+  </div>
+  <div class="card">
+    <h2><span class="n">2</span>計算の材料は 5 つ — つまり <span class="pill ops">みんなの登録の質 = プランの質</span></h2>
+    <div class="mats">
+      <div class="mat"><div class="ic">⏰</div><b>参加可能時間<br>と凸数</b><small>MY設定で ON にしたブロック。「朝 1・夕方 2」のような凸数は上限として守ります</small></div>
+      <div class="mat"><div class="ic">📘</div><b>登録された模擬</b><small>Discord に貼ったスクショを運営が登録。属性ごとに編成①・② (ダメージ 1 つずつ)</small></div>
+      <div class="mat"><div class="ic">🔒</div><b>予約</b><small>「このブロックに この PT で」の希望。運営が承認したものはそのまま置きます</small></div>
+      <div class="mat"><div class="ic">❤️</div><b>ボスの残り HP</b><small>運営がゲームの画面と合わせた値。倒せるボスは残 HP までしかスコアに入りません</small></div>
+      <div class="mat"><div class="ic">✓</div><b>済んだ凸</b><small>Discord に貼った結果を運営が取り込んだもの。残りの凸数と使ったキャラが決まります</small></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span class="n">3</span>割り当てのルール</h2>
+    <ol class="rules">
+      <li><div class="k">1</div><div><span class="t">レベルは順番に。各レベルで 5 体すべて倒すと次へ</span><span class="d">Lv1 → Lv2 → Lv3。Lv3 を踏破すると その日のうちに <b>Lv4 = ボス 5 だけ・HP 無限</b> が開き、そこへの凸は全額スコアに入ります。差がつくのはここ。</span></div></li>
+      <li><div class="k">2</div><div><span class="t">そのブロックに出られる人だけで組む。凸数は上限</span><span class="d">「朝 1・夕方 2」と入れた人は、朝のブロックには 1 凸だけ置かれます。時間を登録していない人は候補に入りません。</span></div></li>
+      <li><div class="k">3</div><div><span class="t">1 つの編成は 1 回だけ。同じキャラは 1 日 1 回</span><span class="d">ゲームと同じ。だから同じ属性に 3 凸より、キャラの被らない 3 編成で 3 属性のほうが総火力が伸びます。</span></div></li>
+      <li><div class="k">4</div><div><span class="t">🔒 予約はそのまま置き、残りの枠だけ計算する</span><span class="d">運営が承認した予約は、組み直しても動きません。何時に凸するかは運営がブロックの中で決めます。</span></div></li>
+      <li><div class="k">5</div><div><span class="t">オーバーキル (削りすぎ) が小さい人を優先</span><span class="d">残り 4B のボスに 30B 出せる人を当てるのはもったいない、という計算。倒せるボスへの凸は残 HP までしかスコアに入らないため。</span></div></li>
+      <li><div class="k">6</div><div><span class="t">参加可能時間の中で、そのレベルが開く時刻以降の いちばん早い時刻に</span><span class="d"><span class="pill warn">⏰ 時間厳守</span> 登録した時間の外には置きません。時間が合う人がいなければ、そのボスは次のブロックへ。</span></div></li>
+      <li><div class="k">7</div><div><span class="t">前回の配信を尊重する</span><span class="d">盤面 (残 HP・済んだ凸・時間) が動いていなければ、人の割当は動きません。</span></div></li>
+      <li><div class="k">＋</div><div><span class="t">ボス 5 の弱点の編成② は Lv4 でだけ使う</span><span class="d"><b>18 時以降に出られる人は、ボス 5 の弱点の模擬を 2 編成</b>貼ってください。2 編成目は Lv4 (HP 無限) の 2 凸目に取っておきます。</span></div></li>
+    </ol>
+  </div></div></body></html>
