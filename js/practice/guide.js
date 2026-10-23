@@ -59,6 +59,9 @@
         planPiece: ['#opsOptimalPlan .plan-piece[data-piece]:not(.placed):not(.dim)'],
         planCell: ['#opsOptimalPlan [data-boss][data-h]'],   // どのマスを指すかは placeableCell() が本物の判定で決める
         resvApprove: ['button[onclick^="handleReservationApprove("]'],
+        resvCreateOpen: ['[onclick="openOpsResvCreate()"]'],   // 🗣 9b: 🔒 凸の予約カードの「＋ 予約を登録」
+        resvCreateLo: ['#opsResvCreateBody button[onclick^="_opsResvCreateSet(\'lo\'"]'],
+        resvCreateSubmit: ['#opsResvCreateSubmit'],
         planPublish: ['#opsPlanPublishBtn'],
         swapAuto: ['#planSwapAutoBtn'],
         // 運営編・当日
@@ -235,6 +238,14 @@
             location.reload();
             await new Promise(function () { /* 読み込み直しを待つ */ });
         },
+        // (メンバー編) 前日に Discord へ『夜に 2 凸』と書いた → 運営が PAD に登録した (🗣 9a・本物の関数で・運営の名前で代理の印)
+        opsAvail: async function () {
+            var c = context();
+            var slots = c.T.availability.filter(function (a) { return eq(a.player_id, c.me); }).map(function (a) { return a.time_slot; });
+            await window.supabaseSaveAvailability(c.me, slots, { actorName: P.ops.name });
+            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-23': 2 }, actorName: P.ops.name });
+            note('assume', '運営が Discord の報告『夜に 2 凸』を PAD に登録した、と仮定しました', '本番では運営が 👥 メンバー状況の ⏰ から登録します。ホームの ⏰ に出ます');
+        },
         // (メンバー編) 凸をして Discord にスクショを貼った → 運営があなたの凸を登録した (本物の凸の登録の関数・運営の名前で)
         opsRegister: async function () {
             var c = context();
@@ -250,19 +261,6 @@
             await window.supabaseAddAttack({ seasonId: c.season.id, playerId: c.me, attackDate: c.season.hard_date, bossNumber: mine.bossNumber, bossCode: boss.boss_code,
                 damageRaw: dmg, level: c.season.current_level || 1, characters: mine.a.team || [] }, { actorName: P.ops.name });
             note('assume', '21 時に凸をして Discord にスクショを貼り、運営があなたの凸を登録した、と仮定しました', '本番では運営がまとめて登録します。登録されるとホームの「きょうの凸」に ✓ が付きます');
-        },
-        // (運営編・前日) メンバーから「朝 7 時に・この編成で」の予約の申請が来た — 本物の申請の関数と通知の文面で
-        memberRequest: async function () {
-            var c = context();
-            if (c.allResv.some(function (r) { return r.status === 'requested'; })) return;
-            var q = pickRequester(c);
-            if (!q) { note('assume', '予約できる人が見つかりません', 'この練習ではここまでです'); return; }
-            // 🧱 段階 3: メンバーはブロックで申請する (時刻は運営がブロックの中で決める)。本番の申請シートと同じ関数・同じ形
-            await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: q.player.id, bossNumber: q.boss.boss_number, block: { from: 5, to: 8 }, loadoutSlot: Number(q.dmg.slot) || 1,
-                characters: q.dmg.characters, expectedDamageB: Number(q.dmg.damage_b), requestedBy: q.player.name });
-            await window.sendPushNotification({ title: '🔒 予約 (承認待ち)', body: q.player.name + ': B' + q.boss.boss_number + ' 5〜8時のどこか 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
-                tag: 'ops-resv-request', playerIds: [P.ops.id], ignoreAvailability: true, requireInteraction: true }, { senderPlayerId: q.player.id });
-            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 朝 (5〜8時) のどこか」の予約が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
         },
     };
     /** 配信プランのうち hour 時より前のぶんを、ほかのメンバーが凸したことにする (ボスは倒し切らない)。keepRatio = ボス番号 → 残す割合 (既定 0.12) */
@@ -301,16 +299,14 @@
     var countsOf = function () { return (typeof _availUI !== 'undefined' && _availUI && _availUI.counts) ? _availUI.counts : {}; };
     var STEPS = {
         member: [
-            { key: 'avail', title: '参加可能時間と「何凸するか」を伝える',
+            { key: 'discord', title: '出られるブロックと凸数を Discord で伝える',
+                // 🗣 運用の見直し (2026-10-24 Q1): メンバーは PAD に入力しない。前日に Discord へ報告し、運営が PAD に登録する → 済んだ形 = 本人の確認の行に凸数が入っている
                 done: function (c) { return c.mine('availability_confirmations').some(function (r) { return r.block_counts && Object.keys(r.block_counts).length > 0; }); },
                 guide: function (c) {
-                    if (c.modalId === 'myAvailModal') {
-                        if ((Number(countsOf()['21-23']) || 0) < 2) return { text: 'あなたは 19 時から出られます。「夜」の「＋」を押して、夜に 2 凸すると伝えます (あと ' + (2 - (Number(countsOf()['21-23']) || 0)) + ' 回)。',
-                            real: '凸数を入れたブロックには、運営はその数より多く割り当てません。入れなければ運営がそのブロックのどこかに割り当てます。', target: pick('availPlusNight') };
-                        return { text: '「夜 2」になりました。下の「この時間で参加します」を押します。', target: pick('availConfirm') };
-                    }
                     return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
-                        : { text: 'ホームの「⏰ ユニオンレイド参加可能時間」で「変更する ›」を押します。', target: pick('availOpen') });
+                        : { text: '前日: 出られるブロック (と凸数・凸先の希望) を Discord で運営に伝えます。あなたは 19 時から出られるので『夜に 2 凸』と書きます。PAD には何も入れません。',
+                            real: '運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。違っていたら Discord で運営へ (PAD で直す操作はありません)。',
+                            assume: ['opsAvail', '⏩ 運営が「夜 2 凸」を登録したことにする'] });
                 } },
             { key: 'wait', title: '運営の配信を待つ',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope); },
@@ -342,6 +338,40 @@
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     return stray(c, []) || { text: '運営タブの先頭には、いちばん急ぐ 1 つが出ます。「📣 未提出の人に催促する」を押します。', real: '催促は通知を購読している人にだけ届きます。届かない人は Discord で声をかけます。', target: pick('nudgeMock') };
                 } },
+            { key: 'avail', title: '⏰ Discord の報告を登録する (参加可能時間と凸数)',
+                // 🗣 9a: メンバーは Discord に『夜に 2 凸』と書くだけ。運営が 👥 メンバー状況の ⏰ から本人の代わりに登録する
+                done: function (c) { return c.T.availability_confirmations.some(function (r) { return eq(r.player_id, P.me.id) && r.block_counts && Number(r.block_counts['21-23']) === 2; }); },
+                guide: function (c) {
+                    if (c.modalId === 'myAvailModal') {
+                        if ((Number(countsOf()['21-23']) || 0) < 2) return { text: '「' + P.me.name + '」さんの Discord の報告は『夜に 2 凸』。「夜」の「＋」を押して 2 にします (あと ' + (2 - (Number(countsOf()['21-23']) || 0)) + ' 回)。',
+                            real: '出られる時間はブロック丸ごと ON / OFF。凸数を入れたブロックには、その数より多く割り当てません。', target: pick('availPlusNight') };
+                        return { text: '「夜 2」になりました。「この時間で参加します」を押して登録します。本人の画面の ⏰ に出ます。', target: pick('availConfirm') };
+                    }
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('members')) return stray(c, []) || opsTab('members');
+                    return stray(c, []) || { text: '前日、メンバーは Discord に『出られるブロックと凸数』を書きます。運営が PAD に登録します。👥 メンバー状況で「' + P.me.name + '」さんの行の「⏰」を押します。',
+                        real: '報告が来ない人には「催促」。参加可能時間が登録されていない人は、算出の候補になりません。', target: q('#opsMbRows button[onclick="openOpsAvailModal(' + P.me.id + ')"]') };
+                } },
+            { key: 'resv', title: '🔒 Discord の希望を予約として登録する',
+                // 🗣 9b: 凸先の希望 (「朝に この PT で行きたい」) も Discord で来る。運営が 🔒 凸の予約カードの「＋ 予約を登録」から本人の代わりに登録する (登録した時点で予約・本人に通知)
+                done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.pinned_by && r.source_type !== 'finish_request'; }); },
+                guide: function (c) {
+                    var who = pickRequester(c);
+                    if (c.modalId === 'opsResvCreateModal') {
+                        var st = (typeof _opsResvCreate !== 'undefined') ? _opsResvCreate : null;
+                        if (st && st.playerId == null && who && typeof _opsResvCreateSet === 'function') _opsResvCreateSet('playerId', who.player.id);   // 練習では相手を選んであります (本番では「誰の予約か」で選ぶ)
+                        if (st && st.playerId != null && st.attr == null) return { text: (who ? who.player.name + 'さん' : 'この人') + 'の希望は「朝に ' + (who ? who.boss.name || ('B' + who.boss.boss_number) : 'ボス') + ' へ行きたい」。合う編成を押します (行き先のボスは編成の属性で決まります)。',
+                            real: '編成はその人の模擬 (📸 で登録したもの) から選びます。模擬が無い人の予約は登録できません。', target: pick('resvCreateLo') };
+                        if (st && st.attr != null && st.blockIdx == null) return { text: '「朝」のブロックを押します。丸ごと出られるブロックだけ押せます (時刻はブロックの中で運営が決めます)。', target: q('#opsResvCreateBody .avail-blk[data-state="on"]') };
+                        return { text: '「🔒 予約を登録する」を押します。確認が出たら OK → 登録した時点で予約になり、本人に通知が届きます (承認待ちはありません)。',
+                            real: '置けない (3 凸済み・キャラ被り・一部しか出られないブロック) ときは理由が出ます。', target: pick('resvCreateSubmit') };
+                    }
+                    if (!who) return stray(c, []) || { text: '予約できる人が見つかりません (朝に出られて模擬のある人が居ません)。この課題は飛ばします。', real: '本番では Discord で希望が来た人を選びます。' };
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    return stray(c, []) || { text: 'Discord で ' + who.player.name + 'さんから「朝に ' + (who.boss.name || ('B' + who.boss.boss_number)) + ' へ行きたい」と来た、とします。「🔒 凸の予約」の「＋ 予約を登録」を押します。',
+                        real: 'メンバーは PAD で予約を出しません。希望は Discord → 運営が登録 (登録した時点で予約・本人に通知)。', target: pick('resvCreateOpen') };
+                } },
             { key: 'compute', title: '🧱 朝のブロックを組む',
                 done: function () { return store.get('ops-eve:computed') === '1'; },
                 guide: function (c) {
@@ -363,17 +393,6 @@
                     if (!pp) return stray(c, []) || { text: 'いまの時間割に置ける模擬ピースがありません。「🧮 この条件で算出」をもう一度押してから試します。', target: pick('planCompute') };
                     if (!pp.selected) return stray(c, []) || { text: '下の「🧩 模擬ピース」(まだ盤に無い人の編成) から、枠の付いた 1 つを押します。', real: '📌 は運営の下書きです。本人には届かず、配信したときに割当として届きます。', target: pp.el };
                     return stray(c, []) || { text: '枠の付いたマス (その人が参加可能時間 × 合う属性のボス) を押します。📌 として仮置きされ、算出し直されます。', target: placeableCell() };
-                } },
-            { key: 'request', title: 'メンバーからの予約を承認して組み直す',
-                done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.source_type !== 'finish_request'; }); },
-                guide: function (c) {
-                    var req = c.allResv.filter(function (r) { return r.status === 'requested'; })[0];
-                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「このブロックに この PT で凸したい」の予約が届くことがあります。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴ります。', assume: ['memberRequest', '⏩ メンバーから予約が来たことにする'] };
-                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
-                    if (opsTab('build')) return stray(c, []) || opsTab('build');
-                    var btn = pick('resvApprove');
-                    if (!btn) return stray(c, []) || { text: '予約が届いています。「🔒 凸の予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve > .ops-card-head') };
-                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を反映して朝のブロックを組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認すると本人に通知が届きます。予約は約束なので、本人が入れた凸数より強く効きます。', target: btn };
                 } },
             { key: 'publish', title: '朝のぶんを配信する',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope && Number(c.pub.plan.reservationCount) >= 1); },
@@ -449,10 +468,10 @@
         ],
     };
     var SCENARIOS = {
-        'member': { title: 'メンバー編', sub: '参加可能時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
-            diff: '練習では運営の配信と凸の登録を「〜したことにする」で進めました。本番では運営がブロックの前に配信し、スクショを見て凸を登録します。' },
-        'ops-eve': { title: '運営編・前日', sub: '催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信', next: 'ops-day',
-            diff: '練習ではメンバーの予約を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に朝に割当のある人のホームへ出て、その人たちに通知が届きます。' },
+        'member': { title: 'メンバー編', sub: 'Discord で出られるブロックを伝える → 配信を待つ → 割当を確かめる → 凸したら Discord へ', next: 'ops-eve',
+            diff: '練習では運営の登録・配信・凸の登録を「〜したことにする」で進めました。本番では前日に Discord へ報告し、運営が PAD に登録してブロックの前に配信し、スクショを見て凸を登録します。PAD で入力する操作はありません。' },
+        'ops-eve': { title: '運営編・前日', sub: '催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 → 朝のぶんを配信', next: 'ops-day',
+            diff: '練習では Discord の報告・希望を「来たことにする」で進めました。本番では前日に Discord に書かれたものを人ごとに PAD へ登録します (参加可能時間と凸数 → 模擬のスクショ → 凸先の希望を予約に)。配信は押した瞬間に朝に割当のある人へ通知が届きます。' },
         'ops-day': { title: '運営編・当日', sub: '夕方のブロックの頭: ⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締め凸検索', next: 'member',
             diff: '本番ではこの手順をブロックごとに繰り返します。交代するときは、運営タブのタブの数字 (手を打つべき件数) と「いちばん急ぐこと」から続けます。' },
     };
@@ -494,9 +513,9 @@
     // ---------- 途中の課題から始める (ツアーの「この操作をやってみる」から入ったとき) ----------
     // 手前の課題を**本物の関数で**済ませてから読み込み直す。相手の動き (承認・時間) も同じ仮定の関数で起こす
     var FF = {
-        avail: async function (c) {
+        discord: async function (c) {
             var slots = c.T.availability.filter(function (a) { return eq(a.player_id, c.me); }).map(function (a) { return a.time_slot; });
-            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-23': 2 } });
+            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-23': 2 }, actorName: P.ops.name });   // 🗣 9a: 運営が代理で登録した形
         },
         wait: async function () { await publishNight(); },
         ack: async function (c) { var pub = context().pub; if (pub) await window.supabaseAckPlan(c.me, c.season.id, pub.id); },

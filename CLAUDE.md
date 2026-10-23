@@ -1277,6 +1277,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   確定 (RPC) に失敗したら一覧を**取り直して** (`_resvTransition` は手元の canApprove で止まると取り直さずに返る) 📌 が残っていれば「📌 から 🔒 確定 か 外す」、別の運営が外していたら (released) その旨。
   **一部しか出られないブロック (partial) は選べない** — ブロックの予約は「その時間帯のどこか」で、ソルバー (`pickInWindow`) は本人が出られる時刻に置けなければ出られない時刻にも置く。運営が ⏰ で登録する時間はブロック丸ごとなので、一部になるのは古い 1 時間刻みの登録だけ (⏰ で丸ごと ON にしてから)。
   📸 の保存直後は `opsStore.invalidate()` の直後で盤面が無いので、`openOpsResvCreate` は無ければ `opsStore.load()` を待ってから開く。実行テスト `tests/ops-resv-create.mjs`
+  ★ **🗣 運用の見直し 9c: メンバーの入口を隠す** (2026-10-24 ユーザー決定 Q1「メンバーの PAD 入力はゼロ」): lite (`body.member-lite`) では 参加可能時間の編集 (ホームの ⏰ 帯の「変更する」・MY設定の行 = `data-member-input`) と
+  「枠を予約する」(`[data-member-resv]` を CSS で隠す) を出さない。代わりに `[data-member-input-lite]` の案内「運営が登録した時間です。直したいときは Discord で運営へ」「予約の希望は Discord で運営に伝えてください」。
+  ヒーローの S2 (時間未登録) は lite では「⏰ 出られるブロックを Discord で運営に伝えてください」(ボタン無し)。帯の未登録の文も Discord へ。従来の画面は member_input=full (DOM は残す)。
+  ★ **🗣 運用の見直し 9f: 練習モードの作り直し** (2026-10-24 Q7「2 本のまま・前日は報告の登録から」): メンバー編 = `discord` (Discord に書くだけ → ⏩ `opsAvail` = 運営が `supabaseSaveAvailability` + `supabaseConfirmAvailability` を本人の代わりに・代理の印) → wait → ack → report。
+  運営編・前日 = nudge → **avail** (👥 の行の ⏰ → 夜の ＋ → この時間で参加します・相手は練習のメンバー `P.me`) → **resv** (🔒 凸の予約の「＋ 予約を登録」→ 編成 → 朝のブロック → 登録。相手は `pickRequester` = 朝に出られて模擬のある人。練習では「誰の予約か」を選んでおく) → compute → pin → publish。
+  メンバーの申請を「来たことにする」(`memberRequest`) は外した。ツアーの体験デモは `discord` から。`tests/practice.mjs` の見張り (課題の鍵・FF・案内の 「」 の言葉) と `tests/practice-e2e.mjs` (MEMBER_KEYS) を合わせた
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

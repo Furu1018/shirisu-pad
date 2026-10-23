@@ -1043,6 +1043,7 @@
         #opsEtc.as-master .ops-etc-head, #opsEtc.as-master .ops-etc-label:first-child, #opsEtc.as-master #opsEtcCards { display: none !important; }
         #opsEtc.as-master #opsEtcBody { display: block !important; }   /* 運営モードでも隠す (2026-10-22)。出すのは member_input=full だけ */
         body.member-lite [data-member-input] { display: none !important; }
+        body.member-lite [data-member-resv] { display: none !important; }   /* 🗣 9c (2026-10-24 Q1): 予約の希望も Discord → 運営が登録 (9b)。メンバーの PAD 入力はゼロ */
         body:not(.member-lite) [data-member-input-lite] { display: none !important; }
         /* 🧱 段階 1 (2026-10-22 決定 a): メンバーは「いつ・どの PT で凸するか」だけ — ボスの状況 (帯・カード)・オンライン/模擬中/戦闘中の状態ボタン・
            戦闘に入るゲート・本人の凸報告の入口 (戦闘カード・3枠・わたしの凸・BlaBlaLINK 3凸) をメンバー画面から外す。凸の済は運営の登録で確定する。
@@ -4285,7 +4286,7 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ ユニオンレイド参加可能時間</div>
                     <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
-                    <button type="button" onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
+                    <button type="button" data-member-input onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
                 </div>
                 <div id="myAvailStripBody"></div>
             </div>
@@ -4369,7 +4370,7 @@
             <!-- ⑤ MY設定 (リスト行スタイル) -->
             <div class="dc-card" data-span="6" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
-                <div onclick="openMyAvailModal()" class="dc-setting-row">
+                <div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input>
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
                     <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">ユニオンレイド参加可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸検索に使う)</span></div>
                     <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
@@ -7366,7 +7367,7 @@
         // 以前は手描きの見本 (戦闘可能時間 / 模擬提出 / 凸の流れ) をここに描いていたが、本番の画面を直すたびにずれるので廃止。
         // 練習モード (本物の画面 + 練習用のデータ) の該当する課題から始める入口だけを置く
         // 2026-10-22 の作り直し: メンバーは模擬を Discord に貼るだけ・凸の報告は運営が登録する → 模擬の体験は「出られる時間」、戦闘は「凸したら Discord へ」
-        const TOUR_DEMO_START = { avail: ['avail', '参加可能時間と「何凸するか」を伝える'], battle: ['report', '凸したら Discord へ'] };
+        const TOUR_DEMO_START = { avail: ['discord', '出られるブロックと凸数を Discord で伝える'], battle: ['report', '凸したら Discord へ'] };   // 🗣 9f: メンバーは PAD に入力しない
         function _tourDemoHtml(kind) {
             const d = TOUR_DEMO_START[kind];
             if (!d) return '';
@@ -8330,9 +8331,9 @@
                 } else if (setup?.needTime) {
                     // S2: 戦闘可能時間 未登録
                     hero = true;
-                    lead = '⏰ 戦闘できる時間帯を教えてください';
-                    why = 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。読めない人は「⏳隙間時間型」を選べばOK。';
-                    cta = heroBtn('openMyAvailModal()', '⏰ 時間帯を登録する');
+                    lead = lite ? '⏰ 出られるブロックを Discord で運営に伝えてください' : '⏰ 参加可能時間を教えてください';
+                    why = lite ? 'Discord に「朝 1・夜 2」のように、出られるブロック (と凸数・凸先の希望) を書いてください。運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。' : 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。読めない人は「⏳隙間時間型」を選べばOK。';
+                    cta = lite ? '' : heroBtn('openMyAvailModal()', '⏰ 参加可能時間を登録する');   // 🗣 9c: lite では PAD に入力しない (Discord → 運営が登録)
                 } else if (season && season.hard_date === tomorrowStr) {
                     // B2: 前日・準備OK
                     lead = '⏰ 明日が本番です';
@@ -9684,12 +9685,13 @@
                     ? `いま (${curHour}時) は参加可能時間です${w ? ` — ${dom.rangeLabel(w)}` : ''}`
                     : (set.size > 0
                         ? `いま (${curHour}時) は時間外です。赤い枠がいまの時刻、紫が登録した時間帯です`
-                        : '時間帯が未登録です。登録すると通知とプランの割当に使われます');
+                        : ((typeof _memberLite === 'function' && _memberLite()) ? '参加可能時間はまだ登録されていません。Discord で運営に伝えてください (運営が登録します)' : '時間帯が未登録です。登録すると通知とプランの割当に使われます'));
             body.innerHTML = `
                 <div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${escapeHtml(summary)}</div>
                 <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
-                <div style="display:flex;margin-top:3px;">${labels}</div>`;
+                <div style="display:flex;margin-top:3px;">${labels}</div>
+                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">運営が登録した時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>`;
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
@@ -10277,7 +10279,9 @@
                 </div>`;
             };
             // 🧱 段階 3 (2026-10-22 ユーザー決定「予約したい人だけ申請」): 申請の導線は lite (模擬タブなし) でも出す (data-member-resv。模擬の入力 data-member-input とは別)
-            const cta = `<div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
+            // 🗣 9c (2026-10-24 Q1): lite では「枠を予約する」を出さない (CSS)。希望は Discord → 運営が登録 (9b) → ここに 🔒 予約として出る
+            const cta = `<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください。運営が登録すると、ここに 🔒 予約として出て通知が届きます。</p>
+                <div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
                     <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">枠を予約する</button>
                     <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
                 </div>`;

@@ -865,8 +865,8 @@ test('見張り: 案内が指す「押す場所」が、本物の画面 (index.h
 test('見張り: 課題の形 / 「〜したことにする」は自動では起きない / 案内の文が引く画面の言葉が実在する', () => {
     const P = loadGuide();
     // ★ 2026-10-22 の作り直し (🧱 ブロック制・段階 2.5): メンバーは「出られる時間と凸数」と「いつ・どの PT で」だけ、運営はブロックの頭の手順
-    assert.deepEqual(Array.from(P.steps.member, s => s.key), ['avail', 'wait', 'ack', 'report']);   // (別の実行環境の配列なので写してから比べる)
-    assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'compute', 'pin', 'request', 'publish']);
+    assert.deepEqual(Array.from(P.steps.member, s => s.key), ['discord', 'wait', 'ack', 'report']);   // (別の実行環境の配列なので写してから比べる) 🗣 9f: 前日は Discord に書くだけ
+    assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'avail', 'resv', 'compute', 'pin', 'publish'], '運営編・前日は 催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 → 配信 (🗣 9f)');
     assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締め凸検索');
     assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
     for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
@@ -879,8 +879,8 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     for (const id of ids) assert.ok(P.scenarios[id].title && P.scenarios[P.scenarios[id].next], `${id} の名前か「次の編」が無い`);
     // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵・最後の report は手順が要らない)
     const ff = GUIDE.match(/var FF = \{[\s\S]*?\n    \};/)?.[0] || '';
-    assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['avail', 'wait', 'ack'], '手前を済ませる手順が課題と合わない');
-    assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-23': 2 \} \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
+    assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['discord', 'wait', 'ack'], '手前を済ませる手順が課題と合わない');
+    assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-23': 2 \}, actorName: P\.ops\.name \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
     assert.match(ff, /wait: async function \(\) \{ await publishNight\(\); \}/);
     assert.match(ff, /window\.supabaseAckPlan\(/);
     assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/, '途中で失敗しても戻していない');
@@ -925,7 +925,8 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
         assert.ok(/real: '/.test(around), `${m[1]} の仮定に「本番では」の断りが付いていない`);
     }
     // 相手役が送る通知は本番と同じ文面・同じ送り方
-    for (const w of ['🔒 予約 (承認待ち)', '(承認待ち)']) assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
+    // 🗣 9c/9f (2026-10-24): メンバーは PAD で予約を出さない → 練習も「申請が来た」を仮定しない。運営発の予約の通知は本物の関数 (handleOpsResvCreateSubmit → _notifyMemberResv) が送る
+    assert.ok(!GUIDE.includes('🔒 予約 (承認待ち)') && !GUIDE.includes('memberRequest'), '練習がメンバーの申請を「来たことにする」で送っている (メンバーは PAD で予約を出さない)');
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
     // 案内の要所

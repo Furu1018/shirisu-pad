@@ -119,7 +119,7 @@ const tap = (p, sel) => p.eval(`(() => { const b = document.querySelector(${JSON
 const valueOf = (text) => (String(text || '').match(/(\d+(?:\.\d+)?)\s*(?:にします|と入れ)|例: (\d+(?:\.\d+)?)/) || []).slice(1).find(Boolean) || '33.1';
 
 // メンバー編の課題 (2026-10-22 の作り直し: js/practice/guide.js の STEPS.member と同じ並び)
-const MEMBER_KEYS = ['avail', 'wait', 'ack', 'report'];
+const MEMBER_KEYS = ['discord', 'wait', 'ack', 'report'];   // 🗣 9f: 前日は Discord に書くだけ (⏩ 運営が登録)
 async function run(label, size, scenario = 'member', startAt = '') {
     const problems = [], trail = [];
     const p = await openPage(size);
@@ -258,7 +258,7 @@ let ok = true;
 try {
     const want = (sc, at = '') => !ONLY || ONLY === sc + (at ? ':' + at : '');
     if (want('member')) ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
-    if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
+    if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 → 朝のぶんを配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
     if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (⚔️ HP → ⚔️ 結果の取り込み → 🧱 夕方を組む → 配信 → 締め凸検索で探してコピー) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
     if (want('member', 'report')) ok = await run('スマホ幅: ツアーから「凸したら Discord へ」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'report') && ok;
     if (want('member', 'ack')) ok = await run('スマホ幅: 「「いつ・どの PT で凸するか」を確かめる」から入る (配信まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'ack') && ok;

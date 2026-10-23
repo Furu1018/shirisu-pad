@@ -9919,7 +9919,9 @@ console.log('\ngrowthDomain:');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
         // 🧱 段階 3 (2026-10-22): 申請の導線は lite でも出す (data-member-resv・模擬の入力とは別)
         assert.ok(/<div data-member-resv style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
-        assert.ok(!/body\.member-lite \[data-member-resv\]/.test(html), '申請の導線を lite で隠している (予約したい人だけ申請する決め)');
+        // 🗣 9c (2026-10-24 Q1「メンバーの PAD 入力はゼロ」): lite では「枠を予約する」を隠し、Discord への案内を出す (希望は 9b の運営発の予約で)
+        assert.ok(/body\.member-lite \[data-member-resv\] \{ display: none !important; \}/.test(html), '申請の導線を lite で隠していない (9c)');
+        assert.ok(html.includes('<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;') && html.includes('予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください'), 'lite の予約の案内が無い');
         // 🧱 段階 3 (2026-10-22): 申請の導線を lite でも出すので、「隠しているときの一文」は無い (ブロックで申請できる案内に替えた)
         assert.ok(/「このブロックに この PT で凸したい」を先に出しておけます。/.test(html), '申請の導線の案内がブロックの言い方になっていない');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
@@ -12358,7 +12360,7 @@ console.log('\ngrowthDomain:');
         assert.ok(!/function _tourDemo(Avail|Mock|Battle)Body\(/.test(html), '手描きの体験デモが残っている (本番の画面を直すたびにずれる)');
         const map = new Function(html.match(/const TOUR_DEMO_START = (\{[^}]*\});/)[1].replace(/^/, 'return ') )();
         assert.deepEqual(Object.keys(map), ['avail', 'battle']);
-        assert.deepEqual(Object.values(map).map(v => v[0]), ['avail', 'report'], 'ツアーのデモから入る練習の課題がずれている (2026-10-22 の作り直し)');
+        assert.deepEqual(Object.values(map).map(v => v[0]), ['discord', 'report'], 'ツアーのデモから入る練習の課題がずれている (2026-10-24 🗣 9f: 前日は Discord に書くだけ)');
         assert.match(html, /function _tourDemoHtml\(kind\)[\s\S]*?onclick="startPractice\('member', '\$\{d\[0\]\}'\)"/, '体験デモが練習モードへの入口でない');
         assert.match(html, /\$\{step\.demo \? _tourDemoHtml\(step\.demo\) : ''\}/, 'ツアーがデモの種類を渡していない');
     });
