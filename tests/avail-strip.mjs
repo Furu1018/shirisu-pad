@@ -60,6 +60,7 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
         _hourKey: (h) => `h${String(h).padStart(2, '0')}`,
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
         _loadMyAvailConfirm: async () => { },
+        _availUI: { forPlayer: null },   // 🗣 9a: 運営が別の人のシートを開いている間は本人の確認状態を読み直さない (ここでは閉じている)
         _myAvailConfirm: confirm,
         seasonStore: { get: () => null },
         _availStripSeq: 0,

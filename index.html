@@ -9680,6 +9680,7 @@
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
+            if (_availUI.forPlayer) return;   // 🗣 9a: 運営が別の人のシートを開いている間は、共有の確認状態 (_myAvailConfirm) を本人のものに差し替えない (閉じるときに戻す)
             try { await _loadMyAvailConfirm(identity.id); } catch { /* バッジが出ないだけ */ }
             if (seq !== _availStripSeq) return;
             if (String(getCurrentIdentity()?.id) !== String(identity.id)) return;
@@ -11254,6 +11255,7 @@
         function openMyAvailModal() {
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            _availUI.session++;
             _availUI.forPlayer = null;
             _renderAvailForWho();
             document.getElementById('myAvailModal').classList.add('open');
@@ -11265,8 +11267,11 @@
         function closeMyAvailModal() {
             document.getElementById('myAvailModal').classList.remove('open');
             const forPlayer = _availUI.forPlayer;
-            // 残っている保存の予約は、閉じる前に**その相手で**流し切る (閉じたあとに走ると名乗っている本人のぶんになる)
-            const pending = _availUI.savePending ? _availDoSave({ target: forPlayer || getCurrentIdentity() }) : null;
+            // 残っている保存の予約は、閉じる前に**予約したときの中身 (相手・時間帯) で**流し切る (閉じたあとに走ると名乗っている本人のぶん・別の人の時間になる)
+            const pendingOpts = _availUI.savePending ? (_availUI.pendingSave || _availSaveOpts()) : null;
+            _availUI.session++;   // このシートは終わり。待っていた読み込み・保存・確認は画面と共有状態に触らない
+            const sesClose = _availUI.session;
+            const pending = pendingOpts ? _availDoSave(pendingOpts) : null;
             _availUI.forPlayer = null;
             _renderAvailForWho();
             if (forPlayer) {
@@ -11274,7 +11279,8 @@
                 _availUI.countsPending = false;
                 const me = getCurrentIdentity();
                 Promise.resolve(pending).catch(() => { }).then(() => {
-                    if (me?.id) _loadMyAvailConfirm(me.id);
+                    // ★ 待っている間に別の人 (か自分) のシートを開いていたら、本人の状態へは戻さない (そちらの読み込みに任せる — 戻すと開いているシートに本人の確認状態が出る: Codex 再監査 9a)
+                    if (me?.id && _availUI.session === sesClose) _loadMyAvailConfirm(me.id);
                     opsStore.invalidate();
                     if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true);
                     if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake(true);
@@ -11292,6 +11298,7 @@
             const p = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(playerId));
             if (!p) { showNotification('メンバーが見つかりません (↻ で盤面を取り直してください)'); return; }
             const me = getCurrentIdentity();
+            _availUI.session++;
             _availUI.forPlayer = (me && String(me.id) === String(p.id)) ? null : { id: p.id, name: p.name };   // 自分のぶんなら本人の登録と同じ
             _renderAvailForWho();
             document.getElementById('myAvailModal').classList.add('open');
@@ -11463,9 +11470,9 @@
             });
         }
         async function handleConfirmAvailability(unavailable) {
-            const id = _availTarget();   // 🗣 9a: 運営が本人の代わりに登録するときは forPlayer
+            const op = _availSaveOpts({ rethrow: true });   // 🗣 9a: 押した時点の 誰が・誰のぶん (forPlayer か本人)・時間帯・区切り・シートの世代
+            const id = op.target;
             if (!id?.id) return;
-            const forOther = String(id.id) !== String(getCurrentIdentity()?.id);
             if (_availConfirmBusy) return;   // 二重クリックよけ (押した1回だけを通す)
             _availConfirmBusy = true;
             _availConfirmSetBusy(true);
@@ -11477,23 +11484,25 @@
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
                 clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
+                _availUI.savePending = false; _availUI.pendingSave = null;   // この確認の保存が代わりに載る (閉じるときにもう一度積まない: Codex 再監査 9a)
                 // ★ 「時間帯の保存」と「確認の書き込み」を **1つの単位** としてキューに積む。
                 //   間に自動保存が割り込むと、確認したスナップショットと availability がずれる。
                 //   ⚠ キューの中なので _availDoSave ではなく _availDoSaveInner を呼ぶこと (自分待ちになる)
                 const cur = await _availEnqueue(async () => {
                     // ★ 保存が実際にサーバへ載せた内容をそのまま確認スナップショットにする。
                     //   ここで _availUI.slots を読み直すと、保存中に時間を変えた場合にずれる
-                    const slots = await _availDoSaveInner({ rethrow: true, target: id });
+                    const slots = await _availDoSaveInner(op);
                     if (!Array.isArray(slots)) throw new Error('時間帯を保存できませんでした');
                     // 🧱 凸数は実際に保存した時間帯で詰め直す (保存中に ON/OFF を変えた分を持ち込まない)
                     const rbd = window.raidBlocksDomain;
-                    counts = (!unavailable && rbd) ? rbd.normalizeCounts(countsAtPress, rbd.blocksOfSeason(_availUI.season || ctx.season), slots) : null;
+                    counts = (!unavailable && rbd) ? rbd.normalizeCounts(countsAtPress, rbd.blocksOfSeason(op.season || ctx.season), slots) : null;
                     const res = await window.supabaseConfirmAvailability(ctx.season.id, id.id,
                         { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots, blockCounts: counts,
-                          actorName: forOther ? (getCurrentIdentity()?.name || '運営') : null });
+                          actorName: op.actorName });
                     countsDropped = !!(res && res.blockCountsDropped);
                     return slots;
                 });
+                if (op.session !== _availUI.session) { opsStore.invalidate(); return; }   // 待っている間に閉じた・別の人を開いた: 共有の確認状態と画面に触らない (Codex 再監査 9a)
                 _myAvailConfirm = { confirmed_at: new Date().toISOString(), unavailable: !!unavailable,
                     slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur,
                     ...(countsDropped ? {} : { block_counts: counts }) };   // 53 未適用で落ちたときは持たない (「凸数を変えました」が出続けないように)
@@ -11505,7 +11514,7 @@
                         : countsDropped ? '✅ 時間は確認しました。凸数は保存できませんでした (運営の準備待ち)。凸数は Discord で伝えてください' : '✅ 今回の参加時間を確認しました';
                 }
             } catch (e) {
-                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+                if (msg && op.session === _availUI.session) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             } finally {
                 _availConfirmBusy = false;
                 _availConfirmSetBusy(false);   // 再描画で作り直された分も含めて戻す
@@ -14077,10 +14086,25 @@
             saving: false,
             forPlayer: null,       // 🗣 運用の見直し 9a (2026-10-24): 運営が本人の代わりに登録するとき { id, name }。null = 名乗っている本人
             savePending: false,    // 保存のデバウンスが残っている (閉じるときに流し切る — 相手を控えた保存)
+            pendingSave: null,     // その予約の中身 (_availSaveOpts。閉じるときに同じ中身で流す)
+            session: 0,            // シートの世代: 開く・閉じるたびに進む。待っていた読み込み・保存・確認は世代が違えば画面と共有状態に触らない (Codex 再監査 9a)
         };
         // 時間のシートの「誰のぶんか」。保存・今期の確認はこれに書く (運営の登録中に名乗っている本人へ書かない)
         function _availTarget() {
             return _availUI.forPlayer || getCurrentIdentity();
+        }
+        // 操作した時点の「誰が (actorName)・誰のぶんを (target)・何を (slots)・どの区切りで (season)・どのシートで (session)」。
+        // ★ あとで走る保存・確認はこれだけを使い、走るときに _availUI や名乗りを読み直さない — 閉じて別の人を開いたあとに走った保存が別の人の時間を書く・
+        //   名乗り直したあとの名前が代理の印になる、を防ぐ (Codex 再監査 9a)
+        function _availSaveOpts(extra = {}) {
+            const target = _availTarget();
+            const me = getCurrentIdentity();
+            const forOther = !!(target && me && String(target.id) !== String(me.id));
+            return {
+                target, forOther, actorName: forOther ? (me?.name || '運営') : null,
+                slots: HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean),
+                season: _availUI.season, session: _availUI.session, ...extra,
+            };
         }
 
         async function renderMyAvailabilitySettings(identity) {
@@ -14089,12 +14113,15 @@
             if (!groupEl) return;
             msgEl.textContent = '';
             groupEl.innerHTML = '<p style="font-size:12px;color:var(--t-body);">読み込み中...</p>';
+            const ses = _availUI.session;   // 🗣 9a: 待っている間に閉じた・別の人を開いたら、この応答は捨てる (遅い応答で別の人の時間を上書きしない — Codex 再監査)
             let serverSlots = [];
             let isFirstTime = false;
             try {
                 serverSlots = await window.supabaseLoadAvailability(identity.id);
+                if (ses !== _availUI.session) return;
                 if (serverSlots.length === 0) isFirstTime = true;
             } catch (e) {
+                if (ses !== _availUI.session) return;
                 groupEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
@@ -14108,8 +14135,9 @@
             _availUI.blocksReady = false;
             try {
                 const fresh = (typeof window.supabaseLoadActiveSeasonWithBosses === 'function') ? await window.supabaseLoadActiveSeasonWithBosses() : null;
+                if (ses !== _availUI.session) return;
                 if (fresh) { _availUI.season = fresh.season || null; _availUI.blocksReady = true; }
-            } catch (e) { console.warn('[avail] シーズン (区切り) を取り直せませんでした:', e?.message || e); }
+            } catch (e) { if (ses !== _availUI.session) return; console.warn('[avail] シーズン (区切り) を取り直せませんでした:', e?.message || e); }
             _renderAvailUI();
             if (isFirstTime) {
                 msgEl.textContent = 'ℹ️ 初期は全部 OFF。出られるブロック (1 時間でも) を ON にしてください。';
@@ -14182,7 +14210,7 @@
                 `<button type="button" class="avail-preset-pill" ${_availUI.blocksReady ? '' : 'disabled'} onclick="_availApplyPreset('${p.value}')">${p.label}</button>`
             ).join('');
             // 区切りが読めていない (通信の不調) → 見せるだけ。押せない理由と取り直しを出す
-            const notReady = _availUI.blocksReady ? '' : `<div style="margin-bottom:10px;padding:9px 12px;border-radius:10px;background:var(--warn-bg);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.6;">⚠️ シーズンの区切りを読めませんでした。いまの区切りで保存すると違う時間帯になることがあるので、取り直してから変えてください。 <button type="button" onclick="renderMyAvailabilitySettings(getCurrentIdentity())" style="margin-left:4px;padding:4px 10px;border-radius:999px;border:1px solid var(--warn-solid);background:var(--card);color:var(--warn-deep);font:inherit;font-size:11px;font-weight:900;cursor:pointer;">取り直す</button></div>`;
+            const notReady = _availUI.blocksReady ? '' : `<div style="margin-bottom:10px;padding:9px 12px;border-radius:10px;background:var(--warn-bg);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.6;">⚠️ シーズンの区切りを読めませんでした。いまの区切りで保存すると違う時間帯になることがあるので、取り直してから変えてください。 <button type="button" onclick="renderMyAvailabilitySettings(_availTarget())" style="margin-left:4px;padding:4px 10px;border-radius:999px;border:1px solid var(--warn-solid);background:var(--card);color:var(--warn-deep);font:inherit;font-size:11px;font-weight:900;cursor:pointer;">取り直す</button></div>`;
             const partialNote = states.some(x => x.state === 'partial')
                 ? `<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--warn-deep);line-height:1.5;">「一部」= 以前の 1 時間刻みの登録がブロックの途中まで。押すとそのブロックの全時間が ON になります (そのままでも使えます)</div>`
                 : '';
@@ -14278,9 +14306,10 @@
 
         function _availScheduleSave() {
             clearTimeout(_availUI.saveTimer);
-            const target = _availTarget();   // ★ 走るときではなく予約したときの相手 (運営のシートを閉じて自分に戻ったあとに走っても、本人のぶんに書く)
+            const opts = _availSaveOpts();   // ★ 走るときではなく予約したときの 相手・中身 (運営のシートを閉じて別の人を開いたあとに走っても、その人のその時間を書く)
             _availUI.savePending = true;
-            _availUI.saveTimer = setTimeout(() => _availDoSave({ target }), 250);
+            _availUI.pendingSave = opts;
+            _availUI.saveTimer = setTimeout(() => _availDoSave(opts), 250);
         }
 
         // 保存を**直列化**するキュー。clearTimeout は未開始のタイマーしか止められないので、
@@ -14301,6 +14330,7 @@
         function _availDoSave(opts = {}) {
             clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
             _availUI.savePending = false;
+            _availUI.pendingSave = null;
             return _availEnqueue(() => _availDoSaveInner(opts));
         }
         // @returns {string[]|null} 実際にサーバへ載せた時間帯。
@@ -14310,14 +14340,16 @@
         async function _availDoSaveInner(opts = {}) {
             const id = opts.target || _availTarget();   // 誰のぶんか (予約したときの相手が優先)
             if (!id?.id) return null;
-            const forOther = String(id.id) !== String(getCurrentIdentity()?.id);   // 運営が本人の代わりに書いている
-            const msgEl = document.getElementById('mypageAvailMessage');
-            const slots = HOUR_ORDER
-                .map((h, i) => _availUI.slots[i] ? _hourKey(h) : null)
-                .filter(Boolean);
+            // 誰が・誰のぶんを・何を は**操作した時点** (opts) のもの。走るときに共有状態や名乗りを読み直すと、閉じて別の人を開いたあとに走った保存が別の人の時間を書く (Codex 再監査 9a)
+            const forOther = opts.target ? !!opts.forOther : String(id.id) !== String(getCurrentIdentity()?.id);
+            const actorName = opts.target ? (opts.actorName || null) : (forOther ? (getCurrentIdentity()?.name || '運営') : null);
+            const live = opts.session == null || opts.session === _availUI.session;   // いまもそのシートを開いている (閉じた・別の人を開いたあとなら画面に触らない)
+            const msgEl = live ? document.getElementById('mypageAvailMessage') : null;
+            const slots = Array.isArray(opts.slots) ? opts.slots.slice()
+                : HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
             _availUI.saving = true;
             try {
-                await window.supabaseSaveAvailability(id.id, slots, forOther ? { actorName: getCurrentIdentity()?.name || '運営' } : {});
+                await window.supabaseSaveAvailability(id.id, slots, forOther ? { actorName } : {});
                 if (!forOther) { _invalidateSetupNeeds(); renderMyNextAction(id); }   // 📌次にやることのS2を即解除 (本人のときだけ)
                 if (msgEl) {
                     msgEl.style.color = slots.length === 0 ? 'var(--warn)' : 'var(--ok)';
@@ -14325,10 +14357,12 @@
                         ? '⚠️ 全時間帯OFF: 通知は一切来ません'
                         : `✅ 保存しました (${slots.length}/24)`;
                 }
-                // 範囲リストとステータスを再描画 (タイムライン自体は data 属性が既に正しい)
-                _renderAvailUI();
-                // 確認済みのあとに枠を変えたことをその場で知らせる
-                if (typeof _renderMyAvailConfirm === 'function') _renderMyAvailConfirm();
+                // 範囲リストとステータスを再描画 (タイムライン自体は data 属性が既に正しい)。そのシートを開いているときだけ
+                if (live) {
+                    _renderAvailUI();
+                    // 確認済みのあとに枠を変えたことをその場で知らせる
+                    if (typeof _renderMyAvailConfirm === 'function') _renderMyAvailConfirm();
+                }
                 return slots;
             } catch (e) {
                 if (msgEl) {

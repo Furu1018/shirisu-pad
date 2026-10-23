@@ -61,6 +61,7 @@ const SRC = [
     cut('        function _renderMyAvailConfirm('),
     cut('        async function handleConfirmAvailability('),
     cut('        function _availTarget('),   // 🗣 9a: 誰のぶんか (forPlayer か本人)
+    cut('        function _availSaveOpts('),   // 🗣 9a: 操作した時点の 誰が・誰のぶん・何を
 ].join('\n');
 
 // ---- 依存スタブ ------------------------------------------------------------
@@ -352,6 +353,131 @@ await test('★ 53 未適用で凸数が落ちたら、確認の記録に凸数�
     assert.ok(!('block_counts' in env._myAvailConfirmRef()), '保存できなかった凸数を記録に持っている');
     env._renderMyAvailConfirm();
     assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), `確認できたのに「変えました」が出る`);
+});
+
+// ============================================================================
+// 🗣 9a (2026-10-24): 運営が本人の代わりに登録する — 人を切り替えたときの取り違えを**本物の関数**で確かめる (Codex 再監査 9a)
+//   スタブは 通信 (読み込み・保存・確認) と DOM だけ。開く・閉じる・保存のデバウンス・確認・読み込み は実装のまま走らせる
+// ============================================================================
+const SRC_REAL = [
+    'let _availSaveChain = Promise.resolve();',
+    'let _availConfirmBusy = false;',
+    'let _availConfirmSeq = 0;',
+    cut('        function _availTarget('),
+    cut('        function _availSaveOpts('),
+    cut('        function _availScheduleSave('),
+    cut('        function _availEnqueue('),
+    cut('        function _availDoSave('),
+    cut('        async function _availDoSaveInner('),
+    cut('        async function renderMyAvailabilitySettings('),
+    cut('        function openOpsAvailModal('),
+    cut('        function closeMyAvailModal('),
+    cut('        function _renderAvailForWho('),
+    cut('        async function _loadMyAvailConfirm('),
+    cut('        function _availConfirmSetBusy('),
+    cut('        function _renderMyAvailConfirmBadge('),
+    cut('        function _renderMyAvailConfirm('),
+    cut('        async function handleConfirmAvailability('),
+].join('\n');
+function makeEnvReal() {
+    const saves = [], confirms = [], loadConfirmCalls = [], timers = [], gates = {};
+    let identity = { id: 7, name: 'O' };
+    const el = () => ({ style: {}, textContent: '', innerHTML: '', classList: { add() { }, remove() { }, contains: () => false }, querySelectorAll: () => [] });
+    const wait = async (k) => { const g = gates[k]; if (g) await g.promise; };
+    const env = {
+        HOUR_ORDER, _hourKey, escapeHtml: (x) => String(x),
+        _availUI: { slots: new Array(24).fill(false), counts: null, countsPending: false, season: null, blocksReady: false, saveTimer: null, saving: false, forPlayer: null, savePending: false, pendingSave: null, session: 0 },
+        getCurrentIdentity: () => identity,
+        document: { getElementById: () => el() },
+        setTimeout: (fn) => { timers.push(fn); return timers.length; },
+        clearTimeout: (id) => { if (id) timers[id - 1] = null; },
+        showNotification() { }, _invalidateSetupNeeds() { }, renderMyNextAction() { }, renderMyAvailStrip() { }, renderOpsMemberStatus() { }, renderOpsMockIntake() { }, _renderAvailUI() { },
+        opsStore: { get: () => ({ players: [{ id: 9, name: 'B' }, { id: 10, name: 'C' }] }), invalidate() { } },
+        ensureActiveSeasonLoaded: async () => ({ season: { id: 44 } }),
+        window: {
+            supabaseLoadAvailability: async (pid) => { await wait('load' + pid); return (env._avail[pid] || []).slice(); },
+            supabaseLoadActiveSeasonWithBosses: async () => ({ season: { id: 44 } }),
+            supabaseSaveAvailability: async (pid, slots, opts = {}) => { await wait('save' + pid); saves.push({ playerId: pid, slots: slots.slice(), actorName: opts.actorName || null }); },
+            supabaseConfirmAvailability: async (sid, pid, opt) => { confirms.push({ playerId: pid, slots: opt.slots, actorName: opt.actorName || null }); return {}; },
+            supabaseLoadMyAvailabilityConfirmation: async (sid, pid) => { loadConfirmCalls.push(pid); await wait('conf' + pid); return env._conf[pid] || null; },
+            raidBlocksDomain: globalThis.raidBlocksDomain,
+        },
+        _avail: { 9: ['h05'], 10: ['h21'] },
+        _conf: { 7: { confirmed_at: 'x', unavailable: false, slot_count: 2, slots_snapshot: ['h21', 'h22'], who: 7 }, 9: null, 10: { confirmed_at: 'y', unavailable: false, slot_count: 1, slots_snapshot: ['h21'], who: 10 } },
+        _myAvailConfirm: null,
+        gates, saves, confirms, loadConfirmCalls,
+        setIdentity: (v) => { identity = v; },
+        fire: async () => { const fns = timers.splice(0).filter(Boolean); for (const f of fns) await f(); },
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, SRC_REAL + '\nreturn { _availScheduleSave, _availDoSave, openOpsAvailModal, closeMyAvailModal, handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };');
+    return Object.assign(env, fn(...keys.map(k => env[k])));
+}
+const onIdx = (env) => env._availUI.slots.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+const settle = async (n = 4) => { for (let i = 0; i < n; i++) await tick(); };
+
+console.log('\n🗣 9a 運営が本人の代わりに登録 (人を切り替えても取り違えない):\n');
+
+await test('★ 遅い読み込み: B を開いて閉じ、C を開いたあとに B の時間が届いても、C のシートを B の時間で上書きしない', async () => {
+    const env = makeEnvReal();
+    env.gates.load9 = defer();            // B の時間の読み込みを止める
+    env.openOpsAvailModal(9); await settle();
+    env.closeMyAvailModal();
+    env.openOpsAvailModal(10); await settle();   // C は読めた (h21)
+    assert.deepEqual(onIdx(env), [21], 'C の時間 (h21) が入っていない');   // テストの HOUR_ORDER は 0〜23 (添字 = 時)
+    env.gates.load9.resolve(); await settle();  // B の遅い応答
+    assert.deepEqual(onIdx(env), [21], 'B の遅い応答が C のシートを上書きした');
+    assert.equal(env._availUI.forPlayer?.id, 10);
+});
+
+await test('★ 閉じるときに残った保存は、予約したときの相手と中身 (B の h05・h06) で載る — その間に C を開いて C の時間が入っても混ざらない', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env._availUI.slots[6] = true;   // B: 読み込みの h05 に h06 を足した (テストの HOUR_ORDER は 0〜23 = 添字が時)
+    env._availScheduleSave();                  // デバウンス (まだ走っていない)
+    env.gates.save9 = defer();                 // B の保存の通信を止める
+    env.closeMyAvailModal(); await settle();   // 閉じる → 残った保存を流す (通信待ち)
+    env.openOpsAvailModal(10); await settle(); // C を開いて C の時間 (h21) が入る
+    assert.deepEqual(onIdx(env), [21]);
+    env.gates.save9.resolve(); await settle();
+    assert.deepEqual(env.saves, [{ playerId: 9, slots: ['h05', 'h06'], actorName: 'O' }], 'B の保存が C の時間を書いた / 相手がずれた: ' + JSON.stringify(env.saves));
+});
+
+await test('★ 確認を押してすぐ閉じ C を開く: B の確認は押した時点の B の時間で書かれ、共有の確認状態は C のまま (B の確認で差し替えない)', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env.gates.save9 = defer();
+    const p = env.handleConfirmAvailability(false); await settle();   // B の確認 (保存が通信待ち)
+    env.closeMyAvailModal();
+    env.openOpsAvailModal(10); await settle();                        // C を開く → C の確認状態 (who 10) が共有状態に入る
+    assert.equal(env._myAvailConfirmRef()?.who, 10, 'C の確認状態が読めていない');
+    env.gates.save9.resolve(); await p; await settle();
+    assert.deepEqual(env.confirms.map(c => [c.playerId, c.slots, c.actorName]), [[9, ['h05'], 'O']], 'B の確認がずれた: ' + JSON.stringify(env.confirms));
+    assert.equal(env._myAvailConfirmRef()?.who, 10, 'B の確認の完了が、開いている C の確認状態を B のものに差し替えた');
+});
+
+await test('★ 閉じたあと本人の確認状態へ戻すのは、その間に別の人を開いていないときだけ (開いていたら C の読み込みに任せる)', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env._availUI.slots[6] = true; env._availScheduleSave();
+    env.gates.save9 = defer();
+    env.closeMyAvailModal(); await settle();   // 残った保存を流して、完了を待っている
+    env.openOpsAvailModal(10); await settle(); // その間に C を開いた
+    env.gates.save9.resolve(); await settle(6);
+    const calls = env.loadConfirmCalls;
+    assert.ok(calls.lastIndexOf(7) < calls.lastIndexOf(10), 'C を開いたあとに本人 (7) の確認状態を読み込んで C のシートに出した: ' + calls.join(','));
+    // 比較: 別の人を開いていなければ本人へ戻す
+    env.closeMyAvailModal(); await settle(6);
+    assert.equal(calls[calls.length - 1], 7, '閉じたあと本人の確認状態に戻していない: ' + calls.join(','));
+});
+
+await test('★ 代理の印 (actorName) は操作した時点の名乗り — 保存が走る前に名乗り直しても変わらない', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env._availUI.slots[6] = true; env._availScheduleSave();
+    env.setIdentity({ id: 11, name: 'X' });    // 保存が走る前に別の人で名乗り直した
+    await env.fire(); await settle();
+    assert.deepEqual(env.saves, [{ playerId: 9, slots: ['h05', 'h06'], actorName: 'O' }], '代理の印が名乗り直したあとの名前になった: ' + JSON.stringify(env.saves));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
