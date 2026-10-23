@@ -67,12 +67,50 @@
         }
         return out;
     }
+    /** 効いている配信の行 (id で重複なし・ブロックの並び) */
+    function distinctEffective(rows, blocks) {
+        const seen = new Set(); const out = [];
+        for (const x of byBlocks(rows, blocks)) { const id = idOf(x.pub); if (seen.has(id)) continue; seen.add(id); out.push(x.pub); }
+        return out;
+    }
+    /** 時刻の無い凸 (⏳ flex・hourIdx 無し) だけを残したプラン (無ければ null)。ブロックの範囲で絞ると落ちるので、全ブロックの約束を見るときは行ごとに 1 回だけ別に足す (Codex 再監査 F) */
+    function timelessOnly(plan) {
+        const levels = (plan && Array.isArray(plan.levels) ? plan.levels : [])
+            .map(lv => ({ ...lv, bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).map(b => ({ ...b, attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(a => a && !Number.isInteger(a.hourIdx)) })) }))
+            .filter(lv => lv.bosses.some(b => b.attacks.length > 0));
+        return levels.length ? { ...plan, levels, timeless: true } : null;
+    }
     /**
-     * ブロックごとに効いている配信を、そのブロックの範囲に絞ったプランで (撃破の通知の宛先など「全ブロックの約束」を見る所)。配信の無いブロック・plan の無い行は入らない。
+     * ブロックごとに効いている配信を、そのブロックの範囲に絞ったプランで (撃破の通知の宛先・1 日ぶんの算出の基準など「全ブロックの約束」を見る所)。配信の無いブロック・plan の無い行は入らない。
+     * 時刻の無い凸は範囲で絞ると落ちるので、効いている行ごとに 1 回だけ末尾に足す (`timeless: true` の印。opts.timeless = false で外す)
      * @param {(plan:Object, block:Object) => Object} scopeFn  raidBlocksDomain.scopePlan
      */
-    function effectivePlans(rows, blocks, scopeFn) {
-        return byBlocks(rows, blocks).map(x => (x.pub && x.pub.plan) ? (typeof scopeFn === 'function' ? scopeFn(x.pub.plan, x.block) : x.pub.plan) : null).filter(Boolean);
+    function effectivePlans(rows, blocks, scopeFn, opts = {}) {
+        const scoped = byBlocks(rows, blocks).map(x => (x.pub && x.pub.plan) ? (typeof scopeFn === 'function' ? scopeFn(x.pub.plan, x.block) : x.pub.plan) : null).filter(Boolean);
+        if (opts.timeless === false) return scoped;
+        return scoped.concat(distinctEffective(rows, blocks).map(p => timelessOnly(p.plan)).filter(Boolean));
+    }
+    /**
+     * 複数のプラン (effectivePlans の結果) を 1 つに束ねる — 1 日ぶん (全員 / 今動ける人) の算出で「前回どおり」に渡す基準 (Codex 再監査 C2:
+     * 1 行だけを渡すと、別のブロックでまだ有効な約束を尊重できず、全体配信で上書きしてしまう)。レベル → ボスで合わせ、凸は並べる。ボスのほかの項目は最初のものを残す
+     */
+    function mergedPlan(plans) {
+        const list = (Array.isArray(plans) ? plans : []).filter(Boolean);
+        if (!list.length) return null;
+        const levels = new Map();
+        for (const p of list) for (const lv of (Array.isArray(p.levels) ? p.levels : [])) {
+            const L = Number(lv.level);
+            if (!Number.isInteger(L)) continue;
+            if (!levels.has(L)) levels.set(L, { level: L, infinite: !!lv.infinite, bosses: new Map() });
+            const e = levels.get(L);
+            if (lv.infinite) e.infinite = true;
+            for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
+                const n = Number(b.bossNumber);
+                if (!e.bosses.has(n)) e.bosses.set(n, { ...b, attacks: [] });
+                e.bosses.get(n).attacks.push(...(Array.isArray(b.attacks) ? b.attacks : []));
+            }
+        }
+        return { merged: true, levels: [...levels.values()].sort((a, b) => a.level - b.level).map(e => ({ level: e.level, infinite: e.infinite, bosses: [...e.bosses.values()].sort((a, b) => Number(a.bossNumber) - Number(b.bossNumber)) })) };
     }
     /** 違う配信 (id) がいくつあるか — 1 つなら切り替えのチップは要らない */
     const distinctCount = (list) => new Set((Array.isArray(list) ? list : []).map(x => idOf(x.pub))).size;
@@ -92,5 +130,5 @@
         }
         return l.slice().sort((a, b) => idOf(b.pub) - idOf(a.pub))[0];
     }
-    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, effectivePlans, distinctCount, pickDefault };
+    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctEffective, timelessOnly, effectivePlans, mergedPlan, distinctCount, pickDefault };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -99,17 +99,30 @@
         const unassigned = Array.isArray(plan && plan.unassigned) ? plan.unassigned.length : 0;
         return { attacks: n, executed: proj ? proj.done.length : n, levelAfter: proj ? proj.level : null, cleared: proj ? proj.cleared.slice() : [], unassigned };
     }
+    /** 並びに依らない JSON (鍵は名前順・配列は中身の文字列順) — 盤面の印に使う */
+    function stableJson(v) {
+        if (Array.isArray(v)) return '[' + v.map(stableJson).sort().join(',') + ']';
+        if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableJson(v[k])).join(',') + '}';
+        return JSON.stringify(v === undefined ? null : v);
+    }
+    function hash32(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(16); }
     /**
-     * 盤面の印 (シーズン・レベル・ボスごとの残 HP・人数・凸の数)。一気に組む の配信の直前に「組んだときと同じ盤面か」を見る (Codex 再監査 D)。
-     * 模擬の差し替えは見ない (古い模擬で組んだ配信は危なくない — 組み直せばよい)
+     * 盤面の印。一気に組む の配信の直前に「組んだときと同じ盤面か」を見る (Codex 再監査 D2)。
+     * ★ **ソルバーの入力になるものは全部**見る: シーズン (id・レベル) / ボス (番号・残 HP・総 HP) / 人ごとの 凸 (id・ボス・レベル・ダメージ・キャラ・時刻)・模擬 (damagesByAttr / loadoutsByAttr / excludedByAttr)・
+     *   参加可能時間 (availableSlots / unavailableThisSeason / flexTime / blockCounts)・SLv。以前は HP・レベル・凸の数だけで、確認ダイアログの間に参加可能時間や模擬が変わってもすり抜けた。
+     * 名前・写真・通知の設定は見ない (変わっても配信は危なくない)。並び (人・時間・キャラ) には依らない
      */
     function boardSignature(board) {
         if (!board) return '';
         const season = board.season || {};
-        const bosses = (Array.isArray(board.bosses) ? board.bosses : []).map(b => `${b.boss_number}:${Number(b.remaining_hp_raw) || 0}`).sort().join(',');
-        const players = Array.isArray(board.players) ? board.players : [];
-        const attacks = players.reduce((n, p) => n + Math.max(Array.isArray(p.attacks) ? p.attacks.length : 0, Number(p.attackCount) || 0), 0);
-        return `s${season.id ?? ''}|lv${Number(season.current_level) || 0}|${bosses}|p${players.length}|a${attacks}`;
+        const bosses = (Array.isArray(board.bosses) ? board.bosses : []).map(b => ({ n: b.boss_number ?? null, rem: Number(b.remaining_hp_raw) || 0, total: Number(b.total_hp_raw) || 0 }));
+        const players = (Array.isArray(board.players) ? board.players : []).map(p => ({
+            id: p.id ?? null, attackCount: Number(p.attackCount) || 0,
+            attacks: (Array.isArray(p.attacks) ? p.attacks : []).map(a => ({ id: a.id ?? null, boss: a.boss_number ?? null, level: a.level ?? null, dmg: a.damage_raw ?? null, chars: Array.isArray(a.characters) ? a.characters : [], at: a.reported_at ?? null })),
+            damagesByAttr: p.damagesByAttr ?? null, loadoutsByAttr: p.loadoutsByAttr ?? null, excludedByAttr: p.excludedByAttr ?? null,
+            availableSlots: p.availableSlots ?? null, unavailableThisSeason: !!p.unavailableThisSeason, flexTime: !!p.flexTime, blockCounts: p.blockCounts ?? null, syncLevel: p.syncLevel ?? null,
+        }));
+        return 's' + (season.id ?? '') + '|lv' + (Number(season.current_level) || 0) + '|' + hash32(stableJson({ bosses, players }));
     }
     root.planChainDomain = { HOUR_BASE, hourOfIdx, isoAt, attacksIn, projectBoard, summarize, boardSignature };
 })(typeof window !== 'undefined' ? window : globalThis);

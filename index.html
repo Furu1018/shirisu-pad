@@ -18844,8 +18844,8 @@
             let previousPlan = null;
             if (_opsPlanSticky && typeof window.supabaseGetPublishedPlans === 'function' && window.publishedPlansDomain) {
                 try {
-                    const pd = window.publishedPlansDomain, rows = await window.supabaseGetPublishedPlans();
-                    const pub = pd.effectiveFor(rows, pd.keyOfBlock(blk || _opsPlanBlock()));   // 🧱 段階 7: 算出と同じ「そのブロック (既定 = いまのブロック) に効いている配信」
+                    const rows = await window.supabaseGetPublishedPlans();
+                    const pub = _opsBasisPub(rows, blk, snap.season);   // 🧱 段階 7: 算出と同じ基準 (ブロックならそのブロックに効いている配信・1 日ぶんなら全ブロックの効いている配信を束ねたもの)
                     if (pub && Number(pub.season_id) === Number(snap.season?.id)) previousPlan = _scopePreviousPlan(pub.plan || null, blk);
                 }
                 catch (e) { console.warn('[reservation] 影響: 配信中プランの取得skip (尊重なしで解く):', e?.message || e); }
@@ -22176,6 +22176,20 @@
             const same = !ps || (Number(ps.from) === Number(blk.from) && Number(ps.to) === Number(blk.to));
             return same ? window.raidBlocksDomain.scopePlan(previousPlan, blk) : null;
         }
+        // 🧱 段階 7: 算出・承認の影響・配信時の照合 の「基準の配信」(前回どおりの材料と basisPlanId)。
+        //   ブロックで組むなら**そのブロックに効いている配信** (1 行)。1 日ぶん (全員 / 今動ける人) なら**全ブロックの効いている配信をその範囲に絞って 1 つに束ねたもの**
+        //   (Codex 再監査 C2: 1 行だけ (全体の最新・選んでいるブロック) を基準にすると、別のブロックでまだ有効な約束を尊重できず、全体配信で上書きしてしまう)。
+        //   束ねたときの id・配信者は全体の最新の行のもの — 配信の直前の照合 (basisPlanId) は「どれかが新しく入ったか」を見ればよい。pd が無い版は一覧の先頭
+        function _opsBasisPub(rows, blk, season) {
+            const pd = window.publishedPlansDomain, rb = window.raidBlocksDomain;
+            if (!Array.isArray(rows)) return null;
+            if (!pd) return rows[0] || null;
+            if (blk) return pd.effectiveFor(rows, pd.keyOfBlock(blk));
+            const latest = pd.latest(rows);
+            if (!latest || !rb) return latest;
+            const merged = pd.mergedPlan(pd.effectivePlans(rows, rb.blocksOfSeason(season), rb.scopePlan));
+            return merged ? { ...latest, plan: merged } : latest;
+        }
         function computeOptimalPlan(options = {}, snapshot = null) {
             const src = snapshot || opsStore.get();
             if (!src) return null;
@@ -22356,11 +22370,10 @@
             const onlyNow = who !== 'all';
             // 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23): 配信の JSON は 1 日ぶんで、いま組むブロックより後ろの凸 (まだ約束していない予想) も入っている。
             //   そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。尊重するのは **いま組むブロックの範囲の凸だけ**、前回の配信が別のブロックのぶんなら尊重しない
-            // 🧱 段階 7: 基準にする配信 = そのブロックに効いている配信 (ブロックの行か 1 日ぶんの行の新しいほう)。ブロックで組んでいなくても選んでいるブロック (既定 = いまのブロック) に効いている配信 — 全体の最新 (id 最大) は別のブロックの行かもしれない (Codex 再監査 C)。
+            // 🧱 段階 7: 基準にする配信 = そのブロックに効いている配信 (ブロックの行か 1 日ぶんの行の新しいほう)。1 日ぶん (全員 / 今動ける人) なら全ブロックの効いている配信を束ねたもの (`_opsBasisPub`・Codex 再監査 C2)。
             //   配信時の照合 (basisPlanId) も同じ配信と行う — 別のブロックの配信は別の行として残るので、それでは止めない
             if (_opsPlanSticky && window.publishedPlansDomain && Array.isArray(pubRows)) {
-                const pd = window.publishedPlansDomain;
-                const pub = pd.effectiveFor(pubRows, pd.keyOfBlock(blk || _opsPlanBlock()));
+                const pub = _opsBasisPub(pubRows, blk, snapshot?.season);
                 if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) {
                     previousPlan = pub.plan || null;
                     basisPlanId = pub.id ?? null;
@@ -23905,7 +23918,9 @@
                 const after = await ensureActiveSeasonLoaded();
                 if (Number(after?.season?.id) !== Number(seasonId)) { alert('❌ 操作中にアクティブシーズンが変わりました。'); return; }
                 opsStore.invalidate();
+                const gen2 = opsStore.generation();
                 const snap2 = await opsStore.load();
+                if (!opsStore.isCurrentGeneration(gen2 + 1)) { alert('⚠️ 組んでいる間にこの画面で盤面が書き換わりました。もう一度「一気に組む」を押してください。'); return; }   // 取り直しの間に別の書き込みが invalidate したら、その snap2 は古い
                 if (!snap2?.season?.id || pc.boardSignature(snap2) !== sig0) { alert('⚠️ 組んでいる間に盤面が変わりました (凸の結果や HP の更新)。もう一度「一気に組む」を押してください。'); return; }
                 let rows2 = null;
                 try { rows2 = await window.supabaseGetPublishedPlans(); } catch { rows2 = null; }
@@ -23928,7 +23943,12 @@
                     showNotification(`✅ ${pubs.length} ブロックを配信しました`);
                     await _notifyChainPublish({ pubs, seasonId, me });
                 }
-                if (failed) alert(`⚠️ ${results.length} ブロックのうち ${pubs.length} ブロックを配信したところで止まりました (${failed.blk.name} のぶん: ${failed.err?.message || failed.err})。\n配信できたぶんの通知は送りました。残りはもう一度「一気に組む」を押してください (同じブロックは新しい配信が勝つので二重にはなりません)。`);
+                if (failed) {
+                    const why = failed.err?.message || failed.err;
+                    alert(pubs.length
+                        ? `⚠️ ${results.length} ブロックのうち ${pubs.length} ブロックを配信したところで止まりました (${failed.blk.name} のぶん: ${why})。\n配信できたぶんの通知は送りました。残りはもう一度「一気に組む」を押してください (同じブロックは新しい配信が勝つので二重にはなりません)。`
+                        : `❌ 配信できませんでした (${failed.blk.name} のぶん: ${why})。通知は送っていません。もう一度「一気に組む」を押してください。`);   // 1 件も配信できていないのに「通知は送りました」と言わない (Codex 再監査 D3)
+                }
                 _opsLastPlan = results[0].plan; _opsPlanSel = null; _opsPlanFocus = null;
                 renderOpsPlanView();
                 await _syncOpsUnpublishBtn();
@@ -24013,7 +24033,7 @@
             try {
                 // 🧱 段階 7: 前回 = **このプランのブロック**に効いている配信 (ブロックの行か 1 日ぶんの行の新しいほう)。別のブロックの配信は別の行として残る
                 const prevRows = typeof window.supabaseGetPublishedPlans === 'function' ? await window.supabaseGetPublishedPlans() : [];
-                const prevPub = window.publishedPlansDomain ? window.publishedPlansDomain.effectiveFor(prevRows, window.publishedPlansDomain.keyOfPlan(_opsLastPlan)) : (prevRows[0] || null);
+                const prevPub = _opsBasisPub(prevRows, _opsLastPlan?.blockScope || null, seasonStore.get()?.season || opsStore.get()?.season || null);   // 算出と同じ基準 (1 日ぶんなら束ねたもの・id は全体の最新)
                 // 別シーズンの配信を前回扱いにしない (シーズンを跨いだ差分は意味を持たない)
                 const sameSeason = prevPub && Number(prevPub.season_id) === Number(seasonId);
                 const prevPlan = sameSeason ? prevPub.plan : null;
