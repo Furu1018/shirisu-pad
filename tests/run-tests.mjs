@@ -7526,7 +7526,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         //   メンバーへの約束は配信したものなので、何度算出し直しても基準は動かない
         assert.ok(/previousPlan: options\.previousPlan \|\| null,/.test(html), 'ソルバーへ渡していない');
         assert.ok(/pubRows = typeof window\.supabaseGetPublishedPlans === 'function' \? await window\.supabaseGetPublishedPlans\(\) : \[\];/.test(html), '配信の行を読んでいない');
-        assert.ok(/const pub = blk \? pd\.effectiveFor\(pubRows, pd\.keyOfBlock\(blk\)\) : pd\.latest\(pubRows\);/.test(html), 'そのブロックに効いている配信を基準にしていない (🧱 段階 7)');
+        assert.ok(/const pub = pd\.effectiveFor\(pubRows, pd\.keyOfBlock\(blk \|\| _opsPlanBlock\(\)\)\);/.test(html), 'そのブロックに効いている配信を基準にしていない (🧱 段階 7・ブロックで組んでいなくても選んでいるブロック = いまのブロック)');
         assert.ok(/if \(pub && Number\(pub\.season_id\) === Number\(snapshot\?\.season\?\.id\)\) \{/.test(html),
             '別シーズンの配信を基準にしてしまう');
         // ★ 何を基準に組んだかを焼き込み、配信直前に照合する (並行配信で相手の約束を壊さない)
@@ -9663,7 +9663,7 @@ console.log('\ngrowthDomain:');
         // ホーム: 配信を読んだ直後にその範囲だけに絞る (以後の 3 つの表示・ヒーローはみな絞ったプランを見る)
         const home = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const pubScope = pubSel \? pubSel\.block : \(pub\.plan\?\.blockScope \|\| null\);\s*\n\s*const plan = \(pubScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(pub\.plan, pubScope\) : pub\.plan;/.test(home), 'ホームで範囲に絞っていない (選んだブロック)');
-        assert.ok(/🧱 <b>\$\{escapeHtml\(plan\.blockScope\.label\)\}<\/b> のぶんの配信です。\$\{laterPublished \? '上のチップでほかのブロックの配信も見られます' : ''\}次のブロックの割当はまだ決まっていません/.test(html), 'どのブロックの配信かの案内が無い');
+        assert.ok(/🧱 <b>\$\{escapeHtml\(plan\.blockScope\.label\)\}<\/b> のぶんの配信です。\$\{laterPublished \? '上のチップでほかのブロックの配信も見られます。' : '次のブロックの割当はまだ決まっていません/.test(html), 'どのブロックの配信かの案内が無い');
         assert.ok(/\$\{scopeLine\}\$\{condLine\}/.test(html), '案内を出していない');
         assert.ok(/このブロック \(\$\{escapeHtml\(plan\.blockScope\.label\)\}\) にあなたの凸はありません。次のブロックの配信を待ってください。/.test(html), '割当なしの文言がブロックを知らない');
         // 配信: 差分 (L5 の提示・L4 の通知) は範囲で見る / 確認の文言
@@ -12838,6 +12838,15 @@ console.log('\ngrowthDomain:');
         assert.equal(r3.players.find(p => p.id === 'C').attackCount, 0, 'Lv4 でボス 5 以外の凸を実行した');
         assert.equal(d.isoAt('bad', 13), null);
         assert.equal(r.players.find(p => p.id === 'D').attackCount, 3, '3 凸済みの人を実行した');
+        // 盤面の印 (一気に組む の配信の直前に「組んでいる間に盤面が変わっていないか」を見る): レベル・残 HP・凸の数・人数 のどれが変わっても違う / 同じ盤面なら同じ
+        const sig = d.boardSignature(board);
+        assert.ok(typeof sig === 'string' && sig.length > 10);
+        assert.equal(d.boardSignature({ season: { ...board.season }, bosses: board.bosses.map(b => ({ ...b })), players: board.players.map(p => ({ ...p })) }), sig, '同じ盤面で印が揺れる');
+        assert.notEqual(d.boardSignature({ ...board, bosses: board.bosses.map((b, i) => i === 1 ? { ...b, remaining_hp_raw: b.remaining_hp_raw - 1e9 } : b) }), sig, '残 HP が変わっても同じ印');
+        assert.notEqual(d.boardSignature({ ...board, players: board.players.map((p, i) => i === 0 ? { ...p, attacks: [{ boss_number: 1 }] } : p) }), sig, '凸が増えても同じ印');
+        assert.notEqual(d.boardSignature({ ...board, season: { ...board.season, current_level: 2 } }), sig, 'レベルが変わっても同じ印');
+        assert.notEqual(d.boardSignature({ ...board, players: board.players.slice(1) }), sig, '人が減っても同じ印');
+        assert.equal(d.boardSignature(null), '', '盤面が無ければ空');
         assert.deepEqual(d.summarize(plan, blk, r), { attacks: 5, executed: 3, levelAfter: 1, cleared: [], unassigned: 0 });
     });
     test('★ 配線: 🧱 段階 8 残りのブロックを一気に組む — ボタン / ブロックごとに 組む → 盤面を進める → 次 / 予約の指紋 / ブロックごとに配信 / 人ごとに 1 通 / 予想の印', () => {
@@ -12853,7 +12862,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/plan\.chained = true;/.test(fn) && /plan\.blockScope = \{ idx: blocks\.indexOf\(blk\)/.test(fn), '予想の印・ブロックの焼き込みが無い');
         assert.ok(/const executed = new Set\(proj\.done\.map\(x => x\.reservationId\)\.filter\(v => v != null\)\.map\(Number\)\);\s*\n\s*if \(executed\.size\) reservations = reservations\.filter\(r => !executed\.has\(Number\(r\.id\)\)\);/.test(fn), '実行したことにした予約を次のブロックの拘束に渡している');
         assert.ok(/rv\.fingerprint\(nowRows\) !== fp0/.test(fn), '配信の直前に予約の指紋を照合していない');
-        assert.ok(/for \(const r of results\) \{\s*\n\s*const pub = await window\.supabasePublishPlan\(r\.plan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, _planSchemaOf\(r\.plan\)\);/.test(fn), 'ブロックごとに配信していない');
+        assert.ok(/try \{\s*\n\s*const pub = await window\.supabasePublishPlan\(r\.plan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, _planSchemaOf\(r\.plan\)\);\s*\n\s*pubs\.push\(\{ pub, plan: r\.plan, blk: r\.blk \}\);\s*\n\s*\} catch \(e\) \{ failed = \{ blk: r\.blk, err: e \}; break; \}/.test(fn), 'ブロックごとに配信して、途中の失敗を受け止めていない');
+        assert.ok(/if \(pubs\.length\) \{\s*\n\s*showNotification\(`✅ \$\{pubs\.length\} ブロックを配信しました`\);\s*\n\s*await _notifyChainPublish\(\{ pubs, seasonId, me \}\);/.test(fn) && /if \(failed\) alert\(/.test(fn), '途中で失敗しても配信できたぶんの通知を送り、知らせていない (Codex 再監査 D)');
+        // 二重押しの印は最初の await より前 / 配信の直前に 盤面 (取り直してから) と ブロックごとに効いている配信 を照合 / ブロックごとに描画へ返す / 配信の行は尊重しなくても読む (照合の基準)
+        assert.ok(/_opsChainBusy = true;[\s\S]*?const snap = await opsStore\.load\(\);/.test(fn) && !/const snap = await opsStore\.load\(\);[\s\S]*?_opsChainBusy = true;/.test(fn), '二重押しの印が最初の await より後 (Codex 再監査 D)');
+        assert.ok(/const sig0 = pc\.boardSignature\(snap\);/.test(fn) && /opsStore\.invalidate\(\);\s*\n\s*const snap2 = await opsStore\.load\(\);\s*\n\s*if \(!snap2\?\.season\?\.id \|\| pc\.boardSignature\(snap2\) !== sig0\) \{/.test(fn), '配信の直前に盤面を取り直して照合していない');
+        assert.ok(/const moved = results\.find\(r => Number\(pd\.effectiveFor\(rows2, pd\.keyOfBlock\(r\.blk\)\)\?\.id \?\? 0\) !== Number\(r\.effectiveId \?\? 0\)\);\s*\n\s*if \(moved\) \{ alert\(/.test(fn), '配信の直前に別の運営の配信を照合していない');
+        assert.ok(/effectiveId: effective \? \(effective\.id \?\? null\) : null/.test(fn) && /let pubRows = null;\s*\n\s*try \{ pubRows = await window\.supabaseGetPublishedPlans\(\); \}/.test(fn) && !/if \(_opsPlanSticky\) \{ try \{ pubRows/.test(fn), '配信の行を尊重のときだけ読んでいる (照合の基準にならない)');
+        assert.ok(/await _yieldToPaint\(\);/.test(fn) && /const _yieldToPaint = \(\) => new Promise\(/.test(html), 'ブロックごとに描画へ返していない (Codex 再監査 G)');
+        assert.ok(/const sticky = !!_opsPlanSticky;/.test(fn) && !/prev: \(_opsPlanSticky && previousPlan\)/.test(fn), '待っている間の切り替えが混ざる (押した時点の条件で組んでいない)');
         assert.ok(/await _notifyChainPublish\(\{ pubs, seasonId, me \}\);/.test(fn), '通知していない');
         const nf = html.match(/async function _notifyChainPublish\(\{ pubs, seasonId, me \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ref = `chain\|\$\{m\.memberId\}\|\$\{m\.lines\.join\(' \/ '\)\}`;/.test(nf) && /playerIds: \[m\.memberId\]/.test(nf), '人ごとに 1 通 (二重送信よけ) になっていない');
@@ -12875,10 +12892,23 @@ console.log('\ngrowthDomain:');
         assert.equal(d.previousFor(rows, P(4, E)).id, 3, '同じブロックの 1 つ前');
         assert.equal(d.previousFor(rows, P(3, E)).id, 2, '同じブロックが無ければ 1 日ぶん');
         assert.equal(d.previousFor(rows, P(1, M)), null);
+        // 鍵: from / to が null・''・true のときは 1 日ぶん (Number() が 0 にするのを通さない — Codex 再監査 A)
+        assert.equal(d.keyOf(P(9, { from: null, to: 8 })), 'all'); assert.equal(d.keyOf(P(9, { from: '', to: '' })), 'all'); assert.equal(d.keyOf(P(9, { from: true, to: 8 })), 'all');
+        assert.equal(d.keyOf(P(9, { from: '18', to: '20' })), '18-20', '文字列の時は読む'); assert.equal(d.keyOf(P(9, { from: 0, to: 4 })), '0-4', '0 時は欠けではない');
+        // 1 つ前は「見ているブロック」で: 今回が 1 日ぶん (all) でも、夕方を見ていれば夕方に効いていた 1 つ前 (4) と比べる (Codex 再監査 A: 全体の 1 つ前 (5 = 夜) と比べていた)
+        assert.equal(d.previousFor(rows, P(6, null), '18-20').id, 4, '今回が 1 日ぶんでも見ているブロックの 1 つ前');
+        assert.equal(d.previousFor(rows, P(6, null), '5-8').id, 2, '朝に効いていた 1 つ前は 1 日ぶん (2)');
+        assert.equal(d.previousFor(rows, P(6, null), '21-23').id, 5);
+        assert.equal(d.previousFor(rows, P(6, null)).id, 5, '見ているブロックが無ければ全体の 1 つ前');
+        assert.equal(d.previousFor(rows, P(4, E), '18-20').id, 3, 'ブロックの行でも同じ');
         const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
         const list = d.byBlocks(rows, blocks);
         assert.deepEqual(list.map(x => [x.block.name, x.pub.id]), [['朝', 2], ['午前', 2], ['昼', 2], ['午後', 2], ['夕方', 4], ['夜', 5], ['深夜', 2]], 'ブロックの並びと効いている配信');
         assert.equal(d.distinctCount(list), 3);
+        // 全ブロックの効いている配信を、その範囲に絞って (撃破の通知の宛先)
+        assert.deepEqual(d.effectivePlans(rows, blocks, (p, b) => ({ ...p, tag: `${b.name}:${d.keyOfBlock(b)}:${p.blockScope ? 'blk' : 'all'}` })).map(p => p.tag), ['朝:5-8:all', '午前:9-11:all', '昼:12-14:all', '午後:15-17:all', '夕方:18-20:blk', '夜:21-23:blk', '深夜:0-4:all']);
+        assert.equal(d.effectivePlans([P(7, E)], blocks, (p) => p).length, 1, '配信の無いブロックは入れない');
+        assert.deepEqual(d.effectivePlans([{ id: 8, season_id: 1, plan: null }], blocks, (p) => p), [], 'plan の無い行は入れない');
         assert.deepEqual(d.byBlocks([P(7, E)], blocks).map(x => x.block.name), ['夕方'], '配信の無いブロックは並べない');
         // 既定: いまのブロック → 次に配信のあるブロック → 最新
         const two = d.byBlocks([P(1, M), P(5, N)], blocks);
@@ -12899,17 +12929,31 @@ console.log('\ngrowthDomain:');
         assert.ok(/function setMyPubBlock\(key\) \{ _myPubBlockKey = String\(key \|\| ''\) \|\| null; renderMyPublishedPlan\(getCurrentIdentity\(\)\); \}/.test(html), 'チップで切り替えられない');
         assert.ok(/const chips = pubsNow\.length > 1\s*\n/.test(html) && /onclick="setMyPubBlock\('\$\{escapeHtml\(x\.key\)\}'\)" aria-pressed="\$\{on\}"/.test(html) && /\$\{chips\}\$\{chainLine\}\$\{scopeLine\}\$\{condLine\}/.test(html), 'チップが無い');
         assert.ok(html.includes("const plans = st ? ((Array.isArray(st.pubs) && st.pubs.length) ? st.pubs.map(x => rbd.scopePlan(x.pub.plan, x.block)) : [st.plan]) : null;"), 'きょうの凸に全部の配信を渡していない');
-        assert.ok(html.includes('const prev = window.publishedPlansDomain.previousFor(pubRows, pub);'), '前回から変わったか が同じブロックの 1 つ前でない');
+        assert.ok(html.includes('const prev = window.publishedPlansDomain.previousFor(pubRows, pub, pubSel ? pubSel.key : null);'), '前回から変わったか が見ているブロックの 1 つ前でない (今回が 1 日ぶんでも)');
+        // 配信カードの文: 後ろのブロックに配信があれば「まだ決まっていません」とは言わない / 範囲の終わりは選んでいるブロックから (blockScope に toIdx は無い)
+        assert.ok(html.includes("${laterPublished ? '上のチップでほかのブロックの配信も見られます。' : '次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)'}"), '後ろのブロックに配信があっても「まだ決まっていません」と出る (Codex 再監査 B)');
+        assert.ok(html.includes('const laterPublished = !!(plan?.blockScope && scopeToIdx >= 0 && pubsNow.some(x => Number(x.block.fromIdx) > scopeToIdx));') && html.includes("const scopeToIdx = selBlk ? Number(selBlk.toIdx) : ((plan?.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.HOUR_ORDER.indexOf(Number(plan.blockScope.to)) : -1);") && !html.includes('plan.blockScope.toIdx ?? -1'), '範囲の終わりを blockScope.toIdx (無い) で見ている');
+        // 対象 (全員 / 今動ける人 / ブロックの人) を切り替えても「いまの配信」を取り直す
+        const sw = html.match(/function setOpsPlanWho\(who\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(sw.length > 50 && /_syncOpsUnpublishBtn\(\);/.test(sw), '対象を切り替えても「いまの配信」を取り直さない (Codex 再監査 C)');
         // 運営
-        assert.ok(/function _opsPickPublished\(rows\) \{[\s\S]*?return _opsPlanWho === 'block' \? pd\.effectiveFor\(rows, pd\.keyOfBlock\(_opsPlanBlock\(\)\)\) : pd\.latest\(rows\);/.test(html), '運営の「いまの配信」がブロックのものでない');
+        assert.ok(/function _opsPickPublished\(rows\) \{[\s\S]*?return pd\.effectiveFor\(rows, pd\.keyOfBlock\(_opsPlanBlock\(\)\)\);/.test(html), '運営の「いまの配信」が選んでいるブロック (既定 = いまのブロック) に効いている配信でない (全員 / 今動ける人 でも — Codex 再監査 C)');
+        assert.ok(!/return _opsPlanWho === 'block' \? pd\.effectiveFor/.test(html), '対象が 全員 / 今動ける人 のとき全体の最新 (別のブロックの行かもしれない) を代表にしている');
         for (const a of ["published = (await _loadOpsPublished()).pub;", "try { pub = (await _loadOpsPublished()).pub; }", "const pub = (await _loadOpsPublished()).pub;", "_loadOpsPublished().then(r => r.pub).catch(() => null)"]) assert.ok(html.includes(a), '運営の配信の取得が一覧を通っていない: ' + a);
-        assert.ok(/if \(typeof _syncOpsUnpublishBtn === 'function'\) _syncOpsUnpublishBtn\(\);\s*\/\/ 🧱 段階 7/.test(html), 'ブロックを選び直しても「いまの配信」を取り直さない');
+        const sb = html.match(/function setOpsPlanBlock\(v\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(sb.length > 50 && /_syncOpsUnpublishBtn\(\);/.test(sb), 'ブロックを選び直しても「いまの配信」を取り直さない');
         assert.ok(html.includes('const prevPub = window.publishedPlansDomain ? window.publishedPlansDomain.effectiveFor(prevRows, window.publishedPlansDomain.keyOfPlan(_opsLastPlan)) : (prevRows[0] || null);'), '配信時の前回が同じブロックの配信でない');
-        assert.ok(/const pub = blk \? pd\.effectiveFor\(rows, pd\.keyOfBlock\(blk\)\) : pd\.latest\(rows\);\s*\/\/ 🧱 段階 7/.test(html), '承認の影響の前回が同じブロックの配信でない');
+        assert.ok(/const pub = pd\.effectiveFor\(rows, pd\.keyOfBlock\(blk \|\| _opsPlanBlock\(\)\)\);\s*\/\/ 🧱 段階 7/.test(html), '承認の影響の前回が同じブロックの配信でない');
         // クライアント: 一覧 (id 降順・limit) / 凍結の stale は同じブロック
         assert.ok(/window\.supabaseGetPublishedPlans = async function \(limit = 60\)/.test(client) && /\.limit\(Math\.max\(1, Number\(limit\) \|\| 60\)\);/.test(client), '一覧を読む関数が無い');
         assert.ok(/const latest = \(pd && me\) \? pd\.effectiveFor\(rows, pd\.keyOf\(me\)\) : \(rows\[0\] \|\| null\);/.test(client), '凍結の stale が全体の最新と比べている');
         assert.ok(!/const latest = await window\.supabaseGetPublishedPlan\(\);/.test(client));
+        // 撃破の通知の宛先: ブロックごとに効いている配信を全部 (全体の最新 1 行だけだと、1 日ぶんの配信のあとに夜のぶんを配信した時点で朝の担当者が落ちる — Codex 再監査 F)
+        const bd = client.match(/window\.supabaseBossDefeatNotifyTargets = async function[\s\S]*?\n\};/)?.[0] || '';
+        assert.ok(bd.length > 500, '撃破の通知の宛先の関数が無い');
+        assert.ok(bd.includes('const rows = await window.supabaseGetPublishedPlans();') && bd.includes('plans = pd.effectivePlans((rows || []).filter(r => Number(r.season_id) === Number(seasonId)), rb.blocksOfSeason(season), rb.scopePlan);'), '宛先が全ブロックの効いている配信を見ていない');
+        assert.ok(!bd.includes('supabaseGetPublishedPlan()'), '宛先が全体の最新 1 行だけを見ている');
+        assert.ok(bd.includes('plans.forEach(plan => (plan.levels || []).forEach(lv => {'), '全部の配信の割当を数えていない');
     });
     test('★ 配線: 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23) — 尊重するのは いま組むブロックの範囲の凸だけ / 別のブロックの配信は尊重しない (焼き込みは ゼロから・基準の照合は残す)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');

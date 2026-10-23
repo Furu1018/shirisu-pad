@@ -502,6 +502,7 @@ globalThis.CustomEvent = class { constructor(t, o) { this.type = t; this.detail 
 globalThis.fetch = async (url, o) => { fetched.push({ url: String(url), o }); return { ok: true, status: 200, json: async () => FALLBACK_CHARACTERS.map(c => ({ ...c, icon_paths: ['./i.webp'] })) }; };
 const origLog = console.log; console.log = () => { };   // 接続確認の 1 行を黙らせる
 await import(pathToFileURL(path.join(ROOT, 'js/domain/notifyPolicy.js')).href);   // 🔔 通知の宛先の判定 (本番では index.html が読む)。sendPushNotification が必ず通す
+for (const f of ['js/domain/raidBlocks.js', 'js/domain/publishedPlans.js']) await import(pathToFileURL(path.join(ROOT, f)).href);   // 🧱 段階 7: 撃破の通知の宛先が「ブロックごとに効いている配信」を読む (本番では index.html が読む)
 await imp('js/supabase-client.js');
 console.log = origLog;
 const W = globalThis;
@@ -587,6 +588,20 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
 });
 // ★ 2026-10-07: 通知の宛先は js/domain/notifyPolicy.js が決め、送る関数 (sendPushNotification) が必ず通す。
 //   本物の関数を偽のサーバ相手に動かして、**実際に誰へ送ったか** (Edge Function に渡した playerIds) を見る
+test('本物のクライアント: 撃破の通知の宛先 — ブロックごとに効いている配信を全部見る (1 日ぶんの朝の担当 + 夜のぶんの担当 / 夜の行に入っている朝の予想は見ない) 🧱 段階 7', async () => {
+    const S = IDS.season, A = IDS.firstMember + 1, B = IDS.firstMember + 2, C = IDS.firstMember + 3;
+    const before = DB().published_plans.length;
+    // 1 日ぶん (朝 6 時 = hourIdx 1 に A が B2) → そのあと夜のぶん (21 時 = hourIdx 16 に B が B2。朝の予想 (C・hourIdx 1) も JSON に入っている = 約束ではない)
+    await W.supabasePublishPlan({ seasonId: S, levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: A, hourIdx: 1, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);
+    await W.supabasePublishPlan({ seasonId: S, blockScope: { idx: 5, name: '夜', label: '夜 21〜23時', from: 21, to: 23, slots: ['h21', 'h22', 'h23'] },
+        levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: B, hourIdx: 16, dmgB: 10 }, { memberId: C, hourIdx: 1, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);
+    const ids = (await W.supabaseBossDefeatNotifyTargets(S, 2, null, 1)).map(Number).sort((x, y) => x - y);
+    assert.deepEqual(ids, [A, B], '朝の担当 (1 日ぶんの配信) と夜の担当 (夜のぶんの配信) の両方が宛先 — 全体の最新 1 行だけだと朝の担当が落ちる');
+    assert.ok(!ids.includes(C), '夜のぶんの配信に入っている朝の予想を宛先にした');
+    // 片付け: 積んだ 2 行を外す (あとのテストは最新の配信を見る)
+    DB().published_plans.splice(before);
+});
+
 test('本物のクライアント: 通知の宛先 — 全員あては在籍の全員 (書庫を除く) / テスト回は運営担当と協力者だけ / 時間帯で絞らない / 相手が居なければ送らない', async () => {
     const T = DB(), ME = IDS.me, OPS = IDS.ops, M1 = IDS.firstMember, M2 = IDS.firstMember + 1;
     const sb = (await imp('js/supabase-client.js')).supabase;

@@ -1242,14 +1242,18 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   行をブロックの鍵 (`from-to` の時・1 日ぶんは 'all') でまとめ、ブロックごとに id 最大を「効いている配信」とする (`js/domain/publishedPlans.js`: keyOf / effectiveFor (ブロックの行と 'all' の行の新しいほう) / previousFor / byBlocks / pickDefault)。
   読みは `supabaseGetPublishedPlans(limit=60)` (id 降順の一覧)。`supabaseGetPublishedPlan` (最新 1 行) は練習の案内など「どれか 1 つ」でよい所だけ。
   メンバー: 配信カードは配信のあるブロックを並べ (既定 = いまのブロック → 次に配信のあるブロック → 最新)、2 つ以上ならチップで切り替え (`_myPubBlockKey` / `setMyPubBlock`)。選んだブロックの範囲だけを見せる (1 日ぶんの配信も)。
-  📅 きょうの凸は配信のあるブロック全部 (`todayRows({ plans })`。ブロックのぶんの配信から後ろのブロックの予想は出さない)。「前回から変わったか」は同じブロックの 1 つ前 (previousFor)。
-  運営: 「いまの配信」(`_opsPublishedPlan` = 配信の状況・結果の取り込み・手順の帯・配信後の予約) は条件パネルで選んでいるブロックに効いている配信 (`_opsPickPublished` / `_loadOpsPublished`。ブロックを選び直したら取り直す)。
+  📅 きょうの凸は配信のあるブロック全部 (`todayRows({ plans })`。ブロックのぶんの配信から後ろのブロックの予想は出さない)。「前回から変わったか」は**見ているブロックに効いていた 1 つ前** (`previousFor(rows, pub, viewKey)`・今回が 1 日ぶんでも。鍵は from / to が null・'' なら 'all' — Codex 再監査 A)。
+  運営: 「いまの配信」(`_opsPublishedPlan` = 配信の状況・結果の取り込み・手順の帯・配信後の予約) は条件パネルで選んでいるブロック (既定 = いまのブロック) に効いている配信 (`_opsPickPublished` / `_loadOpsPublished`。**対象が 全員 / 今動ける人 でも同じ** — 全体の最新 (id 最大) は別のブロックの行かもしれない: Codex 再監査 C。ブロック・対象を選び直したら取り直す)。
+  撃破の通知の宛先 (`supabaseBossDefeatNotifyTargets`) は**全ブロックの効いている配信をその範囲に絞って**割当を数える (`publishedPlansDomain.effectivePlans` + `seasons.metadata` の区切り。全体の最新 1 行だけだと、1 日ぶんの配信のあとに夜のぶんを配信した時点で朝の担当者が落ちる: Codex 再監査 F)。
   算出の基準 (前回どおり) と配信時の照合 (basisPlanId) も同じ配信と行う — **別のブロックの配信があっても止めない** (別の行として残る)。凍結の stale も同じブロック。
   ★ **🧱 段階 8: 残りのブロックを一気に組む** (2026-10-23 ユーザー決定「早い段階で模擬が出そろったら一気に最後まで」「前のブロックは模擬のスコアどおり削れたと仮定」): 🧱 組む の `handleOpsChainPlan`。
   いまのブロックから最後まで、ブロックごとに ① そのブロックの人だけで組む (computeOptimalPlan・基準はそのブロックに効いている配信) → ② `planChainDomain.projectBoard` でそのブロックの凸を実行したことにして盤面を進める
   (残 HP を min(ダメージ, 残り) 削る・5 体倒れたら次のレベル (HP は `window.HARD_LEVEL_HP_B`)・Lv3 踏破で Lv4 = ボス 5 無限・済んだ凸と使ったキャラを人に足す・予想の凸の報告時刻はその時刻 (凸数の上限が時刻で数えるため)) → ③ 次へ。
   確認 (ブロックごとの凸数・踏破の見込み・未割当) → ブロックごとに 1 行ずつ配信。`plan.chained = true` の印でメンバーには「🔭 予想です。ずれたら組み直し…」。通知は**人ごとに 1 通** (`_notifyChainPublish`・ref 'chain|人|凸の文')。
-  予約は押した時点の DB で組み、配信の直前に指紋を照合。ずれたら運営がそのブロック (時間があれば) か次のブロックの頭で組み直す (ユーザー決定)。実行テスト `tests/run-tests.mjs` の 段階 7・8 の節
+  予約と配信の行は押した時点の DB で組み (読めなければ組まない)。**配信の直前に 4 つを照合** (Codex 再監査 D): 予約の指紋 / シーズン / 盤面 (`opsStore.invalidate()` → `load()` → `planChainDomain.boardSignature` = レベル・残 HP・人数・凸の数) /
+  ブロックごとに効いている配信の id (`effectiveId`・尊重しなくても組んだときに控える) — どれかが動いていたら積まない。1 行ずつの配信が途中で失敗したら、配信できたぶんの通知は送って「どこまで配信できたか」を知らせる (押し直しで同じブロックは新しい配信が勝つ)。
+  二重押しの印 (`_opsChainBusy`) は**最初の await より前**。ブロックごとに `_yieldToPaint()` で描画へ返し、ボタンに進み具合。押した時点の `sticky` で組む (待っている間の切り替えを混ぜない)。
+  ずれたら運営がそのブロック (時間があれば) か次のブロックの頭で組み直す (ユーザー決定)。実行テスト `tests/run-tests.mjs` の 段階 7・8 の節・`tests/practice.mjs` の撃破の宛先
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

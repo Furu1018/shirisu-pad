@@ -3677,14 +3677,26 @@ window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, e
         if (Number(c.boss_number) === Number(bossNumber)) targets.add(c.player_id);
     });
     // ② 配信プランの割当 (未報告のみ)
+    //   🧱 段階 7 (Codex 再監査 F): 配信はブロックごとに行が残るので、**ブロックごとに効いている配信をその範囲に絞って全部**見る。
+    //   全体の最新 1 行だけだと、1 日ぶんの配信 (朝の担当) のあとに夜のぶんを配信した時点で、朝の担当者が宛先から落ちる
     {
-        const pub = await window.supabaseGetPublishedPlan();
-        if (pub?.plan && Number(pub.season_id) === Number(seasonId)) {
+        const rows = await window.supabaseGetPublishedPlans();
+        const pd = window.publishedPlansDomain, rb = window.raidBlocksDomain;
+        let plans = [];
+        if (pd && rb) {
+            const { data: season, error: seasonErr } = await supabase.from('seasons').select('id, metadata').eq('id', seasonId).maybeSingle();
+            if (seasonErr) throw seasonErr;   // ブロックの区切りが読めなければ宛先を決められない (握り潰すと「宛先ゼロ」で完了扱い)
+            plans = pd.effectivePlans((rows || []).filter(r => Number(r.season_id) === Number(seasonId)), rb.blocksOfSeason(season), rb.scopePlan);
+        } else {
+            const pub = (rows || []).find(r => Number(r.season_id) === Number(seasonId)) || null;   // 一覧は id 降順 = 先頭が最新 (ドメインが無い版の読み方)
+            if (pub?.plan) plans = [pub.plan];
+        }
+        if (plans.length) {
             // ★ **いま撃破されたレベルの割当だけ**を見る。
             //   全レベルぶんを拾うと、次のレベルで同じボスを担当する人まで
             //   「もう凸できません」と通知されてしまう (実データで1撃破あたり10〜13名になった)
             const assigned = new Set(), assignedCount = new Map();
-            (pub.plan.levels || []).forEach(lv => {
+            plans.forEach(plan => (plan.levels || []).forEach(lv => {
                 if (level != null && Number(lv.level) !== Number(level)) return;
                 (lv.bosses || []).forEach(b => {
                     if (Number(b.bossNumber) !== Number(bossNumber)) return;
@@ -3694,7 +3706,7 @@ window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, e
                         assignedCount.set(a.memberId, (assignedCount.get(a.memberId) || 0) + 1);
                     });
                 });
-            });
+            }));
             if (assigned.size > 0) {
                 // 「このレベルのこのボスへ既に報告済み」の人は外す。
                 // ★ level も見ること — season+boss だけで判定すると、Lv1 で同じボスを

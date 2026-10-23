@@ -10,7 +10,9 @@
 (function (root) {
     'use strict';
     const idOf = (r) => Number(r && r.id) || 0;
-    const scopeKey = (s) => (s && Number.isInteger(Number(s.from)) && Number.isInteger(Number(s.to))) ? `${Number(s.from)}-${Number(s.to)}` : 'all';
+    // ★ null / '' / true を Number() が 0 にするのを通さない (Codex 再監査 A: from が欠けた範囲が '0-8' になり、どのブロックにも効かない行になっていた)
+    const hourNum = (v) => (v === null || v === undefined || v === '' || typeof v === 'boolean') ? NaN : Number(v);
+    const scopeKey = (s) => (s && Number.isInteger(hourNum(s.from)) && Number.isInteger(hourNum(s.to))) ? `${hourNum(s.from)}-${hourNum(s.to)}` : 'all';
     /** ブロック ({ from, to } の時) の鍵 */
     const keyOfBlock = (blk) => (blk ? scopeKey(blk) : 'all');
     /** プラン (plan.blockScope) の鍵。無ければ 'all' */
@@ -35,10 +37,14 @@
         }
         return best;
     }
-    /** pub の 1 つ前 (同じ鍵か 'all' で、pub より小さい id のうち最大) — 本人の「前回から変わったか」の材料 */
-    function previousFor(rows, pub) {
+    /**
+     * pub の 1 つ前 — 本人の「前回から変わったか」の材料。**見ているブロック (viewKey) に効いていた 1 つ前** = その鍵か 'all' で、pub より小さい id のうち最大。
+     * ★ viewKey を渡す (Codex 再監査 A): 今回が 1 日ぶん (all) のとき、鍵を pub から取ると全体の 1 つ前 (別のブロックの行かもしれない) と比べてしまう。
+     *   viewKey が無ければ pub の鍵で (pub が all なら全体の 1 つ前)
+     */
+    function previousFor(rows, pub, viewKey = null) {
         if (!pub) return null;
-        const key = keyOf(pub), cur = idOf(pub);
+        const key = (viewKey && viewKey !== 'all') ? String(viewKey) : keyOf(pub), cur = idOf(pub);
         let best = null;
         for (const r of (Array.isArray(rows) ? rows : [])) {
             if (!r || idOf(r) >= cur) continue;
@@ -61,6 +67,13 @@
         }
         return out;
     }
+    /**
+     * ブロックごとに効いている配信を、そのブロックの範囲に絞ったプランで (撃破の通知の宛先など「全ブロックの約束」を見る所)。配信の無いブロック・plan の無い行は入らない。
+     * @param {(plan:Object, block:Object) => Object} scopeFn  raidBlocksDomain.scopePlan
+     */
+    function effectivePlans(rows, blocks, scopeFn) {
+        return byBlocks(rows, blocks).map(x => (x.pub && x.pub.plan) ? (typeof scopeFn === 'function' ? scopeFn(x.pub.plan, x.block) : x.pub.plan) : null).filter(Boolean);
+    }
     /** 違う配信 (id) がいくつあるか — 1 つなら切り替えのチップは要らない */
     const distinctCount = (list) => new Set((Array.isArray(list) ? list : []).map(x => idOf(x.pub))).size;
     /**
@@ -79,5 +92,5 @@
         }
         return l.slice().sort((a, b) => idOf(b.pub) - idOf(a.pub))[0];
     }
-    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctCount, pickDefault };
+    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, effectivePlans, distinctCount, pickDefault };
 })(typeof window !== 'undefined' ? window : globalThis);

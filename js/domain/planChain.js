@@ -99,5 +99,17 @@
         const unassigned = Array.isArray(plan && plan.unassigned) ? plan.unassigned.length : 0;
         return { attacks: n, executed: proj ? proj.done.length : n, levelAfter: proj ? proj.level : null, cleared: proj ? proj.cleared.slice() : [], unassigned };
     }
-    root.planChainDomain = { HOUR_BASE, hourOfIdx, isoAt, attacksIn, projectBoard, summarize };
+    /**
+     * 盤面の印 (シーズン・レベル・ボスごとの残 HP・人数・凸の数)。一気に組む の配信の直前に「組んだときと同じ盤面か」を見る (Codex 再監査 D)。
+     * 模擬の差し替えは見ない (古い模擬で組んだ配信は危なくない — 組み直せばよい)
+     */
+    function boardSignature(board) {
+        if (!board) return '';
+        const season = board.season || {};
+        const bosses = (Array.isArray(board.bosses) ? board.bosses : []).map(b => `${b.boss_number}:${Number(b.remaining_hp_raw) || 0}`).sort().join(',');
+        const players = Array.isArray(board.players) ? board.players : [];
+        const attacks = players.reduce((n, p) => n + Math.max(Array.isArray(p.attacks) ? p.attacks.length : 0, Number(p.attackCount) || 0), 0);
+        return `s${season.id ?? ''}|lv${Number(season.current_level) || 0}|${bosses}|p${players.length}|a${attacks}`;
+    }
+    root.planChainDomain = { HOUR_BASE, hourOfIdx, isoAt, attacksIn, projectBoard, summarize, boardSignature };
 })(typeof window !== 'undefined' ? window : globalThis);
