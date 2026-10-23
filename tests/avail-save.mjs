@@ -371,6 +371,7 @@ const SRC_REAL = [
     cut('        async function _availDoSaveInner('),
     cut('        async function renderMyAvailabilitySettings('),
     cut('        function openOpsAvailModal('),
+    cut('        function openMyAvailModal('),
     cut('        function closeMyAvailModal('),
     cut('        function _renderAvailForWho('),
     cut('        async function _loadMyAvailConfirm('),
@@ -380,7 +381,7 @@ const SRC_REAL = [
     cut('        async function handleConfirmAvailability('),
 ].join('\n');
 function makeEnvReal() {
-    const saves = [], confirms = [], loadConfirmCalls = [], timers = [], gates = {};
+    const saves = [], confirms = [], loadConfirmCalls = [], timers = [], gates = {}, stripCalls = [], mbCalls = [];
     let identity = { id: 7, name: 'O' };
     const el = () => ({ style: {}, textContent: '', innerHTML: '', classList: { add() { }, remove() { }, contains: () => false }, querySelectorAll: () => [] });
     const wait = async (k) => { const g = gates[k]; if (g) await g.promise; };
@@ -391,9 +392,9 @@ function makeEnvReal() {
         document: { getElementById: () => el() },
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: (id) => { if (id) timers[id - 1] = null; },
-        showNotification() { }, _invalidateSetupNeeds() { }, renderMyNextAction() { }, renderMyAvailStrip() { }, renderOpsMemberStatus() { }, renderOpsMockIntake() { }, _renderAvailUI() { },
+        showNotification() { }, _invalidateSetupNeeds() { }, renderMyNextAction() { }, renderMyAvailStrip() { stripCalls.push(1); }, renderOpsMemberStatus() { mbCalls.push(1); }, renderOpsMockIntake() { }, _renderAvailUI() { },
         opsStore: { get: () => ({ players: [{ id: 9, name: 'B' }, { id: 10, name: 'C' }] }), invalidate() { } },
-        ensureActiveSeasonLoaded: async () => ({ season: { id: 44 } }),
+        ensureActiveSeasonLoaded: async () => { await wait('season'); return { season: { id: 44 } }; },
         window: {
             supabaseLoadAvailability: async (pid) => { await wait('load' + pid); return (env._avail[pid] || []).slice(); },
             supabaseLoadActiveSeasonWithBosses: async () => ({ season: { id: 44 } }),
@@ -405,12 +406,12 @@ function makeEnvReal() {
         _avail: { 9: ['h05'], 10: ['h21'] },
         _conf: { 7: { confirmed_at: 'x', unavailable: false, slot_count: 2, slots_snapshot: ['h21', 'h22'], who: 7 }, 9: null, 10: { confirmed_at: 'y', unavailable: false, slot_count: 1, slots_snapshot: ['h21'], who: 10 } },
         _myAvailConfirm: null,
-        gates, saves, confirms, loadConfirmCalls,
+        gates, saves, confirms, loadConfirmCalls, stripCalls, mbCalls,
         setIdentity: (v) => { identity = v; },
         fire: async () => { const fns = timers.splice(0).filter(Boolean); for (const f of fns) await f(); },
     };
     const keys = Object.keys(env);
-    const fn = new Function(...keys, SRC_REAL + '\nreturn { _availScheduleSave, _availDoSave, openOpsAvailModal, closeMyAvailModal, handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };');
+    const fn = new Function(...keys, SRC_REAL + '\nreturn { _availScheduleSave, _availDoSave, openOpsAvailModal, openMyAvailModal, closeMyAvailModal, handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };');
     return Object.assign(env, fn(...keys.map(k => env[k])));
 }
 const onIdx = (env) => env._availUI.slots.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
@@ -454,6 +455,7 @@ await test('★ 確認を押してすぐ閉じ C を開く: B の確認は押し
     env.gates.save9.resolve(); await p; await settle();
     assert.deepEqual(env.confirms.map(c => [c.playerId, c.slots, c.actorName]), [[9, ['h05'], 'O']], 'B の確認がずれた: ' + JSON.stringify(env.confirms));
     assert.equal(env._myAvailConfirmRef()?.who, 10, 'B の確認の完了が、開いている C の確認状態を B のものに差し替えた');
+    assert.ok(env.mbCalls.length > 0, 'B の確認が載ったあとに 👥 メンバー状況を描き直していない');
 });
 
 await test('★ 閉じたあと本人の確認状態へ戻すのは、その間に別の人を開いていないときだけ (開いていたら C の読み込みに任せる)', async () => {
@@ -478,6 +480,45 @@ await test('★ 代理の印 (actorName) は操作した時点の名乗り — �
     env.setIdentity({ id: 11, name: 'X' });    // 保存が走る前に別の人で名乗り直した
     await env.fire(); await settle();
     assert.deepEqual(env.saves, [{ playerId: 9, slots: ['h05', 'h06'], actorName: 'O' }], '代理の印が名乗り直したあとの名前になった: ' + JSON.stringify(env.saves));
+});
+
+await test('★ 確認の待ち (シーズンの読み込み) の間に閉じて C を開いても、C の保存の予約を消さない (同じシートのデバウンスだけ止める)', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env.gates.season = defer();                          // B の確認はシーズンの読み込みで止まる
+    const p = env.handleConfirmAvailability(false); await settle();
+    env.closeMyAvailModal();
+    env.openOpsAvailModal(10); await settle();           // C を開く
+    env._availUI.slots[22] = true; env._availScheduleSave();   // C の変更 (h22) → 保存の予約
+    env.gates.season.resolve(); await p.catch(() => { }); await settle();
+    assert.equal(env._availUI.savePending, true, 'B の古い確認が C の保存の予約を消した');
+    await env.fire(); await settle();
+    assert.ok(env.saves.some(s => s.playerId === 10 && s.slots.includes('h22')), 'C の変更が保存されていない: ' + JSON.stringify(env.saves));
+});
+
+await test('★ 本人が確認を押してすぐ閉じても、確認が載ったあとにホームの帯を取り直す (未確認のまま残らない)', async () => {
+    const env = makeEnvReal();
+    env.openMyAvailModal(); await settle();              // 本人 (7) のシート
+    env._availUI.slots[21] = true;
+    env.gates.save7 = defer();
+    const p = env.handleConfirmAvailability(false); await settle();
+    env.closeMyAvailModal(); await settle();             // 閉じた直後の帯の取り直し (確認はまだ載っていない)
+    const n = env.stripCalls.length;
+    env.gates.save7.resolve(); await p; await settle();
+    assert.equal(env.confirms[0]?.playerId, 7);
+    assert.ok(env.stripCalls.length > n, '確認が載ったあとに帯を取り直していない');
+});
+
+await test('★ 閉じたあと名乗り直していたら、閉じたときの本人 (旧) の確認状態を読み直さない', async () => {
+    const env = makeEnvReal();
+    env.openOpsAvailModal(9); await settle();
+    env._availUI.slots[6] = true; env._availScheduleSave();
+    env.gates.save9 = defer();
+    env.closeMyAvailModal(); await settle();             // 残った保存を待っている
+    env.setIdentity({ id: 11, name: 'X' });              // その間に名乗り直した
+    const before = env.loadConfirmCalls.length;
+    env.gates.save9.resolve(); await settle(6);
+    assert.deepEqual(env.loadConfirmCalls.slice(before).filter(x => x === 7), [], '名乗り直したあとに旧本人 (7) の確認状態を読み直した: ' + env.loadConfirmCalls.join(','));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

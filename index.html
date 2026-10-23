@@ -11280,7 +11280,7 @@
                 const me = getCurrentIdentity();
                 Promise.resolve(pending).catch(() => { }).then(() => {
                     // ★ 待っている間に別の人 (か自分) のシートを開いていたら、本人の状態へは戻さない (そちらの読み込みに任せる — 戻すと開いているシートに本人の確認状態が出る: Codex 再監査 9a)
-                    if (me?.id && _availUI.session === sesClose) _loadMyAvailConfirm(me.id);
+                    if (me?.id && _availUI.session === sesClose && String(getCurrentIdentity()?.id) === String(me.id)) _loadMyAvailConfirm(me.id);   // 名乗り直していたら、いまの本人の読み込みに任せる (旧本人の状態を出さない)
                     opsStore.invalidate();
                     if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true);
                     if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake(true);
@@ -11483,8 +11483,10 @@
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
-                clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
-                _availUI.savePending = false; _availUI.pendingSave = null;   // この確認の保存が代わりに載る (閉じるときにもう一度積まない: Codex 再監査 9a)
+                if (op.session === _availUI.session) {   // ★ 同じシートの未開始のデバウンスだけ止める — 待っている間に閉じて別の人を開いていたら、その人の保存の予約に触らない (Codex 再監査 9a・2 回目)
+                    clearTimeout(_availUI.saveTimer);
+                    _availUI.savePending = false; _availUI.pendingSave = null;   // この確認の保存が代わりに載る (閉じるときにもう一度積まない)
+                }
                 // ★ 「時間帯の保存」と「確認の書き込み」を **1つの単位** としてキューに積む。
                 //   間に自動保存が割り込むと、確認したスナップショットと availability がずれる。
                 //   ⚠ キューの中なので _availDoSave ではなく _availDoSaveInner を呼ぶこと (自分待ちになる)
@@ -11502,7 +11504,14 @@
                     countsDropped = !!(res && res.blockCountsDropped);
                     return slots;
                 });
-                if (op.session !== _availUI.session) { opsStore.invalidate(); return; }   // 待っている間に閉じた・別の人を開いた: 共有の確認状態と画面に触らない (Codex 再監査 9a)
+                if (op.session !== _availUI.session) {
+                    // 待っている間に閉じた・別の人を開いた: 共有の確認状態と画面には触らない。ただし確認は DB に載っているので、見ている先だけ取り直す —
+                    //   本人の確認なら ホームの帯とバッジ (閉じた直後の取り直しが確認より先に終わっていると未確認のまま残る)、運営の登録なら 👥 メンバー状況 (Codex 再監査 9a・2 回目)
+                    opsStore.invalidate();
+                    if (op.forOther) { if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true); }
+                    else if (!_availUI.forPlayer && String(getCurrentIdentity()?.id) === String(id.id) && typeof renderMyAvailStrip === 'function') renderMyAvailStrip(getCurrentIdentity());
+                    return;
+                }
                 _myAvailConfirm = { confirmed_at: new Date().toISOString(), unavailable: !!unavailable,
                     slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur,
                     ...(countsDropped ? {} : { block_counts: counts }) };   // 53 未適用で落ちたときは持たない (「凸数を変えました」が出続けないように)

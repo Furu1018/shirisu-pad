@@ -1264,7 +1264,7 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **操作した時点の「誰が・誰のぶんを・何を・どの区切りで・どのシートで」を `_availSaveOpts()` で控え、あとで走る保存・確認はそれだけを使う** (Codex 再監査 9a: 走るときに `_availUI` や名乗りを読み直すと、閉じて別の人を開いたあとに走った保存が別の人の時間を書く・
   名乗り直したあとの名前が代理の印になる)。デバウンス (`_availScheduleSave`) は opts を `_availUI.pendingSave` に控え、閉じるとき (`closeMyAvailModal`) はその中身で流し切ってから forPlayer を外す。確認 (`handleConfirmAvailability`) は頭で op を取り、保存にも確認にも op を渡し、`savePending` を下ろす。
   **シートの世代 `_availUI.session`** は 開く (本人・運営) と 閉じる で進む: `renderMyAvailabilitySettings` は時間・区切りの応答のあとに世代が違えば捨てる (遅い応答で別の人のシートを上書きしない)、保存のあとの描き直しと確認の完了は同じ世代のときだけ共有状態 (`_myAvailConfirm`) と画面に触る、
-  閉じたあと「本人の確認状態へ戻す」のはその間に別の人を開いていないときだけ。`renderMyAvailStrip` は forPlayer の間は本人の確認状態を読み直さない。「取り直す」は `_availTarget()` のぶん。運営の登録中は本人の MY設定のバッジに触らない (`_renderMyAvailConfirmBadge`)。本人向けの描き直し (`_invalidateSetupNeeds` / `renderMyNextAction`) は本人のときだけ。
+  閉じたあと「本人の確認状態へ戻す」のはその間に別の人を開いておらず名乗り直してもいないときだけ。確認が止めるデバウンスは**同じシートのものだけ** (別の人の保存の予約を消さない)。待っている間にシートが変わって終わった確認は共有状態に触らず、見ている先だけ取り直す (本人なら帯、運営の登録なら 👥)。`renderMyAvailStrip` は forPlayer の間は本人の確認状態を読み直さない。「取り直す」は `_availTarget()` のぶん。運営の登録中は本人の MY設定のバッジに触らない (`_renderMyAvailConfirmBadge`)。本人向けの描き直し (`_invalidateSetupNeeds` / `renderMyNextAction`) は本人のときだけ。
   実行テスト `tests/avail-save.mjs` の `makeEnvReal` が 開く・閉じる・デバウンス・保存・確認・読み込みを実装のまま走らせて、人を切り替えたときの取り違え 5 通りを固定する。
   入口は 👥 メンバー状況の行の ⏰ (`openOpsAvailModal(id)`) と 📸 模擬の取り込みの「⏰ 時間を登録」(選んだ人・`openOpsAvailModalFromIntake`)。催促の文面は「Discord で運営に伝えてください」。
   メンバー側の入口 (時間シート・予約) を隠すのは 9c (9b 運営発の予約 と 9f 練習の作り直し とまとめて — 練習のメンバー編が時間のシートを使っているため)。実行テスト `tests/avail-save.mjs` (forPlayer の確認と保存)・配線は `tests/run-tests.mjs`

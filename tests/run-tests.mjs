@@ -12910,14 +12910,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!forOther\) \{ _invalidateSetupNeeds\(\); renderMyNextAction\(id\); \}/.test(html), '運営の登録で本人の「次にやること」を描き直している');
         // 確認: 相手を控えて保存にも渡す。actorName
         assert.ok(/async function handleConfirmAvailability\(unavailable\) \{\s*\n\s*const op = _availSaveOpts\(\{ rethrow: true \}\);[^\n]*\n\s*const id = op\.target;/.test(html), '確認が押した時点の opts (誰が・誰のぶん・時間帯・世代) を控えていない');
-        assert.ok(/_availUI\.savePending = false; _availUI\.pendingSave = null;   \/\/ この確認の保存が代わりに載る/.test(html) && /if \(op\.session !== _availUI\.session\) \{ opsStore\.invalidate\(\); return; \}/.test(html), '確認のあとにシートが変わっていても共有状態へ書く / 閉じるときにもう一度保存を積む');
+        assert.ok(/if \(op\.session === _availUI\.session\) \{[^\n]*\n\s*clearTimeout\(_availUI\.saveTimer\);\s*\n\s*_availUI\.savePending = false; _availUI\.pendingSave = null;/.test(html), '確認が別のシートの保存の予約まで消す (同じシートのデバウンスだけ止める)');
+        assert.ok(/if \(op\.session !== _availUI\.session\) \{[\s\S]{0,700}?opsStore\.invalidate\(\);\s*\n\s*if \(op\.forOther\) \{ if \(typeof renderOpsMemberStatus === 'function'\) renderOpsMemberStatus\(null, true\); \}\s*\n\s*else if \(!_availUI\.forPlayer && String\(getCurrentIdentity\(\)\?\.id\) === String\(id\.id\) && typeof renderMyAvailStrip === 'function'\) renderMyAvailStrip\(getCurrentIdentity\(\)\);\s*\n\s*return;/.test(html), '確認のあとにシートが変わっていても共有状態へ書く / 載った確認を見ている先 (帯・👥) に出さない');
         assert.ok(/actorName: op\.actorName \}\);/.test(html), '確認に代理の印が無い');
         // 開く・閉じる
         const op = html.match(/function openOpsAvailModal\(playerId\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/_availUI\.forPlayer = \(me && String\(me\.id\) === String\(p\.id\)\) \? null : \{ id: p\.id, name: p\.name \};/.test(op) && /renderMyAvailabilitySettings\(\{ id: p\.id, name: p\.name \}\);/.test(op) && /_loadMyAvailConfirm\(p\.id\);/.test(op), '運営の登録が相手のぶんを開いていない');
         const cl = html.match(/function closeMyAvailModal\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/const pendingOpts = _availUI\.savePending \? \(_availUI\.pendingSave \|\| _availSaveOpts\(\)\) : null;\s*\n\s*_availUI\.session\+\+;/.test(cl) && /const pending = pendingOpts \? _availDoSave\(pendingOpts\) : null;/.test(cl), '閉じるときに残った保存を予約したときの中身で流していない / 世代を進めていない');
-        assert.ok(/_availUI\.forPlayer = null;/.test(cl) && /if \(me\?\.id && _availUI\.session === sesClose\) _loadMyAvailConfirm\(me\.id\);/.test(cl) && /renderOpsMemberStatus\(null, true\);/.test(cl) && /renderOpsMockIntake\(true\);/.test(cl), '閉じたあとに本人の状態へ戻して 👥・📸 を描き直していない / 別の人を開いていても本人へ戻す');
+        assert.ok(/_availUI\.forPlayer = null;/.test(cl) && /if \(me\?\.id && _availUI\.session === sesClose && String\(getCurrentIdentity\(\)\?\.id\) === String\(me\.id\)\) _loadMyAvailConfirm\(me\.id\);/.test(cl) && /renderOpsMemberStatus\(null, true\);/.test(cl) && /renderOpsMockIntake\(true\);/.test(cl), '閉じたあとに本人の状態へ戻して 👥・📸 を描き直していない / 別の人を開いていても本人へ戻す');
         assert.ok(/function openMyAvailModal\(\) \{[\s\S]{0,300}_availUI\.forPlayer = null;/.test(html), '本人が開くときに forPlayer を外していない');
         assert.ok(/if \(_availUI\.forPlayer\) return;\s*\/\/ 🗣 9a/.test(html), '運営の登録中に本人の MY設定のバッジへ書いている');
         // 入口
