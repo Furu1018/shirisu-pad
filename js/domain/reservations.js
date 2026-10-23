@@ -71,9 +71,9 @@
         boss_defeated: 'そのボスはもう倒れています',
         level_passed: 'そのレベルはもう終わっています',
         loadout_gone: '予約した編成が模擬から消えています',
-        time_passed: '予約の時刻を過ぎています',
-        before_open: '予約の時刻には、そのレベルがまだ開いていない見込みです',
-        no_boss_at_time: '予約の時刻には、そのボスがいない見込みです',
+        time_passed: '予約した時間を過ぎています',
+        before_open: '予約した時間には、そのレベルがまだ開いていない見込みです',
+        no_boss_at_time: '予約した時間には、そのボスがいない見込みです',
         level_unreached: 'そのレベルまで届かない見込みです',
         conflict: 'ほかの凸とキャラが被るため置けません',
     };
@@ -548,7 +548,7 @@
         if (missing.length) return { ok: false, missing };
         // いまのレベルでそのボスが倒れていれば、次のレベルのそのボスに置かれることを本人に伝える
         const note = (boss && Number(boss.remaining_hp_raw) <= 0)
-            ? 'このボスはいまのレベルでは倒れています。予約の時刻に次のレベルで出てきていれば、そこに置かれます。' : '';
+            ? 'このボスはいまのレベルでは倒れています。予約した時間に次のレベルで出てきていれば、そこに置かれます。' : '';
         return {
             ok: true, missing: [], note,
             draft: {

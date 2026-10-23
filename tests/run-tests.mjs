@@ -5050,7 +5050,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
         assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
         assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
-        assert.ok(/この固定は別の運営が動かしました/.test(client), '0 行更新 (別の運営が動かした) を黙って通している');
+        assert.ok(/この仮置きは別の運営が動かしました/.test(client), '0 行更新 (別の運営が動かした) を黙って通している');
     });
     await testAsync('★ #8 📌 の置き直し・お願いは楽観ロック (updated_at) — 別の運営が先に動かした行を古い画面から上書きしない (実行)', async () => {
         const fnOf = (name) => {
@@ -5555,11 +5555,11 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/opened\.forEach\(el => \{[\s\S]{0,200}history\.pushState/.test(fn));
     });
 
-    test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件の予約を入れて計算」', () => {
+    test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件の予約を反映して計算」', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/const resvPin = a\.fromReservation \?/.test(html), '運営プランの行にピンが無い');
         assert.ok(/\$\{meTag\}\$\{resvPin\}\$\{reservedTag\}/.test(html), 'ピンを行に差し込んでいない');
-        assert.ok(/件を入れて計算しました/.test(html), '「N件の予約を入れて計算」が無い');
+        assert.ok(/件を反映して計算しました/.test(html), '「N件の予約を反映して計算」が無い');
         assert.ok(/statChip\('🔒 予約'/.test(html));
         assert.ok(/置けなかった予約が/.test(html), '守れなかった予約を運営に見せていない');
         // 本人の配信プランの行にも (2026-09-08: 3枠の一覧では「予約で固定」の行として出る)
@@ -5829,7 +5829,7 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ 予約: 置けない理由はすべて日本語 (コードのまま出さない) / 見込み時刻を添える', () => {
         for (const k of Object.keys(rv.UNMET_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNMET_JP[k]), k);
         for (const k of Object.keys(rv.UNASSIGNED_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNASSIGNED_JP[k]), k);
-        assert.equal(rv.unmetText({ reason: 'time_passed' }), '予約の時刻を過ぎています');
+        assert.equal(rv.unmetText({ reason: 'time_passed' }), '予約した時間を過ぎています');
         const t = rv.unmetText({ reason: 'no_boss_at_time', detail: { level: 2, killedLabel: '9時', nextOpenLabel: '11時' } });
         assert.match(t, /そのボスがいない見込み/);
         assert.match(t, /Lv2 は 9時に撃破の見込み/);
@@ -5857,7 +5857,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const r = rv.approvalImpact(plan([]), plan([{ reservationId: 42, reason: 'no_boss_at_time' }]), null, 42);
         assert.equal(r.blocking, true);
         assert.equal(r.cannotPlace, true);
-        assert.match(r.warnings[0], /この予約は置けません: 予約の時刻には、そのボスがいない見込みです/);
+        assert.match(r.warnings[0], /この予約は置けません: 予約した時間には、そのボスがいない見込みです/);
         // 別の予約が新たに置けなくなるのは「候補が置けない」ではなく「固定済みが壊れる」(breaks) — 承認不可ではないが警告
         const ok = rv.approvalImpact(plan([]), plan([{ reservationId: 41, reason: 'conflict' }]), null, 42);
         assert.equal(ok.cannotPlace, false, '別の予約の未達で候補を止めてはいけない');
@@ -6662,7 +6662,7 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         const past = compute(mkInput(tl(), { bosses: smallB(), currentSlot: 'h13',
             reservations: [free({ id: 4, member: 3, boss: 1, slot: 'h07' })] }));
         assert.equal(past.unmetReservations[0]?.reason, 'time_passed', JSON.stringify(past.unmetReservations));
-        assert.equal(rv.unmetText(past.unmetReservations[0]), '予約の時刻を過ぎています');
+        assert.equal(rv.unmetText(past.unmetReservations[0]), '予約した時間を過ぎています');
         const fx = compute(mkInput(tl(), { bosses: smallB(0), reservations: [free({ id: 5, member: 3, boss: 1, flex: true })] }));
         assert.deepEqual(rowOf(fx, 3), ['L2/B1/1/flex'], `倒れたボスの隙間予約は次のレベルへ: ${JSON.stringify(rowOf(fx, 3))} / ${JSON.stringify(fx.unmetReservations)}`);
     });
@@ -7673,7 +7673,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     test('★ B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) / 自動配信はしない (2026-09-08)', () => {
         const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ok = await _resvTransition\(id, 'approved'/.test(ap), '承認の成否を見ていない');
-        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を入れて組み直しました'\);/.test(ap),
+        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を反映して組み直しました'\);/.test(ap),
             '承認のあとに組み直し→配信の流れへ入っていない');
         // ★ 承認待ちが他にも残っている間は配信の確認を出さず、組み直しだけ (ユーザー決定 2026-09-08)。
         //   最後の1件を承認したときに差分と配信の確認を出す
@@ -7681,7 +7681,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(ap), '残りの承認待ちを数えていない');
         assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
             '承認待ちが残っているのに配信の確認を出している');
-        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を入れて組み直しました')"), '順序が逆');
+        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を反映して組み直しました')"), '順序が逆');
         const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(ro), '組み直していない (承認後の条件を通していない)');
         // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示

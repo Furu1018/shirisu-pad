@@ -3909,7 +3909,7 @@ window.supabaseCreateReservation = async function (o = {}) {
     return data;
 };
 
-const PIN_SQL_HINT = '運営の固定 (📌) を使うには supabase/45_reservation_pins.sql の適用が必要です';
+const PIN_SQL_HINT = '📌 仮置きを使うには supabase/45_reservation_pins.sql の適用が必要です';
 // 📌 を置き直す (ボス・時刻・編成)。約束ではない下書きなので直接 UPDATE できる (39 の守りの対象外)。
 // ★ status = 'pinned' の行だけ動かす — 別の運営がその間に「お願い」→ 本人が引き受けて approved になっていたら動かさない
 window.supabaseMovePin = async function (id, o = {}) {
@@ -3932,7 +3932,7 @@ window.supabaseMovePin = async function (id, o = {}) {
         if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの仮置きがすでにあります (別の運営が置きました)');
         throw error;
     }
-    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしました。画面を更新してから、もう一度お試しください');
+    if (!Array.isArray(data) || data.length === 0) throw new Error('この仮置きは別の運営が動かしました。画面を更新してから、もう一度お試しください');
     return data[0];
 };
 // 📣 お願いする: 下書きを本人に見せる (asked_at)。期限は表示だけ (過ぎても自動で外さない)
@@ -3949,7 +3949,7 @@ window.supabaseAskPin = async function (id, o = {}) {
         if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
         throw error;
     }
-    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしたか、すでにお願い済みです。画面を更新してから、もう一度お試しください');
+    if (!Array.isArray(data) || data.length === 0) throw new Error('この仮置きは別の運営が動かしたか、すでにお願い済みです。画面を更新してから、もう一度お試しください');
     return data[0];
 };
 

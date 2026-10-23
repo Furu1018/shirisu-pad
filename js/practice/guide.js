@@ -373,7 +373,7 @@
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('resvApprove');
                     if (!btn) return stray(c, []) || { text: '予約が届いています。「🔒 凸の予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve > .ops-card-head') };
-                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を入れて朝のブロックを組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認すると本人に通知が届きます。予約は約束なので、本人が入れた凸数より強く効きます。', target: btn };
+                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を反映して朝のブロックを組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認すると本人に通知が届きます。予約は約束なので、本人が入れた凸数より強く効きます。', target: btn };
                 } },
             { key: 'publish', title: '朝のぶんを配信する',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.blockScope && Number(c.pub.plan.reservationCount) >= 1); },

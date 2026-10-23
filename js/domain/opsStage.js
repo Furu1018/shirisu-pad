@@ -219,7 +219,7 @@
         }
         if (stage === 'pre') {
             if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '承認すると予約が決まり、プランを組み直します。最後の 1 件で配信へ進みます', action: 'reserve', label: '🔒 予約を見る' };
-            if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません。予約を入れて組み直し、配信し直してください`, action: 'republish', label: '🧮 予約を入れて組み直す → 配信' };
+            if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません。承認済みの予約を反映して組み直し、配信し直してください`, action: 'republish', label: '🧮 予約を反映して組み直す → 配信' };
             const rs = Array.isArray(rows) ? rows : [];
             const next = rs.find(r => !r.done && !r.pending && !r.optional && !r.waiting);
             if (!next) {

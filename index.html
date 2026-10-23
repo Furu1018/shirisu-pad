@@ -8225,9 +8225,9 @@
             } else if (opsPending && opsPending.count > 0) {
                 opsNotice = {
                     lead: '🔒 配信後の予約があります、確認して下さい',
-                    why: `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。予約を入れて組み直し、配信し直してください。`
+                    why: `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。承認済みの予約を反映して組み直し、配信し直してください。`
                         + 'それまで本人のホームには「運営が組み直し中」と出ています。',
-                    onclick: '_opsGotoRepublish()', label: '🧮 予約を入れて組み直す → 配信',
+                    onclick: '_opsGotoRepublish()', label: '🧮 予約を反映して組み直す → 配信',
                 };
             }
             const opsHero = () => {
@@ -10662,7 +10662,7 @@
                             <div style="font-size:12px;font-weight:900;color:var(--t-body);">空き枠 ${i + 1}</div>
                             <div style="margin-top:3px;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">${esc(a.text || '')}</div>
                         </div>
-                        ${canAsk ? '<button type="button" onclick="openMyResvRequest()" style="flex:none;border:1.5px solid var(--ops-solid);border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:var(--ops);background:var(--card);cursor:pointer;">申請する</button>' : ''}
+                        ${canAsk ? '<button type="button" onclick="openMyResvRequest()" style="flex:none;border:1.5px solid var(--ops-solid);border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:var(--ops);background:var(--card);cursor:pointer;">予約する</button>' : ''}
                     </div>`;
                 }
                 if (a.kind === 'done') {
@@ -18747,7 +18747,7 @@
                 showNotification(`🔒 承認しました。残り ${remaining} 件を承認してから配信へ進みます`);
                 return;
             }
-            await _recomputeAndOfferPublish('承認した予約を入れて組み直しました');
+            await _recomputeAndOfferPublish('承認した予約を反映して組み直しました');
         }
 
         // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
@@ -23030,7 +23030,7 @@
                         ${statChip('未消化凸', plan.unusedAttacks, plan.unusedAttacks > 0 ? '#F59E0B' : '#8A9097')}
                         ${Number(plan.reservationCount) > 0 ? statChip('🔒 予約', plan.reservationCount + '件', '#6C42F0') : ''}
                     </div>
-                    ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を入れて計算しました。予約した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
+                    ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">予約 ${plan.reservationCount}件を反映して計算しました。予約した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
                     ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:var(--bad-deep);line-height:1.55;">⚠ 置けなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
                     ${Array.isArray(plan.outOfScopeReservations) && plan.outOfScopeReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);font-size:11px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🧱 この条件の対象外の人の予約が ${plan.outOfScopeReservations.length}件あります (置けないのではなく、この計算に入れていません)。<br>${plan.outOfScopeReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} B${Number(u.bossNumber)}${u.flex ? ' ⏳隙間' : (/^h\d\d$/.test(String(u.timeSlot || '')) ? ` ${Number(String(u.timeSlot).slice(1))}時` : '')}`).join('<br>')}<br>その人が出られるブロックで組むときに置きます。</div>` : ''}
                 </div>`;
@@ -24049,7 +24049,7 @@
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
             el.style.color = stale ? 'var(--warn-deep)' : 'var(--ok-deep)';
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
-                + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。予約を入れて組み直し、配信し直してください`
+                + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。承認済みの予約を反映して組み直し、配信し直してください`
                     : (stale ? ' — 盤面が動いていないか確認してください' : ''));
         }
 
@@ -25011,7 +25011,7 @@
 🆕 **できるようになったこと**
 ━━━━━━━━━━━━━━
 ✨ **模擬を5属性出すとレーダーチャートが完成!** 自分の属性別の強さ(模擬ふるり値)が五角形で見えます。しかも**ユニレ終了を待たずに今すぐ**見れる(今までは終了翌日まで出せなかった数値です)
-✨ **🔒 凸の予約** — 「この時間にこのボスをこの編成で」を先に申請できます。運営が承認すると予約が決まり、プランを組み直しても動きません。「好きじゃない属性に回された…」は予約で防げます!
+✨ **🔒 凸の予約** — 「この時間にこのボスをこの編成で」を先に予約できます。運営が承認すると予約が決まり、プランを組み直しても動きません。「好きじゃない属性に回された…」は予約で防げます!
 ✨ **1属性に2編成登録OK** — 同属性2凸したい属性特化勢に対応。カードが2枚重なってめくれます
 ✨ **📚人気編成** — みんなの模擬から「その属性の人気キャラ・最高ダメ編成」が見れて、**ワンタップで自分の編成にコピー**できます。編成組むの苦手な人はこれ使って!
 ✨ 当日は**運営から凸プランがホームに配信**されます。自分が「いつ・どのボスに・何B」出せばいいか一目で分かる
