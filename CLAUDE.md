@@ -1272,7 +1272,10 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **🗣 運用の見直し 9b: 運営発の予約** (2026-10-24 ユーザー決定 Q3「希望があればブロックと凸先」Q4「本人に通知」): Discord で伝えられた凸先の希望を運営が本人の代わりに予約にする。
   入口は 📸 模擬の取り込みの保存直後の「🔒 この編成で予約する」(登録した編成・枠で開く) と、🔒 凸の予約カードの「＋ 予約を登録」。シート `#opsResvCreateModal` は 誰 → どの編成 (その人の模擬のうち対応するボスがある属性だけ・行き先は編成の属性で決まる) → どのブロック (出られないブロックは押せない)。
   **作り方は 📌 仮置き (ブロック・`status: 'pinned'`・`pinnedBy`) を置いて、すぐ 🔒 確定 (`_resvTransition` pinned → approved・理由 `ops_registered`)** — 既存の遷移表 (SQL 45/47) のまま・**SQL の変更は無い**。中身は本人の申請と同じ `buildRequestDraft`、置けるかは 📌 と同じ `canPin` (いまの予約を取り直してから)。
-  承認待ち (requested) は使わない — 登録した時点で予約。本人には `_notifyMemberResv`「🔒 運営があなたの予約を登録しました」。活動ログ「🔒 予約を登録 (運営が代理で登録)」。出している算出があれば組み直す。実行テスト `tests/ops-resv-create.mjs`
+  承認待ち (requested) は使わない — 登録した時点で予約。本人には `_notifyMemberResv`「🔒 運営があなたの予約を登録しました」。活動ログ「🔒 予約を登録 (運営が代理で登録)」。出している算出があれば組み直す。
+  ★ Codex 監査 9b: 置けるかは**いまの予約 + いまの盤面 (凸数)** で見る (`supabaseLoadReservations` と `opsStore.load()` を取り直し、`_resv.rows` も取り直した一覧 + 作った行にする)。確定 (RPC) に失敗したら `_resv.rows` を見て、📌 が残っていれば「📌 から 🔒 確定 か 外す」、別の運営が外していたら (released) その旨。
+  **一部しか出られないブロック (partial) は選べない** — ブロックの予約は「その時間帯のどこか」で、ソルバー (`pickInWindow`) は本人が出られる時刻に置けなければ出られない時刻にも置く。運営が ⏰ で登録する時間はブロック丸ごとなので、一部になるのは古い 1 時間刻みの登録だけ (⏰ で丸ごと ON にしてから)。
+  📸 の保存直後は `opsStore.invalidate()` の直後で盤面が無いので、`openOpsResvCreate` は無ければ `opsStore.load()` を待ってから開く。実行テスト `tests/ops-resv-create.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

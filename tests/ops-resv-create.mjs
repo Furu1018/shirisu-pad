@@ -39,7 +39,7 @@ function cut(marker) {
     console.error(`NG: ${marker} の終端を判定できませんでした`); process.exit(2);
 }
 const SRC = [
-    cut('        function openOpsResvCreate('),
+    cut('        async function openOpsResvCreate('),
     cut('        function closeOpsResvCreate('),
     cut('        function _opsResvCreateSet('),
     cut('        function _opsResvCreatePick('),
@@ -54,16 +54,17 @@ function makeEnv(o = {}) {
     const el = (id) => ({ id, style: {}, textContent: '', classList: { add() { }, remove() { } },
         set innerHTML(v) { if (id === 'opsResvCreateBody') bodyHtml = String(v); }, get innerHTML() { return id === 'opsResvCreateBody' ? bodyHtml : ''; } });
     const players = o.players || [
-        { id: 9, name: 'B', attackCount: 0, availableSlots: ['h18', 'h19', 'h20', 'h21'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }, { slot: 2, dmgB: 25, team: ['f', 'g', 'h', 'i', 'j'] }], water: [{ slot: 1, dmgB: 20, team: ['k', 'l', 'm', 'n', 'o'] }], wind: [{ slot: 1, dmgB: 10, team: [] }] } },
+        { id: 9, name: 'B', attackCount: 0, availableSlots: ['h18', 'h19', 'h20', 'h21', 'h22', 'h23'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }, { slot: 2, dmgB: 25, team: ['f', 'g', 'h', 'i', 'j'] }], water: [{ slot: 1, dmgB: 20, team: ['k', 'l', 'm', 'n', 'o'] }], wind: [{ slot: 1, dmgB: 10, team: [] }] } },
         { id: 10, name: 'C', attackCount: 3, availableSlots: [], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 40, team: ['p', 'q', 'r', 's', 't'] }] } },
         { id: 11, name: 'D', attackCount: 0, availableSlots: ['h05'], unavailableThisSeason: true, loadoutsByAttr: {} },
+        { id: 12, name: 'E', attackCount: 0, availableSlots: ['h18'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }] } },   // 夕方の一部 (18 時) だけ
     ];
     const bosses = [{ boss_number: 1, name: 'ボス1', weakness: 'fire', remaining_hp_raw: 10e9 }, { boss_number: 2, name: 'ボス2', weakness: 'water', remaining_hp_raw: 0 }];   // 風圧のボスは無い
     const env = {
         _opsResvCreate: { playerId: null, attr: null, slot: null, blockIdx: null, busy: false },
         _resv: { rows: o.rows || [] },
         _opsLastPlan: null,
-        opsStore: { get: () => ({ season: { id: 44, metadata: {} }, players, bosses }) },
+        opsStore: { get: () => (env._boardNull ? null : { season: { id: 44, metadata: {} }, players, bosses }), load: async () => { env.loads++; env._boardNull = false; return env._loadSnap || { season: { id: 44, metadata: {} }, players, bosses }; } },
         weaknessPtOf: (b) => b.weakness,
         PT_ATTRS, SLOT_JP: { 1: '①', 2: '②' },
         escapeHtml: (x) => String(x),
@@ -77,9 +78,9 @@ function makeEnv(o = {}) {
             supabaseCreateReservation: async (row) => { const r = { id: 500 + created.length + 1, status: row.status, player_id: row.playerId, boss_number: row.bossNumber, loadout_slot: row.loadoutSlot, time_mode: row.block ? 'block' : 'fixed', block_from: row.block?.from ?? null, block_to: row.block?.to ?? null, characters_snapshot: row.characters, pinned_by: row.pinnedBy, player_name: 'B' }; created.push({ ...row }); return r; },
             supabaseLogActivity: (type, detail, opts) => { logs.push({ type, detail, opts }); },
         },
-        _resvTransition: async (id, to, opts) => { transitions.push({ id, to, ...opts }); const r = env._resv.rows.find(x => Number(x.id) === Number(id)); if (r) r.status = to; return env._transitionOk; },
+        _resvTransition: async (id, to, opts) => { transitions.push({ id, to, ...opts }); const r = env._resv.rows.find(x => Number(x.id) === Number(id)); if (r) r.status = env._transitionOk ? to : (env._releasedByOther ? 'released' : r.status); return env._transitionOk; },
         _notifyMemberResv: (row, title, body) => { notices.push({ playerId: row.player_id, title, body }); },
-        created, transitions, notices, logs, toasts: [], alerts: [], recomputed: 0, _confirm: true, _transitionOk: true,
+        created, transitions, notices, logs, toasts: [], alerts: [], recomputed: 0, _confirm: true, _transitionOk: true, _releasedByOther: false, _boardNull: false, _loadSnap: null, loads: 0,
         body: () => bodyHtml,
     };
     const keys = Object.keys(env);
@@ -96,7 +97,7 @@ console.log('🔒 運営発の予約 (9b):\n');
 
 await test('★ 人を選ぶと、その人の模擬 (対応するボスがある属性だけ・ボス順) と 出られるブロック (出られないブロックは押せない) が描ける。今回は難しい人は候補に出ない', async () => {
     const env = makeEnv();
-    env.openOpsResvCreate();
+    await env.openOpsResvCreate();
     assert.ok(env.body().includes('<option value="9"') && env.body().includes('<option value="10"') && !env.body().includes('<option value="11"'), '人の候補 (今回は難しい D を除く)');
     env._opsResvCreateSet('playerId', '9');
     const b = env.body();
@@ -113,7 +114,7 @@ await test('★ 人を選ぶと、その人の模擬 (対応するボスがあ�
 
 await test('★ 登録 = いまの予約で canPin → 📌 (pinned・ブロック・編成のキャラ・pinnedBy) → すぐ 🔒 確定 (ops_registered) → 本人に通知 → 閉じる', async () => {
     const env = makeEnv();
-    env.openOpsResvCreate(9, 'fire', 2);            // 📸 の保存直後から (人・編成が入っている)
+    await env.openOpsResvCreate(9, 'fire', 2);            // 📸 の保存直後から (人・編成が入っている)
     assert.ok(env.body().includes('aria-pressed="true"'), '📸 から開いたときに編成が選ばれていない');
     env._opsResvCreateSet('blockIdx', 5);
     await env.handleOpsResvCreateSubmit();
@@ -126,21 +127,23 @@ await test('★ 登録 = いまの予約で canPin → 📌 (pinned・ブロッ�
     assert.ok(env.notices[0].body.includes('ボス1 21〜23時のどこか 編成②'), '通知の中身: ' + env.notices[0].body);
     assert.ok(env.logs.some(l => l.detail.includes('運営が代理で登録') && l.opts.actorName === 'O'), '活動ログ');
     assert.equal(env.alerts.length, 0);
+    assert.equal(env.loads, 1, '置けるかを見る前に盤面 (凸数) を取り直していない');
+    assert.deepEqual(env._resv.rows.map(r => r.id), [501], '取り直した予約 + 作った行 を _resv.rows にしていない');
 });
 
 await test('★ 置けないとき (3 凸済み) は作らない / キャンセルなら何もしない / 遷移に失敗したら知らせる', async () => {
     const env = makeEnv();
-    env.openOpsResvCreate(10, 'fire', 1); env._opsResvCreateSet('blockIdx', 0);   // C は 3 凸済み (ブロックは出られないが、ここでは canPin を見る)
+    await env.openOpsResvCreate(10, 'fire', 1); env._opsResvCreateSet('blockIdx', 0);   // C は 3 凸済み (ブロックは出られないが、ここでは canPin を見る)
     env._opsResvCreate.blockIdx = 0;   // 出られないブロックは画面では押せないので直接入れる
     await env.handleOpsResvCreateSubmit();
     assert.equal(env.created.length, 0, '3 凸済みの人に予約を作った');
     assert.ok(env.alerts.some(a => a.includes('登録できません')), '理由を知らせていない: ' + JSON.stringify(env.alerts));
     const env2 = makeEnv(); env2._confirm = false;
-    env2.openOpsResvCreate(9, 'fire', 1); env2._opsResvCreateSet('blockIdx', 4);
+    await env2.openOpsResvCreate(9, 'fire', 1); env2._opsResvCreateSet('blockIdx', 4);
     await env2.handleOpsResvCreateSubmit();
     assert.equal(env2.created.length, 0, 'キャンセルしたのに作った');
     const env3 = makeEnv(); env3._transitionOk = false;
-    env3.openOpsResvCreate(9, 'fire', 1); env3._opsResvCreateSet('blockIdx', 4);
+    await env3.openOpsResvCreate(9, 'fire', 1); env3._opsResvCreateSet('blockIdx', 4);
     await env3.handleOpsResvCreateSubmit();
     assert.equal(env3.created.length, 1); assert.equal(env3.notices.length, 0, '確定できていないのに通知した');
     assert.ok(env3.alerts.some(a => a.includes('仮置き (📌) までは置けました')), '確定の失敗を知らせていない');
@@ -148,7 +151,7 @@ await test('★ 置けないとき (3 凸済み) は作らない / キャンセ�
 
 await test('★ 登録中は二重に押せない (busy) / 既にある予約を一覧に出す', async () => {
     const env = makeEnv({ rows: [{ id: 1, player_id: 9, status: 'approved', boss_number: 2, loadout_slot: 1, time_mode: 'block', block_from: 18, block_to: 20 }] });
-    env.openOpsResvCreate(9, 'fire', 1); env._opsResvCreateSet('blockIdx', 4);
+    await env.openOpsResvCreate(9, 'fire', 1); env._opsResvCreateSet('blockIdx', 4);
     assert.ok(env.body().includes('いまの予約・仮置き: ') && env.body().includes('ボス2 18〜20時のどこか 編成①'), '既にある予約が出ていない');
     let release; env.window.supabaseLoadReservations = () => new Promise(r => { release = () => r([]); });
     const p1 = env.handleOpsResvCreateSubmit();
@@ -159,6 +162,28 @@ await test('★ 登録中は二重に押せない (busy) / 既にある予約を
     release(); await Promise.all([p1, p2]);
     assert.equal(env.created.length, 1, '二重に作った');
     assert.equal(env._opsResvCreate.busy, false);
+});
+
+await test('★ Codex 9b: 置けるかは いまの盤面の凸数で (開いたときは 0 凸でも、取り直して 3 凸なら作らない) / 一部しか出られないブロックは押せない / 盤面が無ければ読んでから開く / 📌 が別の運営に外されていたら「📌 までは置けました」と言わない', async () => {
+    const env = makeEnv();
+    env._loadSnap = { season: { id: 44, metadata: {} }, bosses: env.opsStore.get().bosses, players: env.opsStore.get().players.map(p => p.id === 9 ? { ...p, attackCount: 3 } : p) };   // 開いたあとに 3 凸入った
+    await env.openOpsResvCreate(9, 'fire', 1); env._opsResvCreateSet('blockIdx', 4);
+    await env.handleOpsResvCreateSubmit();
+    assert.equal(env.created.length, 0, '古い凸数 (0) で置けると判定した'); assert.ok(env.alerts.some(a => a.includes('登録できません')));
+    // 一部しか出られないブロック (E は 18 時だけ) は押せない
+    const env2 = makeEnv();
+    await env2.openOpsResvCreate(12, 'fire', 1);
+    assert.ok(/class="avail-blk" data-state="partial"[^>]*disabled[^>]*onclick="_opsResvCreateSet\('blockIdx', 4\)"/.test(env2.body()), '一部だけ出られるブロック (夕方) が押せる');
+    assert.ok(env2.body().includes('一部 1/3時間 (不可)') && env2.body().includes('丸ごと ON にしてから'), '一部の案内が無い');
+    // 盤面が無い (📸 の保存直後の invalidate) → 読んでから開く
+    const env3 = makeEnv(); env3._boardNull = true;
+    await env3.openOpsResvCreate(9, 'fire', 1);
+    assert.equal(env3.loads, 1, '盤面が無いときに読み直していない'); assert.ok(env3.body().includes("_opsResvCreateSet('lo', 'fire|1')"), '盤面を読んだあとに開いていない'); assert.equal(env3.toasts.length, 0);
+    // 確定に失敗 + 📌 は別の運営が外していた (released)
+    const env4 = makeEnv(); env4._transitionOk = false; env4._releasedByOther = true;
+    await env4.openOpsResvCreate(9, 'fire', 1); env4._opsResvCreateSet('blockIdx', 4);
+    await env4.handleOpsResvCreateSubmit();
+    assert.ok(env4.alerts.some(a => a.includes('別の運営が仮置きを外したか')) && !env4.alerts.some(a => a.includes('📌 までは置けました')), '外された 📌 を「残っている」と案内した: ' + JSON.stringify(env4.alerts));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

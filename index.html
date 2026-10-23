@@ -22868,8 +22868,9 @@
         //   承認待ち (requested) は使わない — 運営が登録した時点で予約。本人には「🔒 運営があなたの予約を登録しました」(Q4・いまの確認の通知と同じ経路)
         // 入口は 📸 模擬の取り込みの保存直後の「🔒 この編成で予約する」と、🔒 凸の予約カードの「＋ 予約を登録」
         const _opsResvCreate = { playerId: null, attr: null, slot: null, blockIdx: null, busy: false };
-        function openOpsResvCreate(playerId = null, attr = null, slot = null) {
-            const snap = opsStore.get();
+        async function openOpsResvCreate(playerId = null, attr = null, slot = null) {
+            let snap = opsStore.get();
+            if (!snap) { try { snap = await opsStore.load(); } catch { snap = null; } }   // 📸 の保存直後は invalidate 直後で盤面が無い — 読み終わるのを待つ (Codex 9b E)
             if (!snap?.season?.id) { showNotification('盤面を読み込めていません (↻ で取り直してください)'); return; }
             _opsResvCreate.playerId = playerId != null ? Number(playerId) : null;
             _opsResvCreate.attr = attr || null;
@@ -22932,10 +22933,12 @@
             const blkHtml = !p ? '' : `<div class="avail-blocks">${states.map(st => {
                 const b = blocks[st.idx];
                 const on = blk && blk.from === b.from && blk.to === b.to;
-                const off = st.state === 'off';
-                return `<button type="button" class="avail-blk" data-state="${off ? 'off' : 'on'}" aria-pressed="${on}" ${busy || off ? 'disabled' : ''} onclick="_opsResvCreateSet('blockIdx', ${st.idx})" title="${off ? '出られる時間に入っていません (⏰ で先に登録)' : ''}" style="${on ? 'outline:2px solid var(--ops-solid);outline-offset:1px;' : ''}">`
-                    + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(b.label.slice(b.name.length).trim())}</span><span class="st">${off ? '—' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間` : '出られる')}</span></button>`;
-            }).join('')}</div>${states.every(st => st.state === 'off') ? '<p style="margin:8px 0 0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">参加可能時間が登録されていません。先に 👥 メンバー状況の ⏰ で登録してください。</p>' : ''}`;
+                // ★ 丸ごと出られるブロック (on) だけ選べる。一部 (partial) は選べない — ブロックの予約は「その時間帯のどこか」で、ソルバー (pickInWindow) は本人が出られる時刻に置けなければ出られない時刻にも置く (Codex 9b C)。
+                //   運営が ⏰ で登録する時間はブロック丸ごとなので、一部になるのは古い 1 時間刻みの登録だけ → ⏰ で丸ごと ON にしてから
+                const off = st.state !== 'on';
+                return `<button type="button" class="avail-blk" data-state="${escapeHtml(st.state)}" aria-pressed="${on}" ${busy || off ? 'disabled' : ''} onclick="_opsResvCreateSet('blockIdx', ${st.idx})" title="${st.state === 'off' ? '出られる時間に入っていません (⏰ で先に登録)' : st.state === 'partial' ? '一部しか出られないブロックには登録できません (⏰ でブロック丸ごと ON にしてから)' : ''}" style="${on ? 'outline:2px solid var(--ops-solid);outline-offset:1px;' : ''}">`
+                    + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(b.label.slice(b.name.length).trim())}</span><span class="st">${st.state === 'off' ? '—' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間 (不可)` : '出られる')}</span></button>`;
+            }).join('')}</div>${states.every(st => st.state === 'off') ? '<p style="margin:8px 0 0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">参加可能時間が登録されていません。先に 👥 メンバー状況の ⏰ で登録してください。</p>' : (states.some(st => st.state === 'partial') ? '<p style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">「一部」は古い 1 時間刻みの登録。登録するなら ⏰ でそのブロックを丸ごと ON にしてから。</p>' : '')}`;
             // いまの予約 (生きているもの + 📌)
             const mine = (p && rv) ? (_resv.rows || []).filter(r => String(r.player_id) === String(p.id) && (rv.isActive(r) || rv.isPin(r))) : [];
             const bossName = new Map(((opsStore.get() || {}).bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
@@ -22968,18 +22971,27 @@
             st.busy = true; _opsResvCreateRender();
             try {
                 const seasonId = snap.season.id;
-                // ★ 開いた時点ではなく**いま**の予約で置けるかを見る (別の端末の予約・凸報告が入っていると DB で弾かれる = 理由が伝わらない)
-                let rows = null;
-                try { rows = await window.supabaseLoadReservations(seasonId); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
+                // ★ 開いた時点ではなく**いま**の予約と盤面 (凸数) で置けるかを見る (別の端末の予約・凸報告が入っていると DB で弾かれる = 理由が伝わらない。凸数は盤面の写しなので取り直す: Codex 9b B)
+                let rows = null, snap2 = null;
+                try { [rows, snap2] = await Promise.all([window.supabaseLoadReservations(seasonId), opsStore.load()]); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
                 if (!Array.isArray(rows)) { alert('凸の予約 (supabase/39) が未適用のため登録できません'); return; }
-                const chk = rv.canPin(rows, { playerId: p.id, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: Number(p.attackCount) || 0, characters: d.draft.characters });
+                const pNow = (snap2?.players || []).find(x => Number(x.id) === Number(p.id));
+                if (!pNow) { alert('❌ この人が盤面に見つかりません (↻ で取り直してください)'); return; }
+                const chk = rv.canPin(rows, { playerId: p.id, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: Number(pNow.attackCount) || 0, characters: d.draft.characters });
                 if (!chk.ok) { alert(`❌ 登録できません: ${chk.label}`); return; }
                 // 📌 仮置き (ブロック) を置いて、すぐ 🔒 確定 (既存の遷移 pinned → approved・理由 ops_registered)
                 const created = await window.supabaseCreateReservation({ seasonId, playerId: p.id, ...d.draft, status: 'pinned', pinnedBy: me?.name || '運営', requestedBy: me?.name || null });
                 if (!created?.id) throw new Error('予約の行を作れませんでした');
-                _resv.rows = (Array.isArray(_resv.rows) ? _resv.rows : []).concat([created]);   // _resvTransition は _resv.rows から行を探す
+                _resv.rows = rows.concat([created]);   // 取り直した予約 + いま作った行 (_resvTransition は _resv.rows から行を探し canApprove を見る — 古い一覧のままにしない: Codex 9b A)
                 const ok = await _resvTransition(Number(created.id), 'approved', { expectFrom: 'pinned', reason: 'ops_registered', done: `🔒 ${p.name} さんの予約を登録しました (本人に通知)` });
-                if (!ok) { alert('⚠️ 仮置き (📌) までは置けましたが、予約にできませんでした。「凸の予約」カードの 📌 から 🔒 確定 を押すか、外してください'); return; }
+                if (!ok) {
+                    // _resvTransition は失敗しても一覧を取り直している。📌 が残っていればそこから、別の運営が外していたら (released) その旨 (Codex 9b A)
+                    const now = (_resv.rows || []).find(r => Number(r.id) === Number(created.id));
+                    alert(now && now.status === 'pinned'
+                        ? '⚠️ 仮置き (📌) までは置けましたが、予約にできませんでした。「凸の予約」カードの 📌 から 🔒 確定 を押すか、外してください'
+                        : '⚠️ 予約にできませんでした。その間に別の運営が仮置きを外したか、状況が変わっています。「凸の予約」カードを確かめてください');
+                    return;
+                }
                 const after = (_resv.rows || []).find(r => Number(r.id) === Number(created.id)) || created;
                 const bossName = new Map((snap.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
                 const what = rv.describe(after, bossName);
