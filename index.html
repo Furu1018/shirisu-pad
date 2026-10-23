@@ -12676,7 +12676,7 @@
             // ★ 今期の模擬が0件でも、過去シーズンの凸履歴があれば人気PTは出せる
             //   (シーズン初日は模擬が空なので、模擬だけで早期 return すると毎月頭に消える — Codex指摘)
             if (rows.length === 0 && _teamGroupsFor(attrKey).list.length === 0) {
-                return `<p style="margin:0;font-size:11.5px;color:var(--t-muted);">${a.name}PT の編成つき提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
+                return `<p style="margin:0;font-size:11.5px;color:var(--t-muted);">${a.name}PT の編成つき提出はまだありません。模擬に編成を付けて提出すると、ここに集計されます。</p>`;
             }
             const st = _teamStatsFor(rows, attrKey);
             // 人気PT: 同じ5人 (順不同) を使っている提出をまとめて使用率順に表示
@@ -13530,7 +13530,7 @@
                 else if (!base.slv) hintEl.textContent = `基準者(${fururiBasePlayerName})の SLv が未設定のため計算できません。`;
                 else if (base.missing.length >= 5) hintEl.textContent = `基準者(${fururiBasePlayerName})の今期模擬が未提出です。提出されると全員のレーダーが使えるようになります。`;
                 else if (base.missing.length > 0) hintEl.textContent = `⚠️ 基準者の ${base.missing.join('・')}PT が未提出のため、その軸は0表示。1.00 = ふるり(同SLv換算)と同等。`;
-                else if (!values.some(v => v > 0)) hintEl.textContent = '模擬戦データを提出するとグラフに反映されます。5属性提出すれば形が完成します。';
+                else if (!values.some(v => v > 0)) hintEl.textContent = '模擬を提出するとグラフに反映されます。5属性提出すれば形が完成します。';
                 else hintEl.textContent = '1.00 = ふるり(同SLv換算)と同等。今期の模擬同士の比較 — 5属性提出で形が完成します。';
             }
 
@@ -14774,7 +14774,7 @@
                         // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。tick 開始時の id で描くと、
                         //   切り替え後のホームに前の人の「あなた」と戦闘ボタンが出る。描画の失敗で tick を止めない
                         if (homePatched && document.getElementById('tab-mypage')?.classList.contains('active')
-                            && getCurrentIdentity()?.id === id.id) {
+                            && getCurrentIdentity()?.id === id.id && !_homeSimple()) {   // シンプルな画面では隠れている (運営端末がメンバーの見え方のときも: Codex 再監査)
                             renderMyNextAttackBosses(id).catch(() => { /* 次の周期で */ });
                             renderMyBossStrip(id); renderMyBossBoard(id);
                         }
@@ -18805,6 +18805,12 @@
             // 🧱 承認後の組み直し (_recomputeOptsAfterApproval) と同じ条件で解く (Codex 全体監査 C 2026-10-23)。以前は常に 1 日ぶん・全員で解いていたので、
             //   影響の数字が承認後の盤と食い違い、ブロックの対象外の人の予約が「置ける」と出ることがあった。対象外の人の予約は影響 0 で承認できる (そのブロックで組むときに置く)
             const blk = recomputeOpts && recomputeOpts.who === 'block' ? recomputeOpts.block : null;
+            // 前回の配信も算出と同じに渡す (尊重する設定のとき・いま組むブロックの範囲だけ)。取れなければ尊重なしで解く (算出と同じ倒し方: Codex 再監査)
+            let previousPlan = null;
+            if (_opsPlanSticky && typeof window.supabaseGetPublishedPlan === 'function') {
+                try { const pub = await window.supabaseGetPublishedPlan(); if (pub && Number(pub.season_id) === Number(snap.season?.id)) previousPlan = _scopePreviousPlan(pub.plan || null, blk); }
+                catch (e) { console.warn('[reservation] 影響: 配信中プランの取得skip (尊重なしで解く):', e?.message || e); }
+            }
             // 実際のソルバー条件と同じ集合。★ ただし**同じカードの 📌 (運営の下書き) は外す** (Codex指摘 2026-09-11) —
             //   本人が同じカードを申請してきたら、承認で 📌 は superseded になる。外さずに解くと候補と 📌 が同じ編成を
             //   奪い合って「置けない」になり、📌 を手で外すまで承認できない
@@ -18814,7 +18820,8 @@
                 season: snap.season, bosses: snap.bosses, players: _playersWithBlockCaps(snap.players, snap.season),
                 excludeTimeUnknown: true,   // 画面の算出と同じ (段階 2b)
                 secondB5Lv4Only: true,      // 画面の算出と同じ (段階 5)
-                currentSlot: _opsPlanStartSlot({ blockStartSlot: blk ? _hourKey(blk.from) : null }, _planNowSlot(snap.season)), timeAware: true,
+                currentSlot: _opsPlanStartSlot({ blockStartSlot: blk ? _hourKey(blk.from) : null }, _opsPlanStartMode === 'day' ? 'h05' : _planNowSlot(snap.season)), timeAware: true,   // 起点も算出と同じ
+                previousPlan,
                 onlyAvailableNow: !!blk, availableAtSlot: getCurrentSlotJST(),
                 availableAtSlots: blk ? blk.slots : undefined, availableAtLabel: blk ? blk.label : undefined,
                 timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
@@ -22120,6 +22127,14 @@
             });
         }
 
+        // 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23): 前回の配信 (1 日ぶんの JSON) のうち、いま組むブロックの範囲の凸だけを尊重する。
+        //   前回の配信が別のブロックのぶんなら尊重しない (null) — その先の凸はまだ約束していない予想で、尊重すると今のブロックに引っ張られる。算出と承認の影響の両方がこれを通す
+        function _scopePreviousPlan(previousPlan, blk) {
+            if (!previousPlan || !blk || !window.raidBlocksDomain) return previousPlan;
+            const ps = previousPlan.blockScope;
+            const same = !ps || (Number(ps.from) === Number(blk.from) && Number(ps.to) === Number(blk.to));
+            return same ? window.raidBlocksDomain.scopePlan(previousPlan, blk) : null;
+        }
         function computeOptimalPlan(options = {}, snapshot = null) {
             const src = snapshot || opsStore.get();
             if (!src) return null;
@@ -22305,12 +22320,8 @@
             const onlyNow = who !== 'all';
             // 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23): 配信の JSON は 1 日ぶんで、いま組むブロックより後ろの凸 (まだ約束していない予想) も入っている。
             //   そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。尊重するのは **いま組むブロックの範囲の凸だけ**、前回の配信が別のブロックのぶんなら尊重しない
-            if (previousPlan && blk && window.raidBlocksDomain) {
-                const ps = previousPlan.blockScope;
-                const same = !ps || (Number(ps.from) === Number(blk.from) && Number(ps.to) === Number(blk.to));
-                previousPlan = same ? window.raidBlocksDomain.scopePlan(previousPlan, blk) : null;
-                if (!previousPlan) { basisPlanId = null; basisPub = null; }   // 基準にしていないので、配信時の照合も「尊重していない」として扱う
-            }
+            //   ★ 基準の照合 (basisPlanId / stickyOn) は尊重しなくても残す — 算出中に別の運営が**同じブロック**を配信したら止めるため (Codex 再監査)
+            previousPlan = _scopePreviousPlan(previousPlan, blk);
             options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null, blockStartSlot: blk ? _hourKey(blk.from) : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
@@ -22331,7 +22342,7 @@
             //   B が P0 基準のまま P2 を配信すると、B は P1 の約束を知らないまま壊してしまう。
             //   配信直前にこの ID と最新を照合して、ずれていたら組み直させる
             plan.basisPlanId = basisPlanId;
-            plan.stickyOn = !!(_opsPlanSticky && previousPlan);   // 別のブロックの配信は尊重していない (上) — そのときは配信時の基準の照合もしない
+            plan.stickyOn = !!_opsPlanSticky;   // 配信時の基準の照合は、前回を尊重しなかった (別のブロック) ときも行う
             // ★ 「この条件で組んだ」を焼き込む (パズル盤 ①・2026-09-11)。配信されたプランにも残るので、
             //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
@@ -24687,8 +24698,8 @@
         async function handleOpsAuditPushRemind() {
             const targets = _opsAuditRows.filter(r => r.matched && r.missing > 0 && r.playerId != null);
             if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
-            const title = '📝 凸報告のお願い';
-            const bodyText = 'ゲーム内の凸がPADに未提出のようです。ホーム → ⚔️ 凸報告 から提出お願いします🙏';
+            const title = '📷 凸の結果のお願い';
+            const bodyText = '凸の結果がまだ届いていないようです。凸したら結果のスクショを Discord に貼ってください🙏 (運営が PAD に登録します)';
             const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.playerId, name: r.name })) }]);
             if (!ok) return;
             try {

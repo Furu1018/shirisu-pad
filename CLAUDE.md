@@ -48,7 +48,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   ホームの「戦闘」カード (`#myBattleCard`)・ボス状況カード・状態ボタン・運営タブ上の状態の数を隠し、ヒーローの 🎯 あなたの3凸・配信カードのタブ・「この凸を引き受ける」・📣 お願い (運営の 2 か所と本人の返事) を出さない。
   自分の凸は 📅 きょうの凸 (時刻・Lv・PT・編成・5 キャラ)、配信カードは 🧱 盤 + ✅ 確認しました (1 日ぶんの配信は「きょうの凸に出ています」の 1 行)。予約のカードは「🔒 予約」。
   ヒーローの当日の導線は「📅 きょうの凸を見る」。見せ方が切り替わったら (シーズンが読めて full になった等) `_rerenderHomeForSimple` が描き終わったホームを描き直す。
-  従来の画面は ✏️ シーズン編集のスイッチ (member_input=full) で戻る (消さずに隠している)
+  従来の画面は ✏️ シーズン編集のスイッチ (member_input=full) で戻る (消さずに隠している)。切り替えた直後は `ensureActiveSeasonLoaded → _applyMemberLite` で即反映。
+  ★ **隠したものは描画も通信もしない** (全体監査 A 2026-10-23): ホームの描画 (`renderMyAttacks` / `renderMyFinishCoord` / `renderMyNextAttackBosses` / ボス帯・ボス状況カード) と
+  10 秒の調整中一覧 (`_refreshCoordOnce`)・30 秒のボス HP の取り直しは、シンプルなメンバーのホームでは呼ばない (運営・従来の画面は従来どおり。撃破の検知など運営端末の仕事は `_opsSeasonLoaded` のまま)。
+  👥 メンバー状況の「代理凸」ボタンも出さない (📥 結果の取り込みで登録)。誤って登録した凸は 📥 の「登録された凸」の ✏️ 編集・削除 (凸履歴・編集のモーダル) で直す。
+  切り替え前に出した 📣 お願い (pinned + asked_at) は、シンプルな画面でも本人の「🔒 予約」に返事の箱を出す (運営は新しく出せないので、出るのは古いものだけ。消すと仮置きが残り続ける: 全体監査 B)。
+  📣 Discord 用の文面 (旧 告知テンプレ・`_ANNOUNCE_MAIN` / `_ANNOUNCE_LOGIC`) は新しい流れで書き直して 👥 メンバーのタブに置いた。画像版は `docs/最適凸プランの説明_2026-10-23_1.png` / `_2.png`
+  (元 `docs/最適凸プランの説明_src_2026-10-23/build.mjs` → Chrome のヘッドレスで PNG)。流れを変えたら両方を直す。
+- **全体監査 2026-10-23** (Codex 3 本: A シンプル化 / B バグ / C ソルバー・各 210〜260k トークン): 依頼文は `docs/codex-audit-prompts-2026-10-23.md`、結果と対応は `docs/AUDIT-2026-10-23.md`。
 
 ## アーキテクチャ
 
@@ -112,6 +119,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   (最小盤面では再現できないので、回帰検出は `tests/bench-stability.mjs` の ① が担う)。
   結果は `plan.stability` に出る (applied / reason / creditedGapB / thresholdB)。
   画面は **配信中のプラン**を基準に渡す (手元の直前の算出ではない — 約束は配信したもの)。
+  ★ **🧱 ブロックで組むときは、前回の配信のうち いま組むブロックの範囲の凸だけを渡す** (`raidBlocksDomain.scopePlan(previousPlan, blk)`・全体監査 C 2026-10-23)。
+  配信の JSON は 1 日ぶんで、ブロックより後ろの凸 (まだ約束していない予想) も入っている — そのまま渡すと sticky がその予想を「いま」に置き直して今のブロックを引っ張る。
+  前回の配信が**別のブロック**のぶんなら尊重しない (`_scopePreviousPlan` が null・焼き込みは prev='fresh')。★ 配信時の基準の照合 (basisPlanId / stickyOn) は尊重しなくても残す —
+  算出中に別の運営が**同じブロック**を配信したら止めるため (Codex 再監査)。承認の影響 (`_reservationImpact`) も同じ絞り方で前回の配信を渡し、起点モード ('day' = h05) も算出と同じにする。
+  ★ **承認の影響 (`_reservationImpact`) は承認後の組み直し (`_recomputeOptsAfterApproval`) と同じ条件** (ブロックの人だけ・起点はブロックの頭・`availableAtSlot` は壁時計) で解く。
+  その条件 (`recomputeOpts`) は `handleReservationApprove` の**最初の await より前**に写し、影響・`_recomputeOnly`・`_recomputeAndOfferPublish` に渡す (待っている間に運営が条件を切り替えても承認時の条件で)。
+  対象外の人 (そのブロックに出られない人) の予約は影響 0 で承認でき、その人のブロックで組むときに置く。
+  ★ ブロックで絞ると「踏破できないレベル」(吸収モード) に落ちやすいが、**与ダメ・残り凸は撃破狙いのままと ±0.1% で変わらない** (`tests/bench-blockflow/frontier-kill.mjs`・実験用の入力 `frontierKill` は渡さなければ従来どおり)。直さない。
   運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
 - **凸の予約 (L2・2026-09-07 / 2026-09-08 改訂)** — `39_plan_reservations.sql` / `40_attack_with_reservation_rpc.sql` /
   `42_reservations_level_optional.sql`。純ロジックは `js/domain/reservations.js`。
@@ -1207,7 +1222,8 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ボス 5 の弱点属性に 2 編成ある人の**編成② (slot 2 以上) は Lv4 (HP 無限) だけで使う** (`lv4Only` の印 → `listCandidatesFor` と前回どおりの置き直しで外す。Lv4 の `assignLv4` は使う)。
   1 編成しか無い人・ボス 5 以外の属性は制限しない。**予約 (約束) は手当てより強い** (Lv1〜3 の時刻に編成②を予約したら置く — 凸数の上限と同じ決めごと・Codex の指摘 G は採らなかった)。**渡さなければ出力は不変** (指紋 120 盤面)。画面は算出と承認の影響の 2 か所で `secondB5Lv4Only: true` (段階 2b の `excludeTimeUnknown` の隣)。
   理由 (ベンチ `tests/bench-blockflow/boss5-two-teams.mjs`・40 通り): 2 編成を Lv1〜3 でも使うと ボス 5 だけ先に倒れて Lv4 が開かず凸が残る (×1 で 残り 1.0 → 5.6 凸)。
-  手当てで 3.5 凸に (ベンチは模擬の無い人に 1 編成目まで足しているので悪く出る。本番は 5 属性の模擬が前提で 2 編成目だけが増える)。Lv4 が開く強さ (×1.3) では 残り 14 → 1 前後・与ダメ +15% 前後のまま。
+  手当てで 3.5 凸に (ベンチは模擬の無い人に 1 編成目まで足しているので悪く出る。本番は 5 属性の模擬が前提で 2 編成目だけが増える)。
+  ★ 「2 編成ある」は**正規化と dmg > 0 の絞り込みのあと**の本数で数える (編成① が dmg 0 の壊れた行だと、唯一の有効な編成② まで Lv4 だけになる: 全体監査 C)。Lv4 が開く強さ (×1.3) では 残り 14 → 1 前後・与ダメ +15% 前後のまま。
   「18 時以降に出られる人」は `mockIntakeDomain.b5SecondOf` が唯一 (h18〜翌 h04 に 1 時間でもある人)。📸 模擬の取り込みの「届いていない人」(5 属性そろっていても 2 編成目が足りなければ入る) と
   👥 メンバー状況 (前日の列「B5×2」/「B5 1/2」) に出す。Discord で「夕方以降に出られる人はボス 5 の模擬を 2 編成」と周知するのは運営。
   ★ 📸 模擬の取り込みは**保存先 (編成① / ②) を選べる** (`#myDmgPreviewSlot`・既定は `mockIntakeDomain.defaultSlot`: 同じ編成 (3 人以上重なる) → その枠 / ①が空き → 1 / ②が空き → 2 / 両方 → ダメージの低いほう)。常に編成①だと 2 編成目が 1 つ目を上書きしていた (Codex指摘 2c264a5)。本人の提出は従来どおり編成①

@@ -5702,6 +5702,8 @@ console.log('\nreservationsDomain (凸の予約):');
         // ホームの描画: 戦闘カード・状態ボタン・ボス状況のための描画はシンプルな画面では呼ばない (きょうの凸・配信・予約・通知は呼ぶ)
         assert.ok(/renderMyNotificationsInbox\(id\);\s*\n\s*if \(!_homeSimple\(\)\) \{[^}]*renderMyAttacks\(id\);[^}]*renderMyFinishCoord\(id\);[^}]*renderMyNextAttackBosses\(id\);[^}]*renderMyBossStrip\(id\); renderMyBossBoard\(id\);\s*\n\s*\}/.test(html), '隠した戦闘カードのために描画・通信している');
         assert.ok(html.includes("if (typeof renderMyNextAttackBosses === 'function' && !_homeSimple()) {"), '調整中の取り直しで隠したボス帯を描き直している');
+        assert.ok(/&& getCurrentIdentity\(\)\?\.id === id\.id && !_homeSimple\(\)\) \{/.test(html), '30 秒のボス HP の取り直しで隠したボス帯を描き直している (運営端末がメンバーの見え方のとき)');
+        assert.ok(!/const title = '📝 凸報告のお願い';/.test(html), '提出漏れチェックの催促が凸報告を促している');
         // 👥 メンバー状況の「代理凸」はシンプルな画面では出さない (📥 結果の取り込みで登録する)
         assert.ok(html.includes('(isDay && r.atkCount < dom.MAX_ATTACKS && !_homeSimple() ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy('), '代理凸のボタンをシンプルな画面でも出している');
         // 誤って登録した凸を直す・消す入口 (凸履歴・編集のモーダル) が 📥 結果の取り込みにある
@@ -7521,7 +7523,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     });
     test('L1 配線: 安定化 OFF で組んだプランは基準の照合をしない', () => {
         // OFF は「前回を尊重しない」と決めて算出したもの。照合すると出せなくなるだけ
-        assert.ok(/plan\.stickyOn = !!\(_opsPlanSticky && previousPlan\);/.test(html));
+        assert.ok(/plan\.stickyOn = !!_opsPlanSticky;/.test(html));
         assert.ok(/_opsLastPlan\?\.stickyOn &&/.test(html), 'OFF でも照合してしまう');
         assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations: [^}]*\}, snapshot\);/.test(html));
         // 取得に失敗しても算出は続ける (安定化は「あれば嬉しい」もので、止める理由にならない)
@@ -7667,7 +7669,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.equal(clocked(season), 'h05', '引数なし (Date.now = 練習の時計も通る経路) で前日を判定できていない');
         // 配線: 承認の影響と算出の両方がこれを通す。ソルバーに時計を直に渡す箇所を残さない
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/currentSlot: _opsPlanStartSlot\(\{ blockStartSlot: blk \? _hourKey\(blk\.from\) : null \}, _planNowSlot\(snap\.season\)\), timeAware: true/.test(im), '承認の影響が時計を直に渡している (🧱 ブロックの頭より前にも置かない)');
+        assert.ok(/currentSlot: _opsPlanStartSlot\(\{ blockStartSlot: blk \? _hourKey\(blk\.from\) : null \}, _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(snap\.season\)\), timeAware: true/.test(im), '承認の影響が時計を直に渡している (🧱 ブロックの頭より前にも置かない・起点モードも算出と同じ)');
         // 🧱 承認の影響は承認後の組み直しと同じ対象で解く (ブロックで運用中はそのブロックの人だけ・それ以外は全員: Codex 全体監査 C 2026-10-23)
         assert.ok(/onlyAvailableNow: !!blk, availableAtSlot: getCurrentSlotJST\(\),\s*\n\s*availableAtSlots: blk \? blk\.slots : undefined, availableAtLabel: blk \? blk\.label : undefined,/.test(im), '承認の影響を 1 日ぶん・全員で解いている (組み直しの盤と食い違う)');
         assert.ok(/const blk = recomputeOpts && recomputeOpts\.who === 'block' \? recomputeOpts\.block : null;/.test(im), '承認時の条件 (recomputeOpts) からブロックを取っていない');
@@ -11459,7 +11461,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/\(_opsSeasonLoaded \|\| \(seasonStore\.get\(\)\?\.season && !_homeSimple\(\)\)\)/.test(poll), 'ホームだけの端末がボスHPを取り直していない (シンプルな画面は除く)');
         assert.ok(/homePatched && document\.getElementById\('tab-mypage'\)/.test(poll), 'ホームのボス状況を描き直していない');
         // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。async の描画は catch する
-        assert.ok(/contains\('active'\)\s*\n\s*&& getCurrentIdentity\(\)\?\.id === id\.id\) \{\s*\n\s*renderMyNextAttackBosses\(id\)\.catch\(/.test(poll), '本人の切り替えを見ずに前の人のホームを描く / 描画の失敗を catch していない');
+        assert.ok(/contains\('active'\)\s*\n\s*&& getCurrentIdentity\(\)\?\.id === id\.id && !_homeSimple\(\)\) \{[^\n]*\n\s*renderMyNextAttackBosses\(id\)\.catch\(/.test(poll), '本人の切り替えを見ずに前の人のホームを描く / 描画の失敗を catch していない / シンプルな画面で隠したボス帯を描く');
         // ★ 描く側 (renderMyNextAttackBosses) も各 await の直後に本人を見る。失敗は中で受ける (Codex指摘 2026-09-11)
         const nab = html.match(/async function renderMyNextAttackBosses\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ctx = await ensureActiveSeasonLoaded\(\);\s*\n\s*if \(getCurrentIdentity\(\)\?\.id !== identity\.id\) return;/.test(nab), '待っている間の名乗り直しを見ていない');
@@ -12777,14 +12779,20 @@ console.log('\ngrowthDomain:');
             { memberId: 1, memberName: 'あ', dmgB: 20, hourIdx: 13, loadoutSlot: 1 }, { memberId: 2, memberName: 'い', dmgB: 15, hourIdx: 14, flex: true, loadoutSlot: 1 }] }] }] }, { fromIdx: 13, toIdx: 15 })[0];
         assert.deepEqual([flexRow.killed, flexRow.killHourIdx], [true, null], '⏳ の凸の仮の時刻を撃破の時刻にした');
     });
-    test('★ 配線: 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23) — 尊重するのは いま組むブロックの範囲の凸だけ / 別のブロックの配信は尊重しない (基準の照合もしない・焼き込みは ゼロから)', () => {
+    test('★ 配線: 🧱 前回どおり × ブロック (Codex 全体監査 C 2026-10-23) — 尊重するのは いま組むブロックの範囲の凸だけ / 別のブロックの配信は尊重しない (焼き込みは ゼロから・基準の照合は残す)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn.length > 1000, 'computeAndRenderOptimalPlan が無い');
-        const i0 = fn.indexOf('const blk = who === '), i1 = fn.indexOf('if (previousPlan && blk && window.raidBlocksDomain) {'), i2 = fn.indexOf('const plan = computeOptimalPlan({ ...options, previousPlan,');
+        const i0 = fn.indexOf('const blk = who === '), i1 = fn.indexOf('previousPlan = _scopePreviousPlan(previousPlan, blk);'), i2 = fn.indexOf('const plan = computeOptimalPlan({ ...options, previousPlan,');
         assert.ok(i0 >= 0 && i1 > i0 && i2 > i1, '前回の配信をブロックで絞っていない (絞る前に渡している)');
-        assert.ok(/const same = !ps \|\| \(Number\(ps\.from\) === Number\(blk\.from\) && Number\(ps\.to\) === Number\(blk\.to\)\);\s*\n\s*previousPlan = same \? window\.raidBlocksDomain\.scopePlan\(previousPlan, blk\) : null;/.test(fn), '同じブロックの配信だけを範囲で絞って尊重していない');
-        assert.ok(/if \(!previousPlan\) \{ basisPlanId = null; basisPub = null; \}/.test(fn), '尊重しなかったのに配信時の基準の照合をする');
+        assert.ok(/previousPlan = _scopePreviousPlan\(previousPlan, blk\);/.test(fn), '前回の配信をブロックで絞っていない');
+        const sc = html.match(/function _scopePreviousPlan\(previousPlan, blk\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const same = !ps \|\| \(Number\(ps\.from\) === Number\(blk\.from\) && Number\(ps\.to\) === Number\(blk\.to\)\);\s*\n\s*return same \? window\.raidBlocksDomain\.scopePlan\(previousPlan, blk\) : null;/.test(sc), '同じブロックの配信だけを範囲で絞って尊重していない');
+        // ★ 基準の照合は尊重しなくても残す (算出中に別の運営が同じブロックを配信したら止める: Codex 再監査)
+        assert.ok(!/if \(!previousPlan\) \{ basisPlanId = null/.test(fn) && /plan\.stickyOn = !!_opsPlanSticky;/.test(fn), '尊重しなかったときに配信時の基準の照合を外している');
+        // 承認の影響も同じ絞り方で前回の配信を渡す
+        const im2 = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/previousPlan = _scopePreviousPlan\(pub\.plan \|\| null, blk\);/.test(im2) && /\n\s*previousPlan,\n/.test(im2), '承認の影響に前回の配信を渡していない');
         assert.ok(/prev: \(_opsPlanSticky && previousPlan\) \? 'keep' : 'fresh',/.test(fn), '尊重しなかったのに「前回を尊重」と焼き込む');
     });
     test('★ 配線: 🧱 段階 6 ブロック盤 — 最適凸プランに「🧱 盤」(時間割と同じ置き方) / 🧱 組むの頭に手順の帯 / メンバーの配信カードに「🧱 盤」タブ', () => {
