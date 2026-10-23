@@ -1051,6 +1051,11 @@
         body.member-lite #myAttackAddBtn, body.member-lite #myAttackListWrap .blabla-pill, body.member-lite [data-member-report] { display: none !important; }
         /* 📘 登録された模擬は lite のときだけ (JS の描画が display='' にしたあと full / 運営モードへ切り替わっても CSS が消す — Codex指摘 2026-10-22) */
         body:not(.member-lite) #myMocksCard { display: none !important; }
+        /* 🧱 シンプルな画面 (2026-10-23 ユーザー決定「運営の画面にも『戦闘に入る』は要らない」「不要なものは画面に置かない」): member_input=full (従来の画面) でなければ
+           運営もメンバーも ホームの「戦闘」カード (戦闘に入る・ボスの帯・本日の凸履歴・凸報告)・ボス状況カード・状態ボタン (オンライン/模擬中/戦闘中) を出さない。
+           運営タブ上の 状態の数も同じ (メンバーが状態を押さなくなったので常に 0)。body.home-simple は _applyMemberLite が付ける (消さずに隠す) */
+        body.home-simple #myBattleCard, body.home-simple #myBossBoardCard, body.home-simple #mypageStatusSwitcher, body.home-simple #mypageStatusHint,
+        body.home-simple #mypageStatusTiles, body.home-simple #opsOverviewChips { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(var(--ink-rgb), 0.14)}
@@ -4200,8 +4205,8 @@
             <!-- 📌 次にやること (Stage2 ホーム化: 時期依存の主行動を1件だけ提示。詳細は renderMyNextAction) -->
             <div class="dc-card" data-span="6" id="myNextActionCard" style="display:none;border-left:4px solid var(--ops-solid);"></div>
 
-            <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
-            <div class="dc-card" data-span="6">
+            <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中)。🧱 シンプルな画面では出さない (body.home-simple) -->
+            <div class="dc-card" data-span="6" id="myBattleCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">戦闘</div>
                     <div id="mypageBattleLive" style="display:none;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--attr-fire);">
@@ -4339,7 +4344,7 @@
             <!-- 🔒 引き受けた凸 (予約) — L2 ⑧。予約が1件でもあるときだけ表示 -->
             <div class="dc-card" data-span="6" id="myReservationsCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 引き受けた凸</div>
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 予約</div>
                     <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">
@@ -6870,10 +6875,10 @@
     <div class="player-select-modal" id="myResvRequestModal">
         <div class="player-select-content" style="max-width:480px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
-                <h2 style="margin:0;font-size:17px;font-weight:900;">凸を申請する</h2>
+                <h2 style="margin:0;font-size:17px;font-weight:900;">枠を予約する</h2>
                 <button onclick="closeMyResvRequestModal()" style="padding:6px 12px;border-radius:9px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle" style="margin:4px 0 16px;">運営が承認すると予約になり、プランを組み直しても変わりません。</p>
+            <p class="subtitle" style="margin:4px 0 16px;">運営が承認すると予約が決まり、プランを組み直しても変わりません。</p>
             <div id="myResvReqBody"></div>
         </div>
     </div>
@@ -8489,6 +8494,7 @@
         }
         // ヒーロー内の「あなたの3凸」ストリップ。配信の割当だけでなく、予約で固定した枠と空き枠 (理由つき) を並べる
         function _heroPlanStripHtml(identity, hero) {
+            if (_homeSimple()) { _heroPlanKey = ''; return ''; }   // 🧱 シンプルな画面: 自分の凸は 📅 きょうの凸 に (2026-10-23 ユーザー決定)
             const h = _homeSlotsNow(identity);
             if (!h) { _heroPlanKey = ''; return ''; }
             // 予約が使えず (39未適用)、配信も無いときは何も出さない (従来どおり)
@@ -9746,6 +9752,12 @@
                     const planHtml = r.planned.map(pz => {
                         const c = DC_ATTR_COLORS[pz.weakness] || '#7A7C81';
                         const pt = PT_ATTRS.find(x => x.key === pz.weakness)?.name || '';
+                        // 🧱 自分の凸はここにまとめた (2026-10-23 ユーザー決定): いつ・どのボス・どの PT の どの編成 (5 キャラ) で
+                        if (_homeSimple()) {
+                            const when = pz.flex ? '<span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? esc(pz.hourLabel) : '');
+                            const team = Array.isArray(pz.team) && pz.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(pz.team, { size: 22 }) : '';
+                            return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:6px;"></span><span style="flex:1;min-width:0;">${when ? `<b>${when}</b> ` : ''}${esc(bossName(pz.bossNumber))}${pz.level ? ` <span style="color:var(--t-muted);">Lv${Number(pz.level)}</span>` : ''}<br><span style="font-size:11.5px;color:var(--t-body);">${pt ? `${esc(pt)}PT ` : ''}編成${Number(pz.loadoutSlot) === 2 ? '②' : '①'} · ${pz.dmgB.toFixed(1)}B</span>${team ? `<span style="display:flex;gap:2px;flex-wrap:wrap;margin-top:4px;">${team}</span>` : ''}</span></div>`;
+                        }
                         // ★ 本文は 1 つの span に (flex の子にテキストを直に並べると横に散って折り返す)
                         return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:5px;"></span><span style="flex:1;min-width:0;">${esc(bossName(pz.bossNumber))}${pt ? ` <span style="color:var(--t-muted);">${esc(pt)}PT</span>` : ''} · ${pz.dmgB.toFixed(1)}B${pz.flex ? ' <span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? ` <span style="color:var(--t-muted);">${esc(pz.hourLabel)}</span>` : '')}</span></div>`;
                     }).join('');
@@ -9981,13 +9993,16 @@
             const body = document.getElementById('myPublishedPlanBody');
             if (!body || !_myPubState) return;
             const { plan, viewerId, doneCounts, stale, liveLevel, ack, frozen, frozenBy, myChange } = _myPubState;
+            // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): タブは出さず 🧱 盤 + 「確認しました」だけ。自分の凸は 📅 きょうの凸 に
+            const simple = _homeSimple();
+            const view = simple ? (plan?.blockScope ? 'board' : 'mine') : _myPlanViewMode;
             const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:var(--card);color:var(--t-ink);box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:var(--t-muted);'}">${icon} ${label}</button>`;
-            const tabs = `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}${plan?.blockScope ? tab('board', '🧱', '盤') : ''}</div>`;
+            const tabs = simple ? '' : `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}${plan?.blockScope ? tab('board', '🧱', '盤') : ''}</div>`;
             let inner;
             try {
-                if (_myPlanViewMode === 'overview') inner = _planOverviewHtml(plan, viewerId);
-                else if (_myPlanViewMode === 'board' && plan?.blockScope) inner = _myPlanBoardHtml(plan, viewerId);
-                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { season: _myPubState.doneSeason, highlightPlayerId: viewerId, filterKey: 'my' });
+                if (view === 'overview') inner = _planOverviewHtml(plan, viewerId);
+                else if (view === 'board' && plan?.blockScope) inner = _myPlanBoardHtml(plan, viewerId);
+                else if (view === 'timetable') inner = _planTimetableHtml(plan, { season: _myPubState.doneSeason, highlightPlayerId: viewerId, filterKey: 'my' });
                 else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
             } catch (e) {
                 console.warn('[配信プラン] 描画失敗:', e);
@@ -9999,7 +10014,7 @@
             const scopeLine = plan?.blockScope
                 ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)</p>`
                 : '';
-            const condLine = (plan?.conditions && window.planBoardDomain)
+            const condLine = (!simple && plan?.conditions && window.planBoardDomain)
                 ? `<p style="margin:0 0 8px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
                 : '';
             const updatedBanner = ack?.updated
@@ -10101,6 +10116,7 @@
         // ★ 39未適用 (_myPubState.resv === null) では**導線ごと出さない** —
         //   出しても押した瞬間に「SQLを適用してください」になるだけ
         function _planRowResvHtml(a, viewerId, doneCount) {
+            if (_homeSimple()) return '';   // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): 配信の割当を予約にする「この凸を引き受ける」は出さない
             const rv = window.reservationsDomain;
             const rows = _myPubState?.resv;
             if (!rv || !Array.isArray(rows)) return '';
@@ -10201,11 +10217,11 @@
             };
             // 🧱 段階 3 (2026-10-22 ユーザー決定「予約したい人だけ申請」): 申請の導線は lite (模擬タブなし) でも出す (data-member-resv。模擬の入力 data-member-input とは別)
             const cta = `<div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
-                    <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>
-                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約になります (時刻は運営がブロックの中で決めます)。</p>
+                    <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">枠を予約する</button>
+                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
                 </div>`;
             // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
-            const askRows = asks.map(r => {
+            const askRows = _homeSimple() ? '' : asks.map(r => {   // 🧱 シンプルな画面では 📣 お願いは使わない (2026-10-23 ユーザー決定)
                 const when = window.reservationsDomain?.whenOf(r) || (r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定'));
                 const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
@@ -10222,8 +10238,8 @@
             }).join('');
             body.innerHTML = askRows + ((live.length + done.length)
                 ? live.map(row).join('') + done.map(row).join('')
-                : (asks.length ? '' : '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">まだ引き受けた凸はありません。</p>')) + cta;
-            if (meta) meta.textContent = _myResvRows.length ? `${asks.length ? `お願い ${asks.length} / ` : ''}固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}` : '';
+                : (askRows ? '' : '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">予約はまだありません。</p>')) + cta;
+            if (meta) meta.textContent = _myResvRows.length ? `${askRows ? `お願い ${asks.length} / ` : ''}予約 ${live.filter(r => r.status === 'approved').length} / 承認待ち ${live.filter(r => r.status === 'requested').length}` : '';
             card.style.display = '';
             // ホームの3枠は予約にも依存する。内容が変わっていたらヒーローと配信カードを描き直す
             try {
@@ -18510,7 +18526,7 @@
                 sections.push(`<div class="dc-resv-head">📌 運営の固定 (${pins.length})${expiredPins.length ? ` <button type="button" class="dc-resv-btn" style="margin-left:8px;" onclick="_opsReleaseExpiredPins()">⏰ 期限切れ ${expiredPins.length} 件をまとめて外す</button>` : ''}</div>` + pins.map(r => card(r,
                     (r.asked_at
                         ? `<span style="font-size:10px;font-weight:800;color:${rv.isExpiredPin && rv.isExpiredPin(r) ? 'var(--bad-deep)' : 'var(--warn-deep)'};align-self:center;">${rv.isExpiredPin && rv.isExpiredPin(r) ? '⏰ 期限切れ' : '📣 お願い中'}${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
-                        : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id))
+                        : (_homeSimple() ? '' : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id)))
                     + btn('🔒 確定', `_opsPlanConfirmPin(${Number(r.id)})`, 'primary', r.id)
                     + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が固定' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
@@ -22613,13 +22629,13 @@
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             const what = rv.describe(row, bossName);
             const who = row.player_name || '#' + row.player_id;
-            if (!confirm(`🔒 ${who} さんの「${what}」を、本人の返事を待たずに確定しますか？\n\n`
-                + '確定すると起きること:\n・本人に通知が届き、ホームの「あなたの3凸」に 🔒 (約束) として出ます\n・算出で動かない約束になります (📌 の下書きではなくなります)\n\n'
+            if (!confirm(`🔒 ${who} さんの「${what}」を予約として確定しますか？\n\n`
+                + '確定すると起きること:\n・本人に通知が届き、ホームの「🔒 予約」に出ます\n・算出で動かない予約になります (📌 の仮置きではなくなります)\n\n'
                 + '確定しても起きないこと:\n・配信はされません (配信は別に押します)\n\n外したいときは「凸の予約」カードの「取り下げる」で外せます')) return;
             const ok = await _resvTransition(Number(id), 'approved', { expectFrom: 'pinned', reason: 'ops_confirmed', done: `🔒 ${who} の凸を確定しました (本人に通知)` });
             if (!ok) return;
             const after = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || row;
-            _notifyMemberResv(after, '🔒 運営が凸を確定しました', `${what} — ホームの「あなたの3凸」に出ます。都合が悪ければ運営に伝えてください`);
+            _notifyMemberResv(after, '🔒 運営があなたの凸を予約しました', `${what} — ホームの「🔒 予約」に出ます。都合が悪ければ運営に伝えてください`);
             _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
             await computeAndRenderOptimalPlan();
         }
@@ -22713,8 +22729,8 @@
                 if (sel.pinned && sel.reservationId != null) {
                     const asked = !!(row && row.asked_at);
                     acts = `<small>📌 運営の固定${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
-                        + (asked ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
-                        + `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人の返事を待たずに約束 (🔒) にする">🔒 確定する</button>`
+                        + (asked || _homeSimple() ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
+                        + `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人に通知して 🔒 予約にする">🔒 確定する</button>`
                         + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">固定を外す</button>`;
                 } else {
                     acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 固定して組み直します (レベルは算出が決めます)</small>`;
@@ -29366,9 +29382,13 @@
         // 🧱 模擬タブは member_input=full のときだけ出す (2026-10-22 ユーザー要望「運営画面にも模擬タブは要らない」) — 運営モードでも隠す。
         //   運営の登録は 戦況タブ「📸 模擬の取り込み」(自分のぶんも同じ)。ユニオン事前比較 (#mockCompareCard) も一緒に隠れる (必要なら戦況へ移す)
         const _mockTabHidden = () => !_memberInputFull();
+        // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): 運営もメンバーも。戦闘カード・状態ボタン・🎯 あなたの3凸・配信カードのタブ・「この凸を引き受ける」・📣 お願い を出さない。
+        //   自分の凸は 📅 きょうの凸 に、予約は「🔒 予約」カードに。従来の画面は member_input=full (✏️ シーズン編集のスイッチ) で戻る
+        const _homeSimple = () => !_memberInputFull();
         function _applyMemberLite() {
             const lite = _memberLite();
             document.body.classList.toggle('member-lite', lite);
+            document.body.classList.toggle('home-simple', _homeSimple());
             const mockHidden = _mockTabHidden();
             document.body.classList.toggle('mock-tab-hidden', mockHidden);
             // 模擬タブを開いたまま隠されたら ホーム (運営モードなら戦況) へ (TabController も入口で止める)

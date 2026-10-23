@@ -76,7 +76,7 @@ const resv = (o = {}) => ({
     status: o.status ?? 'approved', approved_at: 'x', approved_by: '運営A',
 });
 
-function run({ pub = null, rows = [], today = null } = {}) {
+function run({ pub = null, rows = [], today = null, simple = false } = {}) {
     const env = {
         window: { reservationsDomain: rv },
         document: { getElementById: () => null },
@@ -93,6 +93,7 @@ function run({ pub = null, rows = [], today = null } = {}) {
         _myResvRows: rows,
         _myTodayAttacksCache: today == null ? null : Array.from({ length: today }).map(() => ({})),
         _heroPlanKey: '',
+        _homeSimple: () => simple,   // 🧱 シンプルな画面 (2026-10-23)。既定は従来の画面 (3 枠を描く)
     };
     const keys = Object.keys(env);
     const fns = new Function(...keys, `${SRC}\nreturn { strip: _heroPlanStripHtml, mine: _planMineHtml, card: _homeSlotCardHtml, now: _homeSlotsNow };`)(...keys.map(k => env[k]));
@@ -139,6 +140,12 @@ await test('配信が無くても、予約が読めていれば3枠を出す (�
     const out = t.strip({ id: 7 }, true);
     assert.equal((out.match(/dc-plan-card empty/g) || []).length, 3);
     assert.ok(out.includes('運営の算出待ちです'));
+});
+
+await test('★ 🧱 シンプルな画面 (2026-10-23): ヒーローに 🎯 あなたの3凸 を出さない (自分の凸は 📅 きょうの凸 に)・従来の画面では出す', () => {
+    const pub = { levels: [{ level: 1, bosses: [{ bossNumber: 3, name: 'B3', weakness: 'fire', attacks: [{ memberId: 7, memberName: 'わたし', dmgB: 30, hourIdx: 13, hourLabel: '18時', loadoutSlot: 1 }] }] }] };
+    assert.equal(run({ pub, rows: [], simple: true }).strip({ id: 7 }, true), '', 'シンプルな画面で 3 凸を出した');
+    assert.ok(run({ pub, rows: [], simple: false }).strip({ id: 7 }, true).includes('heroPlanStrip'), '従来の画面で 3 凸が消えた');
 });
 
 await test('39未適用 (予約が読めない) で配信も無ければ何も出さない (従来どおり)', () => {

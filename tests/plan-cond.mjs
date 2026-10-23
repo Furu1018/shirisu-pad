@@ -48,7 +48,7 @@ const SRC = [
 const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 const mkEl = () => ({ innerHTML: '', textContent: '', style: {} });
 
-function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null, sel = null, promiseNote = false } = {}) {
+function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null, sel = null, promiseNote = false, simple = false } = {}) {
     const els = { opsPlanAutoChips: mkEl(), opsPlanCue: mkEl(), opsPlanCond: mkEl() };
     const env = {
         document: { getElementById: (id) => els[id] || null },
@@ -58,6 +58,7 @@ function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, o
         _opsPublishedPlan: pub,
         _opsLastPlan: lastPlan,
         _opsMode: opsMode,
+        _homeSimple: () => simple,   // 🧱 シンプルな画面 (2026-10-23) では 📣 お願いを出さない
         _opsPlanFocus: focus,
         _opsPlanSel: sel,
         _opsPlanPromiseNote: promiseNote,
@@ -185,6 +186,9 @@ await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする /
     noUndef(oa);
     assert.ok(oa.includes('📌 運営の固定 (本人にはまだ見えていません) · 別のマスをタップで置き直し'), `下書きの説明が無い: ${oa}`);
     assert.ok(oa.includes('onclick="_opsPlanAsk(21)">📣 お願いする') && oa.includes('onclick="_opsPlanUnpin(21)">固定を外す'), 'お願いする / 外す のボタンが無い');
+    // 🧱 シンプルな画面: 📣 お願いは出さず、🔒 確定する / 固定を外す だけ
+    const sa = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], simple: true, sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 21, pinned: true } })._opsPlanFocusBarHtml(plan);
+    assert.ok(!sa.includes('_opsPlanAsk(') && sa.includes('onclick="_opsPlanConfirmPin(21)"') && sa.includes('onclick="_opsPlanUnpin(21)">固定を外す'), 'シンプルな画面で 📣 お願いを出した / 確定・外す が無い');
     const b = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 22, pinned: true } });
     const ob = b._opsPlanFocusBarHtml(plan);
     assert.ok(ob.includes('📣 お願い中 〜21:15') && !ob.includes('_opsPlanAsk('), 'お願い中なのに二重にお願いできる / 期限が無い');

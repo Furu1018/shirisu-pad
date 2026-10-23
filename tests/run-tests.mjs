@@ -5654,7 +5654,33 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(!/console\.warn\('\[finish→予約\]', e\?\.message \|\| e\);\s*\n\s*showNotification\('⚠ 了承は伝わりましたが/.test(html));
     });
 
-    test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
+    test('★ 配線: 🧱 シンプルな画面 (2026-10-23 ユーザー決定) — 戦闘カード・状態ボタン・運営タブ上の状態の数を出さない / 「この凸を引き受ける」「📣 お願い」を出さない / 自分の凸は 📅 きょうの凸 に (配信カードは 🧱 盤 + 確認しました) / 申請 → 枠を予約する', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        // 判定は 1 つ (member_input=full のときだけ従来の画面)。運営もメンバーも同じ
+        assert.ok(html.includes("const _homeSimple = () => !_memberInputFull();") && html.includes("document.body.classList.toggle('home-simple', _homeSimple());"), 'シンプルな画面の判定 / 付け外しが無い');
+        const css = html.match(/body\.home-simple #myBattleCard[^{]*\{ display: none !important; \}/)?.[0] || '';
+        for (const id of ['myBattleCard', 'myBossBoardCard', 'mypageStatusSwitcher', 'mypageStatusHint', 'mypageStatusTiles', 'opsOverviewChips']) {
+            assert.ok(css.includes('body.home-simple #' + id), id + ' をシンプルな画面で隠していない');
+            assert.ok(html.includes('id="' + id + '"'), id + ' が無い (隠す相手が消えた)');
+        }
+        assert.ok(/<div class="dc-card" data-span="6" id="myBattleCard">\s*\n\s*<div[^>]*>\s*\n\s*<div[^>]*>戦闘<\/div>/.test(html), '戦闘カードに id が無い');
+        // 🎯 あなたの3凸 と 「この凸を引き受ける」は出さない
+        assert.ok(/function _heroPlanStripHtml\(identity, hero\) \{\s*\n\s*if \(_homeSimple\(\)\) \{ _heroPlanKey = ''; return ''; \}/.test(html), 'ヒーローの 3 凸を出している');
+        assert.ok(/function _planRowResvHtml\(a, viewerId, doneCount\) \{\s*\n\s*if \(_homeSimple\(\)\) return '';/.test(html), '「この凸を引き受ける」を出している');
+        // 配信カード: タブなし・盤 (ブロックの配信) / わたしの凸 (1 日ぶん)
+        assert.ok(html.includes("const view = simple ? (plan?.blockScope ? 'board' : 'mine') : _myPlanViewMode;") && /const tabs = simple \? '' : `/.test(html), '配信カードのタブを出している');
+        // 📣 お願い: 運営の 2 か所 (予約カードの 📌 の行・焦点の帯) と 本人の返事の箱
+        assert.ok(html.includes("(_homeSimple() ? '' : btn('📣 お願いする'") && html.includes("(asked || _homeSimple() ? '' : `<button type=\"button\" class=\"act ask\" onclick=\"_opsPlanAsk("), '運営の 📣 お願いする を出している');
+        assert.ok(html.includes("const askRows = _homeSimple() ? '' : asks.map(r => {"), '本人に 📣 お願いの返事を出している');
+        // 予約: カードの名前 / 入口 / シート
+        assert.ok(html.includes('letter-spacing:0.2px;">🔒 予約</div>') && !html.includes('🔒 引き受けた凸</div>'), 'カードの名前が「🔒 予約」でない');
+        assert.ok(html.includes('>枠を予約する</button>') && !html.includes('>自分から凸を申請する</button>'), '入口が「枠を予約する」でない');
+        assert.ok(html.includes('font-weight:900;">枠を予約する</h2>'), 'シートの見出しが「枠を予約する」でない');
+        // 📅 きょうの凸: 割当の行に 時刻・Lv・PT・編成・5 キャラ
+        const today = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_homeSimple\(\)\) \{[\s\S]*?renderTeamSnippet\(pz\.team, \{ size: 22 \}\)[\s\S]*?編成\$\{Number\(pz\.loadoutSlot\) === 2 \? '②' : '①'\}/.test(today), 'きょうの凸に編成と 5 キャラが無い');
+    });
+    test('★ ⑧配線: ホームの「🔒 予約」(旧 引き受けた凸) / 取り消しは希望を出すだけ', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('id="myReservationsCard"'), 'カードが無い');
         const fn = html.match(/async function renderMyReservations[\s\S]{0,6500}/)?.[0] || '';
@@ -5662,7 +5688,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // ★ 39未適用 (null) だけ非表示。0件 ([]) でも出す — ここが「自分から申請する」の入口 (モック①)
         assert.ok(/if \(!Array\.isArray\(_myResvRows\)\) \{ card\.style\.display = 'none'; return; \}/.test(fn));
         assert.ok(/openMyResvRequest\(\)/.test(fn), 'カードから申請シートを開けない');
-        assert.ok(html.includes('まだ引き受けた凸はありません'), '0件のときの文言が無い');
+        assert.ok(html.includes('予約はまだありません。'), '0件のときの文言が無い');
         assert.ok(/rv\.isActive\(r\)/.test(fn), '生きている予約の判定をドメインでやっていない');
         // ★ 取り消しは希望を出すだけ。解除には運営の承認が要る (ユーザー決定)
         const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,900}/)?.[0] || '';
@@ -11505,7 +11531,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/reservations\.filter\(r => window\.reservationsDomain\.isFixed\(r\)\)\.length/.test(fn), '予約は拘束 (isFixed) だけを数える');
         // 結果の頭にスタンプ。ホームの配信カードにも1行
         assert.ok(/summary = _planCondStampHtml\(plan\.conditions\) \+ summary;/.test(html), '結果にスタンプを出していない');
-        assert.ok(/const condLine = \(plan\?\.conditions && window\.planBoardDomain\)/.test(html) && /\$\{condLine\}\s*\n\s*\$\{updatedBanner\}/.test(html), 'ホームの配信カードに条件の1行が無い');
+        assert.ok(/const condLine = \(!simple && plan\?\.conditions && window\.planBoardDomain\)/.test(html) && /\$\{condLine\}\s*\n\s*\$\{updatedBanner\}/.test(html), 'ホームの配信カードに条件の1行が無い');
         // きっかけ: 模擬の更新数 (head:true で数えるだけ) と、締め凸の手詰まりからの導線
         assert.ok(/window\.supabaseCountMockUpdatesSince = async function \(sinceIso\)/.test(_grRd('js/supabase-client.js')), '模擬の更新数を数える関数が無い');
         const cue = html.match(/async function renderOpsPlanCue\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -12703,7 +12729,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/data-member="\$\{esc\(String\(a\.memberId \?\? ''\)\)\}" data-slot=/.test(board) && /data-promise="\$\{promise \? 1 : 0\}" draggable="\$\{_opsPlanDragOk\(\) && !promise \? 'true' : 'false'\}"/.test(board), 'ピースに時間割のチップと同じ札が無い (🔒 をつかめないこと)');
         assert.ok(/<div id="opsBlockSteps" class="bs" data-ops-only style="display:none;"><\/div>\s*\n\s*<div id="opsPlanPubStatus"/.test(html), '手順の帯の置き場が無い');
         assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;\s*\n\s*_renderOpsBlockSteps\(\);/.test(html) && /_renderOpsPlanTidy\(\);\s*\n\s*_renderOpsBlockSteps\(\);/.test(html), '手順の帯を描き直していない');
-        assert.ok(html.includes("${plan?.blockScope ? tab('board', '🧱', '盤') : ''}") && /else if \(_myPlanViewMode === 'board' && plan\?\.blockScope\) inner = _myPlanBoardHtml\(plan, viewerId\);/.test(html), 'メンバーの「🧱 盤」タブが無い');
+        assert.ok(html.includes("${plan?.blockScope ? tab('board', '🧱', '盤') : ''}") && /else if \(view === 'board' && plan\?\.blockScope\) inner = _myPlanBoardHtml\(plan, viewerId\);/.test(html), 'メンバーの「🧱 盤」タブが無い');
     });
     test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
@@ -13474,9 +13500,9 @@ console.log('\n運営チームの要望 2026-10-10:');
         const fn = html.match(/async function _opsPlanConfirmPin\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn.length > 300, '_opsPlanConfirmPin が無い');
         assert.ok(/if \(!row \|\| row\.status !== 'pinned'\) \{ showNotification/.test(fn), '下書きでないものを確定できる');
-        assert.ok(/if \(!confirm\(`🔒 \$\{who\} さんの「\$\{what\}」を、本人の返事を待たずに確定しますか？/.test(fn) && /確定すると起きること/.test(fn) && /確定しても起きないこと/.test(fn), '確定の前に「起きること / 起きないこと」を言っていない');
+        assert.ok(/if \(!confirm\(`🔒 \$\{who\} さんの「\$\{what\}」を予約として確定しますか？/.test(fn) && /確定すると起きること/.test(fn) && /確定しても起きないこと/.test(fn), '確定の前に「起きること / 起きないこと」を言っていない');
         assert.ok(/_resvTransition\(Number\(id\), 'approved', \{ expectFrom: 'pinned', reason: 'ops_confirmed'/.test(fn), 'pinned → approved の遷移でない (期待状態が無い)');
-        assert.ok(/_notifyMemberResv\(after, '🔒 運営が凸を確定しました'/.test(fn) && /await computeAndRenderOptimalPlan\(\);/.test(fn), '本人に知らせていない / 組み直していない');
+        assert.ok(/_notifyMemberResv\(after, '🔒 運営があなたの凸を予約しました'/.test(fn) && /await computeAndRenderOptimalPlan\(\);/.test(fn), '本人に知らせていない / 組み直していない');
         assert.ok(/onclick="_opsPlanConfirmPin\(\$\{Number\(sel\.reservationId\)\}\)"[^>]*>🔒 確定する<\/button>/.test(html), '焦点の帯に「確定する」が無い');
         assert.ok(/btn\('🔒 確定', `_opsPlanConfirmPin\(\$\{Number\(r\.id\)\}\)`, 'primary', r\.id\)/.test(html), '予約カードの 📌 の行に「確定」が無い');
         // 残り凸が無くて断ったときも、busy を外して描き直す (ボタンが押せないまま残らない — Codex指摘 2026-10-10)
