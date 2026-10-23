@@ -22973,8 +22973,16 @@
                 const seasonId = snap.season.id;
                 // ★ 開いた時点ではなく**いま**の予約と盤面 (凸数) で置けるかを見る (別の端末の予約・凸報告が入っていると DB で弾かれる = 理由が伝わらない。凸数は盤面の写しなので取り直す: Codex 9b B)
                 let rows = null, snap2 = null;
-                try { [rows, snap2] = await Promise.all([window.supabaseLoadReservations(seasonId), opsStore.load()]); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
+                try { rows = await window.supabaseLoadReservations(seasonId); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
                 if (!Array.isArray(rows)) { alert('凸の予約 (supabase/39) が未適用のため登録できません'); return; }
+                // 盤面 (凸数) も取り直す。★ load の間に別の読み直し・invalidate が走ると世代が進み、返った写しは古い → 1 回だけやり直し、それでも動いていれば止める (Codex 9b 再監査 B)
+                for (let attempt = 0; attempt < 2 && !snap2; attempt++) {
+                    const gen = opsStore.generation();
+                    let got = null;
+                    try { got = await opsStore.load(); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
+                    if (opsStore.isCurrentGeneration(gen + 1)) snap2 = got;
+                }
+                if (!snap2) { alert('⚠️ 盤面が動いています (別の読み直しが走っています)。もう一度押してください。'); return; }
                 const pNow = (snap2?.players || []).find(x => Number(x.id) === Number(p.id));
                 if (!pNow) { alert('❌ この人が盤面に見つかりません (↻ で取り直してください)'); return; }
                 const chk = rv.canPin(rows, { playerId: p.id, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: Number(pNow.attackCount) || 0, characters: d.draft.characters });
@@ -22985,11 +22993,16 @@
                 _resv.rows = rows.concat([created]);   // 取り直した予約 + いま作った行 (_resvTransition は _resv.rows から行を探し canApprove を見る — 古い一覧のままにしない: Codex 9b A)
                 const ok = await _resvTransition(Number(created.id), 'approved', { expectFrom: 'pinned', reason: 'ops_registered', done: `🔒 ${p.name} さんの予約を登録しました (本人に通知)` });
                 if (!ok) {
-                    // _resvTransition は失敗しても一覧を取り直している。📌 が残っていればそこから、別の運営が外していたら (released) その旨 (Codex 9b A)
-                    const now = (_resv.rows || []).find(r => Number(r.id) === Number(created.id));
-                    alert(now && now.status === 'pinned'
-                        ? '⚠️ 仮置き (📌) までは置けましたが、予約にできませんでした。「凸の予約」カードの 📌 から 🔒 確定 を押すか、外してください'
-                        : '⚠️ 予約にできませんでした。その間に別の運営が仮置きを外したか、状況が変わっています。「凸の予約」カードを確かめてください');
+                    // 確定できなかった。📌 が残っているかは**取り直して**見る — _resvTransition は手元の canApprove で止まると一覧を取り直さずに返るので、_resv.rows は古いことがある (Codex 9b 再監査 A)
+                    let fresh = null;
+                    try { fresh = await window.supabaseLoadReservations(seasonId); } catch { fresh = null; }
+                    const now = Array.isArray(fresh) ? (fresh.find(r => Number(r.id) === Number(created.id)) || null) : null;
+                    if (Array.isArray(fresh)) { _resv.rows = fresh; if (typeof _paintOpsReservations === 'function') _paintOpsReservations(); }
+                    alert(!Array.isArray(fresh)
+                        ? '⚠️ 予約にできませんでした。「凸の予約」カードを取り直して確かめてください (📌 が残っていれば 🔒 確定 か 外す)'
+                        : (now && now.status === 'pinned')
+                            ? '⚠️ 仮置き (📌) までは置けましたが、予約にできませんでした。「凸の予約」カードの 📌 から 🔒 確定 を押すか、外してください'
+                            : '⚠️ 予約にできませんでした。その間に別の運営が仮置きを外したか、状況が変わっています。「凸の予約」カードを確かめてください');
                     return;
                 }
                 const after = (_resv.rows || []).find(r => Number(r.id) === Number(created.id)) || created;

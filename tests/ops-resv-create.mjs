@@ -64,7 +64,13 @@ function makeEnv(o = {}) {
         _opsResvCreate: { playerId: null, attr: null, slot: null, blockIdx: null, busy: false },
         _resv: { rows: o.rows || [] },
         _opsLastPlan: null,
-        opsStore: { get: () => (env._boardNull ? null : { season: { id: 44, metadata: {} }, players, bosses }), load: async () => { env.loads++; env._boardNull = false; return env._loadSnap || { season: { id: 44, metadata: {} }, players, bosses }; } },
+        opsStore: {
+            get: () => (env._boardNull ? null : { season: { id: 44, metadata: {} }, players, bosses }),
+            // 実装と同じく load のたびに世代が進む。_raceOnce / _raceAlways = load の間に別の読み直し・invalidate が走った (世代がもう 1 つ進む)
+            load: async () => { env.loads++; env.gen++; env._boardNull = false; if (env._raceAlways || env._raceOnce) { env.gen++; env._raceOnce = false; } return env._loadSnap || { season: { id: 44, metadata: {} }, players, bosses }; },
+            generation: () => env.gen, isCurrentGeneration: (g) => g === env.gen,
+        },
+        _paintOpsReservations() { },
         weaknessPtOf: (b) => b.weakness,
         PT_ATTRS, SLOT_JP: { 1: '①', 2: '②' },
         escapeHtml: (x) => String(x),
@@ -74,13 +80,13 @@ function makeEnv(o = {}) {
         computeAndRenderOptimalPlan: () => { env.recomputed++; },
         window: {
             raidBlocksDomain: globalThis.raidBlocksDomain, reservationsDomain: globalThis.reservationsDomain,
-            supabaseLoadReservations: async () => env._resv.rows.slice(),
+            supabaseLoadReservations: async () => { env.resvLoads++; return env._resv.rows.slice(); },
             supabaseCreateReservation: async (row) => { const r = { id: 500 + created.length + 1, status: row.status, player_id: row.playerId, boss_number: row.bossNumber, loadout_slot: row.loadoutSlot, time_mode: row.block ? 'block' : 'fixed', block_from: row.block?.from ?? null, block_to: row.block?.to ?? null, characters_snapshot: row.characters, pinned_by: row.pinnedBy, player_name: 'B' }; created.push({ ...row }); return r; },
             supabaseLogActivity: (type, detail, opts) => { logs.push({ type, detail, opts }); },
         },
         _resvTransition: async (id, to, opts) => { transitions.push({ id, to, ...opts }); const r = env._resv.rows.find(x => Number(x.id) === Number(id)); if (r) r.status = env._transitionOk ? to : (env._releasedByOther ? 'released' : r.status); return env._transitionOk; },
         _notifyMemberResv: (row, title, body) => { notices.push({ playerId: row.player_id, title, body }); },
-        created, transitions, notices, logs, toasts: [], alerts: [], recomputed: 0, _confirm: true, _transitionOk: true, _releasedByOther: false, _boardNull: false, _loadSnap: null, loads: 0,
+        created, transitions, notices, logs, toasts: [], alerts: [], recomputed: 0, _confirm: true, _transitionOk: true, _releasedByOther: false, _boardNull: false, _loadSnap: null, loads: 0, gen: 0, _raceOnce: false, _raceAlways: false, resvLoads: 0,
         body: () => bodyHtml,
     };
     const keys = Object.keys(env);
@@ -184,6 +190,19 @@ await test('★ Codex 9b: 置けるかは いまの盤面の凸数で (開いた
     await env4.openOpsResvCreate(9, 'fire', 1); env4._opsResvCreateSet('blockIdx', 4);
     await env4.handleOpsResvCreateSubmit();
     assert.ok(env4.alerts.some(a => a.includes('別の運営が仮置きを外したか')) && !env4.alerts.some(a => a.includes('📌 までは置けました')), '外された 📌 を「残っている」と案内した: ' + JSON.stringify(env4.alerts));
+    assert.equal(env4.resvLoads, 2, '確定に失敗したあと一覧を取り直していない (手元の _resv.rows は古いことがある)');
+});
+
+await test('★ Codex 9b 再監査: 盤面の取り直しの間に別の読み直しが走ったら (世代が進む) 1 回やり直す / 2 回とも動いていたら止める', async () => {
+    const env = makeEnv(); env._raceOnce = true;
+    await env.openOpsResvCreate(9, 'fire', 1); env._opsResvCreateSet('blockIdx', 4);
+    await env.handleOpsResvCreateSubmit();
+    assert.equal(env.loads, 2, '世代が進んでいたのにやり直していない'); assert.equal(env.created.length, 1, 'やり直して通るはず: ' + JSON.stringify(env.alerts));
+    const env2 = makeEnv(); env2._raceAlways = true;
+    await env2.openOpsResvCreate(9, 'fire', 1); env2._opsResvCreateSet('blockIdx', 4);
+    await env2.handleOpsResvCreateSubmit();
+    assert.equal(env2.created.length, 0, '盤面が動き続けているのに作った'); assert.ok(env2.alerts.some(a => a.includes('盤面が動いています')), '止めた理由が出ていない: ' + JSON.stringify(env2.alerts));
+    assert.equal(env2.loads, 2, 'やり直しは 1 回だけ');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
