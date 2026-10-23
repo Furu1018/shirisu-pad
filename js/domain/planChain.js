@@ -108,7 +108,7 @@
     function hash32(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(16); }
     /**
      * 盤面の印。一気に組む の配信の直前に「組んだときと同じ盤面か」を見る (Codex 再監査 D2)。
-     * ★ **ソルバーの入力になるものは全部**見る: シーズン (id・レベル) / ボス (番号・残 HP・総 HP) / 人ごとの 凸 (id・ボス・レベル・ダメージ・キャラ・時刻)・模擬 (damagesByAttr / loadoutsByAttr / excludedByAttr)・
+     * ★ **ソルバーの入力になるものは全部**見る: シーズン (id・レベル) / ボス (番号・残 HP・総 HP) / 人ごとの 凸 (id・ボス・レベル・ダメージ・キャラ・時刻)・模擬 (damagesByAttr / loadoutsByAttr。運営除外の行 excludedByAttr は盤面に入らない表示用なので見ない — 除外のまま理由を直しただけで止めない)・
      *   参加可能時間 (availableSlots / unavailableThisSeason / flexTime / blockCounts)・SLv。以前は HP・レベル・凸の数だけで、確認ダイアログの間に参加可能時間や模擬が変わってもすり抜けた。
      * 名前・写真・通知の設定は見ない (変わっても配信は危なくない)。並び (人・時間・キャラ) には依らない
      */
@@ -119,7 +119,7 @@
         const players = (Array.isArray(board.players) ? board.players : []).map(p => ({
             id: p.id ?? null, attackCount: Number(p.attackCount) || 0,
             attacks: (Array.isArray(p.attacks) ? p.attacks : []).map(a => ({ id: a.id ?? null, boss: a.boss_number ?? null, level: a.level ?? null, dmg: a.damage_raw ?? null, chars: Array.isArray(a.characters) ? a.characters : [], at: a.reported_at ?? null })),
-            damagesByAttr: p.damagesByAttr ?? null, loadoutsByAttr: p.loadoutsByAttr ?? null, excludedByAttr: p.excludedByAttr ?? null,
+            damagesByAttr: p.damagesByAttr ?? null, loadoutsByAttr: p.loadoutsByAttr ?? null,
             availableSlots: p.availableSlots ?? null, unavailableThisSeason: !!p.unavailableThisSeason, flexTime: !!p.flexTime, blockCounts: p.blockCounts ?? null, syncLevel: p.syncLevel ?? null,
         }));
         return 's' + (season.id ?? '') + '|lv' + (Number(season.current_level) || 0) + '|' + hash32(stableJson({ bosses, players }));

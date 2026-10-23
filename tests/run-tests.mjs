@@ -12864,7 +12864,7 @@ console.log('\ngrowthDomain:');
         assert.notEqual(d.boardSignature({ ...B0, players: [{ ...P0, attacks: [{ id: 1, boss_number: 2, level: 1, damage_raw: 5e9, characters: ['k1', 'k2'] }] }, P1] }), s0, '凸の数が同じでもボスが違えば別の盤面');
         assert.notEqual(d.boardSignature({ ...B0, players: [{ ...P0, blockCounts: { '21-23': 1 } }, P1] }), s0, '凸数が変わっても同じ印');
         assert.notEqual(d.boardSignature({ ...B0, players: [{ ...P0, unavailableThisSeason: true }, P1] }), s0, '今回は難しい が変わっても同じ印');
-        assert.notEqual(d.boardSignature({ ...B0, players: [{ ...P0, excludedByAttr: { fire: [{ slot: 1 }] } }, P1] }), s0, '運営除外が変わっても同じ印');
+        assert.equal(d.boardSignature({ ...B0, players: [{ ...P0, excludedByAttr: { fire: [{ slot: 1, excluded_by: 'x' }] } }, P1] }), s0, '運営除外の行 (盤面に入らない表示用) で印が変わる — 除外のまま理由を直しただけで「盤面が変わりました」になる (Codex 再監査 3 回目)');
 
         assert.deepEqual(d.summarize(plan, blk, r), { attacks: 5, executed: 3, levelAfter: 1, cleared: [], unassigned: 0 });
     });
@@ -12939,6 +12939,11 @@ console.log('\ngrowthDomain:');
         assert.ok(who.includes('b') && !who.includes('c'), '夜の行は夜の範囲だけ (朝の予想 c は入れない)');
         assert.deepEqual(who.filter(x => x === 'f'), ['f'], '時刻の無い凸 (flex) を落とした / 2 回数えた');
         assert.deepEqual(who.filter(x => x === 'g'), ['g'], 'ブロックの行の時刻の無い凸も 1 回');
+        // 同じ約束 (Lv1・B2・f・編成①) が 1 日ぶんの行と夜の行の両方に flex で入っていても 1 回 (Codex 再監査 3 回目: 2 本入ると差分が「2 本 → 1 本」の誤りになる)
+        const rowsU = [rowsT[0], { ...rowsT[1], plan: { ...rowsT[1].plan, levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [AT('b', 16), { memberId: 'f', flex: true, hourIdx: null, loadoutSlot: 1 }, { memberId: 'f', flex: true, hourIdx: null, loadoutSlot: 2 }] }] }] } }];
+        const whoU = d.effectivePlans(rowsU, blocks, globalThis.raidBlocksDomain.scopePlan).flatMap(p => p.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.map(a => `${a.memberId}/${a.loadoutSlot}`))));
+        assert.deepEqual(whoU.filter(x => x.startsWith('f/')).sort(), ['f/1', 'f/2'], '同じ約束を 2 回数えた / 別の編成枠の約束を落とした');
+        assert.equal(d.timelessOnly(rowsT[0].plan).levels[0].bosses[0].attacks.length, 1, 'seen 無しは従来どおり');
         assert.ok(eff.some(p => p.timeless === true) && !d.effectivePlans(rowsT, blocks, globalThis.raidBlocksDomain.scopePlan, { timeless: false }).some(p => p.timeless), 'timeless の印 / timeless: false で外せる');
         const m = d.mergedPlan(eff);
         assert.deepEqual(m.levels.map(l => [l.level, l.bosses.map(b => [b.bossNumber, b.attacks.map(a => a.memberId).sort()])]), [[1, [[2, ['a', 'b', 'f', 'g']]]]], '束ねたプランの中身 (朝の a + 夜の b + 時刻の無い f・g。c は入らない)');

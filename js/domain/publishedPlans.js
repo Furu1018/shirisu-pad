@@ -73,22 +73,36 @@
         for (const x of byBlocks(rows, blocks)) { const id = idOf(x.pub); if (seen.has(id)) continue; seen.add(id); out.push(x.pub); }
         return out;
     }
-    /** 時刻の無い凸 (⏳ flex・hourIdx 無し) だけを残したプラン (無ければ null)。ブロックの範囲で絞ると落ちるので、全ブロックの約束を見るときは行ごとに 1 回だけ別に足す (Codex 再監査 F) */
-    function timelessOnly(plan) {
+    /** 時刻の無い約束の鍵 (同じ約束が複数の行にあっても 1 回だけ数えるため) */
+    const timelessKey = (level, bossNumber, a) => `${Number(level)}|${Number(bossNumber)}|${String(a.memberId)}|${(a.loadoutSlot != null && a.loadoutSlot !== '') ? Number(a.loadoutSlot) : 1}`;
+    /**
+     * 時刻の無い凸 (⏳ flex・hourIdx 無し) だけを残したプラン (無ければ null)。ブロックの範囲で絞ると落ちるので、全ブロックの約束を見るときは行ごとに 1 回だけ別に足す (Codex 再監査 F)。
+     * ★ seen (Set) を渡すと、同じ約束 (レベル・ボス・人・編成枠) は最初の行のものだけ残す — 1 日ぶんの行と夜の行の両方に同じ flex の凸があると、束ねた基準に 2 本入って
+     *   L5 / L4 の差分が「2 本 → 1 本」の誤りになる・撃破の宛先の割当数が 2 になる (Codex 再監査 3 回目)
+     */
+    function timelessOnly(plan, seen = null) {
         const levels = (plan && Array.isArray(plan.levels) ? plan.levels : [])
-            .map(lv => ({ ...lv, bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).map(b => ({ ...b, attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(a => a && !Number.isInteger(a.hourIdx)) })) }))
+            .map(lv => ({ ...lv, bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).map(b => ({ ...b, attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(a => {
+                if (!a || Number.isInteger(a.hourIdx)) return false;
+                if (!seen) return true;
+                const k = timelessKey(lv.infinite ? 4 : lv.level, b.bossNumber, a);
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            }) })) }))
             .filter(lv => lv.bosses.some(b => b.attacks.length > 0));
         return levels.length ? { ...plan, levels, timeless: true } : null;
     }
     /**
      * ブロックごとに効いている配信を、そのブロックの範囲に絞ったプランで (撃破の通知の宛先・1 日ぶんの算出の基準など「全ブロックの約束」を見る所)。配信の無いブロック・plan の無い行は入らない。
-     * 時刻の無い凸は範囲で絞ると落ちるので、効いている行ごとに 1 回だけ末尾に足す (`timeless: true` の印。opts.timeless = false で外す)
+     * 時刻の無い凸は範囲で絞ると落ちるので、効いている行ごとに末尾に足す — 同じ約束 (レベル・ボス・人・編成枠) は 1 回だけ (`timeless: true` の印。opts.timeless = false で外す)
      * @param {(plan:Object, block:Object) => Object} scopeFn  raidBlocksDomain.scopePlan
      */
     function effectivePlans(rows, blocks, scopeFn, opts = {}) {
         const scoped = byBlocks(rows, blocks).map(x => (x.pub && x.pub.plan) ? (typeof scopeFn === 'function' ? scopeFn(x.pub.plan, x.block) : x.pub.plan) : null).filter(Boolean);
         if (opts.timeless === false) return scoped;
-        return scoped.concat(distinctEffective(rows, blocks).map(p => timelessOnly(p.plan)).filter(Boolean));
+        const seen = new Set();
+        return scoped.concat(distinctEffective(rows, blocks).map(p => timelessOnly(p.plan, seen)).filter(Boolean));
     }
     /**
      * 複数のプラン (effectivePlans の結果) を 1 つに束ねる — 1 日ぶん (全員 / 今動ける人) の算出で「前回どおり」に渡す基準 (Codex 再監査 C2:
