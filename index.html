@@ -4714,9 +4714,10 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 凸の予約</div>
                     <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <button type="button" onclick="openOpsResvCreate()" title="Discord で伝えられた凸先の希望を、本人の代わりに予約として登録する (🗣 9b)" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">＋ 予約を登録</button>
                     <button onclick="renderOpsReservations(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。</p>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。 🗣 Discord で伝えられた希望は <strong>＋ 予約を登録</strong> で運営が本人の代わりに登録できます (登録した時点で予約・本人に通知)。</p>
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -6710,6 +6711,18 @@
                     <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
                     <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
                     <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+    <!-- 🔒 運営発の予約 (🗣 運用の見直し 9b・2026-10-24): Discord で伝えられた凸先の希望を運営が本人の代わりに登録する。📌 を置いてすぐ 🔒 確定 -->
+    <div class="player-select-modal" id="opsResvCreateModal" data-ops-only>
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>🔒 予約を登録 (運営)</h2>
+                        <button onclick="closeOpsResvCreate()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">Discord で伝えられた「このブロックに この PT で行きたい」を、本人の代わりに予約にします。登録した時点で予約 (承認待ちはありません)。本人に通知が届き、ホームの「🔒 予約」に出ます。</p>
+                    <div id="opsResvCreateBody"></div>
                 </div>
             </div>
 
@@ -13942,7 +13955,10 @@
                 });
                 if (statusEl) {
                     const slotJp = res?.redirected ? ` — 同一編成のため編成${SLOT_JP[res.slot] || res.slot}に統合` : '';
-                    statusEl.textContent = `✅ ${forPlayer ? forPlayer.name + ' さんの ' : ''}${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で${forPlayer ? '登録' : '保存'}しました${slotJp}`;
+                    const okMsg = `✅ ${forPlayer ? forPlayer.name + ' さんの ' : ''}${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で${forPlayer ? '登録' : '保存'}しました${slotJp}`;
+                    // 🗣 9b: 運営の取り込みなら、登録した編成でそのまま予約も登録できる (Discord の「この PT で行きたい」を写す)。保存先の枠 (①/②) で開く
+                    if (forPlayer) statusEl.innerHTML = `${escapeHtml(okMsg)} <button type="button" onclick="openOpsResvCreate(${Number(forPlayer.id)}, '${escapeHtml(attr)}', ${Number(res?.slot) || (Number(d.slot) === 2 ? 2 : 1)})" style="margin-left:6px;padding:4px 10px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">🔒 この編成で予約する</button>`;
+                    else statusEl.textContent = okMsg;
                     statusEl.style.color = 'var(--ok)';
                 }
                 closeMyDmgPreviewModal();
@@ -22844,6 +22860,139 @@
             _notifyMemberResv(after, '🔒 運営があなたの凸を予約しました', `${what} — ホームの「🔒 予約」に出ます。都合が悪ければ運営に伝えてください`);
             _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
             await computeAndRenderOptimalPlan();
+        }
+        // ========== 🔒 運営発の予約 (🗣 運用の見直し 9b・2026-10-24 ユーザー決定 Q3/Q4) ==========
+        // メンバーが Discord で伝えた凸先の希望 (「夕方に 風圧PT 編成① で」) を、運営が本人の代わりに予約として登録する。
+        // ★ 作り方は **📌 仮置き (ブロック) を置いて、すぐ 🔒 確定** — 既存の遷移表 (pinned → approved・SQL 45/47) のまま。SQL の変更は無い。
+        //   置けるかは 📌 と同じ `reservationsDomain.canPin` (残凸・キャラ被り・同じカード)。中身は本人の申請と同じ `buildRequestDraft` (ボスは編成の属性で決まる)。
+        //   承認待ち (requested) は使わない — 運営が登録した時点で予約。本人には「🔒 運営があなたの予約を登録しました」(Q4・いまの確認の通知と同じ経路)
+        // 入口は 📸 模擬の取り込みの保存直後の「🔒 この編成で予約する」と、🔒 凸の予約カードの「＋ 予約を登録」
+        const _opsResvCreate = { playerId: null, attr: null, slot: null, blockIdx: null, busy: false };
+        function openOpsResvCreate(playerId = null, attr = null, slot = null) {
+            const snap = opsStore.get();
+            if (!snap?.season?.id) { showNotification('盤面を読み込めていません (↻ で取り直してください)'); return; }
+            _opsResvCreate.playerId = playerId != null ? Number(playerId) : null;
+            _opsResvCreate.attr = attr || null;
+            _opsResvCreate.slot = slot != null ? Number(slot) : null;
+            _opsResvCreate.blockIdx = null;
+            _opsResvCreate.busy = false;
+            document.getElementById('opsResvCreateModal').classList.add('open');
+            _opsResvCreateRender();
+        }
+        function closeOpsResvCreate() { document.getElementById('opsResvCreateModal').classList.remove('open'); }
+        function _opsResvCreateSet(key, value) {
+            if (_opsResvCreate.busy) return;
+            if (key === 'playerId') { _opsResvCreate.playerId = value ? Number(value) : null; _opsResvCreate.attr = null; _opsResvCreate.slot = null; _opsResvCreate.blockIdx = null; }
+            else if (key === 'lo') { const [a, s] = String(value).split('|'); _opsResvCreate.attr = a || null; _opsResvCreate.slot = Number(s) || null; }
+            else if (key === 'blockIdx') _opsResvCreate.blockIdx = Number.isInteger(Number(value)) ? Number(value) : null;
+            _opsResvCreateRender();
+        }
+        // 選んでいる 人・編成・ボス・ブロック (無いものは null)。描画と登録が同じものを見る
+        function _opsResvCreatePick() {
+            const snap = opsStore.get() || {};
+            const rbd = window.raidBlocksDomain;
+            const players = (snap.players || []).filter(p => !p.unavailableThisSeason).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'));
+            const p = players.find(x => Number(x.id) === Number(_opsResvCreate.playerId)) || null;
+            const bosses = snap.bosses || [];
+            const loadouts = [];
+            if (p) {
+                for (const [attr, list] of Object.entries(p.loadoutsByAttr || {})) {
+                    const boss = bosses.find(b => weaknessPtOf(b) === attr) || null;
+                    if (!boss) continue;   // 対応するボスが無い属性は予約できない (本人の申請と同じ)
+                    for (const lo of (Array.isArray(list) ? list : [])) if (Number(lo.dmgB) > 0) loadouts.push({ attr, slot: Number(lo.slot) || 1, dmgB: Number(lo.dmgB), team: Array.isArray(lo.team) ? lo.team : [], boss });
+                }
+                loadouts.sort((a, b) => Number(a.boss.boss_number) - Number(b.boss.boss_number) || a.slot - b.slot);
+            }
+            const lo = loadouts.find(x => x.attr === _opsResvCreate.attr && x.slot === Number(_opsResvCreate.slot)) || null;
+            const blocks = rbd ? rbd.blocksOfSeason(snap.season) : [];
+            const states = (rbd && p) ? rbd.blockStates(blocks, Array.isArray(p.availableSlots) ? p.availableSlots : []) : [];
+            const blk = (_opsResvCreate.blockIdx != null && blocks[_opsResvCreate.blockIdx]) ? blocks[_opsResvCreate.blockIdx] : null;
+            return { players, p, loadouts, lo, blocks, states, blk };
+        }
+        function _opsResvCreateRender() {
+            const el = document.getElementById('opsResvCreateBody');
+            if (!el) return;
+            const { players, p, loadouts, lo, blocks, states, blk } = _opsResvCreatePick();
+            const rv = window.reservationsDomain;
+            const busy = _opsResvCreate.busy;
+            const who = `<label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--t-body);">誰の予約か
+                <select ${busy ? 'disabled' : ''} onchange="_opsResvCreateSet('playerId', this.value)" style="flex:1;min-width:0;padding:8px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-family:inherit;font-size:13px;font-weight:800;">
+                    <option value="">— 選ぶ —</option>${players.map(x => `<option value="${Number(x.id)}" ${p && Number(p.id) === Number(x.id) ? 'selected' : ''}>${escapeHtml(x.name)}</option>`).join('')}
+                </select></label>`;
+            const loHtml = !p ? '' : (!loadouts.length
+                ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">この人の模擬が登録されていません。先に 📸 模擬の取り込みで登録してください。</p>'
+                : `<div style="display:flex;flex-direction:column;gap:6px;">${loadouts.map(x => {
+                    const on = lo && lo.attr === x.attr && lo.slot === x.slot;
+                    const pt = PT_ATTRS.find(a => a.key === x.attr);
+                    return `<button type="button" ${busy ? 'disabled' : ''} onclick="_opsResvCreateSet('lo', '${escapeHtml(x.attr)}|${x.slot}')" aria-pressed="${on}" style="display:flex;align-items:center;gap:9px;text-align:left;padding:9px 11px;border-radius:11px;border:1.5px solid ${on ? 'var(--ops-solid)' : 'rgba(var(--ink-rgb), 0.1)'};background:${on ? 'var(--ops-bg)' : 'var(--card)'};color:var(--t-ink);font-family:inherit;cursor:pointer;">`
+                        + (pt?.icon ? `<img loading="lazy" decoding="async" src="${pt.icon}" alt="" style="width:18px;height:18px;flex:none;">` : '')
+                        + `<span style="flex:1;min-width:0;"><span style="font-size:12.5px;font-weight:900;">${escapeHtml(pt?.name || x.attr)}PT 編成${SLOT_JP[x.slot] || x.slot}</span> <span style="font-size:11px;font-weight:800;color:var(--t-muted);">${x.dmgB.toFixed(1)}B</span>`
+                        + `<span style="display:block;font-size:10.5px;font-weight:700;color:var(--t-muted);margin-top:1px;">→ B${Number(x.boss.boss_number)} ${escapeHtml(x.boss.name || x.boss.boss_code || '')}${Number(x.boss.remaining_hp_raw) <= 0 ? ' (いまのレベルでは倒れています)' : ''}</span></span></button>`;
+                }).join('')}</div>`);
+            const blkHtml = !p ? '' : `<div class="avail-blocks">${states.map(st => {
+                const b = blocks[st.idx];
+                const on = blk && blk.from === b.from && blk.to === b.to;
+                const off = st.state === 'off';
+                return `<button type="button" class="avail-blk" data-state="${off ? 'off' : 'on'}" aria-pressed="${on}" ${busy || off ? 'disabled' : ''} onclick="_opsResvCreateSet('blockIdx', ${st.idx})" title="${off ? '出られる時間に入っていません (⏰ で先に登録)' : ''}" style="${on ? 'outline:2px solid var(--ops-solid);outline-offset:1px;' : ''}">`
+                    + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(b.label.slice(b.name.length).trim())}</span><span class="st">${off ? '—' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間` : '出られる')}</span></button>`;
+            }).join('')}</div>${states.every(st => st.state === 'off') ? '<p style="margin:8px 0 0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">参加可能時間が登録されていません。先に 👥 メンバー状況の ⏰ で登録してください。</p>' : ''}`;
+            // いまの予約 (生きているもの + 📌)
+            const mine = (p && rv) ? (_resv.rows || []).filter(r => String(r.player_id) === String(p.id) && (rv.isActive(r) || rv.isPin(r))) : [];
+            const bossName = new Map(((opsStore.get() || {}).bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+            const mineHtml = mine.length ? `<p style="margin:0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">いまの予約・仮置き: ${mine.map(r => escapeHtml(`${rv.describe(r, bossName)} (${rv.STATUS_JP[r.status] || r.status})`)).join(' / ')}</p>` : '';
+            const ready = !!(p && lo && blk);
+            const summary = ready ? `<p style="margin:0;font-size:12px;font-weight:900;color:var(--ops-deep);line-height:1.6;">${escapeHtml(p.name)} さん: ${escapeHtml(blk.label)} のどこかで ${escapeHtml(PT_ATTRS.find(a => a.key === lo.attr)?.name || lo.attr)}PT 編成${SLOT_JP[lo.slot] || lo.slot} → B${Number(lo.boss.boss_number)} (時刻は運営が決めます)</p>` : '';
+            el.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);display:flex;flex-direction:column;gap:8px;">${who}${mineHtml}</div>
+                    ${p ? `<div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);"><div style="font-size:13px;font-weight:800;color:var(--t-ink);margin-bottom:8px;">どの編成で (行き先のボスは編成の属性で決まります)</div>${loHtml}</div>` : ''}
+                    ${p ? `<div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);"><div style="font-size:13px;font-weight:800;color:var(--t-ink);margin-bottom:8px;">どのブロックで</div>${blkHtml}</div>` : ''}
+                    ${summary}
+                    <button type="button" id="opsResvCreateSubmit" ${ready && !busy ? '' : 'disabled'} onclick="handleOpsResvCreateSubmit()" style="height:48px;border-radius:13px;border:none;background:${ready && !busy ? 'var(--t-ink)' : 'var(--s2)'};color:${ready && !busy ? 'var(--card)' : 'var(--t-muted)'};font-family:inherit;font-size:14px;font-weight:900;cursor:${ready && !busy ? 'pointer' : 'default'};">${busy ? '登録しています…' : '🔒 予約を登録する'}</button>
+                </div>`;
+        }
+        async function handleOpsResvCreateSubmit() {
+            const st = _opsResvCreate;
+            if (st.busy) return;
+            const rv = window.reservationsDomain;
+            const { p, lo, blk } = _opsResvCreatePick();
+            const snap = opsStore.get();
+            if (!rv || !snap?.season?.id || !p || !lo || !blk) { showNotification('誰の・どの編成で・どのブロックで を選んでください'); return; }
+            const d = rv.buildRequestDraft({ boss: lo.boss, block: { from: blk.from, to: blk.to }, loadout: { slot: lo.slot, dmgB: lo.dmgB, characters: lo.team } });
+            if (!d.ok) { showNotification(`登録できません (${d.missing.join('・')})`); return; }
+            const me = getCurrentIdentity();
+            const bossJp = lo.boss.name || `B${Number(lo.boss.boss_number)}`;
+            if (!confirm(`🔒 ${p.name} さんの予約を登録します。\n\n${bossJp} / ${blk.label} のどこか (時刻は運営が決めます) / 編成${SLOT_JP[lo.slot] || lo.slot} (${lo.dmgB.toFixed(1)}B)`
+                + (d.note ? `\n\n${d.note}` : '')
+                + '\n\n登録すると起きること:\n・本人に通知が届き、ホームの「🔒 予約」に出ます\n・算出で動かない予約になります\n\n登録しても起きないこと:\n・配信はされません (配信は別に押します)\n\n外したいときは「凸の予約」カードの「取り下げる」で外せます')) return;
+            st.busy = true; _opsResvCreateRender();
+            try {
+                const seasonId = snap.season.id;
+                // ★ 開いた時点ではなく**いま**の予約で置けるかを見る (別の端末の予約・凸報告が入っていると DB で弾かれる = 理由が伝わらない)
+                let rows = null;
+                try { rows = await window.supabaseLoadReservations(seasonId); } catch (e) { alert(`❌ ${e?.message || e}`); return; }
+                if (!Array.isArray(rows)) { alert('凸の予約 (supabase/39) が未適用のため登録できません'); return; }
+                const chk = rv.canPin(rows, { playerId: p.id, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: Number(p.attackCount) || 0, characters: d.draft.characters });
+                if (!chk.ok) { alert(`❌ 登録できません: ${chk.label}`); return; }
+                // 📌 仮置き (ブロック) を置いて、すぐ 🔒 確定 (既存の遷移 pinned → approved・理由 ops_registered)
+                const created = await window.supabaseCreateReservation({ seasonId, playerId: p.id, ...d.draft, status: 'pinned', pinnedBy: me?.name || '運営', requestedBy: me?.name || null });
+                if (!created?.id) throw new Error('予約の行を作れませんでした');
+                _resv.rows = (Array.isArray(_resv.rows) ? _resv.rows : []).concat([created]);   // _resvTransition は _resv.rows から行を探す
+                const ok = await _resvTransition(Number(created.id), 'approved', { expectFrom: 'pinned', reason: 'ops_registered', done: `🔒 ${p.name} さんの予約を登録しました (本人に通知)` });
+                if (!ok) { alert('⚠️ 仮置き (📌) までは置けましたが、予約にできませんでした。「凸の予約」カードの 📌 から 🔒 確定 を押すか、外してください'); return; }
+                const after = (_resv.rows || []).find(r => Number(r.id) === Number(created.id)) || created;
+                const bossName = new Map((snap.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+                const what = rv.describe(after, bossName);
+                _notifyMemberResv(after, '🔒 運営があなたの予約を登録しました', `${what} — ホームの「🔒 予約」に出ます。違っていたら運営に伝えてください`);
+                window.supabaseLogActivity?.('ops', `🔒 予約を登録 (運営が代理で登録): ${p.name} に ${what}`, { actorName: me?.name || null });
+                closeOpsResvCreate();
+                if (_opsLastPlan && typeof computeAndRenderOptimalPlan === 'function') computeAndRenderOptimalPlan();   // 予約はプランの前提 — 出している算出があれば組み直す
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            } finally {
+                st.busy = false;
+                _opsResvCreateRender();
+            }
         }
         // 📣 お願いする: 下書きを本人に見せる + Push。期限は 15 分 (表示だけ。過ぎても自動で外さない)
         async function _opsPlanAsk(id) {

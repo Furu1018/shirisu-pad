@@ -794,6 +794,7 @@ node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのス�
 node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) の実行テスト — 本番の 2026-09 のデータで描く
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
 node tests/block-board.mjs    # 🧱 ブロック盤 (段階 6): 盤・候補・手順の帯・メンバーの盤 の実行テスト
+node tests/ops-resv-create.mjs # 🔒 運営発の予約 (🗣 9b): 人 → 編成 → ブロック の描画 / 📌 を置いてすぐ 🔒 確定 / 置けない・二重押し の実行テスト
 node tests/result-intake.mjs  # 📥 結果の取り込み (段階 4): 下書き → 登録 (代理凸の経路・✓・残 HP・撃破の検知) / 凸していない / 組むの片付け / ブロックの配信の通知 の実行テスト
 node tests/practice-e2e.mjs   # 🎮 練習モードの通し確認 — 本物のブラウザで案内の枠だけを押して最後まで (Chrome が要る・1〜2分。PC=1 で PC 幅も)
 node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの実験 (第44回の実データ)。ほかに carry-over / boss5-two-teams / boss5-why / left-attacks — 使い方と結論は同じフォルダの README (単体テストではない)
@@ -1268,6 +1269,10 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   実行テスト `tests/avail-save.mjs` の `makeEnvReal` が 開く・閉じる・デバウンス・保存・確認・読み込みを実装のまま走らせて、人を切り替えたときの取り違え 5 通りを固定する。
   入口は 👥 メンバー状況の行の ⏰ (`openOpsAvailModal(id)`) と 📸 模擬の取り込みの「⏰ 時間を登録」(選んだ人・`openOpsAvailModalFromIntake`)。催促の文面は「Discord で運営に伝えてください」。
   メンバー側の入口 (時間シート・予約) を隠すのは 9c (9b 運営発の予約 と 9f 練習の作り直し とまとめて — 練習のメンバー編が時間のシートを使っているため)。実行テスト `tests/avail-save.mjs` (forPlayer の確認と保存)・配線は `tests/run-tests.mjs`
+  ★ **🗣 運用の見直し 9b: 運営発の予約** (2026-10-24 ユーザー決定 Q3「希望があればブロックと凸先」Q4「本人に通知」): Discord で伝えられた凸先の希望を運営が本人の代わりに予約にする。
+  入口は 📸 模擬の取り込みの保存直後の「🔒 この編成で予約する」(登録した編成・枠で開く) と、🔒 凸の予約カードの「＋ 予約を登録」。シート `#opsResvCreateModal` は 誰 → どの編成 (その人の模擬のうち対応するボスがある属性だけ・行き先は編成の属性で決まる) → どのブロック (出られないブロックは押せない)。
+  **作り方は 📌 仮置き (ブロック・`status: 'pinned'`・`pinnedBy`) を置いて、すぐ 🔒 確定 (`_resvTransition` pinned → approved・理由 `ops_registered`)** — 既存の遷移表 (SQL 45/47) のまま・**SQL の変更は無い**。中身は本人の申請と同じ `buildRequestDraft`、置けるかは 📌 と同じ `canPin` (いまの予約を取り直してから)。
+  承認待ち (requested) は使わない — 登録した時点で予約。本人には `_notifyMemberResv`「🔒 運営があなたの予約を登録しました」。活動ログ「🔒 予約を登録 (運営が代理で登録)」。出している算出があれば組み直す。実行テスト `tests/ops-resv-create.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

@@ -7254,7 +7254,7 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/resv\._unmet \? 'unmet' : resv\.status/.test(panels), '置けていない予約の透かしを鍵のままにしている');
         assert.ok(/\.dc-dmg-panel\.resv\.unmet \{/.test(html), '「!」の透かしの CSS が無い');
         // 申請の3経路すべてで、予約中の編成とのキャラ被りを止める
-        assert.equal((html.match(/characters: (Array\.isArray\(a\.team\) \? a\.team : \[\]|st\.lo\.characters|d\.draft\.characters|draft\.draft\.characters)/g) || []).length, 4, 'canRequest に編成を渡していない経路がある');
+        assert.equal((html.match(/characters: (Array\.isArray\(a\.team\) \? a\.team : \[\]|st\.lo\.characters|d\.draft\.characters|draft\.draft\.characters)/g) || []).length, 5, 'canRequest / canPin に編成を渡していない経路がある');   // 4 = 本人の申請の 3 経路 + 承認 / +1 = 🗣 9b 運営発の予約 (canPin に d.draft.characters)
         // ホームの行の「引き受ける」は作る直前に予約を取り直して canRequest を通す (描いたあとの予約を見ずに作れた — Codex指摘)
         const claim = html.match(/async function handleClaimPlanRow\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const fresh = await window\.supabaseLoadMyReservations\?\.\(st\.seasonId, st\.viewerId\);/.test(claim), '直前に取り直していない');
@@ -12941,6 +12941,22 @@ console.log('\ngrowthDomain:');
         assert.ok(!ms.includes('ホームからもう一度確認') && ms.includes('いまの時間でよいか Discord で運営に伝えてください'), '時間が変わった人への催促がホームからの確認を促している');
         const lc = html.match(/async function _loadMyAvailConfirm\(playerId\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/\} catch \{\s*\n\s*if \(reqSeq !== _availConfirmSeq\) return;/.test(lc), '確認状態の読み込みの失敗が世代を見ずに共有状態を loadFailed に上書きする (Codex 再監査 9a・3 回目)');
+    });
+    test('★ 配線: 🗣 運用の見直し 9b (2026-10-24) — 運営発の予約: 📸 取り込みの保存直後と 🔒 凸の予約カードから / 📌 (ブロック) を置いてすぐ 🔒 確定 (遷移表のまま・SQL 無し) / canPin で見てから / 本人に通知 / 更新履歴', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(html.includes('id="opsResvCreateModal"') && html.includes('id="opsResvCreateBody"'), '運営発の予約のシートが無い');
+        assert.ok(html.includes('onclick="openOpsResvCreate()"'), '🔒 凸の予約カードに「＋ 予約を登録」が無い');
+        assert.ok(html.includes("onclick=\"openOpsResvCreate(${Number(forPlayer.id)}, '${escapeHtml(attr)}', ${Number(res?.slot) || (Number(d.slot) === 2 ? 2 : 1)})\""), '📸 取り込みの保存直後に「この編成で予約する」が無い');
+        const fn = html.match(/async function handleOpsResvCreateSubmit\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(fn.length > 800, 'handleOpsResvCreateSubmit が無い');
+        assert.ok(/const d = rv\.buildRequestDraft\(\{ boss: lo\.boss, block: \{ from: blk\.from, to: blk\.to \}, loadout: \{ slot: lo\.slot, dmgB: lo\.dmgB, characters: lo\.team \} \}\);/.test(fn), '中身を本人の申請と同じ buildRequestDraft で作っていない');
+        assert.ok(/rows = await window\.supabaseLoadReservations\(seasonId\);[\s\S]*?const chk = rv\.canPin\(rows, \{ playerId: p\.id, bossNumber: d\.draft\.bossNumber, loadoutSlot: d\.draft\.loadoutSlot, doneAttacks: Number\(p\.attackCount\) \|\| 0, characters: d\.draft\.characters \}\);/.test(fn), 'いまの予約で canPin を見ていない');
+        assert.ok(/supabaseCreateReservation\(\{ seasonId, playerId: p\.id, \.\.\.d\.draft, status: 'pinned', pinnedBy: me\?\.name \|\| '運営', requestedBy: me\?\.name \|\| null \}\);/.test(fn), '📌 (pinned) で作っていない');
+        assert.ok(/_resvTransition\(Number\(created\.id\), 'approved', \{ expectFrom: 'pinned', reason: 'ops_registered'/.test(fn), 'すぐ 🔒 確定 (pinned → approved) していない');
+        assert.ok(/_notifyMemberResv\(after, '🔒 運営があなたの予約を登録しました'/.test(fn), '本人に通知していない');
+        assert.ok(/if \(st\.busy\) return;/.test(fn) && /st\.busy = true; _opsResvCreateRender\(\);/.test(fn), '二重押しを止めていない');
+        const notes = JSON.parse(_grRd('data', 'release-notes.json')).notes;
+        assert.ok(notes.some(n => n.id === 2026102401 && /Discord/.test(n.title)), '更新履歴に 9a/9b の項目が無い');
     });
     test('★ 🧱 段階 7 publishedPlansDomain: ブロックごとの最新 (ブロックの行と 1 日ぶんの行は新しいほう) / 1 つ前 / ブロックの並び / 既定のブロック', () => {
         const d = globalThis.publishedPlansDomain;
