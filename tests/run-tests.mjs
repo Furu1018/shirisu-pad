@@ -5593,7 +5593,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(html.includes('運営が組み直し中です — 予約の枠は動きません'));
         // 予約が変わったらヒーローを描き直す (予約の一覧を読んだあと)
         const resv = html.match(/async function renderMyReservations\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const k = _homeSlotsKey\(_homeSlotsNow\(identity\)\);\s*\n\s*if \(k !== _heroPlanKey\) renderMyNextAction\(identity\);/.test(resv), '予約が変わってもヒーローが古いまま');
+        assert.ok(/const k = _homeSlotsKey\(_homeSlotsNow\(identity\)\);\s*\n\s*if \(!_homeSimple\(\) && k !== _heroPlanKey\) renderMyNextAction\(identity\);/.test(resv), '予約が変わってもヒーローが古いまま (シンプルな画面ではヒーローに 3 枠が無いので描き直さない)');
         // CSS: 固定 / 空き の見た目
         assert.ok(/\.dc-plan-card\.fixed \{/.test(html) && /\.dc-plan-card\.empty \{/.test(html));
     });
@@ -5657,7 +5657,15 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ 配線: 🧱 シンプルな画面 (2026-10-23 ユーザー決定) — 戦闘カード・状態ボタン・運営タブ上の状態の数を出さない / 「この凸を引き受ける」「📣 お願い」を出さない / 自分の凸は 📅 きょうの凸 に (配信カードは 🧱 盤 + 確認しました) / 申請 → 枠を予約する', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // 判定は 1 つ (member_input=full のときだけ従来の画面)。運営もメンバーも同じ
-        assert.ok(html.includes("const _homeSimple = () => !_memberInputFull();") && html.includes("document.body.classList.toggle('home-simple', _homeSimple());"), 'シンプルな画面の判定 / 付け外しが無い');
+        assert.ok(html.includes("const _homeSimple = () => !_memberInputFull();") && html.includes("document.body.classList.toggle('home-simple', simple);"), 'シンプルな画面の判定 / 付け外しが無い');
+        // 切り替わったら描き終わったホームを描き直す (初回は描き直さない)・TDZ にならない宣言 (Codex指摘 d0f3e28)
+        assert.ok(/var _homeSimpleLast;\n/.test(html) && html.includes('if (_homeSimpleLast != null && _homeSimpleLast !== simple) _rerenderHomeForSimple();\n            _homeSimpleLast = simple;'), '切り替わっても描き直さない');
+        const rr = html.match(/function _rerenderHomeForSimple\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        for (const fn of ['_renderMyPubBody()', 'renderMyNextAction(me)', 'renderMyReservations(me)', 'renderMyTodayBlocks(me)']) assert.ok(rr.includes(fn), '描き直していない: ' + fn);
+        // ヒーローの当日の導線は「📅 きょうの凸を見る」(戦闘カードは無い)
+        assert.ok(/if \(_homeSimple\(\)\) \{[^}]*cta = heroBtn\('_heroGotoToday\(\)', '📅 きょうの凸を見る'\);/.test(html), 'ヒーローに「戦闘に入る」を出している');
+        // 1 日ぶんの配信 (盤が無い) も自分の凸は きょうの凸 に
+        assert.ok(html.includes("const view = simple ? (plan?.blockScope ? 'board' : 'today') : _myPlanViewMode;") && html.includes("if (view === 'today') inner = "), '1 日ぶんの配信で わたしの凸 を出している');
         const css = html.match(/body\.home-simple #myBattleCard[^{]*\{ display: none !important; \}/)?.[0] || '';
         for (const id of ['myBattleCard', 'myBossBoardCard', 'mypageStatusSwitcher', 'mypageStatusHint', 'mypageStatusTiles', 'opsOverviewChips']) {
             assert.ok(css.includes('body.home-simple #' + id), id + ' をシンプルな画面で隠していない');
@@ -5668,7 +5676,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/function _heroPlanStripHtml\(identity, hero\) \{\s*\n\s*if \(_homeSimple\(\)\) \{ _heroPlanKey = ''; return ''; \}/.test(html), 'ヒーローの 3 凸を出している');
         assert.ok(/function _planRowResvHtml\(a, viewerId, doneCount\) \{\s*\n\s*if \(_homeSimple\(\)\) return '';/.test(html), '「この凸を引き受ける」を出している');
         // 配信カード: タブなし・盤 (ブロックの配信) / わたしの凸 (1 日ぶん)
-        assert.ok(html.includes("const view = simple ? (plan?.blockScope ? 'board' : 'mine') : _myPlanViewMode;") && /const tabs = simple \? '' : `/.test(html), '配信カードのタブを出している');
+        assert.ok(html.includes("const view = simple ? (plan?.blockScope ? 'board' : 'today') : _myPlanViewMode;") && /const tabs = simple \? '' : `/.test(html), '配信カードのタブを出している');
         // 📣 お願い: 運営の 2 か所 (予約カードの 📌 の行・焦点の帯) と 本人の返事の箱
         assert.ok(html.includes("(_homeSimple() ? '' : btn('📣 お願いする'") && html.includes("(asked || _homeSimple() ? '' : `<button type=\"button\" class=\"act ask\" onclick=\"_opsPlanAsk("), '運営の 📣 お願いする を出している');
         assert.ok(html.includes("const askRows = _homeSimple() ? '' : asks.map(r => {"), '本人に 📣 お願いの返事を出している');

@@ -8262,8 +8262,14 @@
                     // A1: 残凸あり
                     hero = true;
                     lead = atkCount != null ? `🔥 レイド当日! 残り${3 - atkCount}凸` : '🔥 きょうはレイド当日!';
-                    why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。自分の割当は下の配信プランカードで確認できます。';
-                    cta = heroBtn('_heroGotoBattle()', '⚔️ 戦闘に入る');
+                    if (_homeSimple()) {
+                        // 🧱 シンプルな画面: 戦闘カードは無い。凸は配信どおりにして、結果のスクショを Discord へ (Codex指摘 d0f3e28)
+                        why = '配信されたあなたの凸は「📅 きょうの凸」に出ています。凸したら結果のスクショを Discord に貼ってください (運営が取り込むと ✓ が付きます)。';
+                        cta = heroBtn('_heroGotoToday()', '📅 きょうの凸を見る');
+                    } else {
+                        why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。自分の割当は下の配信プランカードで確認できます。';
+                        cta = heroBtn('_heroGotoBattle()', '⚔️ 戦闘に入る');
+                    }
                     // 運営の用事は本人の凸を隠さずサブリンクで (当日は自分の凸が先)
                     subLink = opsNotice
                         ? heroSub(opsNotice.onclick, `${opsNotice.lead} →`)
@@ -8737,6 +8743,9 @@
         }
 
         // ヒーローの主CTA: 戦闘カードのゲートへスクロールして一瞬ハイライト (H2)
+        function _heroGotoToday() {
+            document.getElementById('myTodayBlocksCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         function _heroGotoBattle() {
             const gate = document.getElementById('mypageBattleGate');
             if (!gate) return;
@@ -9995,12 +10004,13 @@
             const { plan, viewerId, doneCounts, stale, liveLevel, ack, frozen, frozenBy, myChange } = _myPubState;
             // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): タブは出さず 🧱 盤 + 「確認しました」だけ。自分の凸は 📅 きょうの凸 に
             const simple = _homeSimple();
-            const view = simple ? (plan?.blockScope ? 'board' : 'mine') : _myPlanViewMode;
+            const view = simple ? (plan?.blockScope ? 'board' : 'today') : _myPlanViewMode;
             const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:var(--card);color:var(--t-ink);box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:var(--t-muted);'}">${icon} ${label}</button>`;
             const tabs = simple ? '' : `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}${plan?.blockScope ? tab('board', '🧱', '盤') : ''}</div>`;
             let inner;
             try {
-                if (view === 'overview') inner = _planOverviewHtml(plan, viewerId);
+                if (view === 'today') inner = '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;">あなたの凸は下の「📅 きょうの凸」に出ています。</p>';
+                else if (view === 'overview') inner = _planOverviewHtml(plan, viewerId);
                 else if (view === 'board' && plan?.blockScope) inner = _myPlanBoardHtml(plan, viewerId);
                 else if (view === 'timetable') inner = _planTimetableHtml(plan, { season: _myPubState.doneSeason, highlightPlayerId: viewerId, filterKey: 'my' });
                 else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
@@ -10244,7 +10254,7 @@
             // ホームの3枠は予約にも依存する。内容が変わっていたらヒーローと配信カードを描き直す
             try {
                 const k = _homeSlotsKey(_homeSlotsNow(identity));
-                if (k !== _heroPlanKey) renderMyNextAction(identity);
+                if (!_homeSimple() && k !== _heroPlanKey) renderMyNextAction(identity);   // シンプルな画面のヒーローは 3 枠を持たない (毎回描き直さない: Codex指摘 d0f3e28)
                 if (_myPubState && _myPubState.viewerId === identity.id) _renderMyPubBody();
             } catch { /* 3枠が出ないだけ */ }
         }
@@ -29385,10 +29395,27 @@
         // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): 運営もメンバーも。戦闘カード・状態ボタン・🎯 あなたの3凸・配信カードのタブ・「この凸を引き受ける」・📣 お願い を出さない。
         //   自分の凸は 📅 きょうの凸 に、予約は「🔒 予約」カードに。従来の画面は member_input=full (✏️ シーズン編集のスイッチ) で戻る
         const _homeSimple = () => !_memberInputFull();
+        // ★ 最後に付けた見せ方。切り替わったときだけ描き直す (初回は描き直さない — 起動時の描画と重ねない)。
+        //   var で初期値なし: 宣言より前に _applyMemberLite が呼ばれても TDZ にならず、あとで null に戻されもしない
+        var _homeSimpleLast;
+        function _rerenderHomeForSimple() {
+            // シーズンが読めたあと (renderMyTodayBlocks の中) からも呼ばれるので、いまの描画が終わってから
+            setTimeout(() => {
+                const me = getCurrentIdentity();
+                if (!me?.id) return;
+                try { if (_myPubState && String(_myPubState.viewerId) === String(me.id)) _renderMyPubBody(); } catch { /* 配信カードが出ないだけ */ }
+                try { renderMyNextAction(me); } catch { /* ヒーローが古いだけ */ }
+                try { renderMyReservations(me); } catch { /* 予約カードが古いだけ */ }
+                try { renderMyTodayBlocks(me); } catch { /* きょうの凸が古いだけ */ }
+            }, 0);
+        }
         function _applyMemberLite() {
             const lite = _memberLite();
             document.body.classList.toggle('member-lite', lite);
-            document.body.classList.toggle('home-simple', _homeSimple());
+            const simple = _homeSimple();
+            document.body.classList.toggle('home-simple', simple);
+            if (_homeSimpleLast != null && _homeSimpleLast !== simple) _rerenderHomeForSimple();
+            _homeSimpleLast = simple;
             const mockHidden = _mockTabHidden();
             document.body.classList.toggle('mock-tab-hidden', mockHidden);
             // 模擬タブを開いたまま隠されたら ホーム (運営モードなら戦況) へ (TabController も入口で止める)
