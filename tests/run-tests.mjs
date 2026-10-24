@@ -2396,6 +2396,10 @@ console.log('\n戦況の変化検知:');
             [5, true, true, false, '85.67 → 85.2B (−0.47)']]);
         assert.deepEqual([d.changed, d.read, d.unread], [3, 4, 1]);
         assert.equal(globalThis.raidEventsDomain.bossHpDiff([{ bossNumber: 1, curB: 10, nextB: 10.01 }]).changed, 1, '0.01B の差は変わる');
+        // Codex 9e A: いまの値が空・不正なら「のまま」と言わない (読めた値で上書きされる = 変わる)。丸めは入力欄の表示 (toFixed(2)) と同じ
+        const bad = globalThis.raidEventsDomain.bossHpDiff([{ bossNumber: 1, curB: '', nextB: 40 }, { bossNumber: 2, curB: NaN, nextB: null }, { bossNumber: 3, curB: 'x', nextB: 5 }]);
+        assert.deepEqual(bad.rows.map(r => [r.curOk, r.changed, r.up, r.label]), [[false, true, false, 'いまの値が不明 → 40B'], [false, false, false, '読めず (手で入力)'], [false, true, false, 'いまの値が不明 → 5B']]);
+        assert.equal(globalThis.raidEventsDomain.bossHpDiff([{ bossNumber: 1, curB: 2.675, nextB: (2.675).toFixed(2) }]).changed, 0, '表示と同じ丸めで比べていない');
         assert.deepEqual(globalThis.raidEventsDomain.bossHpDiff(null), { rows: [], changed: 0, read: 0, unread: 0 });
     });
 
@@ -12857,7 +12861,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/const target = _pasteTargetFor\(document\.activeElement\);/.test(init) && /if \(input && input\.disabled\) return;\s*\n\s*ev\.preventDefault\(\);\s*\n\s*handler\(\{ target: \{ files, value: '' \} \}\);/.test(init), 'ファイル選択と同じ形で渡していない / 読み取り中にも受ける');
         const pt = html.match(/function _pasteTargetFor\(active\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const modalOpen = !!document\.querySelector\('\.player-select-modal\.open'\);/.test(pt) && /\(!modalOpen && el\.classList\.contains\('dc-card'\) && el\.offsetParent !== null\)/.test(pt), 'シートが開いているのに裏のカードへ読ませる');
+        // Codex 9e B: 受け口のシートが 2 つ以上開いていたら前面が分からない → 受けない (焦点も当てにしない)。開いていなければ 焦点のあるカード → 見えているカードが 1 つだけ
+        assert.ok(/const opens = live\.filter\(\(\[, el\]\) => el\.classList\.contains\('open'\)\);\s*\n\s*if \(opens\.length\) return opens\.length === 1 \? opens\[0\]\[0\] : null;\s*\n\s*if \(!live\.length\) return null;\s*\n\s*const focused = /.test(pt), 'シートが 2 つ開いているときに受けている / シートより先に焦点を見ている');
         assert.ok(/if \(focused\) return focused\[0\];/.test(pt) && /return live\.length === 1 \? live\[0\]\[0\] : null;/.test(pt), '行き先が決まらないときに貼り付けを受けている');
+        // Codex 9e C: 読み取り中 (input.disabled) は 選ぶ・落とす・貼り付け のどれも受けない — 本物の input に印を立て、finally で戻す
+        assert.ok(/const input = document\.getElementById\('opsBossHpOcrInput'\);\s*\n\s*if \(input\?\.disabled\) \{ showNotification\('読み取り中です。終わるまで待ってください'\); return; \}\s*\n\s*if \(input\) input\.disabled = true;/.test(ocr), '読み取り中の二重受付を止めていない');
+        assert.ok(/\} finally \{\s*\n\s*if \(input\) input\.disabled = false;\s*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない');
     });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
         const d = globalThis.planBoardDomain;

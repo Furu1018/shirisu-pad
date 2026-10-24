@@ -1301,8 +1301,9 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   スクショを読み取ったら `raidEventsDomain.bossHpDiff` (純ロジック・B 単位・小数 2 桁で比べる) の差分を行に出す (「47.06 → 40B (−7.06)」/「16.42B のまま」/「読めず (手で入力)」。増えていれば警告の色 = 読み違いの疑い)。
   保存ボタンは「⏬ 読み取った値を保存 (変わる N 体)」に変わる (読めなかった行は いまの値のまま = 保存しても変わらない)。開き直すと文を戻す。保存の経路 (`handleOpsBossHpSaveAll` → `supabaseUpdateBossHp` → `_checkRaidEvents`) は変えていない。
   **PC は貼り付け (Ctrl/Cmd+V) と落とすでも読み取れる**: `_FILE_DROPS` に HP のシートを足し、`paste` は `_pasteTargetFor(document.activeElement)` が行き先を **1 つに決めたときだけ**受ける
-  (焦点のある受け口 → 開いているシート (手前) → 見えているカードが 1 つだけ。シートが開いていれば裏のカードには読ませない・画像以外の貼り付け (文字) は触らない・読み取り中 (input.disabled) は受けない)。
-  ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数に渡す (読み取りの経路を増やさない)。運営だけの変更なので release-notes は無し
+  (受け口のシートが開いていれば**それが 1 つのときだけ** — 2 つ以上なら前面が分からないので受けず、焦点も当てにしない (Codex 9e B)。シートが無ければ 焦点のあるカード → 見えているカードが 1 つだけ。シートが開いていれば裏のカードには読ませない・画像以外の貼り付け (文字) は触らない)。
+  ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数に渡す (読み取りの経路を増やさない)。**読み取り中は本物の `opsBossHpOcrInput` を disabled にして finally で戻す** (選ぶ・落とす・貼り付け の連打で古い結果が新しい差分を上書きしない: Codex 9e C)。
+  `bossHpDiff` の丸めは入力欄と同じ `toFixed(2)`・いまの値が空や不正なら「いまの値が不明 → XB」(のまま と言わない: Codex 9e A)。運営だけの変更なので release-notes は無し
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

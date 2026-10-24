@@ -131,17 +131,22 @@
      * @returns {{ rows: Array<{bossNumber:number, curB:number, nextB:number|null, deltaB:number, changed:boolean, read:boolean, up:boolean, label:string}>, changed:number, read:number, unread:number }}
      */
     function bossHpDiff(rows) {
-        const r2 = (v) => Math.round(Number(v) * 100) / 100;
+        // 丸めは入力欄の表示 (toFixed(2)) と同じ式で (Math.round(v*100)/100 とは 2.675 のような値でずれ得る: Codex 9e A)
+        const r2 = (v) => Number(Number(v).toFixed(2));
         const fmt = (v) => r2(v).toFixed(2).replace(/\.?0+$/, '');
         const out = (Array.isArray(rows) ? rows : []).map(x => {
-            const curB = r2(x.curB);
+            const curOk = x.curB != null && String(x.curB).trim() !== '' && Number.isFinite(Number(x.curB));
+            const curB = curOk ? r2(x.curB) : null;
             const read = x.nextB != null && Number.isFinite(Number(x.nextB));
             const nextB = read ? r2(x.nextB) : null;
-            const deltaB = read ? r2(nextB - curB) : 0;
-            const changed = read && Math.abs(deltaB) >= 0.005;
-            const up = changed && deltaB > 0;
-            const label = !read ? '読めず (手で入力)' : !changed ? `${fmt(curB)}B のまま` : `${fmt(curB)} → ${fmt(nextB)}B (${up ? '+' : '−'}${fmt(Math.abs(deltaB))})`;
-            return { bossNumber: Number(x.bossNumber), curB, nextB, deltaB, changed, read, up, label };
+            const deltaB = (read && curOk) ? r2(nextB - curB) : 0;
+            const changed = read && (!curOk || Math.abs(deltaB) >= 0.005);   // いまの値が分からなければ、読めた値で上書きされる = 変わる
+            const up = changed && curOk && deltaB > 0;
+            const label = !read ? '読めず (手で入力)'
+                : !curOk ? `いまの値が不明 → ${fmt(nextB)}B`
+                : !changed ? `${fmt(curB)}B のまま`
+                : `${fmt(curB)} → ${fmt(nextB)}B (${up ? '+' : '−'}${fmt(Math.abs(deltaB))})`;
+            return { bossNumber: Number(x.bossNumber), curB, curOk, nextB, deltaB, changed, read, up, label };
         });
         return { rows: out, changed: out.filter(x => x.changed).length, read: out.filter(x => x.read).length, unread: out.filter(x => !x.read).length };
     }

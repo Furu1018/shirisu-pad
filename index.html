@@ -24754,6 +24754,10 @@
             event.target.value = '';
             const statusEl = document.getElementById('opsBossHpOcrStatus');
             if (!file) return;
+            // 🗣 9e (Codex C): 読み取り中は受け付けない (選ぶ・落とす・貼り付け の連打で、遅く終わった古い結果が新しい差分を上書きしない)。受け口 (_enableFileDrop / paste) も input.disabled を見る
+            const input = document.getElementById('opsBossHpOcrInput');
+            if (input?.disabled) { showNotification('読み取り中です。終わるまで待ってください'); return; }
+            if (input) input.disabled = true;
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
             statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
 
@@ -24802,6 +24806,8 @@
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = 'var(--bad)';
+            } finally {
+                if (input) input.disabled = false;
             }
         }
         // 🗣 9e (2026-10-24・運用の見直し Q5): 読み取り → 差分 → 1 タップ保存。読み取った値と いまの値 の差分を行に出し、保存ボタンを「読み取った値を保存」にする。
@@ -28780,11 +28786,12 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             const modalOpen = !!document.querySelector('.player-select-modal.open');
             const live = _FILE_DROPS.map(d => [d, document.getElementById(d[0])])
                 .filter(([, el]) => el && (el.classList.contains('open') || (!modalOpen && el.classList.contains('dc-card') && el.offsetParent !== null)));
+            // シートが開いているときは、開いている受け口のシートが 1 つのときだけ (2 つ以上なら前面がどれか分からない → 受けない。焦点も当てにしない: Codex 9e B)
+            const opens = live.filter(([, el]) => el.classList.contains('open'));
+            if (opens.length) return opens.length === 1 ? opens[0][0] : null;
             if (!live.length) return null;
             const focused = active ? live.find(([, el]) => el.contains(active)) : null;
             if (focused) return focused[0];
-            const opens = live.filter(([, el]) => el.classList.contains('open'));
-            if (opens.length) return opens[opens.length - 1][0];
             return live.length === 1 ? live[0][0] : null;
         }
 
