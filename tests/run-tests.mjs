@@ -12799,9 +12799,16 @@ console.log('\ngrowthDomain:');
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const fn = html.match(/function _opsPlanNoPlaceCheck\(el\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn.length > 0, '_opsPlanNoPlaceCheck が無い');
-        assert.ok(/if \(!el \|\| !sel \|\| !dom \|\| !snap \|\| sel\.pinned\) return;/.test(fn), '📌 を置き直すときにも出る / 駒が無いのに出る');
+        assert.ok(/if \(!el \|\| !sel \|\| !dom \|\| !snap \|\| !plan \|\| sel\.pinned\) return;/.test(fn), '📌 を置き直すときにも出る / 駒が無いのに出る');
+        assert.ok(/if \(_opsPlanViewMode !== 'timetable' && _opsPlanViewMode !== 'board'\) return;/.test(fn), 'リスト (置くマスが無い) でも言う');
         assert.ok(/if \(sel\.noPlaceTold === key\) return;\s*\n\s*sel\.noPlaceTold = key;/.test(fn), '同じ選択で描き直すたびに出る');
-        assert.ok(/dom\.noPlaceReason\(\{ player: p, attr: sel\.attr, bosses: \(snap\.bosses \|\| \[\]\)\.filter\(b => bossNums\.has\(Number\(b\.boss_number\)\)\), hourIdxs: \[\.\.\.hours\], hourOrder: HOUR_ORDER,/.test(fn), '盤に出ているボス × 時刻のマスで理由を見ていない');
+        // Codex 監査 9d A: 3 凸を使い切った人は属性・時間のマスが通っても置けない → 先に見て、マスも光らせない
+        assert.ok(/const spent = !!p && remaining <= 0;/.test(fn) && /const ok = !spent && !!p && dom\.canPlace\(/.test(fn) && /if \(spent\) _opsPlanCellLit\(cell, false\); else cell\.dataset\.can = ok \? '1' : '0';/.test(fn),
+            '3 凸を使い切った人を先に見ていない / マスを沈めていない (Codex 9d A)');
+        const lit = html.match(/function _opsPlanCellLit\(cell, ok\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/cell\.classList\.toggle\('can', ok\);/.test(lit) && /cell\.style\.outline = ok \? '1\.5px dashed var\(--ops-solid\)' : '';/.test(lit) && /cell\.style\.opacity = ok \? '' : '0\.35';/.test(lit), '🧱 盤 (class) と時間割 (インライン) の両方を沈めていない');
+        // Codex 監査 9d C: 理由を見る範囲は、描いている時間割 / 盤そのものから
+        assert.ok(/const range = _opsPlanViewRange\(plan\);\s*\n\s*const why = dom\.noPlaceReason\(\{ player: p, attr: sel\.attr, bosses: range\.bosses, hourIdxs: range\.hourIdxs, hourOrder: HOUR_ORDER, remaining \}\);/.test(fn), '描いている盤の範囲 (_opsPlanViewRange) で理由を見ていない');
         assert.ok(fn.includes("showNotification(`置ける場所がありません: ${why.label}${hint}`)") && fn.includes("' — 🧱 盤 に切り替えると、このブロックのどの時刻にも置けます'"), '理由の文 / 時間割から 🧱 盤 への案内が無い');
         assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;\s*\n\s*_renderOpsBlockSteps\(\);\s*\n\s*_opsPlanNoPlaceCheck\(el\);/.test(html), '描いた直後に見ていない');
         const paint = html.match(/function _opsPlanPaintTargets\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -12809,9 +12816,16 @@ console.log('\ngrowthDomain:');
         assert.ok(html.includes("else if (cell && !_opsPlanSel && cell.dataset.h !== '' && _opsMode) showNotification('先に 🧩 模擬ピースか割当のチップを押して、光ったマスを押します');"), '駒を選ばずにマスを押したときの案内が無い');
         assert.ok(/if \(cell && _opsPlanSel && cell\.dataset\.h !== ''\) _opsPlanPlace\(Number\(cell\.dataset\.boss\), Number\(cell\.dataset\.h\)\);/.test(html) && !/cell\.dataset\.can !== '1'\) return;\s*\n\s*_opsPlanPlace/.test(html), '沈んだマスを押しても何も言わない (置けません: 理由 を出す経路が塞がれている)');
         const tray = html.match(/function _opsPlanTrayHtml\(plan\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const why = \(!x\.placed && typeof dom\.noPlaceReason === 'function'\) \? dom\.noPlaceReason\(\{ player: \(snap\.players \|\| \[\]\)\.find\(pp => String\(pp\.id\) === String\(x\.memberId\)\), attr: x\.attr, bosses: viewBosses, hourIdxs: viewHours, hourOrder: HOUR_ORDER, remaining: x\.remaining \}\) : null;/.test(tray), 'ピースの理由を見ていない');
+        assert.ok(/const why = \(!x\.placed && typeof dom\.noPlaceReason === 'function'\) \? whyOf\(x\) : null;/.test(tray)
+            && /whyCache\.set\(k, dom\.noPlaceReason\(\{ player: \(snap\.players \|\| \[\]\)\.find\(pp => String\(pp\.id\) === String\(x\.memberId\)\), attr: x\.attr, bosses: range\.bosses, hourIdxs: range\.hourIdxs, hourOrder: HOUR_ORDER, remaining: x\.remaining \}\)\)/.test(tray), 'ピースの理由を見ていない');
         assert.ok(tray.includes('<span class="where nowhere" title="${esc(why.label)}">⚠ 置ける所なし: ${esc(why.label)}</span>') && tray.includes('${where}${nowhere}</div>'), 'ピースに理由を添えていない');
-        assert.ok(/if \(plan && _opsPlanViewMode === 'board' && plan\.blockScope\) \{[\s\S]*?filter\(i => i >= nowIdx\);/.test(tray) && /if \(a\.hourIdx != null && !a\.flex\) hs\.add\(Number\(a\.hourIdx\)\);/.test(tray), '箱が見ている時刻のマスが 盤 (ブロックのいまより後) / 時間割 (凸のある時刻) と違う');
+        // Codex 監査 9d C: 箱の範囲は別計算せず、描いている時間割 (_planTimetableModel の行 × 絞り込み) / 盤 (_planBoardRail の行 × railHours) から
+        assert.ok(/const range = _opsPlanViewRange\(plan\);/.test(tray) && !/viewHours|viewBosses|idxOfHour/.test(tray), '箱が盤の範囲を別計算している (Codex 9d C)');
+        const vr = html.match(/function _opsPlanViewRange\(plan\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const \{ rows, railHours \} = _planBoardRail\(plan\);/.test(vr) && /_planTimetableModel\(plan, _planDoneFor\(snap\?\.season \?\? null\)\)/.test(vr) && /const filter = _planBossFilters\.ops;/.test(vr)
+            && /s\.rows\.forEach\(r => \{ if \(r\.hourIdx != null\) hs\.add\(Number\(r\.hourIdx\)\); \}\)/.test(vr), '範囲を時間割のモデル (済んだ凸だけの時刻の行・ボスの絞り込み) / 盤の行から導いていない');
+        const board = html.match(/function _planBlockBoardHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const \{ rows, railHours \} = _planBoardRail\(plan\);/.test(board) && !/Array\.from\(\{ length: toIdx - fromIdx \+ 1 \}/.test(board), '盤の描画が別に railHours を計算している (箱と食い違う)');
         assert.ok(html.includes('.plan-piece .where.nowhere { color: var(--warn-deep); }'), '理由の色が無い');
     });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {

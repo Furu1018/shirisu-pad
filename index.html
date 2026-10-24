@@ -22666,31 +22666,59 @@
         function _opsPlanClearSel() { _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false; renderOpsPlanView(); }
         // 🗣 9d (2026-10-24): 選んだ駒がいまの盤のどこにも置けないなら、理由をその場で言う (「なぜかここにはめれない」を無くす)。
         //   マス ([data-boss][data-h]) に data-can を付け、1 つも置けなければ planBoardDomain.noPlaceReason (判定は canPlace を使い回す)。同じ選択で 1 回だけ (描き直しのたびに出さない)
+        //   ★ 3 凸を使い切った人は、属性・時間のマスが通っても置けない (押して初めて canPin が止める) → 先に見て、マスも光らせない (Codex 監査 9d A)
+        //   ★ 理由を見る範囲 (ボス × 時刻のマス) は、描いている時間割 / 盤そのもの (_opsPlanViewRange) から導く (Codex 監査 9d C)
+        function _opsPlanCellLit(cell, ok) {   // マスを光らせる / 沈める (🧱 盤は class、時間割はインライン → 両方に効かせる)
+            cell.dataset.can = ok ? '1' : '0';
+            cell.classList.toggle('can', ok);
+            cell.style.outline = ok ? '1.5px dashed var(--ops-solid)' : '';
+            cell.style.outlineOffset = ok ? '-2px' : '';
+            cell.style.opacity = ok ? '' : '0.35';
+            if (!ok) cell.style.background = '';
+        }
         function _opsPlanNoPlaceCheck(el) {
-            const sel = _opsPlanSel, dom = window.planBoardDomain, snap = opsStore.get();
-            if (!el || !sel || !dom || !snap || sel.pinned) return;
+            const sel = _opsPlanSel, dom = window.planBoardDomain, snap = opsStore.get(), plan = _opsLastPlan;
+            if (!el || !sel || !dom || !snap || !plan || sel.pinned) return;
+            if (_opsPlanViewMode !== 'timetable' && _opsPlanViewMode !== 'board') return;   // リストには置くマスが無い (駒を持ったまま切り替えても言わない)
             const p = (snap.players || []).find(x => String(x.id) === String(sel.memberId));
+            const remaining = p ? 3 - (Number(p.attackCount) || 0) : null;
+            const spent = !!p && remaining <= 0;
             const cells = [...el.querySelectorAll('[data-boss][data-h]')].filter(c => c.dataset.h !== '');
             let any = false;
-            const bossNums = new Set(), hours = new Set();
             for (const cell of cells) {
                 const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(cell.dataset.boss));
                 const h = Number(cell.dataset.h);
-                bossNums.add(Number(cell.dataset.boss)); hours.add(h);
-                const ok = !!p && dom.canPlace({ player: p, attr: sel.attr, boss, hourIdx: h, hourOrder: HOUR_ORDER }).ok;
-                cell.dataset.can = ok ? '1' : '0';
+                const ok = !spent && !!p && dom.canPlace({ player: p, attr: sel.attr, boss, hourIdx: h, hourOrder: HOUR_ORDER }).ok;
+                if (spent) _opsPlanCellLit(cell, false); else cell.dataset.can = ok ? '1' : '0';
                 if (ok) any = true;
             }
             if (any) return;
             const key = `${sel.kind}|${sel.memberId}|${sel.attr}|${sel.loadoutSlot}|${_opsPlanViewMode}`;
             if (sel.noPlaceTold === key) return;
             sel.noPlaceTold = key;
-            const why = dom.noPlaceReason({ player: p, attr: sel.attr, bosses: (snap.bosses || []).filter(b => bossNums.has(Number(b.boss_number))), hourIdxs: [...hours], hourOrder: HOUR_ORDER,
-                remaining: p ? 3 - (Number(p.attackCount) || 0) : null });
+            const range = _opsPlanViewRange(plan);
+            const why = dom.noPlaceReason({ player: p, attr: sel.attr, bosses: range.bosses, hourIdxs: range.hourIdxs, hourOrder: HOUR_ORDER, remaining });
             if (!why) return;
             // 時間割の行は凸のある時刻だけ。🧱 盤の行の時刻のマスなら、このブロックのいまより後のどの時刻にも置ける
             const hint = (why.reason === 'time' || why.reason === 'no_hours') && _opsPlanViewMode === 'timetable' ? ' — 🧱 盤 に切り替えると、このブロックのどの時刻にも置けます' : '';
             showNotification(`置ける場所がありません: ${why.label}${hint}`);
+        }
+        // 🗣 9d (Codex C): 🧩 箱と理由が見る「盤の範囲」(ボス × 時刻のマス) は、描いている時間割 / 盤そのものから導く (別計算しない)。
+        //   時間割 = _planTimetableModel の行 (凸のある時刻 + 済んだ凸だけの時刻) × 表示しているボス (絞り込み)。🧱 盤 = blockBoardRows の行 (倒れたボスは無い) × railHours (ブロックのいまより後)
+        function _opsPlanViewRange(plan) {
+            const snap = opsStore.get();
+            const bossOf = (n) => (snap?.bosses || []).find(b => Number(b.boss_number) === Number(n)) || null;
+            if (!plan) return { bosses: [], hourIdxs: [] };
+            if (_opsPlanViewMode === 'board') {
+                const { rows, railHours } = _planBoardRail(plan);
+                return { bosses: rows.map(r => bossOf(r.bossNumber)).filter(Boolean), hourIdxs: railHours };
+            }
+            const model = _planTimetableModel(plan, _planDoneFor(snap?.season ?? null));
+            const filter = _planBossFilters.ops;
+            const bosses = (model ? model.bosses : (plan.levels?.[0]?.bosses || [])).filter(bm => !filter || filter.includes(bm.bossNumber)).map(bm => bossOf(bm.bossNumber)).filter(Boolean);
+            const hs = new Set();
+            (model ? model.sections : []).forEach(s => s.rows.forEach(r => { if (r.hourIdx != null) hs.add(Number(r.hourIdx)); }));
+            return { bosses, hourIdxs: [...hs].sort((a, b) => a - b) };
         }
         // ドラッグ中: 描き直さずに、置けるマスに印を付ける (描き直すと掴んだ要素が消えてドラッグが切れる)。
         // ★ 握った人の出られる時間も同時に見せる (2026-10-10 運営チーム): 行の見出し (時刻) を光らせ、下の帯 (#opsPlanFocusBar) を差し替える
@@ -22712,12 +22740,9 @@
                 const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(cell.dataset.boss));
                 const h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
                 const ok = h != null && dom.canPlace({ player: p, attr: sel.attr, boss, hourIdx: h, hourOrder: HOUR_ORDER }).ok;
-                cell.dataset.can = ok ? '1' : '0';
-                cell.style.outline = ok ? '1.5px dashed var(--ops-solid)' : '';
-                cell.style.outlineOffset = ok ? '-2px' : '';
-                cell.style.opacity = ok ? '' : '0.35';
+                _opsPlanCellLit(cell, ok);
             });
-            _opsPlanNoPlaceCheck(el);   // 🗣 9d
+            _opsPlanNoPlaceCheck(el);   // 🗣 9d (3 凸を使い切った人なら、ここで光らせたマスを沈める)
         }
         // 置く: 判定 (属性 / 時間 → planBoardDomain.canPlace、予約の衝突 / 残凸 / キャラ被り → reservationsDomain.canPin) →
         //   📌 を作る (or 置き直す) → 算出し直す。レベルは選ばない (算出が「その時刻にそのボスがいるレベル」に当てはめる)
@@ -23092,19 +23117,15 @@
             const all = dom.piecesOf({ players: snap.players || [], plan, reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) ? _resv.rows : [], isFixed: rv ? rv.isFixed : null });
             const unused = all.filter(x => !x.placed).length;
             const list = all.filter(x => !_opsPlanTrayAttr || x.attr === _opsPlanTrayAttr).filter(x => !_opsPlanTrayUnusedOnly || !x.placed);
-            // 🗣 9d: 箱が見ている盤の範囲 (ボス × 時刻のマス)。時間割の行は凸のある時刻だけ (_planTimetableModel と同じ材料)、🧱 盤はこのブロックのいまより後の時刻 (_planBlockBoardHtml の railHours と同じ)
-            const planBossNums = new Set((Array.isArray(plan?.levels) ? plan.levels : []).flatMap(lv => (lv.bosses || []).map(b => Number(b.bossNumber))));
-            const viewBosses = (snap.bosses || []).filter(b => planBossNums.has(Number(b.boss_number)));
-            let viewHours = [];
-            if (plan && _opsPlanViewMode === 'board' && plan.blockScope) {
-                const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
-                const fromIdx = idxOfHour(plan.blockScope.from), toIdx = idxOfHour(plan.blockScope.to), nowIdx = Math.max(0, _planNowIdx(plan));
-                if (fromIdx >= 0 && toIdx >= fromIdx) viewHours = Array.from({ length: toIdx - fromIdx + 1 }, (_, k) => fromIdx + k).filter(i => i >= nowIdx);
-            } else if (plan) {
-                const hs = new Set();
-                (plan.levels || []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => { if (a.hourIdx != null && !a.flex) hs.add(Number(a.hourIdx)); })));
-                viewHours = [...hs];
-            }
+            // 🗣 9d: 箱が見ている盤の範囲 (ボス × 時刻のマス) は、描いている時間割 / 盤そのものから (_opsPlanViewRange・Codex C)。
+            //   同じ人 × 属性の理由は編成①②で同じなので 1 回だけ見る (描くたびに ピース × 時刻 × ボス を回さない)
+            const range = _opsPlanViewRange(plan);
+            const whyCache = new Map();
+            const whyOf = (x) => {
+                const k = `${x.memberId}|${x.attr}`;
+                if (!whyCache.has(k)) whyCache.set(k, dom.noPlaceReason({ player: (snap.players || []).find(pp => String(pp.id) === String(x.memberId)), attr: x.attr, bosses: range.bosses, hourIdxs: range.hourIdxs, hourOrder: HOUR_ORDER, remaining: x.remaining }));
+                return whyCache.get(k);
+            };
             const drag = _opsPlanDragOk();
             const groups = []; const seen = new Map();
             for (const x of list) { const k = String(x.memberId); if (!seen.has(k)) { seen.set(k, { name: x.name, remaining: x.remaining, items: [], memberId: x.memberId }); groups.push(seen.get(k)); } seen.get(k).items.push(x); }
@@ -23127,7 +23148,7 @@
                     const where = x.placed && x.where ? `<span class="where">盤にある: B${x.where.bossNumber}${x.where.hourLabel ? ' ' + esc(String(x.where.hourLabel)) : ''}${x.where.pinned ? ' 📌' : x.where.promise ? ' 🔒' : ''}</span>` : '';
                     const team = Array.isArray(x.team) && x.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(x.team, { size: 16 }) : '';
                     // 🗣 9d: 置ける所が無いピースには理由を添える (選ぶ前から分かる)
-                    const why = (!x.placed && typeof dom.noPlaceReason === 'function') ? dom.noPlaceReason({ player: (snap.players || []).find(pp => String(pp.id) === String(x.memberId)), attr: x.attr, bosses: viewBosses, hourIdxs: viewHours, hourOrder: HOUR_ORDER, remaining: x.remaining }) : null;
+                    const why = (!x.placed && typeof dom.noPlaceReason === 'function') ? whyOf(x) : null;
                     const nowhere = why ? `<span class="where nowhere" title="${esc(why.label)}">⚠ 置ける所なし: ${esc(why.label)}</span>` : '';
                     const tk = `--attr-${esc(x.attr)}`;   // トークン名は変数に組んでから var() に入れる (走査が動的な名前を未定義と読む)
                     return `<div class="${cls.join(' ')}" data-piece="${esc(String(x.memberId))}" data-attr="${esc(x.attr)}" data-slot="${x.slot}" draggable="${drag && !x.placed ? 'true' : 'false'}" style="--pc:var(${tk}-solid);--pt:var(${tk});" title="${esc(`${x.name} · ${v ? v.name : x.attr}PT 編成${x.slot === 2 ? '②' : '①'} · ${x.dmgB.toFixed(1)}B`)}">`
@@ -23254,22 +23275,28 @@
         // ピースの塗りと上の文字 (属性ごとのトークン。明るい塗り (鉄甲・風圧) の上に白い文字を置かない)
         const _BB_FILL = { fire: ['var(--attr-fire-solid)', 'var(--attr-fire-ink)'], water: ['var(--attr-water-solid)', 'var(--attr-water-ink)'],
             electric: ['var(--attr-electric-solid)', 'var(--attr-electric-ink)'], iron: ['var(--attr-iron-solid)', 'var(--attr-iron-ink)'], wind: ['var(--attr-wind-solid)', 'var(--attr-wind-ink)'] };
+        // 🧱 盤の行と時刻のマス。描画 (_planBlockBoardHtml) と 🧩 箱・置けない理由 (_opsPlanViewRange) が同じものを見る (Codex 監査 9d C: 別計算すると食い違う)
+        function _planBoardRail(plan) {
+            const dom = window.planBoardDomain;
+            const scope = plan?.blockScope || null;
+            const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
+            const fromIdx = scope ? idxOfHour(scope.from) : null, toIdx = scope ? idxOfHour(scope.to) : null;
+            const rows = (dom && plan) ? dom.blockBoardRows(plan, { fromIdx, toIdx }) : [];
+            const nowIdx = plan ? Math.max(0, _planNowIdx(plan)) : 0;
+            const railHours = (Number.isInteger(fromIdx) && Number.isInteger(toIdx) && fromIdx >= 0 && toIdx >= fromIdx)
+                ? Array.from({ length: toIdx - fromIdx + 1 }, (_, k) => fromIdx + k).filter(i => i >= nowIdx) : [];
+            return { fromIdx, toIdx, rows, railHours };
+        }
         function _planBlockBoardHtml(plan, opts = {}) {
             const esc = escapeHtml, dom = window.planBoardDomain;
             if (!dom || !plan) return '';
             const ops = !!opts.ops;
-            const scope = plan.blockScope || null;
-            const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
-            const fromIdx = scope ? idxOfHour(scope.from) : null, toIdx = scope ? idxOfHour(scope.to) : null;
-            const rows = dom.blockBoardRows(plan, { fromIdx, toIdx });
+            const { rows, railHours } = _planBoardRail(plan);   // 行と時刻のマス (🧩 箱・理由と同じもの)
             if (ops) _opsBoardCands = [];
             if (!rows.length) return '<p class="ops-recent-empty">盤に出すボスがありません (このブロックに凸が無い / ボスがもう倒れている)。</p>';
             const finite = rows.filter(r => !r.infinite);
             const scaleMax = Math.max(1, ...finite.map(r => Math.max(r.remainB, r.sumB)));
             const pct = (b) => `${Math.max(0, Math.min(100, (Number(b) || 0) / scaleMax * 100)).toFixed(2)}%`;
-            const nowIdx = Math.max(0, _planNowIdx(plan));
-            const railHours = (Number.isInteger(fromIdx) && Number.isInteger(toIdx) && fromIdx >= 0 && toIdx >= fromIdx)
-                ? Array.from({ length: toIdx - fromIdx + 1 }, (_, k) => fromIdx + k).filter(i => i >= nowIdx) : [];
             const snap = opsStore.get();
             const sel = ops ? _opsPlanSel : null;
             const selPlayer = sel ? (snap?.players || []).find(p => String(p.id) === String(sel.memberId)) : null;

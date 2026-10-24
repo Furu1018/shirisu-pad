@@ -1292,7 +1292,11 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `planBoardDomain.noPlaceReason({ player, attr, bosses, hourIdxs, hourOrder, remaining })` = 駒がいまの盤 (ボス × 時刻のマス) のどこにも置けない理由 (spent → attr → no_hours → time・置けるなら null)。
   `_opsPlanNoPlaceCheck(el)` を描いた直後 (`renderOpsPlanView`) とドラッグの塗り直し (`_opsPlanPaintTargets`) から呼び、マスに data-can を付けて 1 つも置けなければ「置ける場所がありません: 理由」(同じ選択で 1 回・`sel.noPlaceTold`)。
   時間割の行は凸のある時刻だけなので、time / no_hours のときは「🧱 盤 に切り替えると、このブロックのどの時刻にも置けます」を添える。🧩 模擬ピースの箱は未配置の各ピースに「⚠ 置ける所なし: 理由」(箱が見る範囲 = 時間割なら凸のある時刻・盤ならブロックのいまより後の時刻)。
-  駒を選ばずにマスを押したら「先に 🧩 模擬ピースか割当のチップを押して…」。沈んだマスを押すと従来どおり `_opsPlanPlace` が「置けません: 理由」(canPlace → canPin の label)。運営だけの変更なので release-notes は無し
+  駒を選ばずにマスを押したら「先に 🧩 模擬ピースか割当のチップを押して…」。沈んだマスを押すと従来どおり `_opsPlanPlace` が「置けません: 理由」(canPlace → canPin の label)。運営だけの変更なので release-notes は無し。
+  ★ Codex 監査 (10/24・AUDIT I) で直した 2 点: **A** 3 凸を使い切った人 (`remaining = 3 − attackCount ≤ 0`) は属性・時間のマスが通っても置けない (押して初めて canPin が止める) →
+  `_opsPlanNoPlaceCheck` が**先に**見て、光らせたマスも沈める (`_opsPlanCellLit(cell, ok)` = 🧱 盤の class `can` と時間割のインラインの両方。ドラッグの塗りも同じ関数)。
+  **C** 箱と理由が見る範囲 (ボス × 時刻のマス) は別計算しない → `_opsPlanViewRange(plan)` が**描いているものから導く**: 時間割 = `_planTimetableModel(plan, _planDoneFor(…))` の行 (凸のある時刻 + 済んだ凸だけの時刻) × `_planBossFilters.ops` の絞り込み /
+  🧱 盤 = `_planBoardRail(plan)` の行 (倒れたボスは無い) × railHours (ブロックのいまより後) — `_planBlockBoardHtml` も同じ `_planBoardRail` で描く。リスト (置くマスが無い) では言わない。同じ人 × 属性の理由は箱で 1 回だけ見る。実行テスト `tests/block-board.mjs`
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

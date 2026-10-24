@@ -31,7 +31,13 @@ function cutConst(marker) {
 const SRC = [
     html.includes('        let _opsBoardCands = [];') ? 'let _opsBoardCands = [];' : (console.error('NG: _opsBoardCands が見つかりません'), process.exit(2)),
     cutConst('        const _BB_FILL = {'),
+    cutFn('        function _planBoardRail(plan) {'),
     cutFn('        function _planBlockBoardHtml(plan, opts = {}) {'),
+    // 🗣 9d (Codex A / C): 置けない理由と、箱・理由が見る範囲。時間割のモデルは本物を切り出す (済んだ凸だけの時刻の行・絞り込み)
+    cutFn('        function _opsPlanCellLit(cell, ok) {'),
+    cutFn('        function _opsPlanNoPlaceCheck(el) {'),
+    cutFn('        function _opsPlanViewRange(plan) {'),
+    cutFn('        function _planTimetableModel(plan, done = _PLAN_DONE_EMPTY) {'),
     cutFn('        function _opsBoardCandPlace(ri, k) {'),
     cutFn('        function _renderOpsBlockSteps() {'),
     cutFn('        function _opsBlockStepGo(key) {'),
@@ -58,12 +64,17 @@ const PLAYERS = [
     { id: 11, name: 'ひ', attackCount: 0, availableSlots: ['h19', 'h20'], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 34, team: [] }] } },
 ];
 
-function makeEnv({ opsMode = true, sel = null, lastPlan = PLAN, pub = null, missing = 2, hpAt = null, nowIdx = 13, countsSeason = 45 } = {}) {
+function makeEnv({ opsMode = true, sel = null, lastPlan = PLAN, pub = null, missing = 2, hpAt = null, nowIdx = 13, countsSeason = 45, players = PLAYERS, viewMode = 'board', bossFilter = null, doneKeys = [] } = {}) {
     const calls = [];
     const els = new Map();
     const el = (id) => { if (!els.has(id)) els.set(id, { id, innerHTML: '', style: {}, scrollIntoView() { calls.push(['scroll', id]); } }); return els.get(id); };
-    const snap = { season: { id: 45 }, players: PLAYERS, bosses: BOSSES.map(b => ({ ...b, updated_at: hpAt })) };
+    const snap = { season: { id: 45 }, players, bosses: BOSSES.map(b => ({ ...b, updated_at: hpAt })) };
+    // 済んだ凸 (時間割のモデルが行を足す材料)。doneKeys = 'レベル:時刻idx:ボス番号'
+    const done = { byHourBoss: new Map(doneKeys.map(k => [k, [{ players: { name: '済' }, damage_raw: 1e9 }]])), rows: [], unknownTime: [] };
     const env = {
+        _opsPlanViewMode: viewMode, _planBossFilters: { ops: bossFilter, my: null },
+        _PLAN_DONE_EMPTY: { byHourBoss: new Map(), rows: [], unknownTime: [] }, _planDoneFor: () => done,
+        showNotification: (m) => calls.push(['notify', m]),
         window: { planBoardDomain: globalThis.planBoardDomain, opsLayoutDomain: globalThis.opsLayoutDomain, reservationsDomain: null },
         document: { getElementById: el },
         requestAnimationFrame: (f) => f(),
@@ -82,9 +93,14 @@ function makeEnv({ opsMode = true, sel = null, lastPlan = PLAN, pub = null, miss
     };
     const keys = Object.keys(env).filter(k => !['calls', 'el', '_opsPlanSel'].includes(k));
     // _opsPlanSel / _opsPlanFocus は書き換えられるので let で持つ
-    const fns = new Function(...keys, 'initialSel', `let _opsPlanSel = initialSel;\n${SRC}\nreturn { _planBlockBoardHtml, _opsBoardCandPlace, _renderOpsBlockSteps, _opsBlockStepGo, _myPlanBoardHtml, sel: () => _opsPlanSel, cands: () => _opsBoardCands };`)(...keys.map(k => env[k]), sel);
+    const fns = new Function(...keys, 'initialSel', `let _opsPlanSel = initialSel;\n${SRC}\nreturn { _planBlockBoardHtml, _opsBoardCandPlace, _renderOpsBlockSteps, _opsBlockStepGo, _myPlanBoardHtml, _planBoardRail, _opsPlanNoPlaceCheck, _opsPlanViewRange, sel: () => _opsPlanSel, cands: () => _opsBoardCands };`)(...keys.map(k => env[k]), sel);
     return Object.assign(env, fns);
 }
+// 置く先のマス ([data-boss][data-h]) の偽物。描画で光っていた (class can) 状態から始められる
+const mkCells = (pairs, litIdx = -1) => pairs.map(([b, h], i) => ({
+    dataset: { boss: String(b), h: String(h) }, style: {},
+    classList: { s: new Set(i === litIdx ? ['bb-cell', 'can'] : ['bb-cell']), toggle(c, on) { if (on) this.s.add(c); else this.s.delete(c); }, contains(c) { return this.s.has(c); } },
+}));
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -161,6 +177,59 @@ await test('★ 手順の帯: いまの手順を光らせ、未解決の「あ�
     const off = makeEnv({ opsMode: false });
     off._renderOpsBlockSteps();
     assert.equal(off.el('opsBlockSteps').style.display, 'none');
+});
+
+await test('★ 🗣 9d (Codex A): 3 凸を使い切った人を選んだら、属性・時間が合うマスも光らせず、先に理由を言う (同じ選択で 1 回 / 残凸があれば従来どおり / リストでは言わない)', () => {
+    const SEL = () => ({ kind: 'piece', memberId: 11, loadoutSlot: 1, attr: 'iron' });
+    const spent = PLAYERS.map(p => p.id === 11 ? { ...p, attackCount: 3 } : p);
+    const t = makeEnv({ players: spent, sel: SEL() });
+    const cells = mkCells([[4, 13], [4, 14], [4, 15], [3, 14]], 1);   // 19 時 × B4 (鉄甲) は属性・時間が合うので描画で光っていた
+    t._opsPlanNoPlaceCheck({ querySelectorAll: () => cells });
+    assert.ok(cells.every(c => c.dataset.can === '0' && !c.classList.contains('can') && c.style.opacity === '0.35' && c.style.outline === ''), '3 凸を使い切った人のマスが光ったまま');
+    const notes = () => t.calls.filter(c => c[0] === 'notify').map(c => c[1]);
+    assert.equal(notes().length, 1, '理由を言っていない / 2 回言った');
+    assert.ok(/^置ける場所がありません: ひ は 3 凸を使い切っています$/.test(notes()[0]), `文が違う: ${notes()[0]}`);
+    t._opsPlanNoPlaceCheck({ querySelectorAll: () => cells });
+    assert.equal(notes().length, 1, '同じ選択で描き直すたびに言う');
+    // 残凸がある → 置けるマスはそのまま・何も言わない
+    const ok = makeEnv({ sel: SEL() });
+    const cells2 = mkCells([[4, 13], [4, 14], [4, 15], [3, 14]], 1);
+    ok._opsPlanNoPlaceCheck({ querySelectorAll: () => cells2 });
+    assert.equal(cells2[1].dataset.can, '1'); assert.ok(cells2[1].classList.contains('can'), '置けるマスを沈めた');
+    assert.equal(cells2[0].dataset.can, '0');
+    assert.equal(ok.calls.filter(c => c[0] === 'notify').length, 0, '置けるのに言った');
+    // リスト (置くマスが無い) に切り替えても、駒を持ったままなら言わない
+    const list = makeEnv({ players: spent, sel: SEL(), viewMode: 'list' });
+    list._opsPlanNoPlaceCheck({ querySelectorAll: () => [] });
+    assert.equal(list.calls.filter(c => c[0] === 'notify').length, 0, 'リストで言った');
+    // 📌 の置き直し・駒なし は見ない
+    const pin = makeEnv({ players: spent, sel: { ...SEL(), pinned: true } });
+    pin._opsPlanNoPlaceCheck({ querySelectorAll: () => mkCells([[4, 14]], 0) });
+    assert.equal(pin.calls.filter(c => c[0] === 'notify').length, 0);
+});
+
+await test('★ 🗣 9d (Codex C): 🧩 箱・理由が見る範囲は描いている盤 / 時間割そのもの (ブロックのいまより後・済んだ凸だけの時刻の行・ボスの絞り込み)', () => {
+    const b = makeEnv();   // 🧱 盤・いま 18 時
+    assert.deepEqual(b._opsPlanViewRange(PLAN).hourIdxs, [13, 14, 15]);
+    assert.deepEqual(b._opsPlanViewRange(PLAN).bosses.map(x => x.boss_number), [3, 4]);
+    assert.deepEqual(makeEnv({ nowIdx: 14 })._opsPlanViewRange(PLAN).hourIdxs, [14, 15], 'いまより前の時刻を範囲にした');
+    // 盤の描画も同じ行・同じマス (_planBoardRail)
+    const rail = b._planBoardRail(PLAN);
+    assert.deepEqual(rail.railHours, [13, 14, 15]); assert.deepEqual(rail.rows.map(r => r.bossNumber), [3, 4]);
+    assert.ok(/data-boss="4" data-h="13"/.test(b._planBlockBoardHtml(PLAN, { ops: true })));
+    // 時間割: 凸のある時刻 (18・19・20 時) + 済んだ凸だけの時刻 (21 時 = idx 16) の行
+    const tt = makeEnv({ viewMode: 'timetable', doneKeys: ['2:16:3'] });
+    const r = tt._opsPlanViewRange({ ...PLAN, timeAware: true });
+    assert.deepEqual(r.hourIdxs, [13, 14, 15, 16], '済んだ凸だけの時刻の行を範囲に入れていない');
+    assert.deepEqual(r.bosses.map(x => x.boss_number), [3, 4]);
+    // 別のレベルの済んだ凸は行にならない
+    assert.deepEqual(makeEnv({ viewMode: 'timetable', doneKeys: ['3:16:3'] })._opsPlanViewRange({ ...PLAN, timeAware: true }).hourIdxs, [13, 14, 15]);
+    // ボスの絞り込み (B4 だけ表示) → 範囲も B4 だけ
+    const f = makeEnv({ viewMode: 'timetable', bossFilter: [4] });
+    assert.deepEqual(f._opsPlanViewRange({ ...PLAN, timeAware: true }).bosses.map(x => x.boss_number), [4], '時間割のボスの絞り込みを反映していない');
+    // 時間データが無いプラン (時間割が描けない) → マスは無い (ボスは残す)
+    assert.deepEqual(makeEnv({ viewMode: 'timetable' })._opsPlanViewRange(PLAN).hourIdxs, []);
+    assert.deepEqual(makeEnv()._opsPlanViewRange(null), { bosses: [], hourIdxs: [] });
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
