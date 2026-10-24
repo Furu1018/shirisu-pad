@@ -14151,6 +14151,7 @@ console.log('\n編成 3 つ (SQL 55):');
         assert.deepEqual(stray.map(x => [x.row.id, x.key, x.label]), [[1, '18-20', '夕方 18〜20時'], [4, '21-23', '夜']], '区切りに合わない配信を拾えていない / 1 日ぶんや合う行を拾った');
         assert.deepEqual(pp.strayRows(null, blocks), []); assert.deepEqual(pp.strayRows([P(1, { from: 18, to: 20 })], []).length, 1);
         assert.ok(/const strayNote = _opsStrayPubNote\(\);/.test(html) && /\+ strayNote;\s*\n\s*\}/.test(html) && /return ` — ⚠️ 区切りを変える前の配信が \$\{stray\.length\}件/.test(html), '配信の状況に「区切りを変える前の配信」の案内が無い');
+        assert.ok(/メンバーは自分の割当を見られません' \+ strayNote;/.test(html), '配信が無いときの文に「区切りを変える前の配信」の案内が付いていない (いちばん要る所)');
     });
 }
 
