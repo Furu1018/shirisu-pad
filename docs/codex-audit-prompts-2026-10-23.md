@@ -219,3 +219,8 @@ F. 文書: 設計案 §10・CLAUDE.md・用語集・文章版・更新履歴 と
 
 ## diff (aff3b3f → HEAD)
 ```
+
+### 10 の再監査 (2〜3 回目)
+1 回目 (237k・push 不可: C 高 ×2 / C 中 / B 高 / A 低 / F 中) → 4e95e1a + a13fc0e。2 回目は上の文の「## 据え置き」の前に「## 再監査 (2 回目)」(対応の一覧) を足し、diff を `git diff aff3b3f HEAD` に。
+2 回目 (275k・push 不可: C 高 `buildRequestDraft` が ①② 限定 / C 高 旧版のタブでテストシーズン → ③ 消失 / B 中 凍結中の strayNote / C 低 resultIntake の印 / E 高 / F 中) → 4b92447。
+3 回目は「## 再監査 (3 回目)」(対応の一覧・強制リロードは持たずデータで判定する方針) を足し、diff は `git diff aff3b3f HEAD -- . ':(exclude)docs/使い方の説明_2026-10-24' ':(exclude)*.png' ':(exclude)*.pdf'`。4 回目 (F だけ・69k: A4 の生成元が 3 分岐を落としている) → 762f602。5 回目 (F だけ・44k)「push 可」。結果は AUDIT K。
