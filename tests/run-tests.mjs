@@ -12724,6 +12724,20 @@ console.log('\ngrowthDomain:');
             [8, '🔄 夜 21〜23時 のあなたの凸が変わりました', '22時 B3 灼熱PT 編成① — ホームで確認してください'],
         ]);
         assert.deepEqual(d.publishNotices({ levels: [] }, { label: 'x' }), []);
+        // 🗣 9h (2026-10-24 Q2): 変わった人には ✅ 確認の有無で文を分ける (ackedIds) / 割当が消えた人 (goneIds) にも「外れました」/ 確認の情報が無ければ「まだ確認していません」
+        const ns2 = d.publishNotices(scoped, { label: '夜 21〜23時', bosses, changedIds: new Set([7, 8, 9]), ackedIds: new Set([8]), goneIds: new Set([9]), ptName: (w) => ({ fire: '灼熱', iron: '鉄甲' })[w] });
+        assert.deepEqual(ns2.map(n => [n.memberId, n.title, n.body, n.lines]), [
+            [7, '🔄 夜 21〜23時 のあなたの凸が変わりました', '21時 B1 鉄甲PT 編成① / 23時 B3 灼熱PT 編成② — まだ確認していませんが、プランが変わりました。ホームで新しい凸を確認してください', ['21時 B1 鉄甲PT 編成①', '23時 B3 灼熱PT 編成②']],
+            [8, '🔄 夜 21〜23時 のあなたの凸が変わりました', '22時 B3 灼熱PT 編成① — ✅ 確認したあとにプランが変わりました。ホームで新しい凸を確認してください', ['22時 B3 灼熱PT 編成①']],
+            [9, '🔄 夜 21〜23時 のあなたの凸が外れました', 'まだ確認していませんが、組み直しでこのブロックのあなたの割当は無くなりました。ホームで確認してください', ['割当なし']],
+        ]);
+        assert.deepEqual(d.publishNotices(scoped, { label: 'x', changedIds: new Set([9]), goneIds: new Set([9, 8]), ackedIds: new Set([9]) }).filter(n => n.memberId === 9).map(n => n.body), ['✅ 確認したあとに組み直され、このブロックのあなたの割当は無くなりました。ホームで確認してください']);
+        // goneIds に居ても新しいプランに割当がある人 (8) は「外れた」にしない (変わっていなければ「決まりました」のまま)
+        assert.deepEqual(d.publishNotices(scoped, { label: 'x', goneIds: new Set([8]) }).filter(n => n.memberId === 8).map(n => n.title), ['🧱 x のあなたの凸が決まりました']);
+        // 確認の情報が無い (ackedIds を渡さない・一気に組む) ときは、確認の有無を断定しない従来の文
+        assert.deepEqual(d.publishNotices(scoped, { label: 'x', bosses, changedIds: new Set([8]), goneIds: new Set([9]), ptName: (w) => ({ fire: '灼熱', iron: '鉄甲' })[w] }).filter(n => n.memberId !== 7).map(n => n.body), ['22時 B3 灼熱PT 編成① — ホームで確認してください', '組み直しで、このブロックのあなたの割当は無くなりました。ホームで確認してください']);
+        // 変わっていない人の文は従来どおり (確認の有無で変えない)
+        assert.equal(d.publishNotices(scoped, { label: 'x', bosses, ackedIds: new Set([7, 8]), ptName: (w) => ({ fire: '灼熱', iron: '鉄甲' })[w] })[0].body, '21時 B1 鉄甲PT 編成① / 23時 B3 灼熱PT 編成② — ホームで確認してください');
     });
     test('★ 配線: 🧱 段階 4 📥 結果の取り込み — 戦況のカード (旧 ✅ 凸報告の確認) / 代理凸の経路で登録 + ✓ / 撃破の検知を invalidate の前に / 凸していない は raid_event_notices / 組むの片付け / ブロックの配信の通知', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
@@ -12745,7 +12759,7 @@ console.log('\ngrowthDomain:');
         // 組むの片付け: 結果がまだの凸があるときだけ (止めない)
         assert.ok(/<div id="opsPlanTidy" class="plan-cue" style="display:none;"><\/div>\s*\n\s*<div id="opsPlanCue"/.test(html), '片付けの案内が組むの頭に無い');
         // ブロックの配信の通知: 配信 1 回につき 1 度 (block_publish) / 同じブロックの配信し直しは変わった人だけ / 通知した人に L4 を重ねない
-        const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds, ackedIds, goneIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';   // 🗣 9h: 確認の有無と割当が消えた人も受け取る
         // ★ 二重送信よけは人ごと・中身ごと (配信 1 回ぶんにすると、送れなかった人に二度と届かない: Codex指摘 1901a8a)
         assert.ok(/const ref = `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|\$\{n\.lines\.join\(' \/ '\)\}`;/.test(notify) && /await claim\(seasonId, 'block_publish', ref, me\?\.id \|\| null\)/.test(notify), '二重送信よけが人ごと・中身ごとでない');
         assert.ok(/supabaseReleaseRaidNotice\?\.\(seasonId, 'block_publish', ref\)/.test(notify) && /supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', ref\)/.test(notify), '送れなかったときに確保を戻していない');
@@ -12753,6 +12767,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/const sameBlock = !!\(prevScope && Number\(prevScope\.from\) === Number\(published\.blockScope\.from\) && Number\(prevScope\.to\) === Number\(published\.blockScope\.to\)\);/.test(pubFn)
             && /targets = targets\.filter\(id => !r\.covered\.has\(Number\(id\)\)\);/.test(pubFn), '同じブロックの配信し直し / L4 の重ね送りの扱いが違う');
         assert.ok(pubFn.indexOf('_notifyBlockPublish(') < pubFn.indexOf('if (targets.length > 0) {'), 'L4 を送ってからブロックの通知をしている (重ねて送る)');
+        // 🗣 9h (2026-10-24 Q2): 変わった人には ✅ 確認の有無に関わらず通知 (文を分ける)・割当が消えた人にも。確認していた人 = 差分を取った配信 (prevPlanId) を確認していた人 (別の配信の確認は本人にとっての変化を表さない)
+        assert.ok(/ackedPrevIds = new Set\(stale\.filter\(a => prevPlanId != null && Number\(a\.plan_id\) === Number\(prevPlanId\)\)\.map\(a => Number\(a\.player_id\)\)\);/.test(pubFn), '確認していた人の集まりを取っていない (9h)');
+        assert.ok(/ackedIds: sameBlock \? ackedPrevIds : null, goneIds: sameBlock \? new Set\(\(dd && publishDiff && !publishDiff\.first\) \? publishDiff\.changed\.filter\(c => c\.kind === 'gone'\)\.map\(c => Number\(c\.memberId\)\) : \[\]\) : new Set\(\)/.test(pubFn), '確認の有無と割当が消えた人をブロックの通知に渡していない (9h)');
+        assert.ok(/label: scope\.label, bosses, changedIds, ackedIds, goneIds,/.test(notify), 'ブロックの通知が確認の有無と割当が消えた人を文に使っていない (9h)');
+        assert.ok(pubFn.includes('名には ✅ 確認の有無に関わらず通知します (✅ 確認済み ${ackedChanged} 名 / 未確認 ${changedN - ackedChanged} 名') && pubFn.includes('このブロックに割当のある人へ「あなたの凸が決まりました」を 1 通ずつ送ります。'), '配信の確認ダイアログが 9h の通知を説明していない');
+        assert.ok(html.includes('✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます') && html.includes('押していなくても、あなたの割当が変わったときは通知が届きます。'), '✅ 確認しました の説明が「押した人だけ通知」のまま (9h)');
         assert.ok(/if \(!sameBlock && !\(r\.sent === 0 && r\.failed > 0\)\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている / 通知が全部失敗したのに L4 にも任せない');
     });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {

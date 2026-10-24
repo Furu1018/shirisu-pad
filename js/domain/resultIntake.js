@@ -141,7 +141,10 @@
      *   changedIds = 前の配信を確認していて、割当が変わった人 (L4)。その人は「変わりました」と言う
      * @returns {Array<{ memberId:*, title:string, body:string, lines:string[] }>}  memberId の順 (決定的)
      */
-    function publishNotices(scoped, { label, ptName, bosses, changedIds } = {}) {
+    // 🗣 9h (2026-10-24 Q2): 変わった人 (changedIds) には ✅ 確認の有無 (ackedIds = 前の配信を確認していた人) で文を分ける。
+    //   割当が消えた人 (goneIds・新しいプランに居ない) にも「外れました」を送る (lines は '割当なし' = 二重送信よけの ref に使う)。
+    //   ackedIds が Set でない = 確認の情報が無い (取れなかった・一気に組む) → 確認の有無を断定しない文 (「まだ確認していません」と言い切らない)
+    function publishNotices(scoped, { label, ptName, bosses, changedIds, ackedIds, goneIds } = {}) {
         const weakOf = new Map((Array.isArray(bosses) ? bosses : []).map(b => [Number(b.boss_number), b.weakness]));
         const byMember = new Map();
         for (const lv of (scoped && Array.isArray(scoped.levels) ? scoped.levels : [])) {
@@ -157,19 +160,38 @@
         }
         const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
         const changed = changedIds instanceof Set ? changedIds : new Set();
-        return [...byMember.values()]
+        const acked = ackedIds instanceof Set ? ackedIds : null;
+        const gone = goneIds instanceof Set ? goneIds : new Set();
+        const has = (set, id) => set.has(Number(id)) || set.has(String(id));
+        const lbl = label || 'このブロック';
+        const notices = [...byMember.values()]
             .sort((x, y) => String(x.memberId).localeCompare(String(y.memberId), 'en', { numeric: true }))
             .map(m => {
                 const lines = m.rows.slice()
                     .sort((x, y) => ((x.hourIdx ?? 99) - (y.hourIdx ?? 99)) || (x.bossNumber - y.bossNumber))
                     .map(r => `${r.flex || r.hourIdx == null ? 'ブロックのどこか' : hourLabelOfIdx(r.hourIdx)} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`);
-                const isChanged = changed.has(Number(m.memberId)) || changed.has(String(m.memberId));
+                const isChanged = has(changed, m.memberId);
+                const tail = !isChanged || !acked ? 'ホームで確認してください'
+                    : has(acked, m.memberId) ? '✅ 確認したあとにプランが変わりました。ホームで新しい凸を確認してください'
+                    : 'まだ確認していませんが、プランが変わりました。ホームで新しい凸を確認してください';
                 return {
                     memberId: m.memberId, lines,
-                    title: isChanged ? `🔄 ${label || 'このブロック'} のあなたの凸が変わりました` : `🧱 ${label || 'このブロック'} のあなたの凸が決まりました`,
-                    body: `${lines.join(' / ')} — ホームで確認してください`,
+                    title: isChanged ? `🔄 ${lbl} のあなたの凸が変わりました` : `🧱 ${lbl} のあなたの凸が決まりました`,
+                    body: `${lines.join(' / ')} — ${tail}`,
                 };
             });
+        // 割当が消えた人 (新しいプランに居ない)。新しいプランに割当がある人は上で扱う (消えていない)
+        for (const id of gone) {
+            if (byMember.has(String(id))) continue;
+            notices.push({
+                memberId: id, lines: ['割当なし'], gone: true,
+                title: `🔄 ${lbl} のあなたの凸が外れました`,
+                body: !acked ? '組み直しで、このブロックのあなたの割当は無くなりました。ホームで確認してください'
+                    : has(acked, id) ? '✅ 確認したあとに組み直され、このブロックのあなたの割当は無くなりました。ホームで確認してください'
+                    : 'まだ確認していませんが、組み直しでこのブロックのあなたの割当は無くなりました。ホームで確認してください',
+            });
+        }
+        return notices.sort((x, y) => String(x.memberId).localeCompare(String(y.memberId), 'en', { numeric: true }));
     }
 
     root.resultIntakeDomain = { MAX_ATTACKS, matchBoss, plannedSlotFor, pickLoadout, check, askText, publishNotices, hourLabelOfIdx };

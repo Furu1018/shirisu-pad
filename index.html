@@ -5407,7 +5407,7 @@
                             <li>報告していない人は、運営の算出の候補に入りません (催促が届きます)。出られないシーズンは「今回は難しい」と一言 — 算出・催促のすべてから外れます</li>
                         </ul>
                         <h3>③ 📅 きょうの凸 / 配信された凸プラン</h3>
-                        <p>運営はブロックごとに「次のブロックのぶん」だけを配信します。配信されると<strong>割当のある人に通知</strong>が届き (「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)、ホームに<strong>いつ・どのボスへ・どの PT と編成で</strong>が出ます。読んだら <strong>✅ 確認しました</strong> を押してください。</p>
+                        <p>運営はブロックごとに「次のブロックのぶん」だけを配信します。配信されると<strong>割当のある人に通知</strong>が届き (「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)、ホームに<strong>いつ・どのボスへ・どの PT と編成で</strong>が出ます。読んだら <strong>✅ 確認しました</strong> を押してください (運営が「見た人 / まだの人」を知るためです。押していなくても、割当が変わったら通知が届きます)。</p>
                         <ul>
                             <li><strong>📅 きょうの凸</strong>: ブロックごとに1行。配信されたあなたの凸 (時刻・ボス・PT・編成と 5 キャラ)、運営が結果を取り込んだ凸は ✓、まだ配信されていないブロックは「まだ決まっていません」</li>
                             <li>配信された凸プラン: 🧱 盤 (このブロックがボスごとにどう組まれたか・<a href="#help-plan">§9</a>) と <strong>✅ 確認しました</strong>。配信のあるブロックが 2 つ以上なら、上のチップで切り替えて見られます (ブロックごとに最新の配信が残ります)。🔭 の印がある配信は「前のブロックが模擬どおり削れたら」の予想で、ずれたら運営が組み直します</li>
@@ -5632,7 +5632,7 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび・変わった人だけ)・予約の登録・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび。配信し直しでは変わった人に ✅ 確認の有無に関わらず・割当が消えた人にも)・予約の登録・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
                             <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
@@ -10085,11 +10085,11 @@
             const updatedBanner = ack?.updated
                 ? `<p style="margin:0 0 8px 0;padding:9px 12px;border-radius:10px;background:rgba(108,66,240,0.12);font-size:12px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🔄 <b>プランが更新されました</b><br><span style="font-weight:700;font-size:11px;">前に確認したときから割当が変わっているかもしれません。下の内容をもう一度ご確認ください。</span></p>`
                 : '';
-            // ✅ 確認ボタン: 押した人だけが再配信時に通知を受け取れる
+            // ✅ 確認ボタン: 運営が「見た人 / まだの人」を知るため (2026-10-24 Q2)。🗣 9h: 押していなくても、割当が変わったら通知が届く
             const ackBtn = ack?.acked
-                ? `<div style="margin-top:12px;padding:9px;border-radius:999px;background:rgba(24,194,107,0.12);text-align:center;font-size:11.5px;font-weight:900;color:var(--ok-deep);">✅ 確認済み — 更新されたら通知でお知らせします</div>`
+                ? `<div style="margin-top:12px;padding:9px;border-radius:999px;background:rgba(24,194,107,0.12);text-align:center;font-size:11.5px;font-weight:900;color:var(--ok-deep);">✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます</div>`
                 : `<button onclick="handleAckPlan(this)" style="width:100%;margin-top:12px;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">✅ 確認しました</button>
-                   <p style="margin:7px 4px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">押しておくと、レイド中にプランが組み直されたとき通知でお知らせします。</p>`;
+                   <p style="margin:7px 4px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">運営が「見た人 / まだの人」を知るためのボタンです。押していなくても、あなたの割当が変わったときは通知が届きます。</p>`;
             // ⏳ 組み直し中 (L3): プランは残したまま「いま運営が組み直しています」と伝える。
             //   消してしまうと「ほっとかれている」と感じさせる (ユーザー判断 2026-09-07)
             // 🔒 予約が承認されたのに配信し直していない間 (配信が予約を知らない)
@@ -24077,7 +24077,8 @@
         //     同じブロックを配信し直しても、凸が変わらなかった人には送らない (送信済み = done)・変わった人には新しい中身で送る。
         //     送れなかった人は確保を戻す → 次の配信で送り直せる (配信 1 回ぶんで確保すると、失敗した人に二度と届かない: Codex指摘 1901a8a)
         // 戻り値: { covered: いま送った人 + 同じ中身をもう送ってある人 (この人に L4 を重ねない), sent: 送れた通数, failed: 送れなかった通数 }
-        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds }) {
+        //   🗣 9h (2026-10-24 Q2): 変わった人には ✅ 確認の有無に関わらず送り、文を分ける (ackedIds = 差分を取った配信を確認していた人)。割当が消えた人 (goneIds) にも送る
+        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds, ackedIds, goneIds }) {
             const out = { covered: new Set(), sent: 0, failed: 0 };
             const rb = window.raidBlocksDomain, dom = window.resultIntakeDomain;
             const scope = plan?.blockScope;
@@ -24085,7 +24086,7 @@
             let bosses = [];
             try { bosses = (await ensureActiveSeasonLoaded())?.bosses || []; } catch { /* ボスの PT 名を補えないだけ */ }
             const notices = dom.publishNotices(rb.scopePlan(plan, scope), {
-                label: scope.label, bosses, changedIds,
+                label: scope.label, bosses, changedIds, ackedIds, goneIds,
                 ptName: (w) => PT_ATTRS.find(x => x.key === w)?.name || '',
             });
             if (!notices.length) return out;
@@ -24354,10 +24355,21 @@
             if (!(await _publishReservationGuard(seasonId))) return;
             const diffMsg = publishDiff && window.planDiffDomain
                 ? `\n\n${window.planDiffDomain.summaryText(publishDiff)}` : '';
-            const ackMsg = ackedPreview.length > 0
-                ? `\n\n「確認しました」を押している ${ackedPreview.length} 名のうち、**割当が変わった人にだけ**\n` +
-                  `「プランが更新されました」の通知を送ります (変わらない人には送りません)。`
-                : '';
+            // 🗣 9h (2026-10-24 Q2): 同じブロックの配信し直し → 割当が変わる人へ ✅ 確認の有無に関わらず通知 (文を分ける・割当が消える人にも)。新しいブロック → 割当のある人へ「決まりました」
+            const sameBlockPreview = !!(prevScope && _opsLastPlan?.blockScope && Number(prevScope.from) === Number(_opsLastPlan.blockScope.from) && Number(prevScope.to) === Number(_opsLastPlan.blockScope.to));
+            const changedN = (publishDiff && !publishDiff.first) ? publishDiff.changed.length : 0;
+            const goneN = (publishDiff && !publishDiff.first) ? publishDiff.changed.filter(c => c.kind === 'gone').length : 0;
+            const ackedChanged = (publishDiff && !publishDiff.first && prevPlanId != null)
+                ? publishDiff.changed.filter(c => ackedPreview.some(a => Number(a.player_id) === Number(c.memberId) && Number(a.plan_id) === Number(prevPlanId))).length : 0;
+            const ackMsg = _opsLastPlan?.blockScope
+                ? (sameBlockPreview && publishDiff && !publishDiff.first
+                    ? (changedN > 0
+                        ? `\n\n割当が変わる ${changedN} 名には ✅ 確認の有無に関わらず通知します (✅ 確認済み ${ackedChanged} 名 / 未確認 ${changedN - ackedChanged} 名${goneN ? `・うち割当が消える ${goneN} 名` : ''})。変わらない人には送りません。`
+                        : '\n\n割当は誰も変わりません (通知は送りません)。')
+                    : '\n\nこのブロックに割当のある人へ「あなたの凸が決まりました」を 1 通ずつ送ります。')
+                : (ackedPreview.length > 0
+                    ? `\n\n「確認しました」を押している ${ackedPreview.length} 名のうち、**割当が変わった人にだけ**\n「プランが更新されました」の通知を送ります (変わらない人には送りません)。`
+                    : '');
             const scopeMsg = (_opsLastPlan?.blockScope && window.raidBlocksDomain)
                 ? `🧱 ${_opsLastPlan.blockScope.label} のぶん (${window.raidBlocksDomain.attackCountIn(_opsLastPlan, _opsLastPlan.blockScope)}凸) を配信します。\nメンバーのホームにはこのブロックの割当だけが出ます (後ろのブロックはまだ約束しません)。\nこのブロックに割当のある人には、自分の凸を書いた通知を送ります (同じブロックの配信し直しは、割当が変わった人だけ)。\n\n`
                 : '';
@@ -24391,10 +24403,12 @@
                 //   「🔄 プランが更新されました」が出る (plan_id が最新と違うため) ので実害は限定的
                 let targets = [];
                 let carried = 0;
+                let ackedPrevIds = null;   // 🗣 9h: 差分を取った配信 (prevPlanId) を ✅ 確認していた人 — ブロックの通知の文を分ける。取れなかったら null (確認の有無を断定しない文)
                 try {
                     if (seasonId) {
                         const acks = await window.supabaseLoadPlanAcks(seasonId);
                         const stale = acks.filter(a => Number(a.plan_id) !== Number(pub?.id));
+                        ackedPrevIds = new Set(stale.filter(a => prevPlanId != null && Number(a.plan_id) === Number(prevPlanId)).map(a => Number(a.player_id)));
                         // ★ L4 通知抑制 (2026-09-07): 「確認しました」を押した人**全員**ではなく、
                         //   **割当が実際に変わった人だけ**へ送る。変わらなかった人は ack を新しい
                         //   plan_id へ引き継いで、更新バナーも Push も出さない。
@@ -24429,7 +24443,9 @@
                     const dd = window.planDiffDomain;
                     const changedAll = (dd && publishDiff && !publishDiff.first) ? new Set(dd.changedIds(publishDiff).map(Number)) : null;
                     try {
-                        const r = await _notifyBlockPublish({ pub, plan: published, seasonId, me, changedIds: sameBlock ? (changedAll || new Set()) : new Set() });
+                        // 🗣 9h: 同じブロックの配信し直しは、変わった人へ ✅ 確認の有無に関わらず (文を分ける)・割当が消えた人 (gone) にも。新しいブロックは全員「決まりました」
+                        const r = await _notifyBlockPublish({ pub, plan: published, seasonId, me, changedIds: sameBlock ? (changedAll || new Set()) : new Set(),
+                            ackedIds: sameBlock ? ackedPrevIds : null, goneIds: sameBlock ? new Set((dd && publishDiff && !publishDiff.first) ? publishDiff.changed.filter(c => c.kind === 'gone').map(c => Number(c.memberId)) : []) : new Set() });
                         targets = targets.filter(id => !r.covered.has(Number(id)));
                         // 新しいブロックの初回の配信: 前の配信のこのブロックの割当は仮 (約束していない) なので「割当が変わりました」(L4) は送らない。
                         //   ブロックの通知が 1 通も送れなかったときだけ L4 に任せる (通知の対象を落とさない: Codex指摘 1901a8a)

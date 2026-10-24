@@ -1283,6 +1283,11 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **🗣 運用の見直し 9f: 練習モードの作り直し** (2026-10-24 Q7「2 本のまま・前日は報告の登録から」): メンバー編 = `discord` (Discord に書くだけ → ⏩ `opsAvail` = 運営が `supabaseSaveAvailability` + `supabaseConfirmAvailability` を本人の代わりに・代理の印) → wait → ack → report。
   運営編・前日 = nudge → **avail** (👥 の行の ⏰ → 夜の ＋ → この時間で参加します・相手は練習のメンバー `P.me`) → **resv** (🔒 凸の予約の「＋ 予約を登録」→ 編成 → 朝のブロック → 登録。相手は `pickRequester` = 朝に出られて模擬のある人。練習では「誰の予約か」を選んでおく) → compute → pin → publish。
   メンバーの申請を「来たことにする」(`memberRequest`) は外した。ツアーの体験デモは `discord` から。`tests/practice.mjs` の見張り (課題の鍵・FF・案内の 「」 の言葉) と `tests/practice-e2e.mjs` (MEMBER_KEYS) を合わせた
+  ★ **🗣 運用の見直し 9h: 変わった人には ✅ 確認の有無に関わらず通知** (2026-10-24 Q2「✅ 確認しました は残す (運営が見た人を知る唯一の手段)・プランが変わったら通知・確認した人には確認後の変更と分かるように」。「全員」= 割当が変わった人全員と解釈・変わらない人には送らない):
+  同じブロックの配信し直し (`sameBlock`) で `resultIntakeDomain.publishNotices` に `ackedIds` (差分を取った配信 `prevPlanId` を確認していた人 = `ackedPrevIds`) と `goneIds` (diff の kind gone) を渡す。
+  文: 確認済み「— ✅ 確認したあとにプランが変わりました。ホームで新しい凸を確認してください」/ 未確認「— まだ確認していませんが、プランが変わりました。…」/ 割当が消えた人「🔄 … のあなたの凸が外れました」(lines = ['割当なし']・二重送信よけの ref に使う)。ack の一覧が取れなかったとき (`ackedPrevIds` = null) や一気に組むでは、確認の有無を断定しない従来の文。
+  確認済みで変わらない人は従来どおり ack を引き継いで送らない。L4 (旧プランの ack だけで判断する経路) は「どの配信を確認していたか分からない人」の予備として残る。配信の確認ダイアログは「割当が変わる N 名には ✅ 確認の有無に関わらず通知 (確認済み a / 未確認 b・うち割当が消える g)」。
+  ✅ ボタンの説明は「運営が見た人を知るため。押していなくても変わったら通知」。release-notes 2026102402。据え置き: 消えた → 戻った → また消えた人は ref が同じなので 2 回目の「外れました」は送らない (中身が同じなら送らない規則のまま)
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

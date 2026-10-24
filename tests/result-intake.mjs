@@ -76,7 +76,7 @@ const SRC = [
         '        function _opsResultSetHp(on) {',
         '        function _opsResultCancel() {',
         '        async function handleOpsResultSave() {',
-        '        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds }) {',
+        '        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds, ackedIds, goneIds }) {',   // 🗣 9h
     ].map(cutFn),
 ].join('\n');
 
