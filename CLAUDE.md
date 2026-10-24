@@ -1297,6 +1297,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `_opsPlanNoPlaceCheck` が**先に**見て、光らせたマスも沈める (`_opsPlanCellLit(cell, ok)` = 🧱 盤の class `can` と時間割のインラインの両方。ドラッグの塗りも同じ関数)。
   **C** 箱と理由が見る範囲 (ボス × 時刻のマス) は別計算しない → `_opsPlanViewRange(plan)` が**描いているものから導く**: 時間割 = `_planTimetableModel(plan, _planDoneFor(…))` の行 (凸のある時刻 + 済んだ凸だけの時刻) × `_planBossFilters.ops` の絞り込み /
   🧱 盤 = `_planBoardRail(plan)` の行 (倒れたボスは無い) × railHours (ブロックのいまより後) — `_planBlockBoardHtml` も同じ `_planBoardRail` で描く。リスト (置くマスが無い) では言わない。同じ人 × 属性の理由は箱で 1 回だけ見る。実行テスト `tests/block-board.mjs`
+  ★ **🗣 運用の見直し 9e: ボス HP の照合を小さく** (2026-10-24・Q5「いまの OCR で読めるので読み取りは変えない。差分の表示と 1 タップ保存だけ」): 🎯 ボスHP更新のシートは行に いまの値 (`data-cur-rem` / `data-cur-total`) を控え、
+  スクショを読み取ったら `raidEventsDomain.bossHpDiff` (純ロジック・B 単位・小数 2 桁で比べる) の差分を行に出す (「47.06 → 40B (−7.06)」/「16.42B のまま」/「読めず (手で入力)」。増えていれば警告の色 = 読み違いの疑い)。
+  保存ボタンは「⏬ 読み取った値を保存 (変わる N 体)」に変わる (読めなかった行は いまの値のまま = 保存しても変わらない)。開き直すと文を戻す。保存の経路 (`handleOpsBossHpSaveAll` → `supabaseUpdateBossHp` → `_checkRaidEvents`) は変えていない。
+  **PC は貼り付け (Ctrl/Cmd+V) と落とすでも読み取れる**: `_FILE_DROPS` に HP のシートを足し、`paste` は `_pasteTargetFor(document.activeElement)` が行き先を **1 つに決めたときだけ**受ける
+  (焦点のある受け口 → 開いているシート (手前) → 見えているカードが 1 つだけ。シートが開いていれば裏のカードには読ませない・画像以外の貼り付け (文字) は触らない・読み取り中 (input.disabled) は受けない)。
+  ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数に渡す (読み取りの経路を増やさない)。運営だけの変更なので release-notes は無し
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

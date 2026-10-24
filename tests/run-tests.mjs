@@ -2386,6 +2386,19 @@ console.log('\n戦況の変化検知:');
     const B = (n, totalB, remB) => ({ boss_number: n, total_hp_raw: totalB * 1e9, remaining_hp_raw: remB * 1e9 });
     const snap = (lv, bosses, sid = 1) => snapshotBoard({ id: sid, current_level: lv }, bosses);
 
+    test('★ 🗣 9e bossHpDiff: 読み取った値と いまの値 の差分 (変わる / そのまま / 読めず / 増えた) — 小数 2 桁で比べる', () => {
+        const d = globalThis.raidEventsDomain.bossHpDiff([
+            { bossNumber: 1, curB: '47.06', nextB: 40 }, { bossNumber: 2, curB: 16.42, nextB: 16.424 }, { bossNumber: 3, curB: 46.64, nextB: null }, { bossNumber: 4, curB: 13.36, nextB: 20 },
+            { bossNumber: 5, curB: 85.67, nextB: 85.2 },   // 小さな差 (0.47B) も「変わる」(1 凸ぶん未満でも HP は HP)
+        ]);
+        assert.deepEqual(d.rows.map(r => [r.bossNumber, r.changed, r.read, r.up, r.label]), [
+            [1, true, true, false, '47.06 → 40B (−7.06)'], [2, false, true, false, '16.42B のまま'], [3, false, false, false, '読めず (手で入力)'], [4, true, true, true, '13.36 → 20B (+6.64)'],
+            [5, true, true, false, '85.67 → 85.2B (−0.47)']]);
+        assert.deepEqual([d.changed, d.read, d.unread], [3, 4, 1]);
+        assert.equal(globalThis.raidEventsDomain.bossHpDiff([{ bossNumber: 1, curB: 10, nextB: 10.01 }]).changed, 1, '0.01B の差は変わる');
+        assert.deepEqual(globalThis.raidEventsDomain.bossHpDiff(null), { rows: [], changed: 0, read: 0, unread: 0 });
+    });
+
     test('総HP未記録 (0) のボスは撃破扱いしない', () => {
         // 古いシーズンは5体とも total=0/rem=0。これを撃破とみなすと全部誤爆する
         const dead = deadBossNumbers([B(1, 0, 0), B(2, 100, 0), B(3, 100, 50)]);
@@ -12828,6 +12841,24 @@ console.log('\ngrowthDomain:');
         assert.ok(/const \{ rows, railHours \} = _planBoardRail\(plan\);/.test(board) && !/Array\.from\(\{ length: toIdx - fromIdx \+ 1 \}/.test(board), '盤の描画が別に railHours を計算している (箱と食い違う)');
         assert.ok(html.includes('.plan-piece .where.nowhere { color: var(--warn-deep); }'), '理由の色が無い');
     });
+    test('★ 配線: 🗣 9e ボス HP の照合 — 読み取り → いまの値との差分 → 「⏬ 読み取った値を保存」/ PC は貼り付け・落とすでも読み取る (行き先が 1 つに決まるときだけ)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const open = html.match(/async function openOpsBossHpModal\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/data-boss-num="\$\{b\.boss_number\}" data-cur-rem="\$\{remB\}" data-cur-total="\$\{totalB\}"/.test(open) && /<span class="ops-hp-diff"/.test(open), '行に いまの値 と差分の置き場が無い');
+        assert.ok(/saveAll\.textContent = '⏬ 全ボスを一括保存';/.test(open), '開き直したときに保存ボタンの文を戻していない');
+        const ocr = html.match(/async function handleOpsBossHpOcrUpload\(event\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/diffIn\.push\(\{ bossNumber: bossNum, curB: row\.dataset\.curRem, nextB \}\);/.test(ocr) && /const d = _opsBossHpShowDiff\(diffIn\);/.test(ocr), '読み取ったあとに差分を出していない');
+        const show = html.match(/function _opsBossHpShowDiff\(diffIn\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const d = dom\.bossHpDiff\(diffIn\);/.test(show) && /btn\.textContent = d\.read \? `⏬ 読み取った値を保存 \(変わる \$\{d\.changed\} 体\)` : '⏬ 全ボスを一括保存';/.test(show), '差分は raidEventsDomain.bossHpDiff で / 保存ボタンの文が無い');
+        assert.ok(/el\.style\.color = \(!x\.read \|\| x\.up\) \? 'var\(--warn-deep\)' : x\.changed \? 'var\(--ops-deep\)' : 'var\(--t-muted\)';/.test(show), '読めず・増えた を警告の色にしていない');
+        assert.ok(/\['opsBossHpModal', 'opsBossHpOcrInput', \(ev\) => handleOpsBossHpOcrUpload\(ev\)\]/.test(html), 'HP のシートに落として読み取れない');
+        const init = html.match(/function _initFileDrops\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/document\.addEventListener\('paste', \(ev\) => \{/.test(init) && /filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);\s*\n\s*if \(!files\.length\) return;/.test(init), '貼り付けで読み取れない / 文字の貼り付けまで取っている');
+        assert.ok(/const target = _pasteTargetFor\(document\.activeElement\);/.test(init) && /if \(input && input\.disabled\) return;\s*\n\s*ev\.preventDefault\(\);\s*\n\s*handler\(\{ target: \{ files, value: '' \} \}\);/.test(init), 'ファイル選択と同じ形で渡していない / 読み取り中にも受ける');
+        const pt = html.match(/function _pasteTargetFor\(active\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const modalOpen = !!document\.querySelector\('\.player-select-modal\.open'\);/.test(pt) && /\(!modalOpen && el\.classList\.contains\('dc-card'\) && el\.offsetParent !== null\)/.test(pt), 'シートが開いているのに裏のカードへ読ませる');
+        assert.ok(/if \(focused\) return focused\[0\];/.test(pt) && /return live\.length === 1 \? live\[0\]\[0\] : null;/.test(pt), '行き先が決まらないときに貼り付けを受けている');
+    });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
         const d = globalThis.planBoardDomain;
         // 夕方 (18〜20時 = idx 13〜15) のぶん。Lv2 の B3 は 60B・B4 は 50B (B1 はもう倒れている)。Lv3 は B3 にだけ 20時の凸
@@ -13982,7 +14013,7 @@ console.log('\n運営チームの要望 2026-10-10:');
     });
     test('★ 配線: PC の D&D — 凸報告・模擬の提出・BlaBlaLINK 3凸 のシートに画像を落とすと、ファイルを選んだときと同じ関数に同じ形で渡す', () => {
         const drops = html.match(/const _FILE_DROPS = \[[\s\S]*?\n        \];/)?.[0].replace(/\/\/[^\n]*/g, '') || '';
-        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],\s*\['opsSecAttackCheck', 'opsResultInput', \(ev\) => handleOpsResultUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
+        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],\s*\['opsSecAttackCheck', 'opsResultInput', \(ev\) => handleOpsResultUpload\(ev\)\],\s*\['opsBossHpModal', 'opsBossHpOcrInput', \(ev\) => handleOpsBossHpOcrUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う (🗣 9e で 🎯 ボス HP のシートを足した)');
         const fn = html.match(/function _enableFileDrop\(modalId, inputId, handler\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const files = Array\.from\(ev\.dataTransfer\.files \|\| \[\]\)\.filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);/.test(fn), '画像以外を通している');
         assert.ok(/handler\(\{ target: \{ files, value: '' \} \}\);/.test(fn), 'ファイルを選んだときと違う形で渡している (読み取りの経路が増える)');

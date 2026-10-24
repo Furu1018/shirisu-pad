@@ -5700,7 +5700,7 @@
                         <p>日によって変わるのは<strong>開いたときのタブ</strong> (前日まで 👥 / 当日 ⚔️) と、いちばん上の「いちばん急ぐこと」だけです。タブの横の数字は手を打つべき件数。</p>
                         <h3>🗓 当日の 1 ブロックの手順</h3>
                         <ol>
-                            <li>⚔️ ボスの HP をゲームの画面と合わせる</li>
+                            <li>⚔️ ボスの HP をゲームの画面と合わせる — BlaBlaLINK のボス一覧のスクショを 選ぶ / 落とす / 貼り付け (PC) → いまの値との差分が行に出る → 「⏬ 読み取った値を保存」</li>
                             <li>📥 前のブロックの結果を Discord から取り込む (結果がまだの凸を片付ける)</li>
                             <li>🧱 そのブロックを組む (盤で足りないボスに候補を置く)</li>
                             <li>📤 配信 (割当のある人に通知) — Discord の運営スレに「夕方 配信した」と 1 行</li>
@@ -24718,15 +24718,19 @@
             seasonStore.invalidate(); // 次回開く時最新を取得するため
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
             if (!fresh.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:13px;">アクティブシーズン無し</p>'; return; }
+            const saveAll = document.getElementById('opsBossHpSaveAllBtn');
+            if (saveAll) saveAll.textContent = '⏬ 全ボスを一括保存';   // 🗣 9e: 読み取りのあとの文を戻す
             listEl.innerHTML = fresh.bosses.map(b => {
                 const playerAttr = weaknessPtOf(b);
                 const pt = PT_ATTRS.find(x => x.key === playerAttr);
                 const totalB = (Number(b.total_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                 const remB = (Number(b.remaining_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                // 🗣 9e: いまの値を行に控える (読み取ったあとの差分の元) + 差分の置き場
                 return `
-                    <div data-boss-num="${b.boss_number}" style="padding:10px 6px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);">
+                    <div data-boss-num="${b.boss_number}" data-cur-rem="${remB}" data-cur-total="${totalB}" style="padding:10px 6px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                             <strong style="font-size:13px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
+                            <span class="ops-hp-diff" style="font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;"></span>
                             ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
                             <span style="font-size:11px;color:var(--t-body);">tier: ${b.tier}</span>
                         </div>
@@ -24765,6 +24769,7 @@
                 const norm = (s) => String(s || '').replace(/\s+/g, '');
                 const rows = document.querySelectorAll('#opsBossHpList > div[data-boss-num]');
                 let filled = 0;
+                const diffIn = [];   // 🗣 9e: いまの値との差分 (保存の前に「何が変わるか」を見せる)
                 rows.forEach(row => {
                     const bossNum = parseInt(row.dataset.bossNum);
                     const titleEl = row.querySelector('strong');
@@ -24777,22 +24782,45 @@
                         const rname = norm(rowBossName);
                         return aname && rname && (aname.includes(rname) || rname.includes(aname));
                     });
+                    let nextB = null;
                     if (matched && matched.currentHp != null && matched.maxHp != null) {
                         const remB = (Number(matched.currentHp) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                         const totalB = (Number(matched.maxHp) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                         row.querySelector('.ops-hp-rem').value = remB;
                         row.querySelector('.ops-hp-total').value = totalB;
+                        nextB = Number(remB);
                         filled++;
                     }
+                    diffIn.push({ bossNumber: bossNum, curB: row.dataset.curRem, nextB });
                 });
+                const d = _opsBossHpShowDiff(diffIn);
 
                 const lvText = r.level ? ` / レベル${r.level}検出` : '';
-                statusEl.textContent = `✅ ${filled}/${rows.length} ボスを自動入力${lvText}。確認後「全ボスを一括保存」をクリック`;
+                const diffText = d ? ` · 変わるのは ${d.changed} 体${d.unread ? `・読めず ${d.unread} 体 (手で入力)` : ''}` : '';
+                statusEl.textContent = `✅ ${filled}/${rows.length} ボスを読み取り${lvText}${diffText}。確認して「⏬ 読み取った値を保存」`;
                 statusEl.style.color = 'var(--ok)';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = 'var(--bad)';
             }
+        }
+        // 🗣 9e (2026-10-24・運用の見直し Q5): 読み取り → 差分 → 1 タップ保存。読み取った値と いまの値 の差分を行に出し、保存ボタンを「読み取った値を保存」にする。
+        //   判定・文は raidEventsDomain.bossHpDiff (読めなかった行は いまの値のまま = 保存しても変わらない)
+        function _opsBossHpShowDiff(diffIn) {
+            const dom = window.raidEventsDomain;
+            if (!dom || typeof dom.bossHpDiff !== 'function') return null;
+            const d = dom.bossHpDiff(diffIn);
+            d.rows.forEach(x => {
+                const row = document.querySelector(`#opsBossHpList > div[data-boss-num="${x.bossNumber}"]`);
+                const el = row?.querySelector('.ops-hp-diff');
+                if (!el) return;
+                el.textContent = x.label;
+                el.style.color = (!x.read || x.up) ? 'var(--warn-deep)' : x.changed ? 'var(--ops-deep)' : 'var(--t-muted)';
+                el.title = x.up ? '残 HP が増えています (レベルが開いた直後でなければ読み違いかもしれません)' : '';
+            });
+            const btn = document.getElementById('opsBossHpSaveAllBtn');
+            if (btn) btn.textContent = d.read ? `⏬ 読み取った値を保存 (変わる ${d.changed} 体)` : '⏬ 全ボスを一括保存';
+            return d;
         }
 
         // 全ボスを一括保存
@@ -28707,6 +28735,7 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             ['myBulkAttackModal', 'myBulkAttackOcrInput', (ev) => handleMyBulkAttackOcrUpload(ev)],   // BlaBlaLINK 3凸
             ['opsSecMockIntake', 'opsMockIntakeInput', (ev) => handleOpsMockIntakeUpload(ev)],      // 📸 運営の模擬取り込み (③-e・カードそのものが受け口)
             ['opsSecAttackCheck', 'opsResultInput', (ev) => handleOpsResultUpload(ev)],             // 📥 結果の取り込み (段階 4・カードそのものが受け口)
+            ['opsBossHpModal', 'opsBossHpOcrInput', (ev) => handleOpsBossHpOcrUpload(ev)],         // 🎯 ボス HP の照合 (🗣 9e・BlaBlaLINK のボス一覧)
         ];
         const _dropHasFiles = (ev) => Array.from(ev.dataTransfer?.types || []).includes('Files');
         function _enableFileDrop(modalId, inputId, handler) {
@@ -28732,6 +28761,31 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             // 受け口の外に落としたとき、ブラウザが画像をそのまま開いて画面が置き換わるのを防ぐ (盤面のドラッグは text/plain なので影響しない)
             document.addEventListener('dragover', (ev) => { if (_dropHasFiles(ev)) ev.preventDefault(); });
             document.addEventListener('drop', (ev) => { if (_dropHasFiles(ev)) ev.preventDefault(); });
+            // 🗣 9e (2026-10-24): PC は貼り付け (Ctrl/Cmd+V) でも読み取れる。画像以外の貼り付け (文字) は触らない。
+            //   行き先は _pasteTargetFor が 1 つに決めたときだけ (決まらなければ何もしない = 違う受け口へ読ませない)
+            document.addEventListener('paste', (ev) => {
+                const files = Array.from(ev.clipboardData?.files || []).filter(f => /^image\//.test(f.type));
+                if (!files.length) return;
+                const target = _pasteTargetFor(document.activeElement);
+                if (!target) return;
+                const [, inputId, handler] = target;
+                const input = document.getElementById(inputId);
+                if (input && input.disabled) return;
+                ev.preventDefault();
+                handler({ target: { files, value: '' } });
+            });
+        }
+        // 貼り付けの行き先: 開いているシート (.open) か、シートが無ければ見えているカード。焦点のある受け口 → 開いているシート (手前) → 見えている受け口が 1 つだけ のとき
+        function _pasteTargetFor(active) {
+            const modalOpen = !!document.querySelector('.player-select-modal.open');
+            const live = _FILE_DROPS.map(d => [d, document.getElementById(d[0])])
+                .filter(([, el]) => el && (el.classList.contains('open') || (!modalOpen && el.classList.contains('dc-card') && el.offsetParent !== null)));
+            if (!live.length) return null;
+            const focused = active ? live.find(([, el]) => el.contains(active)) : null;
+            if (focused) return focused[0];
+            const opens = live.filter(([, el]) => el.classList.contains('open'));
+            if (opens.length) return opens[opens.length - 1][0];
+            return live.length === 1 ? live[0][0] : null;
         }
 
         // ========== 共通 AI解析スピナー ==========

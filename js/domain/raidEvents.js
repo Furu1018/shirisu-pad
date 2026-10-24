@@ -124,5 +124,27 @@
         };
     }
 
-    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, DIGEST_HOURS, digestSlot, digestText };
+    /**
+     * 🗣 9e (2026-10-24): ボス HP の照合 — スクショから読み取った値と いまの値 の差分。保存の前に「何が変わるか」を 1 行で見せるため。
+     * rows = [{ bossNumber, curB, nextB }] (nextB が null = 読めなかった)。B 単位・小数 2 桁で比べる (入力欄と同じ丸め)。
+     * up = 残 HP が増えている (レベルが開いた直後でなければ読み違いの疑い)
+     * @returns {{ rows: Array<{bossNumber:number, curB:number, nextB:number|null, deltaB:number, changed:boolean, read:boolean, up:boolean, label:string}>, changed:number, read:number, unread:number }}
+     */
+    function bossHpDiff(rows) {
+        const r2 = (v) => Math.round(Number(v) * 100) / 100;
+        const fmt = (v) => r2(v).toFixed(2).replace(/\.?0+$/, '');
+        const out = (Array.isArray(rows) ? rows : []).map(x => {
+            const curB = r2(x.curB);
+            const read = x.nextB != null && Number.isFinite(Number(x.nextB));
+            const nextB = read ? r2(x.nextB) : null;
+            const deltaB = read ? r2(nextB - curB) : 0;
+            const changed = read && Math.abs(deltaB) >= 0.005;
+            const up = changed && deltaB > 0;
+            const label = !read ? '読めず (手で入力)' : !changed ? `${fmt(curB)}B のまま` : `${fmt(curB)} → ${fmt(nextB)}B (${up ? '+' : '−'}${fmt(Math.abs(deltaB))})`;
+            return { bossNumber: Number(x.bossNumber), curB, nextB, deltaB, changed, read, up, label };
+        });
+        return { rows: out, changed: out.filter(x => x.changed).length, read: out.filter(x => x.read).length, unread: out.filter(x => !x.read).length };
+    }
+
+    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, DIGEST_HOURS, digestSlot, digestText, bossHpDiff };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -145,3 +145,40 @@ F. 文書 (CLAUDE.md ★ 9d / 運用の見直し / ROADMAP) と実装の食い�
 
 ## diff (f7391c1 → HEAD)
 ```
+
+## 9e ボス HP の照合を小さく + 9g 文章 (2026-10-24・自宅PC)
+
+使い方: 下の文の末尾に `git diff 69418b1 HEAD` を貼って `codex exec --sandbox read-only --skip-git-repo-check - < prompt.txt > out.txt`。読むのは `awk '/^codex$/{buf="";on=1;next} on{buf=buf $0 "\n"} END{print buf}' out.txt`。
+
+```
+あなたは「しりすこPAD」(単一ファイル PWA index.html + js/domain/*.js) のコード監査役です。下の diff (69418b1 → HEAD) を読み、push 可かを判定してください。日本語で答えてください。
+
+## 背景 (運用の見直し 2026-10-24・9e・9g)
+- ふるりの決定 Q5: 「HP の照合はブロックの頭。いまの OCR で読めるので読み取りは変えない。9e は差分の表示と 1 タップ保存だけ」。運営はブロックの頭ごとに BlaBlaLINK のボス一覧のスクショで 5 体の残 HP を合わせる (古い HP で組むと無駄凸・取りこぼし)。
+- 既存: 🎯 ボスHP更新のシート (`openOpsBossHpModal`): 行ごとに 残HP / 総HP の入力と「保存」、下に「⏬ 全ボスを一括保存」(`handleOpsBossHpSaveAll` → `supabaseUpdateBossHp` → `_checkRaidEvents` → invalidate)。「画像を選ぶ」→ `handleOpsBossHpOcrUpload` → `callAiVision(dataUrl, 'bla_progress')` → 名前で行を突き合わせて入力欄を埋める。PC の D&D は `_FILE_DROPS` + `_enableFileDrop` (ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数へ)。
+- 今回 9e:
+  1. `raidEventsDomain.bossHpDiff(rows)` (純ロジック): { bossNumber, curB, nextB } → 差分 (changed / read / up / label)。B 単位・小数 2 桁で比べる。
+  2. `openOpsBossHpModal`: 行に `data-cur-rem` / `data-cur-total` と差分の置き場 `.ops-hp-diff`。開くたびに保存ボタンの文を戻す。
+  3. `handleOpsBossHpOcrUpload`: 埋めたあと `_opsBossHpShowDiff(diffIn)` で行に差分 (読めず・増えた は警告の色)、保存ボタンを「⏬ 読み取った値を保存 (変わる N 体)」に。保存の経路は変えていない (読めなかった行は いまの値のまま)。
+  4. `_FILE_DROPS` に HP のシートを追加 (落とすで読み取る)。`paste` (document) で画像の貼り付けも同じ関数へ: 行き先は `_pasteTargetFor(document.activeElement)` が 1 つに決めたときだけ (焦点のある受け口 → 開いているシート (手前) → 見えているカードが 1 つだけ。シートが開いていれば裏のカードは除く・画像以外は触らない・input.disabled は受けない)。
+- 9g: 文章 2 本 (`docs/使い方_メンバー向け_2026-10-24.md` / `docs/使い方_運営向け_2026-10-24.md`) — 運用の見直し §1・§2 を、いまの画面の名前 (用語集) で。アプリの文言は ヘルプ §15 の 1 行だけ。
+- テスト: run-tests 698 (bossHpDiff 1 本 + 配線 1 本・既存の D&D の一覧を更新) / practice 29 / result-intake 11 / check-raid-event-hooks / e2e ops-day。
+
+## 観点 (A〜E で番号を振って答えてください)
+A. 差分の正しさ: `bossHpDiff` の丸め (小数 2 桁) と入力欄の表示 (`toFixed(2).replace(/\.?0+$/, '')`) の食い違い / curB が空・NaN のとき / 読めなかった行を「のまま」と言わないか / `up` の扱い。
+B. 貼り付けの行き先: `_pasteTargetFor` で**違う受け口へ読ませる**状況は無いか (シートが 2 つ開いている / カードが 2 つ見えている / 焦点が受け口の外 / body.modal-lock 中の offsetParent / 練習モード)。文字の貼り付け (入力欄) を邪魔しないか。`ev.preventDefault()` の位置。
+C. 既存の経路との整合: `handleOpsBossHpOcrUpload` は `event.target.value = ''` を触る — 偽の target でも壊れないか。`_enableFileDrop` が `.player-select-content` を見つける前提 (HP のシートの構造)。読み取り中の二重受付。
+D. 保存の経路に変更が無いこと (`handleOpsBossHpSaveAll` / `handleOpsBossHpSave` / `_checkRaidEvents` の順) と check-raid-event-hooks の棚卸し。
+E. 文書: 2 本の文章が いまの画面 (9a〜9e・9h) と食い違っていないか (ボタンの名前・タブの場所・流れ)。CLAUDE.md ★ 9e / 運用の見直し §4 / 使い方の説明の README の注意書き。release-notes は運営だけの変更なので無し — 妥当か。
+
+## 据え置き (承知のうえ・指摘不要)
+- OCR の読み取り方 (`callAiVision` / 名前の突き合わせ) は変えない (Q5)。
+- 読めなかった行はいまの値のまま保存される (差分 0 なので無害)。
+- 配線テストの固定しすぎは慣習。
+
+## 答え方
+- 重大度 (高/中/低) を付けて、該当する diff の行を引用。直し方の提案を 1 行で。
+- 最後に「push 可」か「push 不可 (直すべき点: …)」を一行で。
+
+## diff (69418b1 → HEAD)
+```
