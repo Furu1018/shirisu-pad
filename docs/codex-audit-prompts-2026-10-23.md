@@ -107,3 +107,41 @@ I. **決定性と性能**: 同じ入力で同じ出力か (Map / Set の走査�
 # 出力
 重大度順。各項目: 盤面の例 → 何が起きる → 原因 (file:line) → 直し方 (ソルバーの既定 — 新しい入力を渡さないときの出力 = 指紋 120 盤面 — を変えない直し方を優先)。観点 A〜I ごとに「問題なし」を明記。最後に「ブロック制の運用で運営が知っておくべき挙動 (バグではないが、メンバーや運営に説明すべきこと)」を 3〜5 行。
 ```
+
+## 9d 置けない理由をその場で (2026-10-24・退避ブランチ 9d-wip-2026-10-24・別 PC で監査)
+
+使い方: 下の文の末尾に `git diff f7391c1 HEAD` を貼って `codex exec --sandbox read-only --skip-git-repo-check - < prompt.txt > out.txt`。読むのは `awk '/^codex$/{buf="";on=1;next} on{buf=buf $0 "\n"} END{print buf}' out.txt`。
+
+```
+あなたは「しりすこPAD」(単一ファイル PWA index.html + js/domain/*.js) のコード監査役です。下の diff (f7391c1 → HEAD) を読み、push 可かを判定してください。日本語で答えてください。
+
+## 背景 (運用の見直し 2026-10-24・9d)
+- ユーザーの要望: 「ピースをはめるのは自動 + 手動。手動ではめる操作感は後で確かめたい。『なぜかここにはめれない』を無くしたい、ダメな時は理由が出るようになっていてほしい」。設計の約束: **判定は増やさない** (`planBoardDomain.canPlace` = 属性 / 参加可能時間、`reservationsDomain.canPin` = 予約の衝突 / 残凸 / キャラ被り のまま)。
+- 既存: 🧱 組む の時間割 (🗓) と 🧱 盤 で、🧩 模擬ピース / 割当のチップを選ぶ (`_opsPlanSel`) → 置けるマス ([data-boss][data-h]) が光る → 押すと `_opsPlanPlace` → canPlace → canPin → 📌。沈んだマスを押しても `_opsPlanPlace` が「置けません: 理由」を出す (この経路は元から)。
+  - 時間割の行 (時刻) は **凸のある時刻だけ** (`_planTimetableModel` の hourSet = 凸 + 済んだ凸)。🧱 盤の行の時刻のマス (`railHours`) はブロックのいまより後のすべての時刻。
+- 今回 9d:
+  1. `planBoardDomain.noPlaceReason({ player, attr, bosses, hourIdxs, hourOrder, remaining })` — 駒がいまの盤 (ボス × 時刻のマス) のどこにも置けない理由 (spent → attr → no_hours → time・置けるなら null)。canPlace を使い回す。
+  2. `_opsPlanNoPlaceCheck(el)` — 描いた直後 (`renderOpsPlanView`) とドラッグの塗り直し (`_opsPlanPaintTargets`) から呼ぶ。マスに data-can を付け、1 つも置けなければ「置ける場所がありません: 理由」を 1 回 (同じ選択で `sel.noPlaceTold`)。時間割で time / no_hours なら「🧱 盤 に切り替えると、このブロックのどの時刻にも置けます」を添える。
+  3. 🧩 模擬ピースの箱: 未配置の各ピースに「⚠ 置ける所なし: 理由」(箱が見る範囲 = 時間割なら凸のある時刻・盤ならブロックのいまより後の時刻・ボスはプランに居るボス)。
+  4. 駒を選ばずにマスを押したら「先に 🧩 模擬ピースか割当のチップを押して、光ったマスを押します」(運営だけ)。
+- 同じ commit に 9h の小さな直し: `_notifyBlockPublish` で中身の ref の claim → 送信済み化を自前の try/catch に (失敗しても本体の通知を失敗扱いにしない)。実行テスト追加。
+
+## 観点 (A〜F で番号を振って答えてください)
+A. 理由の正しさ: `noPlaceReason` の順 (spent → attr → no_hours → time) で、実際の原因と違う理由を出す状況は無いか (例: 属性のボスは居るが倒れている / ⏳隙間型 / remaining の数え方 = 3 − attackCount が canPin の数え方 (予約 + 📌 + 実凸 ≤ 3) と違う点)。「置ける場所がありません」と言ったのに実は置ける (または逆) が起きる形。
+B. 呼ぶ場所と回数: `renderOpsPlanView` は描き直しのたびに走る (ポーリング・算出・選択)。`sel.noPlaceTold` の鍵 (kind|memberId|attr|slot|viewMode) で十分か。`_opsPlanSel` が描き直しで作り直されると鍵が消えて再度出るか。ドラッグ (`_opsPlanPaintTargets`) との二重。
+C. 🧩 箱の理由: `viewHours` / `viewBosses` の取り方が、時間割 (`_planTimetableModel` の hourSet: 凸 + 済んだ凸) / 盤 (`railHours`) と食い違う所 (済んだ凸だけの時刻の行・`_planNowIdx`)。描くたびに ピース × 時刻 × ボス の canPlace を回す負荷。
+D. 駒を選ばずに押したときの案内が、他の操作 (チップのタップ = 選ぶ・ボタン・メンバー画面) を邪魔しないか (`_opsMode` の条件・`closest('button, a, input, select, label')` の早期 return・`[data-member]` / `[data-piece]` は先に処理)。
+E. 9h の小さな直し (try/catch) と実行テストの妥当性。
+F. 文書 (CLAUDE.md ★ 9d / 運用の見直し / ROADMAP) と実装の食い違い。release-notes は運営だけの変更なので無し — 妥当か。
+
+## 据え置き (承知のうえ・指摘不要)
+- 時間割の行が凸のある時刻だけなのは既存の設計 (盤への案内で補う。行を増やす改修はしない)。
+- 判定を増やさない (canPin の残凸・キャラ被りは置こうとした時に出る)。
+- 配線テストの固定しすぎは慣習。
+
+## 答え方
+- 重大度 (高/中/低) を付けて、該当する diff の行を引用。直し方の提案を 1 行で。
+- 最後に「push 可」か「push 不可 (直すべき点: …)」を一行で。
+
+## diff (f7391c1 → HEAD)
+```
