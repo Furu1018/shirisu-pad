@@ -4024,14 +4024,15 @@ window.supabaseLoadReservationEvents = async function (reservationId) {
 };
 
 // このシーズンで「確認しました」を押した人の一覧 (再配信時の通知対象)。
-// 未適用環境では空配列 = 通知を飛ばさないだけで配信自体は成功させる
-window.supabaseLoadPlanAcks = async function (seasonId) {
+// 未適用環境では空配列 = 通知を飛ばさないだけで配信自体は成功させる。
+// 🗣 9h (Codex B): 取れなかったことを知りたい呼び出し元は { nullOnError: true } で null を受ける (空 [] と区別して「まだ確認していません」と断定しない)
+window.supabaseLoadPlanAcks = async function (seasonId, { nullOnError = false } = {}) {
     if (!seasonId) return [];
     const { data, error } = await supabase
         .from('plan_acks')
         .select('player_id, plan_id, acked_at')
         .eq('season_id', seasonId);
-    if (error) { console.warn('[plan ack] 一覧取得skip:', error.message); return []; }
+    if (error) { console.warn('[plan ack] 一覧取得skip:', error.message); return nullOnError ? null : []; }
     return data || [];
 };
 

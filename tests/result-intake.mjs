@@ -334,7 +334,7 @@ await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 �
     const r = await t._notifyBlockPublish({ pub: { id: 501 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
     assert.deepEqual([[...r.covered], r.sent, r.failed], [[7, 8], 2, 0]);
     assert.deepEqual(t.calls.filter(c => c[0] === 'claim').map(c => c.slice(1)), [
-        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない');
+        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|p501|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない / 変わった人の鍵に配信の id が無い (🗣 9h Codex C: 文の行が同じでも中身が変わった人に届かせる)');
     const pushes = t.calls.filter(c => c[0] === 'push').map(c => c[1]);
     assert.deepEqual(pushes.map(p => [p.playerIds, p.title, p.body]), [
         [[7], '🧱 夕方 18〜20時 のあなたの凸が決まりました', '18時 B3 灼熱PT 編成② — ホームで確認してください'],

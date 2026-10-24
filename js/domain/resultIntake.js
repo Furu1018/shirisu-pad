@@ -175,7 +175,7 @@
                     : has(acked, m.memberId) ? '✅ 確認したあとにプランが変わりました。ホームで新しい凸を確認してください'
                     : 'まだ確認していませんが、プランが変わりました。ホームで新しい凸を確認してください';
                 return {
-                    memberId: m.memberId, lines,
+                    memberId: m.memberId, lines, changed: isChanged,
                     title: isChanged ? `🔄 ${lbl} のあなたの凸が変わりました` : `🧱 ${lbl} のあなたの凸が決まりました`,
                     body: `${lines.join(' / ')} — ${tail}`,
                 };
@@ -184,7 +184,7 @@
         for (const id of gone) {
             if (byMember.has(String(id))) continue;
             notices.push({
-                memberId: id, lines: ['割当なし'], gone: true,
+                memberId: id, lines: ['割当なし'], gone: true, changed: true,
                 title: `🔄 ${lbl} のあなたの凸が外れました`,
                 body: !acked ? '組み直しで、このブロックのあなたの割当は無くなりました。ホームで確認してください'
                     : has(acked, id) ? '✅ 確認したあとに組み直され、このブロックのあなたの割当は無くなりました。ホームで確認してください'
