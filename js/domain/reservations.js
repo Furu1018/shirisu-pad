@@ -546,7 +546,8 @@
         if (!flex && !blk && !/^h(0[0-9]|1[0-9]|2[0-3])$/.test(String(timeSlot || ''))) missing.push('time');
         const lo = f.loadout || null;
         const slot = Number(lo && lo.slot);
-        if (!lo || (slot !== 1 && slot !== 2) || !(Number(lo.dmgB) > 0)) missing.push('loadout');
+        // 編成の枠は 1〜SLOT_MAX (SQL 55 で ③ まで)。planRowToDraft / toSolverConstraints と同じ判定 (Codex 監査 2026-10-24)
+        if (!lo || !(Number.isInteger(slot) && slot >= 1 && slot <= SLOT_MAX) || !(Number(lo.dmgB) > 0)) missing.push('loadout');
         if (missing.length) return { ok: false, missing };
         // いまのレベルでそのボスが倒れていれば、次のレベルのそのボスに置かれることを本人に伝える
         const note = (boss && Number(boss.remaining_hp_raw) <= 0)

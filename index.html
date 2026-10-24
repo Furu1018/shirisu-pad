@@ -5415,7 +5415,7 @@
                             <li>「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます</li>
                         </ul>
                         <h3>④ 📘 登録された模擬</h3>
-                        <p>運営が登録したあなたの模擬 (属性 × 編成① / ②) が読み取り専用で出ます。直したいときは Discord に模擬のスクショを貼り直してください (<a href="#help-mock">§4</a>)。</p>
+                        <p>運営が登録したあなたの模擬 (属性 × 編成① / ② / ③) が読み取り専用で出ます。直したいときは Discord に模擬のスクショを貼り直してください (<a href="#help-mock">§4</a>)。</p>
                         <h3>⑤ 🔒 予約 (希望がある人だけ)</h3>
                         <p>「このブロックにこの PT で凸したい」希望がある人だけ、Discord で運営に伝えます。運営が登録すると、ホームの <strong>🔒 予約</strong> に出ます (<a href="#help-reserve">§5</a>)。</p>
                         <h3>⑥ 通知</h3>
@@ -5452,7 +5452,7 @@
                         <h3>運営: 📸 模擬の取り込み</h3>
                         <ul>
                             <li>「誰の模擬か」を選んでスクショを選ぶ / カードに落とす → 読み取った属性・ダメージ・5 キャラを確かめて登録</li>
-                            <li><strong>保存先 (編成① / ② / ③)</strong> を選べます。既定は「同じ編成ならその枠 / 編成①が空きなら① / 編成②が空きなら②」。ボス 5 の 2 編成目は空いている編成②へ</li>
+                            <li><strong>保存先 (編成① / ② / ③)</strong> を選べます。既定は「同じ編成ならその枠 / 空いている枠の若いほう (① → ② → ③) / 全部埋まっていればダメージの低い枠」。ボス 5 の 2 編成目は空いている枠へ</li>
                             <li>「届いていない人」に、5 属性そろっていない人と、18 時以降に出られるのにボス 5 の 2 編成目が無い人が並びます (〆 = その人が最初に出られるブロックの前)</li>
                             <li>⚠ 運営除外 — 「この模擬は使わない」の印。その属性を登録し直すと自動で解除されます</li>
                         </ul>
@@ -6628,7 +6628,7 @@
                     </div>
                     <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
                     <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:10px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
-                    <!-- 📸 運営の取り込み: 保存先 (編成① / ②)。既定は mockIntakeDomain.defaultSlot (ボス 5 の 2 編成目を取り込めるように・段階 5) -->
+                    <!-- 📸 運営の取り込み: 保存先 (編成① / ② / ③)。既定は mockIntakeDomain.defaultSlot (ボス 5 の 2 編成目を取り込めるように・段階 5) -->
                     <div id="myDmgPreviewSlot" style="display:none;margin:-4px 0 12px 0;"></div>
                     <!-- 認識した属性 + ダメージ -->
                     <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
@@ -13880,7 +13880,7 @@
         }
 
 
-        // 📸 運営の取り込み: 保存先 (編成① / ②)。属性を選び直したら、手で選んでいなければ既定を出し直す
+        // 📸 運営の取り込み: 保存先 (編成① / ② / ③)。属性を選び直したら、手で選んでいなければ既定を出し直す
         function _renderMyDmgPreviewSlot(d) {
             const el = document.getElementById('myDmgPreviewSlot');
             if (!el) return;
@@ -20138,10 +20138,9 @@
                 const restored = p.restoredKey
                     ? `${escapeHtml(p.restoredKey)} を復活`
                     : 'なし (テスト作成前もアクティブシーズン無し)';
-                const dropped = p.droppedRows > 0 ? ` (旧形式 ${p.droppedRows}行は除外)` : '';
                 sumEl.innerHTML = `
                     <div><strong>対象:</strong> 🧪 ${escapeHtml(p.season.month_key)}</div>
-                    <div><strong>復元:</strong> 模擬戦データ ${p.restoreRows}行${dropped} · 元シーズン ${restored}</div>
+                    <div><strong>復元:</strong> 模擬戦データ ${p.restoreRows}行 · 元シーズン ${restored}</div>
                     <div><strong>削除:</strong> テスト中の凸 ${p.attacks}件 · 配信プラン・締め凸依頼はテストシーズンごと消えます</div>`;
                 if (p.chars.length === 0) {
                     listEl.innerHTML = '<p style="margin:0;color:var(--t-body);font-size:12px;">テスト作成後に増えたキャラマスタはありません。</p>';
@@ -24681,7 +24680,7 @@
                 } catch { /* 表示だけの劣化 */ }
                 el.style.background = 'rgba(245,158,11,0.14)'; el.style.color = 'var(--warn-deep)';
                 el.textContent = `⏳ 組み直し中${fWhen ? ` (${fWhen}〜)` : ''}${published.frozen_by ? ` · ${published.frozen_by}` : ''}`
-                    + ' — メンバーには前のプランが残ったまま「組み直し中」と出ています';
+                    + ' — メンバーには前のプランが残ったまま「組み直し中」と出ています' + strayNote;
                 return;
             }
             let when = '';

@@ -1099,11 +1099,11 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   条件パネルの対象に 3 つ目「🧱 ブロックの人」+ ブロックの選択肢 (`_opsPlanBlock()`: 既定はいまの時刻のブロック・「(いま)」「(次)」の印)。
   算出は `computeOptimalPlanCore({ onlyAvailableNow: true, availableAtSlots: block.slots, availableAtLabel })` — その時間帯のどれかに出られる人 + ⏳隙間型 + 未登録 (= いつでも)
   に絞る (ベンチ H と同じ読み方)。1 時間の「今動ける人だけ」(`availableAtSlot`) は従来どおり。出力に `availableAtSlots` / `availableAtLabel` が載るのはブロックのときだけ (指紋を保つ)。
-  焼き込みは `conditions.who = 'block'` + `conditions.block` (ブロック名)、スタンプは「🧱 夕方 18〜20時 に出られる人」。ベンチの区切りもドメインから取る。
+  焼き込みは `conditions.who = 'block'` + `conditions.block` (ブロック名)、スタンプは「🧱 夕方 17〜20時 に出られる人」。ベンチの区切りもドメインから取る。
   ★ **③-a 配信をブロックのぶんだけに** (2026-10-18): 「🧱 ブロックの人」で組んだプランには `plan.blockScope` (`{ idx, name, label, from, to, slots }`) を焼き込む。
   配信 JSON は 1 日ぶんのまま。**メンバーの画面だけ** `raidBlocksDomain.scopePlan(plan, scope)` でその範囲 (hourIdx が from〜to) の凸に絞る
   (`renderMyPublishedPlan` の入口で絞るので、わたしの凸 / 全体 / 時間割 / ヒーロー がみな同じ範囲を見る)。凸が残らないレベルは落とす。
-  カードに「🧱 夜 21〜23時 のぶんの配信です。次のブロックの割当はまだ決まっていません」。配信ボタンは「📤 夜のぶんを配信 (47凸)」、
+  カードに「🧱 夜 21〜翌0時 のぶんの配信です。次のブロックの割当はまだ決まっていません」。配信ボタンは「📤 夜のぶんを配信 (47凸)」、
   確認の文言にも範囲。差分 (L5 の提示・L4 の通知) も `scopePlan` で両方を同じ範囲に絞ってから比べる (後ろのブロックは約束ではない)
   ★ **対象外の人の予約は「置けなかった」ではない** (2026-10-22 実機・致命的): 🧱 (/ 今動ける人) の条件で計算に居ない人の予約は、ソルバーが
   `out_of_scope` にして `unmetReservations` から分け、`outOfScopeReservations` (時刻つき・あるときだけ載せる = 指紋不変) に出す。以前は置く処理が
@@ -1154,7 +1154,7 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   🛠 と同じ `toggleOpsMode()` (端末ごとに記憶)。文字は `_applyOpsMode` が合わせる。マスター以外には出ない (運営担当は常に運営・メンバーは常にメンバー)
   ★ **🧱 段階 2a: 時間アンケートの凸数 + ⏳隙間時間型の撤廃** (2026-10-22 ユーザー決定「朝 1・夕方 2 を予約なしで通す」「確実に動ける時間だけを見る」):
   時間のシート (`_renderAvailUI`) で ON のブロックごとに「何凸するか」を −/+ (`_availStepCount` → `raidBlocksDomain.stepCount`。合計 3 で + を止める・入れない = おまかせ)。
-  保存は確認の行 `availability_confirmations.block_counts` (**`53_block_counts.sql`**・JSONB `{"5-8":1,"18-20":2}`・鍵は `countKey` = `${from}-${to}`・NULL = おまかせ / 今回は難しい)。
+  保存は確認の行 `availability_confirmations.block_counts` (**`53_block_counts.sql`**・JSONB `{"5-8":1,"17-20":2}`・鍵は `countKey` = `${from}-${to}`・NULL = おまかせ / 今回は難しい)。
   判定は `raidBlocksDomain` の `normalizeCounts` (ON・一部 ON のブロックだけ・1 以上の整数・合計 3 までブロックの順で) / `countsLabel` (「朝 1 · 夕方 2」) / `capsOf` (段階 2b でソルバーに渡す上限 = 凸数 − そのブロックで済んだ凸・合計 3 も守る) が唯一。
   ★ 確認 (`handleConfirmAvailability`) は**押した時点の凸数** (`countsAtPress`) を、**実際に保存した時間帯**で詰め直して送る (保存を待つ間の −/+ を混ぜない: Codex指摘)。
   ★ 53 未適用は凸数だけ落として確認は通す (`blockCountsDropped`)。落ちた凸数は `_myAvailConfirm` に**持たない** (持つと「確認したあとに凸数を変えました」が出続ける)。
@@ -1182,12 +1182,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `plan_reservations.time_mode = 'block'` + `block_from` / `block_to` (時・含む・time_slot は NULL)。CHECK と承認後の凍結 (status_via_rpc) にも足す。練習の偽サーバも同じ (`resvBefore`)。
   解く形 `toSolverConstraints` は `window: { fromIdx, toIdx }` を足す (ブロックでない予約には足さない = 指紋は不変)。ソルバーは `resolveReservationLevels` の `pickInWindow` で
   **窓の中で本人が出られる時刻を先に・そのボスがいるレベルが開いている最も早い時刻**を決めて timeSlot に入れ、あとは時刻つきの予約と同じに置く・突き合わせる (窓を過ぎたら time_passed)。
-  ドメイン `reservationsDomain` に `blockWindowOf` / `blockLabelOf` / `whenOf` (「18〜20時のどこか」)。`rowHonorsTime` / `inBlockTime` / `matchesOutOfScope` / `homeSlots` (blockLabel・placedHourIdx) / `buildRequestDraft` (block) / `raidBlocks.scopeReservations` が窓で読む。
+  ドメイン `reservationsDomain` に `blockWindowOf` / `blockLabelOf` / `whenOf` (「17〜20時のどこか」)。`rowHonorsTime` / `inBlockTime` / `matchesOutOfScope` / `homeSlots` (blockLabel・placedHourIdx) / `buildRequestDraft` (block) / `raidBlocks.scopeReservations` が窓で読む。
   申請シートは「どのブロックで」(出られるブロック = blockStates の on / partial)・⏳隙間は撤廃。**申請の入口は lite でも出す** (`[data-member-resv]`・予約したい人だけ申請)。
   54 未適用は読み出しが列を落として読み直し (`_resvBlockColsMissing`)、申請シートは従来の「何時に」に戻る。ブロックで申請しようとしたら「54 を適用して」
   ★ **🎮 練習モードの作り直し** (2026-10-22 ユーザー決定「メンバー側も運営側も・特に運営がブロックで実際に動かして練習」): 課題は `js/practice/guide.js` の STEPS。
   メンバー編 (前日 20 時・lite) = avail (時間 + 夜 2 凸) → wait (⏩ 運営が「夜」のぶんを配信 = `publishNight`・本物のソルバーで 🧱 夜の人) → ack → report (⏩ 運営が凸を登録)。
-  運営編・前日 = nudge → compute (🧱 朝) → pin → request (⏩ 朝 7 時の申請 `REQ_SLOT`) → publish (朝のぶん)。運営編・当日 (**18 時** = 夕方の頭) = hp → check (✅ 凸報告を 1 件 ✓) → compute (🧱 夕方) → publish → finish (締凸検索の「📋 コピー」・本物の関数を包んで印)。
+  運営編・前日 = nudge → compute (🧱 朝) → pin → request (⏩ 朝 7 時の申請 `REQ_SLOT`) → publish (朝のぶん)。運営編・当日 (**17 時** = 夕方の頭) = hp → check (✅ 凸報告を 1 件 ✓) → compute (🧱 夕方) → publish → finish (締凸検索の「📋 コピー」・本物の関数を包んで印)。
   運営役の配信 `opsPublish(startMode, blockName)` は画面と同じ渡し方 (onlyAvailableNow + availableAtSlots + blockStartSlot) と blockScope の焼き込み。**本番がまだ送らない「ブロックの配信」の通知は練習も送らない**。
   練習のシーズンは本番の既定 (`metadata: {}` = lite)。締め凸は練習でも探すだけ (`_finishAskOn()` は常に false)。ツアーの体験デモは avail / battle→report (模擬は無し)。
   ついでに直した本番の不具合: 前日の 🧱 ブロックの既定が時計のブロック (前日の夕方) になっていた → レイド日より前は「朝」(`_opsPlanBlock`)。承認後の組み直しは直前のプランのブロック (`_recomputeOptsAfterApproval`)
@@ -1218,7 +1218,7 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **突き合わせは配信のそのブロックのぶんだけ** (`scopePlan(plan, plan.blockScope)`) で、**配信を算出した時刻 (`conditions.computedAt`) より前の凸は照合しない** (`buildRows` の `sinceMs` → unchecked「いまの配信より前の凸」)。
   時刻でブロックを決めないこと — 運営があとから取り込む凸の `reported_at` は「登録した時刻」。配信は同じシーズンの `_opsPublishedPlan` だけ使う。
   🧱 組む のタブの頭 (`#opsPlanTidy`・`_renderOpsPlanTidy`): 結果がまだの凸があれば「次のブロックを組む前に取り込むか『凸していない』に」+ 結果の取り込みへ (止めない)。
-  ★ **ブロックの配信の通知** (`_notifyBlockPublish`・決定 h): 🧱 ブロックで組んだ配信は、そのブロックに割当のある人へ自分の凸を 1 通 (`publishNotices`: 「🧱 夕方 18〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)。
+  ★ **ブロックの配信の通知** (`_notifyBlockPublish`・決定 h): 🧱 ブロックで組んだ配信は、そのブロックに割当のある人へ自分の凸を 1 通 (`publishNotices`: 「🧱 夕方 17〜20時 のあなたの凸が決まりました — 18時 B3 灼熱PT 編成②」)。
   ★ 二重送信よけは**人ごと・中身ごと** (`raid_event_notices` の kind `block_publish` / ref = `ブロック from-to|人|凸の文`)。同じブロックを配信し直しても凸が変わらない人は送信済み (done) で送らず、
   変わった人には新しい中身で「変わりました」(同じブロック = 前の配信と from / to が同じ・`planDiff.changedIds`)。送れなかった人は確保を戻す (次の配信で送り直す)。配信 1 回ぶんの確保は、失敗した人に二度と届かないのでやめた (Codex指摘 1901a8a)。
   相手が 0 人 (書庫・テスト回の方針で外れた = skipped) は「送れた」に数えない (確保は送信済み)。送信済みの記録に失敗すると、同じ中身の次の配信 (90 秒より後) で 1 回送り直し得る — 撃破の通知と同じ仕組みの承知の上の穴。

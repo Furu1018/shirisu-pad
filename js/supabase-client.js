@@ -861,6 +861,12 @@ window.supabaseLoadPlayerDamagesResult = _loadPlayerDamagesRaw;
 //   「使っていない①が採用済みに見える」という不整合になる (Codex指摘 2026-08-12)
 export const MOCK_SLOT_MAX = 3;   // 🗣 2026-10-24 ふるりの決定: 1 属性 3 つまで (SQL 55。それまで 2 = SQL 32)
 export function isUsableSlot(v) { const n = Number(v) || 1; return n >= 1 && n <= MOCK_SLOT_MAX; }
+// テストシーズンは player_damages を「全削除 → スナップショットから入れ直し」で戻す。この版の上限を超える編成の行を
+// 黙って落とすと、その行が消える (旧版のタブで始める / 終える場合)。超える行があれば止める (Codex 監査 2026-10-24)
+function _assertSlotsWithinThisBuild(rows, verb) {
+    const beyond = (Array.isArray(rows) ? rows : []).filter(r => !isUsableSlot(r && r.slot)).length;
+    if (beyond > 0) throw new Error(`編成${MOCK_SLOT_MAX + 1}以上の模擬が ${beyond} 件あります。この PAD の版は古い (編成${MOCK_SLOT_MAX}まで) ので、開き直して最新の版でテストシーズンを${verb}てください`);
+}
 window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 
 // player_damages を「使えるスロットだけ」で読む小ヘルパー。
@@ -2796,9 +2802,10 @@ window.supabaseCreateSeason = async function (payload) {
                 if (!r.error) { dmgs = r.data || []; break; }
             } catch { /* fallthrough */ }
         }
-        // ★ 2枠運用に合わせて slot>2 は最初からスナップショットに入れない。
-        //   入れると復元側で落とすことになり、作成側と終了側で扱いがズレる (Codex指摘)
-        dmgs = (dmgs || []).filter(d => isUsableSlot(d.slot));
+        // ★ この版の上限 (MOCK_SLOT_MAX) を超える編成が DB にあれば、この版は古い (上限を上げた版が先に出ている)。
+        //   黙って落とすと、終了時の「全削除 → 入れ直し」でその行が消えるので、始めない (Codex 監査 2026-10-24)
+        _assertSlotsWithinThisBuild(dmgs, '始め');
+        dmgs = dmgs || [];
         // キャラマスタは canonical_name 一覧のみ保存 (sighting_count 等の細部はロールバック対象外)
         let charNames = [];
         try {
@@ -4081,7 +4088,7 @@ window.supabasePreviewTestSeasonEnd = async function () {
     const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
     if (!dom) throw new Error('js/domain/testSeason.js が読み込まれていません');
     const snapshot = Array.isArray(season.metadata?.damages_snapshot) ? season.metadata.damages_snapshot : [];
-    const kept = snapshot.filter(s => isUsableSlot(s.slot));
+    _assertSlotsWithinThisBuild(snapshot, '終え');
     let attacks = 0;
     try {
         const { count } = await supabase.from('attacks').select('id', { count: 'exact', head: true }).eq('season_id', season.id);
@@ -4100,8 +4107,7 @@ window.supabasePreviewTestSeasonEnd = async function () {
     });
     return {
         season: { id: season.id, month_key: season.month_key },
-        restoreRows: kept.length,
-        droppedRows: snapshot.length - kept.length,
+        restoreRows: snapshot.length,
         attacks,
         restoredKey,
         chars,
@@ -4124,6 +4130,8 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
     // player_damages をスナップショットから復元 (characters カラムも一緒に)
     const snapshot = season.metadata?.damages_snapshot;
     if (Array.isArray(snapshot)) {
+        // ★ 全削除の前に: この版の上限を超える編成 (新しい版で始めたテストシーズン) があれば止める。落として復元すると消える
+        _assertSlotsWithinThisBuild(snapshot, '終え');
         await supabase.from('player_damages').delete().gte('player_id', 0);
         if (snapshot.length > 0) {
             // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
@@ -4134,12 +4142,7 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
             const hasLevels = snapshot.some(s => s.levels !== undefined);
             const hasExcl = snapshot.some(s => s.excluded_at !== undefined);   // 運営除外 (35) もテスト前の状態に戻す
             const exclOf = (s) => (hasExcl ? { excluded_at: s.excluded_at ?? null, excluded_by: s.excluded_by ?? null, excluded_reason: s.excluded_reason ?? null } : {});
-            // ★ 32 適用後は slot>=3 が CHECK 違反になる。古いテストシーズンの
-            //   スナップショットに③が入っていると、**全削除したあとの復元がまるごと失敗し
-            //   模擬データが消えたまま終了処理が進む**ため、ここで落とす (Codex指摘 2026-08-12)
-            const kept = snapshot.filter(s => isUsableSlot(s.slot));
-            const dropped = snapshot.length - kept.length;
-            if (dropped > 0) console.warn(`[endTestSeason] slot>${MOCK_SLOT_MAX} の ${dropped} 行はスナップショットから除外して復元します`);
+            const kept = snapshot;   // 上限を超える行は上で止めている (落とさない)
             const rowsWithChars = kept.map(s => ({
                 player_id: s.player_id,
                 attribute: s.attribute,

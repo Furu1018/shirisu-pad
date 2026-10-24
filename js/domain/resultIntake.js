@@ -15,7 +15,7 @@
 (function (root) {
     'use strict';
     const MAX_ATTACKS = 3;
-    const SLOT_JP = { 1: '①', 2: '②' };
+    const SLOT_JP = { 1: '①', 2: '②', 3: '③' };   // 1 属性 3 編成まで (SQL 55・2026-10-24)
     const HOUR_BASE = 5;
     const norm = (s) => String(s == null ? '' : s).replace(/[\s　]/g, '');
     const hourLabelOfIdx = (idx) => {

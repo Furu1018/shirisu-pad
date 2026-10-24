@@ -5500,7 +5500,12 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: 'あ' }).missing, ['time'], '形式が違う時刻を通している (DB の CHECK で弾かれる)');
             assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: null }).missing, ['loadout']);
             assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ dmg: 0 }) }).missing, ['loadout'], 'ダメージ未保存の編成を通している');
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).missing, ['loadout']);
+            // 編成③ (SQL 55・2026-10-24) は通る。上限を超える / 整数でない枠は不足 (Codex 監査 §10 2 回目: ここが ①② 限定のまま残っていた)
+            assert.equal(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).ok, true, '編成③の申請を止めている');
+            assert.equal(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).draft.loadoutSlot, 3);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 4 }) }).missing, ['loadout'], '上限を超える編成を通している');
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 2.5 }) }).missing, ['loadout']);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 0 }) }).missing, ['loadout']);
             assert.deepEqual(rv.buildRequestDraft({ boss: null, level: null, timeSlot: null, loadout: null }).missing, ['boss', 'time', 'loadout'], '複数まとめて返す');
         });
         test('申請シート: レベルは聞かない — 指定しても下書きに載らず、注記も出ない (2026-09-08)', () => {
@@ -14152,6 +14157,23 @@ console.log('\n編成 3 つ (SQL 55):');
         assert.deepEqual(pp.strayRows(null, blocks), []); assert.deepEqual(pp.strayRows([P(1, { from: 18, to: 20 })], []).length, 1);
         assert.ok(/const strayNote = _opsStrayPubNote\(\);/.test(html) && /\+ strayNote;\s*\n\s*\}/.test(html) && /return ` — ⚠️ 区切りを変える前の配信が \$\{stray\.length\}件/.test(html), '配信の状況に「区切りを変える前の配信」の案内が無い');
         assert.ok(/メンバーは自分の割当を見られません' \+ strayNote;/.test(html), '配信が無いときの文に「区切りを変える前の配信」の案内が付いていない (いちばん要る所)');
+        // Codex 監査 §10 2 回目 (2026-10-24): 予約の作成入口 / 凍結中の文 / 結果の取り込みの印 / 旧版のタブでテストシーズンを始めると③が消える
+        assert.ok(/\+ ' — メンバーには前のプランが残ったまま「組み直し中」と出ています' \+ strayNote;/.test(html), '凍結中の文に「区切りを変える前の配信」の案内が付いていない');
+        assert.ok(!/slot !== 1 && slot !== 2/.test(resv) && /!\(Number\.isInteger\(slot\) && slot >= 1 && slot <= SLOT_MAX\)/.test(resv), '予約の作成入口 (buildRequestDraft) が ①② 限定のまま');
+        const d3 = rv.buildRequestDraft({ boss: { boss_number: 2, remaining_hp_raw: 10 }, block: { from: 17, to: 20 }, loadout: { slot: 3, dmgB: 20.5, characters: ['a', 'b', 'c', 'd', 'e'] } });
+        assert.equal(d3.ok, true, 'ブロックの予約で編成③が下書きにならない'); assert.equal(d3.draft.loadoutSlot, 3); assert.deepEqual(d3.draft.block, { from: 17, to: 20 });
+        assert.ok(/loadout_slot: Number\(o\.loadoutSlot\) \|\| 1,/.test(client), '予約の保存 payload が loadoutSlot をそのまま loadout_slot に書いていない');
+        assert.ok(/const SLOT_JP = \{ 1: '①', 2: '②', 3: '③' \};/.test(rd('js', 'domain', 'resultIntake.js')), '結果の取り込みが編成③を「編成3」と出す');
+        const ri = globalThis.resultIntakeDomain;
+        if (ri && typeof ri.discordAsk === 'function') { /* 文面の関数名は版で違う: ここでは印の表だけ固定 */ }
+        assert.ok(/function _assertSlotsWithinThisBuild\(rows, verb\) \{\s*\n\s*const beyond = \(Array\.isArray\(rows\) \? rows : \[\]\)\.filter\(r => !isUsableSlot\(r && r\.slot\)\)\.length;\s*\n\s*if \(beyond > 0\) throw new Error\(/.test(client), 'テストシーズンの「この版の上限を超える編成」の止め方が無い');
+        assert.ok(/_assertSlotsWithinThisBuild\(dmgs, '始め'\);\s*\n\s*dmgs = dmgs \|\| \[\];/.test(client) && !/dmgs = \(dmgs \|\| \[\]\)\.filter\(d => isUsableSlot\(d\.slot\)\);/.test(client), 'テストシーズンの開始が上限を超える編成を黙って落としている (旧版のタブで③が消える)');
+        assert.ok(/if \(Array\.isArray\(snapshot\)\) \{\s*\n\s*\/\/[^\n]*\n\s*_assertSlotsWithinThisBuild\(snapshot, '終え'\);\s*\n\s*await supabase\.from\('player_damages'\)\.delete\(\)/.test(client), 'テストシーズンの終了が全削除の前に上限を見ていない');
+        assert.ok(/_assertSlotsWithinThisBuild\(snapshot, '終え'\);\s*\n\s*let attacks = 0;/.test(client) && !/droppedRows/.test(client) && !/droppedRows/.test(html), '終了の下見が上限を見ていない / 「除外」の表示が残っている');
+        assert.ok(!/const kept = snapshot\.filter\(s => isUsableSlot\(s\.slot\)\);/.test(client), 'スナップショットの復元で行を落としている');
+        assert.ok(!/編成①が空きなら① \/ 編成②が空きなら②/.test(html) && /空いている枠の若いほう \(① → ② → ③\)/.test(html) && !/属性 × 編成① \/ ②\)/.test(html), 'ヘルプが ①② のまま');
+        const cl = rd('CLAUDE.md');
+        assert.ok(!/夕方 18〜20時|夜 21〜23時|"18-20":2|18〜20時のどこか|\*\*18 時\*\* = 夕方の頭/.test(cl), 'CLAUDE.md に旧区切り (18〜20 / 21〜23) が残っている');
     });
 }
 
