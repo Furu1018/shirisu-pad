@@ -729,6 +729,10 @@ async function _upsertPlayerDamages(rows) {
         .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
     if (!res.error) return res;
     if (/column .*characters/i.test(String(res.error?.message))) return res;   // characters 起因は呼び出し元で処理
+    // 55 未適用 (CHECK がまだ 1|2) の DB に編成③を書いた → 列欠損ではないので再試行せず、適用を案内する (読み出しと算出は従来どおり動く)
+    if (/chk_player_damages_slot/.test(String(res.error?.message)) && withSlot.some(r => Number(r.slot) >= 3)) {
+        throw new Error('編成③を保存するには supabase/55_player_damages_slots_3.sql を SQL Editor で実行してください (未適用の間は 1 属性 2 つまで)');
+    }
     let rows2 = withSlot;
     // 35 未適用環境: 運営除外の列 (excluded_*) を落として再試行。
     // 本人の保存し直しは「3列を NULL に戻す」payload を常に含むので、列の無い環境で
@@ -855,7 +859,7 @@ window.supabaseLoadPlayerDamagesResult = _loadPlayerDamagesRaw;
 //   「アプリ全体が2枠として一貫して振る舞う」ようにする。切らないと、
 //   ソルバーは③を候補にするのに模擬タブは表示・編集できず、採用マークは③を①に丸めて
 //   「使っていない①が採用済みに見える」という不整合になる (Codex指摘 2026-08-12)
-export const MOCK_SLOT_MAX = 2;
+export const MOCK_SLOT_MAX = 3;   // 🗣 2026-10-24 ふるりの決定: 1 属性 3 つまで (SQL 55。それまで 2 = SQL 32)
 export function isUsableSlot(v) { const n = Number(v) || 1; return n >= 1 && n <= MOCK_SLOT_MAX; }
 window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 

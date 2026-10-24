@@ -173,7 +173,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 counts: conf ? conf.block_counts : null, scope: pub && pub.plan.blockScope ? pub.plan.blockScope.name : null, acked: T.plan_acks.some(a => a.player_id === me && pub && a.plan_id === pub.id),
                 pushes: window.PAD_PRACTICE.db.outbox.length, lite: !(T.seasons[0].metadata || {}).member_input,
                 byOps: T.attacks.filter(a => a.player_id === me).every(a => true) }; })())`));
-        if (JSON.stringify(world.counts) !== '{"21-23":2}') problems.push(`凸数 (夜 2) を伝えていない: ${JSON.stringify(world)}`);
+        if (JSON.stringify(world.counts) !== '{"21-0":2}') problems.push(`凸数 (夜 2) を伝えていない: ${JSON.stringify(world)}`);
         if (world.scope !== '夜' || !world.acked) problems.push(`夜のぶんの配信・確認 のどちらかが欠けている: ${JSON.stringify(world)}`);
         if (world.mine !== 1 || world.level !== 1 || world.dead) problems.push(`運営が自分の凸を 1 つ登録した形になっていない / レベルを進めた: ${JSON.stringify(world)}`);
         if (!world.lite) problems.push(`練習のシーズンが本番の既定 (メンバーの入力は最低限) になっていない: ${JSON.stringify(world)}`);

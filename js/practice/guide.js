@@ -45,7 +45,7 @@
     var SEL = {
         navHome: ['.bottom-nav-btn[data-tab="mypage"]', '.tab-button[data-tab="mypage"]'],
         availOpen: ['[onclick="openMyAvailModal()"]'],
-        availPlusNight: ['#myAvailModal button[onclick="_availStepCount(5, 1)"]'],   // 既定のブロックの 6 つ目 = 夜 21〜23時
+        availPlusNight: ['#myAvailModal button[onclick="_availStepCount(4, 1)"]'],   // 既定のブロックの 5 つ目 = 夜 21〜翌0時
         availConfirm: ['#myAvailConfirmBox button[onclick="handleConfirmAvailability(false)"]'],
         modalClose: ['button[onclick^="close"]', '[onclick^="close"]'],   // 「閉じる」ボタン
         planAck: ['button[onclick="handleAckPlan(this)"]'],
@@ -243,7 +243,7 @@
             var c = context();
             var slots = c.T.availability.filter(function (a) { return eq(a.player_id, c.me); }).map(function (a) { return a.time_slot; });
             await window.supabaseSaveAvailability(c.me, slots, { actorName: P.ops.name });
-            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-23': 2 }, actorName: P.ops.name });
+            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-0': 2 }, actorName: P.ops.name });
             note('assume', '運営が Discord の報告『夜に 2 凸』を PAD に登録した、と仮定しました', '本番では運営が 👥 メンバー状況の ⏰ から登録します。ホームの ⏰ に出ます');
         },
         // (メンバー編) 凸をして Discord にスクショを貼った → 運営があなたの凸を登録した (本物の凸の登録の関数・運営の名前で)
@@ -340,10 +340,10 @@
                 } },
             { key: 'avail', title: '⏰ Discord の報告を登録する (参加可能時間と凸数)',
                 // 🗣 9a: メンバーは Discord に『夜に 2 凸』と書くだけ。運営が 👥 メンバー状況の ⏰ から本人の代わりに登録する
-                done: function (c) { return c.T.availability_confirmations.some(function (r) { return eq(r.player_id, P.me.id) && r.block_counts && Number(r.block_counts['21-23']) === 2; }); },
+                done: function (c) { return c.T.availability_confirmations.some(function (r) { return eq(r.player_id, P.me.id) && r.block_counts && Number(r.block_counts['21-0']) === 2; }); },
                 guide: function (c) {
                     if (c.modalId === 'myAvailModal') {
-                        if ((Number(countsOf()['21-23']) || 0) < 2) return { text: '「' + P.me.name + '」さんの Discord の報告は『夜に 2 凸』。「夜」の「＋」を押して 2 にします (あと ' + (2 - (Number(countsOf()['21-23']) || 0)) + ' 回)。',
+                        if ((Number(countsOf()['21-0']) || 0) < 2) return { text: '「' + P.me.name + '」さんの Discord の報告は『夜に 2 凸』。「夜」の「＋」を押して 2 にします (あと ' + (2 - (Number(countsOf()['21-0']) || 0)) + ' 回)。',
                             real: '出られる時間はブロック丸ごと ON / OFF。凸数を入れたブロックには、その数より多く割り当てません。', target: pick('availPlusNight') };
                         return { text: '「夜 2」になりました。「この時間で参加します」を押して登録します。本人の画面の ⏰ に出ます。', target: pick('availConfirm') };
                     }
@@ -423,7 +423,7 @@
                     }
                     var b1 = c.T.bosses.filter(function (b) { return eq(b.season_id, c.season.id) && eq(b.boss_number, 1); })[0];
                     return stray(c, []) || (c.tab !== 'ops' ? nav('navOps', '運営')
-                        : { text: '夕方 (18〜20時) のブロックの頭です。まずボスの残HPをゲームと合わせます。ここでは B1 が ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」を押します。',
+                        : { text: '夕方 (17〜20時) のブロックの頭です。まずボスの残HPをゲームと合わせます。ここでは B1 が ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」を押します。',
                             real: '凸の登録がまだのぶん、ここの残HPはゲームと食い違います。古い HP で組むと、無駄凸や取りこぼしが出ます。', target: pick('bossHpOpen') });
                 } },
             { key: 'check', title: '⚔️ 前のブロックの結果を取り込む',
@@ -523,19 +523,19 @@
     var FF = {
         discord: async function (c) {
             var slots = c.T.availability.filter(function (a) { return eq(a.player_id, c.me); }).map(function (a) { return a.time_slot; });
-            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-23': 2 }, actorName: P.ops.name });   // 🗣 9a: 運営が代理で登録した形
+            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots, blockCounts: { '21-0': 2 }, actorName: P.ops.name });   // 🗣 9a: 運営が代理で登録した形
         },
         wait: async function () { await publishNight(); },
         ack: async function (c) { var pub = context().pub; if (pub) await window.supabaseAckPlan(c.me, c.season.id, pub.id); },
     };
     // ---------- 編の開始状態 (一回きり。種データだけでは足りない編は、本物の関数で盤面を作ってから始める) ----------
     var SETUP = {
-        // 運営編・当日 (18 時 = 夕方のブロックの頭): 朝 5 時からのプランを配信済み・18 時までの割当は凸したことにする (運営が登録した)・
+        // 運営編・当日 (17 時 = 夕方のブロックの頭): 朝 5 時からのプランを配信済み・17 時までの割当は凸したことにする (運営が登録した)・
         // B1 だけ残りを多めに残し (登録がまだの凸)、HP の更新を 2 時間前にする (運営タブの先頭に「HP 更新が古い」が出る = 最初の課題)
         'ops-day': async function (c) {
             await opsPublish('day');
             var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
-            advanceWorld(context(), pub && pub.plan, 18, { 1: 0.45 });
+            advanceWorld(context(), pub && pub.plan, 17, { 1: 0.45 });
             var stale = new Date(Date.now() - 2 * 3600000).toISOString();
             P.db.tx(function () { c.T.bosses.forEach(function (b) { if (eq(b.season_id, c.season.id)) b.updated_at = stale; }); });
             store.set('ops-day:setupAt', new Date().toISOString());

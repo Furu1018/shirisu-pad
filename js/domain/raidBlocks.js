@@ -25,10 +25,11 @@
     };
     const hourOfKey = (key) => { const m = /^h(\d\d)$/.exec(String(key || '')); return m ? Number(m[1]) : null; };
 
-    /** 既定の 7 ブロック (ふるりの案)。from / to は「時」(含む)。深夜は 0〜4 */
+    /** 既定の 6 ブロック = 5 時から 4 時間ずつ (2026-10-24 ふるりの決定。それまでは 7 つ: 朝 5〜8 / 午前 9〜11 / 昼 12〜14 / 午後 15〜17 / 夕方 18〜20 / 夜 21〜23 / 深夜 0〜4)。
+     *  from / to は「時」(含む)。夜は 21〜翌0 (5 時始まりの並びで続いている = 日付をまたいでよい)、深夜は 翌1〜4。シーズンごとに ✏️ シーズン編集で変えられる */
     const DEFAULT_BLOCKS = [
-        { name: '朝', from: 5, to: 8 }, { name: '午前', from: 9, to: 11 }, { name: '昼', from: 12, to: 14 },
-        { name: '午後', from: 15, to: 17 }, { name: '夕方', from: 18, to: 20 }, { name: '夜', from: 21, to: 23 }, { name: '深夜', from: 0, to: 4 },
+        { name: '朝', from: 5, to: 8 }, { name: '午前', from: 9, to: 12 }, { name: '午後', from: 13, to: 16 },
+        { name: '夕方', from: 17, to: 20 }, { name: '夜', from: 21, to: 0 }, { name: '深夜', from: 1, to: 4 },
     ];
     const MIN_BLOCKS = 2, MAX_BLOCKS = 12, MAX_NAME = 6;
 

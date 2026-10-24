@@ -258,6 +258,7 @@
     // plan_reservations.time_mode = 'block' + block_from / block_to (時・含む・SQL 54)。時刻 (time_slot) は持たない
     const idxOfHourB = (h) => { const n = Number(h); return (h != null && h !== '' && Number.isInteger(n) && n >= 0 && n <= 23) ? ((n - 5 + 24) % 24) : null; };
     const wrapHour = (h) => (Number(h) >= 0 && Number(h) <= 4) ? `翌${Number(h)}` : String(Number(h));
+    const slotMark = (s) => ({ 1: '①', 2: '②', 3: '③' })[Number(s)] || '①';   // 編成の印 (1 属性 3 つまで・2026-10-24)
     /** ブロックの予約の窓 (時間帯インデックス・5時始まり)。ブロックの予約でなければ / 読めなければ null */
     function blockWindowOf(r) {
         if (!r || r.time_mode !== 'block') return null;
@@ -283,7 +284,7 @@
             ? (bossNameByNumber.get(Number(r.boss_number)) || `B${r.boss_number}`)
             : `B${r.boss_number}`;
         const lv = (r.raid_level != null) ? `Lv${r.raid_level} ` : '';
-        return `${lv}${name} ${t} 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}`;
+        return `${lv}${name} ${t} 編成${slotMark(r.loadout_slot)}`;
     }
 
     /**
@@ -310,7 +311,7 @@
         const breaks = (Array.isArray(withPlan.unmetReservations) ? withPlan.unmetReservations : [])
             .filter(u => String(u.reservationId) !== String(candidateId) && !baseUnmet.has(String(u.reservationId)))
             .map(u => ({ ...u, sameMember: candidateMemberId != null && String(u.memberId) === String(candidateMemberId) }));
-        const breaksText = breaks.map(b => `${b.memberName || '#' + b.memberId} の予約 (B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'}) が置けなくなります: ${unmetText(b)}`).join('\n');
+        const breaksText = breaks.map(b => `${b.memberName || '#' + b.memberId} の予約 (B${b.bossNumber} 編成${slotMark(b.loadoutSlot)}) が置けなくなります: ${unmetText(b)}`).join('\n');
         const clearBefore = Number(basePlan.fullyClearedThrough) || 0;
         const clearAfter = Number(withPlan.fullyClearedThrough) || 0;
         const unusedBefore = Number(basePlan.unusedAttacks) || 0;
@@ -326,7 +327,7 @@
         // 承認を鈍らせる条件 (押せなくはしない — 運営が例外を通せる余地は残す)
         const warnings = [];
         if (cand) warnings.push(`この予約は置けません: ${unmetText(cand)}`);
-        breaks.forEach(b => warnings.push(`承認すると承認済みの予約が置けなくなります: ${b.memberName || '#' + b.memberId} B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'} (${unmetText(b)})`));
+        breaks.forEach(b => warnings.push(`承認すると承認済みの予約が置けなくなります: ${b.memberName || '#' + b.memberId} B${b.bossNumber} 編成${slotMark(b.loadoutSlot)} (${unmetText(b)})`));
         if (clearAfter < clearBefore) warnings.push(`Lv${clearBefore} 完全攻略の見込みが消えます`);
         if (unusedAfter > unusedBefore) warnings.push(`未消化の凸が ${unusedBefore} → ${unusedAfter} に増えます`);
         if (risk(withPlan) > risk(basePlan)) warnings.push('時刻を確約できない凸が増えます');

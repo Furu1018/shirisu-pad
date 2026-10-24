@@ -605,6 +605,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   **スロット数は 2** — 30 で 3 に増やしたが、31 でレベルがスロットの中に入り「1スロット = 1編成」に
   なったため `32_player_damages_slots_back_to_2.sql` で戻した
   (⚠ 32 は slot>=3 の行を削除する破壊的マイグレーション)。
+  **→ 2026-10-24 にふるりの決定で再び 3 つまで (`55_player_damages_slots_3.sql` = CHECK を 1〜3 に広げるだけ・行は消さない)**。`MOCK_SLOT_MAX = 3`・`MY_TEAM_SLOTS = [1, 2, 3]`・📸 取り込みの保存先 ① / ② / ③
+  (既定は `mockIntakeDomain.defaultSlot`: 同じ編成ならその枠 → 空いている枠の若いもの → 全部埋まっていればダメージの低い枠)・編成の印 ①②③ (`SLOT_JP` / `reservationsDomain` の `slotMark`)。
+  ソルバーは「同じキャラは 1 日 1 回」(`usedChars`) で選び、使った編成を外して同じ属性の別編成を次の候補にするので、同属性 3 編成でもキャラが被らず 3 凸を組める。ボス 5 の弱点の編成②③ (slot ≥ 2) は Lv4 だけ (段階 5 の `lv4Only`)。
+  55 未適用の DB に編成③を書くと CHECK で弾かれる → `_upsertPlayerDamages` が「55 を実行してください」と言う (読み出しと算出は従来どおり)。「18 時以降はボス 5 を 2 編成」の案内と B5×2 の列はそのまま (3 つ目は任意)
   levels の不変条件 (damage_b=levels最大値 / boss_level=そのキーの互換ミラー) の維持は
   `_upsertPlayerDamages` に集約したままで、未適用環境は levels を落として静かに劣化する。
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
@@ -1089,7 +1093,7 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   と ⏳隙間は動かさない。`tests/bench-block.mjs` の A (1日ぶんを1回) が 2474B → 2929B・未使用 13.8 → 3.0 凸。厳守 OFF は不変 (指紋 120 盤面)
   ★ **🧱 ブロック制 ② (2026-10-18)**: レイド日 (5時〜翌4時) をブロック (時間帯の区切り) に分け、運営は**次のブロックだけ**を約束する
   (`docs/第45期_ブロック制の検討_2026-10-17.md`)。区切りは **`js/domain/raidBlocks.js`** が唯一 (`normalize` が検査: 5時〜翌4時を隙間も重なりも無く・2〜12 個・名前 6 文字まで)。
-  シーズンごとに `seasons.metadata.blocks` = `[{ name, from, to }]` (無ければ既定 7 つ: 朝/午前/昼/午後/夕方/夜/深夜)。✏️ シーズン編集で行を足す・消す・既定に戻す
+  シーズンごとに `seasons.metadata.blocks` = `[{ name, from, to }]` (無ければ既定 6 つ = 5 時から 4 時間ずつ: 朝 5〜8 / 午前 9〜12 / 午後 13〜16 / 夕方 17〜20 / 夜 21〜翌0 / 深夜 翌1〜4 — 2026-10-24 ふるりの決定。それまでは 7 つ)。✏️ シーズン編集で行を足す・消す・既定に戻す
   (`supabaseUpdateSeasonBlocks`: 入口で normalize・本線は RPC `ops_set_season_blocks` (**`50_season_blocks_rpc.sql`**・DB 側で `metadata || {blocks}` の 1 文 = 同時編集でも他の鍵を消さない)・
   50 未適用は「読んで混ぜて書く」にフォールバック・既定と同じなら鍵を消す。行の足し引きは `addSplit` (後ろから 2 時間以上のブロックを割る) / `removeAt` (隣に吸わせる))。**内部の時間は 1 時間刻み `hXX` のまま**。
   条件パネルの対象に 3 つ目「🧱 ブロックの人」+ ブロックの選択肢 (`_opsPlanBlock()`: 既定はいまの時刻のブロック・「(いま)」「(次)」の印)。

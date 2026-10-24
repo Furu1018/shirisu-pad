@@ -350,6 +350,13 @@ SELECT * FROM (
         AND COALESCE((SELECT pg_get_functiondef(f) LIKE '%block_from%' FROM to_regprocedure('public.plan_reservations_status_via_rpc()') AS f WHERE f IS NOT NULL), false),
         '🧱 予約をブロックで (time_mode block + block_from / block_to・承認後の凍結)。未適用だとメンバーはブロックで申請できない (従来の時刻の予約は動く)'
 
+    UNION ALL SELECT '55_player_damages_slots_3',
+        EXISTS (SELECT 1 FROM pg_constraint
+                WHERE conname = 'chk_player_damages_slot'
+                  -- 55 は CHECK (slot IN (1, 2, 3))。32 (1, 2) の定義には 3 が現れない
+                  AND pg_get_constraintdef(oid) LIKE '%3%'),
+        '模擬の編成を 1 属性 3 つまで (player_damages.slot 1〜3)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

@@ -550,11 +550,11 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.ok(src, '_playersWithBlockCaps が無い');
         const fn = new Function('window', `${src}\nreturn _playersWithBlockCaps;`)({ raidBlocksDomain: globalThis.raidBlocksDomain, attackCheckDomain: globalThis.attackCheckDomain });
         const ps = [
-            { id: 1, blockCounts: { '9-11': 1, '18-20': 2 }, attacks: [{ reported_at: '2026-10-10T00:30:00Z' }] },   // JST 9:30 = 午前で 1 凸済み
+            { id: 1, blockCounts: { '9-12': 1, '17-20': 2 }, attacks: [{ reported_at: '2026-10-10T00:30:00Z' }] },   // JST 9:30 = 午前で 1 凸済み
             { id: 2, blockCounts: null, attacks: [] },
         ];
         const out = fn(ps, { metadata: {} });
-        assert.deepEqual(out[0].blockCaps, [{ fromIdx: 4, toIdx: 6, max: 0 }, { fromIdx: 13, toIdx: 15, max: 2 }]);
+        assert.deepEqual(out[0].blockCaps, [{ fromIdx: 4, toIdx: 7, max: 0 }, { fromIdx: 12, toIdx: 15, max: 2 }]);
         assert.equal(out[1], ps[1], '凸数の無い人を作り直している');
         assert.ok(!('blockCaps' in ps[0]), '盤面の players を書き換えている (ストアを汚す)');
         assert.ok(/凸数 \$\{escapeHtml\(lbl\)\}/.test(html) && /\$\{strip\(r\)\}\$\{counts\(r\)\}/.test(html), '運営のメンバー表に凸数の列が無い');
@@ -846,14 +846,15 @@ test('🧱 ブロックに出られる人だけで組む (availableAtSlots): そ
     }
 });
 
-test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順・名前・個数) / どのブロックか / 出られるか / ブロック⇄時間の変換', () => {
+test('🧱 raidBlocksDomain: 既定 6 つ (5 時から 4 時間ずつ) / 検査 (隙間・重なり・逆順・名前・個数) / どのブロックか / 出られるか / ブロック⇄時間の変換', () => {
     const d = globalThis.raidBlocksDomain;
     assert.equal(typeof d?.normalize, 'function', 'raidBlocksDomain が無い');
     const def = d.normalize(null);
     assert.equal(def.error, null); assert.equal(def.isDefault, true);
-    assert.deepEqual(def.blocks.map(b => b.label), ['朝 5〜8時', '午前 9〜11時', '昼 12〜14時', '午後 15〜17時', '夕方 18〜20時', '夜 21〜23時', '深夜 翌0〜翌4時']);
+    assert.deepEqual(def.blocks.map(b => b.label), ['朝 5〜8時', '午前 9〜12時', '午後 13〜16時', '夕方 17〜20時', '夜 21〜翌0時', '深夜 翌1〜翌4時']);
     assert.equal(def.blocks.reduce((t, b) => t + b.hours.length, 0), 24, '24 時間を埋めていない');
-    assert.deepEqual(def.blocks[6].slots, ['h00', 'h01', 'h02', 'h03', 'h04']);
+    assert.deepEqual(def.blocks[5].slots, ['h01', 'h02', 'h03', 'h04']);
+    assert.deepEqual(def.blocks[4].slots, ['h21', 'h22', 'h23', 'h00'], '夜は 21〜翌0 (日付をまたぐ)');
     assert.deepEqual(d.normalize([]).blocks.map(b => b.name), def.blocks.map(b => b.name), '空は既定');
     // 区切りはメンバー次第 (ふるりの判断 2026-10-17): 2 つでも 12 個でも
     const two = d.normalize([{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
@@ -869,17 +870,17 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.ok(/長すぎます/.test(d.normalize([{ name: 'とてもながいなまえ', from: 5, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
     assert.ok(/時刻が読めません/.test(d.normalize([{ name: '朝', from: 'x', to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
     // 壊れた設定でも画面を止めない: blocksOfSeason は既定に落ちる
-    assert.equal(d.blocksOfSeason({ metadata: { blocks: [{ name: '朝', from: 6, to: 8 }] } }).length, 7);
+    assert.equal(d.blocksOfSeason({ metadata: { blocks: [{ name: '朝', from: 6, to: 8 }] } }).length, 6);
     assert.equal(d.blocksOfSeason({ metadata: { blocks: two.blocks.map(b => ({ name: b.name, from: b.from, to: b.to })) } }).length, 2);
-    assert.equal(d.blocksOfSeason(null).length, 7);
+    assert.equal(d.blocksOfSeason(null).length, 6);
     // どのブロックか (時 / 'hXX')
     const B = def.blocks;
-    assert.equal(d.blockIndexOfHour(B, 5), 0); assert.equal(d.blockIndexOfHour(B, 20), 4); assert.equal(d.blockIndexOfHour(B, 0), 6); assert.equal(d.blockIndexOfHour(B, 4), 6);
-    assert.equal(d.blockIndexOfHour(B, 24), 6, '24 時は 0 時 (深夜) として読む'); assert.equal(d.blockIndexOfHour(B, 'x'), -1);
-    assert.equal(d.blockIndexOfHour(B, null), -1, 'null を 0 時 (深夜) と読んでいる'); assert.equal(d.blockIndexOfSlot(B, null), -1); assert.equal(d.blockIndexOfHour(B, ''), -1); assert.equal(d.blockIndexOfHour(B, true), -1);
-    assert.equal(d.blockIndexOfSlot(B, 'h21'), 5); assert.equal(d.blockAt(B, 13).name, '昼'); assert.equal(d.blockAt(B, NaN), null);
+    assert.equal(d.blockIndexOfHour(B, 5), 0); assert.equal(d.blockIndexOfHour(B, 20), 3); assert.equal(d.blockIndexOfHour(B, 0), 4, '0 時は夜 (21〜翌0)'); assert.equal(d.blockIndexOfHour(B, 4), 5);
+    assert.equal(d.blockIndexOfHour(B, 24), 4, '24 時は 0 時 (夜 21〜翌0) として読む'); assert.equal(d.blockIndexOfHour(B, 'x'), -1);
+    assert.equal(d.blockIndexOfHour(B, null), -1, 'null を 0 時 (夜) と読んでいる'); assert.equal(d.blockIndexOfSlot(B, null), -1); assert.equal(d.blockIndexOfHour(B, ''), -1); assert.equal(d.blockIndexOfHour(B, true), -1);
+    assert.equal(d.blockIndexOfSlot(B, 'h21'), 4); assert.equal(d.blockAt(B, 13).name, '午後'); assert.equal(d.blockAt(B, NaN), null);
     // 出られるか: どれか 1 時間でも入っていれば ○。⏳隙間型・未登録はいつでも
-    const ev = B[4];
+    const ev = B[3];   // 夕方 17〜20時
     assert.equal(d.canAttackInBlock({ availableSlots: ['h20', 'h21'] }, ev), true);
     assert.equal(d.canAttackInBlock({ availableSlots: ['h21', 'h22'] }, ev), false);
     assert.equal(d.canAttackInBlock({ availableSlots: [], flexTime: true }, ev), true);
@@ -887,8 +888,8 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.equal(d.canAttackInBlock(null, ev), false);
     assert.deepEqual(d.membersInBlock([{ id: 1, availableSlots: ['h18'] }, { id: 2, availableSlots: ['h09'] }], ev).map(p => p.id), [1]);
     // ブロック ⇄ 時間 (アンケートをブロックで聞く・内部は 1 時間刻みのまま)
-    assert.deepEqual(d.blocksOfSlots(B, ['h20', 'h21', 'h22', 'h03']), [4, 5, 6]);
-    assert.deepEqual(d.slotsOfBlocks(B, [0, 6]), ['h05', 'h06', 'h07', 'h08', 'h00', 'h01', 'h02', 'h03', 'h04']);
+    assert.deepEqual(d.blocksOfSlots(B, ['h20', 'h21', 'h22', 'h03']), [3, 4, 5]);
+    assert.deepEqual(d.slotsOfBlocks(B, [0, 5]), ['h05', 'h06', 'h07', 'h08', 'h01', 'h02', 'h03', 'h04']);
     assert.deepEqual(d.slotsOfBlocks(B, [99]), []);
     // ★ 時刻は整数か数字の文字列だけ (Number() は null / '' / true を数値化してしまう — Codex指摘 2026-10-18)
     for (const bad of [null, '', true, 1.5, '5時', {}]) {
@@ -896,9 +897,9 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     }
     assert.equal(d.normalize([{ name: '朝', from: '5', to: ' 8 ' }, { name: '夜', from: 9, to: 4 }]).error, null, '数字の文字列は読める');
     assert.deepEqual([d.toHour(24), d.toHour(-1), d.toHour('07'), d.toHour(NaN)], [null, null, 7, null]);
-    // 足す: 後ろから 2 時間以上のブロックを割る (7 → 12 まで割れる・12 で止まる・末尾を重複させない)
+    // 足す: 後ろから 2 時間以上のブロックを割る (6 → 12 まで割れる・12 で止まる・末尾を重複させない)
     let cfg = d.DEFAULT_BLOCKS;
-    for (let n = 8; n <= 12; n++) {
+    for (let n = 7; n <= 12; n++) {
         cfg = d.addSplit(cfg);
         assert.ok(cfg && cfg.length === n, `${n} 個目を足せない`);
         assert.equal(d.normalize(cfg.map((b, i) => ({ ...b, name: b.name || `x${i}` }))).error, null, `${n} 個で隙間か重なりができている`);
@@ -907,8 +908,8 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.equal(d.addSplit([{ name: 'a', from: 5, to: 3 }, { name: 'b', from: 4, to: 4 }]).length, 3, '末尾が 1 時間でも手前を割れる');
     assert.equal(d.addSplit([{ name: 'a', from: 5, to: 5 }, { name: 'b', from: 6, to: 6 }]), null, '全部 1 時間なら足せない');
     // 消す: 消した時間は前に (先頭なら次に) 吸わせる。2 つを割らない
-    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 1).slice(0, 2), [{ name: '朝', from: 5, to: 11 }, { name: '昼', from: 12, to: 14 }]);
-    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 0)[0], { name: '午前', from: 5, to: 11 });
+    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 1).slice(0, 2), [{ name: '朝', from: 5, to: 12 }, { name: '午後', from: 13, to: 16 }]);
+    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 0)[0], { name: '午前', from: 5, to: 12 });
     assert.equal(d.removeAt([{ name: 'a', from: 5, to: 14 }, { name: 'b', from: 15, to: 4 }], 0), null, '2 つを割っている');
     assert.equal(d.removeAt(d.DEFAULT_BLOCKS, 99), null);
     // 🧱 配信をブロックのぶんだけに: hourIdx が from〜to の行番号の凸だけ残す。凸が残らないレベルは落とす。元は変えない
@@ -937,17 +938,17 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     // 🧱 時間アンケートをブロックで (③-b): ON の具合 / 丸ごと ON・OFF / 名前の要約。内部は 'hXX' のまま
     const keys = ['h05', 'h06', 'h07', 'h08', 'h12', 'h21'];
     const st = d.blockStates(B, keys);
-    assert.deepEqual(st.map(x => x.state), ['on', 'off', 'partial', 'off', 'off', 'partial', 'off']);
-    assert.deepEqual([st[0].on, st[0].hours, st[2].on, st[2].hours], [4, 4, 1, 3]);
-    assert.deepEqual(d.toggleBlock(keys, B[2], true), ['h05', 'h06', 'h07', 'h08', 'h12', 'h13', 'h14', 'h21'], '丸ごと ON になっていない / 並びが 5時始まりでない');
+    assert.deepEqual(st.map(x => x.state), ['on', 'partial', 'off', 'off', 'partial', 'off']);
+    assert.deepEqual([st[0].on, st[0].hours, st[1].on, st[1].hours], [4, 4, 1, 4]);
+    assert.deepEqual(d.toggleBlock(keys, B[2], true), ['h05', 'h06', 'h07', 'h08', 'h12', 'h13', 'h14', 'h15', 'h16', 'h21'], '丸ごと ON になっていない / 並びが 5時始まりでない');
     assert.deepEqual(d.toggleBlock(keys, B[0], false), ['h12', 'h21'], '丸ごと OFF になっていない');
-    assert.deepEqual(d.toggleBlock(['h23', 'h00'], B[6], true), ['h23', 'h00', 'h01', 'h02', 'h03', 'h04'], '深夜ブロックの ON が壊れている');
+    assert.deepEqual(d.toggleBlock(['h23', 'h00'], B[5], true), ['h23', 'h00', 'h01', 'h02', 'h03', 'h04'], '深夜ブロックの ON が壊れている');
     assert.deepEqual(d.toggleBlock(null, B[0], true), ['h05', 'h06', 'h07', 'h08']); assert.deepEqual(d.toggleBlock(keys, null, true), keys);
-    assert.equal(d.blocksLabel(B, keys), '朝・昼 (一部)・夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
+    assert.equal(d.blocksLabel(B, keys), '朝・午前 (一部)・夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
     assert.deepEqual(d.blockStates([], keys), []);
     // 📅 きょうの凸 (③-c): ブロックごとに 1 行。済んだ凸はその時刻のブロックに / 配信の割当はそのブロックに / いま・次・済・未定 / 決まっているか
     const jst = (iso) => { const dd = new Date(iso); return Number.isNaN(dd.getTime()) ? null : Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(dd)) % 24; };
-    const myPlan = { blockScope: { from: 18, to: 20 }, levels: [
+    const myPlan = { blockScope: { from: 17, to: 20 }, levels: [
         { level: 2, bosses: [{ bossNumber: 3, name: 'C', weakness: 'fire', attacks: [{ memberId: 7, hourIdx: 13, dmgB: 22.1, hourLabel: '18時' }, { memberId: 8, hourIdx: 13, dmgB: 30 }] }] },
         { level: 3, bosses: [{ bossNumber: 1, weakness: 'water', attacks: [{ memberId: 7, hourIdx: 17, dmgB: 25, flex: true }] }] },
     ] };
@@ -956,33 +957,33 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
         { boss_number: 4, level: 1, damage_raw: 20e9, reported_at: null },                        // 時刻不明
     ];
     const t = d.todayRows({ blocks: B, nowHour: 19, plan: myPlan, viewerId: '7', attacks: myAtks, hourOfIso: jst });
-    assert.deepEqual(t.rows.map(r => r.state), ['past', 'past', 'past', 'past', 'now', 'next', 'later']);
+    assert.deepEqual(t.rows.map(r => r.state), ['past', 'past', 'past', 'now', 'next', 'later']);
     assert.deepEqual(t.rows[1].done.map(x => [x.bossNumber, x.damageB]), [[2, 24.3]], '済んだ凸がその時刻のブロックに居ない');
-    assert.deepEqual(t.rows[4].planned.map(x => [x.bossNumber, x.level, x.dmgB, x.hourLabel]), [[3, 2, 22.1, '18時']], '配信の割当がそのブロックに居ない (他人の凸が混ざる)');
+    assert.deepEqual(t.rows[3].planned.map(x => [x.bossNumber, x.level, x.dmgB, x.hourLabel]), [[3, 2, 22.1, '18時']], '配信の割当がそのブロックに居ない (他人の凸が混ざる)');
     // 🧱 段階 7: 夕方のぶんの配信に入っている 22時 (夜) の予想は出さない — 夜は夜の配信が持つ (配信はブロックごとの行)
-    assert.deepEqual(t.rows[5].planned, [], 'ブロックのぶんの配信から、後ろのブロックの予想を出した');
-    assert.deepEqual(t.rows.map(r => r.covered), [false, false, false, false, true, false, false], 'ブロックのぶんの配信は、そのブロックだけ「決まっている」');
+    assert.deepEqual(t.rows[4].planned, [], 'ブロックのぶんの配信から、後ろのブロックの予想を出した');
+    assert.deepEqual(t.rows.map(r => r.covered), [false, false, false, true, false, false], 'ブロックのぶんの配信は、そのブロックだけ「決まっている」');
     // 複数の配信 (plans): 夕方の配信 + 夜の配信 → それぞれのブロックに / 1 日ぶんの配信 (blockScope なし) は全部に効く
-    const nightPlan = { blockScope: { from: 21, to: 23 }, levels: [{ level: 3, bosses: [{ bossNumber: 1, weakness: 'water', attacks: [{ memberId: 7, hourIdx: 17, dmgB: 25, flex: true }, { memberId: 7, hourIdx: 13, dmgB: 9 }] }] }] };
+    const nightPlan = { blockScope: { from: 21, to: 0 }, levels: [{ level: 3, bosses: [{ bossNumber: 1, weakness: 'water', attacks: [{ memberId: 7, hourIdx: 17, dmgB: 25, flex: true }, { memberId: 7, hourIdx: 13, dmgB: 9 }] }] }] };
     const t2 = d.todayRows({ blocks: B, nowHour: 19, plans: [myPlan, nightPlan], viewerId: '7', attacks: myAtks, hourOfIso: jst });
-    assert.deepEqual(t2.rows[4].planned.map(x => [x.bossNumber, x.level]), [[3, 2]], '夜の配信の 18時の凸 (範囲外) を夕方に混ぜた');
-    assert.deepEqual(t2.rows[5].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の配信の割当が夜に居ない');
-    assert.deepEqual(t2.rows.map(r => r.covered), [false, false, false, false, true, true, false], '配信のあるブロックだけ「決まっている」');
+    assert.deepEqual(t2.rows[3].planned.map(x => [x.bossNumber, x.level]), [[3, 2]], '夜の配信の 18時の凸 (範囲外) を夕方に混ぜた');
+    assert.deepEqual(t2.rows[4].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の配信の割当が夜に居ない');
+    assert.deepEqual(t2.rows.map(r => r.covered), [false, false, false, true, true, false], '配信のあるブロックだけ「決まっている」');
     const allDay = { levels: [{ level: 1, bosses: [{ bossNumber: 5, weakness: 'wind', attacks: [{ memberId: 7, hourIdx: 2, dmgB: 11 }] }] }] };
     const t3 = d.todayRows({ blocks: B, nowHour: 19, plans: [allDay], viewerId: '7', attacks: [], hourOfIso: jst });
     assert.deepEqual([t3.rows[0].planned.length, t3.rows.every(r => r.covered)], [1, true], '1 日ぶんの配信は全部のブロックに効く');
-    assert.equal(t.unknownTime.length, 1); assert.equal(t.total, 2); assert.equal(t.nowIdx, 4);
-    // 深夜 (JST 0時・4時) の凸は深夜ブロックに (UTC 前日の 15時・19時)
+    assert.equal(t.unknownTime.length, 1); assert.equal(t.total, 2); assert.equal(t.nowIdx, 3);
+    // JST 0時 の凸は 夜 (21〜翌0)、4時 の凸は 深夜 (翌1〜4) に (UTC 前日の 15時・19時)
     const mid = d.todayRows({ blocks: B, nowHour: 3, plan: null, viewerId: 7, attacks: [{ boss_number: 1, reported_at: '2026-10-10T15:05:00Z' }, { boss_number: 2, reported_at: '2026-10-10T19:30:00Z' }, { boss_number: 3, reported_at: '2026-10-10T20:10:00Z' }], hourOfIso: jst });
-    assert.deepEqual(mid.rows[6].done.map(x => x.bossNumber), [1, 2], '深夜 0時・4時の凸が深夜ブロックに居ない');
+    assert.deepEqual([mid.rows[4].done.map(x => x.bossNumber), mid.rows[5].done.map(x => x.bossNumber)], [[1], [2]], '0時の凸が夜 / 4時の凸が深夜 に居ない');
     assert.deepEqual(mid.rows[0].done.map(x => x.bossNumber), [3], '翌5時の凸は朝 (次の日の始まり) に');
     // 1 日ぶんの配信 (blockScope 無し) は全部「決まっている」。配信が無ければどれも決まっていない。数の id と文字列の id を同じ人と見る
     const full = d.todayRows({ blocks: B, nowHour: 5, plan: { levels: myPlan.levels }, viewerId: 7, attacks: [], hourOfIso: jst });
-    assert.ok(full.rows.every(r => r.covered) && full.rows[0].state === 'now' && full.rows[6].state === 'later');
-    assert.equal(full.rows[4].planned.length, 1, '数の id で結べない');
+    assert.ok(full.rows.every(r => r.covered) && full.rows[0].state === 'now' && full.rows[5].state === 'later');
+    assert.equal(full.rows[3].planned.length, 1, '数の id で結べない');
     const none = d.todayRows({ blocks: B, nowHour: 2, plan: null, viewerId: 7, attacks: myAtks, hourOfIso: jst });
-    assert.ok(none.rows.every(r => !r.covered) && none.rows[6].state === 'now' && none.rows[0].state === 'past');
-    assert.deepEqual(d.todayRows({ blocks: B, nowHour: 'x', plan: null, viewerId: 7, attacks: null, hourOfIso: null }).rows.map(r => r.state), new Array(7).fill('later'), '時刻が読めないときは全部 later');
+    assert.ok(none.rows.every(r => !r.covered) && none.rows[5].state === 'now' && none.rows[0].state === 'past');
+    assert.deepEqual(d.todayRows({ blocks: B, nowHour: 'x', plan: null, viewerId: 7, attacks: null, hourOfIso: null }).rows.map(r => r.state), new Array(6).fill('later'), '時刻が読めないときは全部 later');
     assert.deepEqual(d.todayRows(null).rows, []);
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
@@ -9700,8 +9701,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/from: blk \? \(plan\.currentSlot === _hourKey\(blk\.from\) \? 'block' : 'now'\) : \(plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode\),/.test(html), '起点の焼き込みがブロックを知らない (頭から / 途中から)');
         assert.ok(/const PLAN_SCHEMA = 3;/.test(html), '配信の版を 3 に上げていない (古い版が 1 日ぶんを見てしまう)');
         assert.ok(/window\._planSchemaOf\(plan\)/.test(_grRd('js', 'practice', 'guide.js')), '練習の配信が版の付け方を揃えていない');
-        // 20時 → 夜 (21〜23時) のブロックを組む: 起点は laterSlot で h21 になり、ブロックの頭より前には置かれない (統合)
-        const rbd2 = globalThis.raidBlocksDomain, night = rbd2.normalize(null).blocks[5];
+        // 20時 → 夜 (21〜翌0時) のブロックを組む: 起点は laterSlot で h21 になり、ブロックの頭より前には置かれない (統合)
+        const rbd2 = globalThis.raidBlocksDomain, night = rbd2.normalize(null).blocks[4];
         const startSlot = rbd2.laterSlot('h20', 'h21');
         const ip = compute({ ...timeInput([boss(1, 'fire', { remainingB: 60 })], [
             player('夕方だけ', { fire: 30 }, { availableSlots: ['h18', 'h19', 'h20'] }),
@@ -9797,32 +9798,32 @@ console.log('\ngrowthDomain:');
 
     test('★ 🧱 段階 2 凸数のドメイン: normalizeCounts (ON のブロックだけ・1〜3・合計 3 まで) / stepCount / countsLabel / capsOf (済んだ凸を引く)', () => {
         const d = globalThis.raidBlocksDomain;
-        const blocks = d.blocksOfSeason(null);   // 既定 7 つ (朝 5-8 / … / 夕方 18-20 / 夜 21-23 / 深夜 0-4)
+        const blocks = d.blocksOfSeason(null);   // 既定 6 つ (朝 5-8 / 午前 9-12 / 午後 13-16 / 夕方 17-20 / 夜 21-0 / 深夜 1-4)
         const on = (...ks) => ks.flatMap(k => blocks.find(b => b.name === k).slots);
         const slots = on('朝', '夕方');
         assert.equal(d.countKey(blocks[0]), '5-8'); assert.equal(d.countKey(null), '');
-        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '18-20': 2 }, blocks, slots), { '5-8': 1, '18-20': 2 });
-        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '21-23': 2 }, blocks, slots), { '5-8': 1 }, 'OFF のブロックの凸数を残している');
-        assert.deepEqual(d.normalizeCounts({ '5-8': 3, '18-20': 2 }, blocks, slots), { '5-8': 3 }, '合計 3 を超えている (ブロックの順で詰める)');
-        assert.deepEqual(d.normalizeCounts({ '5-8': 2, '18-20': 2 }, blocks, slots), { '5-8': 2, '18-20': 1 });
-        assert.equal(d.normalizeCounts({ '5-8': 0, '18-20': 'x' }, blocks, slots), null);
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '17-20': 2 }, blocks, slots), { '5-8': 1, '17-20': 2 });
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '21-0': 2 }, blocks, slots), { '5-8': 1 }, 'OFF のブロックの凸数を残している');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 3, '17-20': 2 }, blocks, slots), { '5-8': 3 }, '合計 3 を超えている (ブロックの順で詰める)');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 2, '17-20': 2 }, blocks, slots), { '5-8': 2, '17-20': 1 });
+        assert.equal(d.normalizeCounts({ '5-8': 0, '17-20': 'x' }, blocks, slots), null);
         assert.equal(d.normalizeCounts([1, 2], blocks, slots), null); assert.equal(d.normalizeCounts(null, blocks, slots), null);
-        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '9-11': 1 }, blocks, ['h08']), { '5-8': 1 }, '一部だけ ON (1 時間) のブロックも ON として数える');
+        assert.deepEqual(d.normalizeCounts({ '5-8': 1, '9-12': 1 }, blocks, ['h08']), { '5-8': 1 }, '一部だけ ON (1 時間) のブロックも ON として数える');
         // stepCount: + / − / 0 で消える (おまかせ) / 合計 3 で + しない / OFF のブロックは何もしない
         let c = d.stepCount(null, blocks, slots, 0, 1); assert.deepEqual(c, { '5-8': 1 });
-        c = d.stepCount(c, blocks, slots, 4, 1); c = d.stepCount(c, blocks, slots, 4, 1); assert.deepEqual(c, { '5-8': 1, '18-20': 2 });
-        assert.deepEqual(d.stepCount(c, blocks, slots, 4, 1), { '5-8': 1, '18-20': 2 }, '合計 3 なのに増やしている');
-        assert.deepEqual(d.stepCount(c, blocks, slots, 0, -1), { '18-20': 2 }, '0 にしたのに鍵が残る');
-        assert.deepEqual(d.stepCount(c, blocks, slots, 5, 1), { '5-8': 1, '18-20': 2 }, 'OFF のブロックに凸数を入れている');
+        c = d.stepCount(c, blocks, slots, 3, 1); c = d.stepCount(c, blocks, slots, 3, 1); assert.deepEqual(c, { '5-8': 1, '17-20': 2 });
+        assert.deepEqual(d.stepCount(c, blocks, slots, 3, 1), { '5-8': 1, '17-20': 2 }, '合計 3 なのに増やしている');
+        assert.deepEqual(d.stepCount(c, blocks, slots, 0, -1), { '17-20': 2 }, '0 にしたのに鍵が残る');
+        assert.deepEqual(d.stepCount(c, blocks, slots, 4, 1) /*夜 OFF*/, { '5-8': 1, '17-20': 2 }, 'OFF のブロックに凸数を入れている');
         assert.equal(d.stepCount({ '5-8': 1 }, blocks, slots, 0, -1), null);
-        assert.equal(d.countsLabel({ '18-20': 2, '5-8': 1 }, blocks), '朝 1 · 夕方 2', 'ブロックの順に並べていない');
+        assert.equal(d.countsLabel({ '17-20': 2, '5-8': 1 }, blocks), '朝 1 · 夕方 2', 'ブロックの順に並べていない');
         assert.equal(d.countsLabel(null, blocks), ''); assert.equal(d.countsTotal({ a: 1, b: 2 }), 3);
         // capsOf: max = 凸数 − そのブロックで済んだ凸 (朝に 1 凸済み → 朝の残り 0 / 夕方は 2)
-        assert.deepEqual(d.capsOf({ '5-8': 1, '18-20': 2 }, blocks, [7, 13]), [{ fromIdx: 0, toIdx: 3, max: 0 }, { fromIdx: 13, toIdx: 15, max: 2 }]);
+        assert.deepEqual(d.capsOf({ '5-8': 1, '17-20': 2 }, blocks, [7, 13]), [{ fromIdx: 0, toIdx: 3, max: 0 }, { fromIdx: 12, toIdx: 15, max: 2 }]);
         assert.deepEqual(d.capsOf(null, blocks, []), []); assert.deepEqual(d.capsOf({ '1-2': 1 }, blocks, []), [], '合わない鍵 (区切りが変わった) を上限にしている');
         // 生の値でも合計 3 をブロックの順で守る (朝 3 + 午前 3 → 朝 3 だけ) (Codex指摘)
-        assert.deepEqual(d.capsOf({ '5-8': 3, '9-11': 3 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 3 }], '合計 3 を超える上限を渡している');
-        assert.deepEqual(d.capsOf({ '5-8': 2, '18-20': 2 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 2 }, { fromIdx: 13, toIdx: 15, max: 1 }]);
+        assert.deepEqual(d.capsOf({ '5-8': 3, '9-12': 3 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 3 }], '合計 3 を超える上限を渡している');
+        assert.deepEqual(d.capsOf({ '5-8': 2, '17-20': 2 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 2 }, { fromIdx: 12, toIdx: 15, max: 1 }]);
     });
     test('★ 配線: 🧱 段階 2 凸数の保存と読み込み (SQL 53) / ⏳隙間時間型の撤廃', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
@@ -13112,33 +13113,33 @@ console.log('\ngrowthDomain:');
     test('★ 🧱 段階 7 publishedPlansDomain: ブロックごとの最新 (ブロックの行と 1 日ぶんの行は新しいほう) / 1 つ前 / ブロックの並び / 既定のブロック', () => {
         const d = globalThis.publishedPlansDomain;
         const P = (id, scope) => ({ id, season_id: 1, plan: scope ? { blockScope: scope, levels: [] } : { levels: [] } });
-        const M = { from: 5, to: 8 }, E = { from: 18, to: 20 }, N = { from: 21, to: 23 };
+        const M = { from: 5, to: 8 }, E = { from: 17, to: 20 }, N = { from: 21, to: 0 };
         const rows = [P(3, E), P(1, M), P(5, N), P(2, null), P(4, E)];
-        assert.equal(d.keyOf(P(9, E)), '18-20'); assert.equal(d.keyOf(P(9, null)), 'all'); assert.equal(d.keyOfBlock({ from: 0, to: 4 }), '0-4'); assert.equal(d.keyOfPlan(null), 'all');
+        assert.equal(d.keyOf(P(9, E)), '17-20'); assert.equal(d.keyOf(P(9, null)), 'all'); assert.equal(d.keyOfBlock({ from: 0, to: 4 }), '0-4'); assert.equal(d.keyOfPlan(null), 'all');
         assert.equal(d.latest(rows).id, 5);
-        assert.equal(d.effectiveFor(rows, '18-20').id, 4, '夕方はその行の最新 (4)');
+        assert.equal(d.effectiveFor(rows, '17-20').id, 4, '夕方はその行の最新 (4)');
         assert.equal(d.effectiveFor(rows, '5-8').id, 2, '朝 (1) より新しい 1 日ぶん (2) が勝つ');
-        assert.equal(d.effectiveFor(rows, '12-14'), rows.find(r => r.id === 2), '配信の無いブロックには 1 日ぶんの行が効く');
-        assert.equal(d.effectiveFor([P(1, M)], '18-20'), null, '別のブロックの行は効かない');
+        assert.equal(d.effectiveFor(rows, '13-16'), rows.find(r => r.id === 2), '配信の無いブロックには 1 日ぶんの行が効く');
+        assert.equal(d.effectiveFor([P(1, M)], '17-20'), null, '別のブロックの行は効かない');
         assert.equal(d.effectiveFor(rows, 'all').id, 5);
         assert.equal(d.previousFor(rows, P(4, E)).id, 3, '同じブロックの 1 つ前');
         assert.equal(d.previousFor(rows, P(3, E)).id, 2, '同じブロックが無ければ 1 日ぶん');
         assert.equal(d.previousFor(rows, P(1, M)), null);
         // 鍵: from / to が null・''・true のときは 1 日ぶん (Number() が 0 にするのを通さない — Codex 再監査 A)
         assert.equal(d.keyOf(P(9, { from: null, to: 8 })), 'all'); assert.equal(d.keyOf(P(9, { from: '', to: '' })), 'all'); assert.equal(d.keyOf(P(9, { from: true, to: 8 })), 'all');
-        assert.equal(d.keyOf(P(9, { from: '18', to: '20' })), '18-20', '文字列の時は読む'); assert.equal(d.keyOf(P(9, { from: 0, to: 4 })), '0-4', '0 時は欠けではない');
+        assert.equal(d.keyOf(P(9, { from: '17', to: '20' })), '17-20', '文字列の時は読む'); assert.equal(d.keyOf(P(9, { from: 0, to: 4 })), '0-4', '0 時は欠けではない');
         // 1 つ前は「見ているブロック」で: 今回が 1 日ぶん (all) でも、夕方を見ていれば夕方に効いていた 1 つ前 (4) と比べる (Codex 再監査 A: 全体の 1 つ前 (5 = 夜) と比べていた)
-        assert.equal(d.previousFor(rows, P(6, null), '18-20').id, 4, '今回が 1 日ぶんでも見ているブロックの 1 つ前');
+        assert.equal(d.previousFor(rows, P(6, null), '17-20').id, 4, '今回が 1 日ぶんでも見ているブロックの 1 つ前');
         assert.equal(d.previousFor(rows, P(6, null), '5-8').id, 2, '朝に効いていた 1 つ前は 1 日ぶん (2)');
-        assert.equal(d.previousFor(rows, P(6, null), '21-23').id, 5);
+        assert.equal(d.previousFor(rows, P(6, null), '21-0').id, 5);
         assert.equal(d.previousFor(rows, P(6, null)).id, 5, '見ているブロックが無ければ全体の 1 つ前');
-        assert.equal(d.previousFor(rows, P(4, E), '18-20').id, 3, 'ブロックの行でも同じ');
+        assert.equal(d.previousFor(rows, P(4, E), '17-20').id, 3, 'ブロックの行でも同じ');
         const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
         const list = d.byBlocks(rows, blocks);
-        assert.deepEqual(list.map(x => [x.block.name, x.pub.id]), [['朝', 2], ['午前', 2], ['昼', 2], ['午後', 2], ['夕方', 4], ['夜', 5], ['深夜', 2]], 'ブロックの並びと効いている配信');
+        assert.deepEqual(list.map(x => [x.block.name, x.pub.id]), [['朝', 2], ['午前', 2], ['午後', 2], ['夕方', 4], ['夜', 5], ['深夜', 2]], 'ブロックの並びと効いている配信');
         assert.equal(d.distinctCount(list), 3);
         // 全ブロックの効いている配信を、その範囲に絞って (撃破の通知の宛先)
-        assert.deepEqual(d.effectivePlans(rows, blocks, (p, b) => ({ ...p, tag: `${b.name}:${d.keyOfBlock(b)}:${p.blockScope ? 'blk' : 'all'}` })).map(p => p.tag), ['朝:5-8:all', '午前:9-11:all', '昼:12-14:all', '午後:15-17:all', '夕方:18-20:blk', '夜:21-23:blk', '深夜:0-4:all']);
+        assert.deepEqual(d.effectivePlans(rows, blocks, (p, b) => ({ ...p, tag: `${b.name}:${d.keyOfBlock(b)}:${p.blockScope ? 'blk' : 'all'}` })).map(p => p.tag), ['朝:5-8:all', '午前:9-12:all', '午後:13-16:all', '夕方:17-20:blk', '夜:21-0:blk', '深夜:1-4:all']);
         assert.equal(d.effectivePlans([P(7, E)], blocks, (p) => p).length, 1, '配信の無いブロックは入れない');
         assert.deepEqual(d.effectivePlans([{ id: 8, season_id: 1, plan: null }], blocks, (p) => p), [], 'plan の無い行は入れない');
         // 時刻の無い凸 (⏳ flex・hourIdx 無し) はブロックの範囲で絞ると落ちる → 効いている行ごとに 1 回だけ別に足す (Codex 再監査 F) / 束ねる (1 日ぶんの算出の基準)
@@ -13306,7 +13307,7 @@ console.log('\ngrowthDomain:');
         const rows = d.missingRows({ players: [P('朝', ['h05'], 0), P('夕', ['h18'], 1), P('夜', ['h21'], 2)], blocks: [], b5Weakness: 'wind' });
         assert.deepEqual(rows.map(r => [r.name, r.missing.length, r.b5Short]), [['夕', 0, 1]], '5 属性そろった遅い時間の人の 2 編成目の不足を拾っていない / 朝の人を入れた');
         assert.deepEqual(d.missingRows({ players: [P('夕', ['h18'], 1)], blocks: [] }), [], 'b5Weakness を渡さないのに数えた (従来どおり)');
-        // 取り込みの保存先 (編成① / ②): 同じ編成 → その枠 / ①が空き → 1 / ②が空き → 2 / 両方 → ダメージの低いほう (Codex指摘 2c264a5)
+        // 取り込みの保存先 (編成① / ② / ③): 同じ編成 → その枠 / 空いている枠の若いもの / 全部埋まっていれば ダメージの低い枠 (Codex指摘 2c264a5・2026-10-24 に 3 つまで)
         const T1 = ['a', 'b', 'c', 'd', 'e'], T2 = ['f', 'g', 'h', 'i', 'j'];
         assert.equal(d.defaultSlot({ existing: [], characters: T1 }), 1);
         assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: T2 }), 2, '別の編成なのに編成①を上書きする');
@@ -13315,8 +13316,14 @@ console.log('\ngrowthDomain:');
         assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: ['a', 'b'] }), 2, '読み取りが 2 人だけなのに同じ編成と決めた');
         assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: ['a', 'b', 'x', 'y', 'z'] }), 2, '2 人しか重ならない別の編成を同じ編成とみなした');
         assert.equal(d.defaultSlot({ existing: [{ slot: 2, team: T2, dmgB: 20 }], characters: T1 }), 1, '①が空いているのに②');
-        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }], characters: ['k', 'l', 'm', 'n', 'o'] }), 2, '両方埋まっていれば低いほう');
-        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 10 }, { slot: 2, team: T2, dmgB: 20 }], characters: [] }), 1);
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }], characters: ['k', 'l', 'm', 'n', 'o'] }), 3, '③が空いているのに②');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 10 }, { slot: 2, team: T2, dmgB: 20 }], characters: [] }), 3);
+        const T3 = ['p', 'q', 'r', 's', 't'];
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }, { slot: 3, team: T3, dmgB: 25 }], characters: ['k', 'l', 'm'] }), 2, '全部埋まっていればダメージの低い枠');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 20 }, { slot: 2, team: T2, dmgB: 20 }, { slot: 3, team: T3, dmgB: 20 }], characters: [] }), 3, '同じダメージなら後ろの枠');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }, { slot: 3, team: T3, dmgB: 25 }], characters: ['p', 'q', 'r'] }), 3, '③と同じ編成なのに別の枠');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 4, team: T3, dmgB: 25 }], characters: T2 }), 2, '範囲外の枠 (4) を数えている');
+        assert.deepEqual(d.SLOTS, [1, 2, 3]);
         assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }], characters: ['f', 'g', 'h'] }), 2, '②と同じ編成なのに①');
     });
     test('★ 配線: 🧱 段階 5 — 算出と承認の影響の 2 か所で secondB5Lv4Only / 模擬の取り込みと 👥 メンバー状況に ボス 5 の 2 編成目', () => {
@@ -13334,7 +13341,7 @@ console.log('\ngrowthDomain:');
     });
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
         const dom = globalThis.mockIntakeDomain, rb = globalThis.raidBlocksDomain;
-        const blocks = rb.blocksOfSeason(null);   // 既定 7 ブロック (朝5-8 / 午前9-11 / 昼12-14 / 午後15-17 / 夕方18-20 / 夜21-23 / 深夜0-4)
+        const blocks = rb.blocksOfSeason(null);   // 既定 6 ブロック (朝5-8 / 午前9-12 / 午後13-16 / 夕方17-20 / 夜21-0 / 深夜1-4)
         const full = { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 };
         const rows = dom.missingRows({ players: [
             { id: 1, name: 'よる', damagesByAttr: { fire: 10 }, availableSlots: ['h21', 'h22'] },
@@ -13348,7 +13355,7 @@ console.log('\ngrowthDomain:');
             { id: 9, name: 'あさ3', damagesByAttr: { fire: 1, water: 1 }, availableSlots: ['h06'] },
         ], blocks });
         assert.deepEqual(rows.map(r => r.name), ['あさ', 'あさ2', 'あさ3', 'よる', 'すきま', 'みとうろく'], '並び: 期限 (朝 → 夜) → 足りない数 (5 → 3) → 名前。いつでも は最後');
-        assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝' }); assert.deepEqual(rows[3].deadline, { idx: 5, name: '夜' });
+        assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝' }); assert.deepEqual(rows[3].deadline, { idx: 4, name: '夜' });
         assert.equal(rows[4].deadline, null); assert.equal(rows[4].noSlots, false, '⏳隙間型は いつでも (時間未登録ではない)');
         assert.equal(rows[5].deadline, null); assert.equal(rows[5].noSlots, true, '時間未登録');
         // ⏳隙間型は時間帯が 0 でも「未登録」ではない (いつでも出られる人として扱う — 変異「noSlots が隙間型でも真」で発覚)
@@ -14029,10 +14036,10 @@ console.log('\n運営チームの要望 2026-10-10:');
         assert.ok(/`<div id="opsPlanFocusBar">\$\{_opsPlanFocusBarHtml\(plan\)\}<\/div><\/div>`/.test(html), '帯の置き場 (#opsPlanFocusBar) が無い');
         assert.ok(!/renderOpsPlanView\(\)/.test(paint), 'ドラッグ中に描き直している (掴んだ要素が消えてドラッグが切れる)');
     });
-    test('★ 配線: 模擬タブのユニオン事前比較に、採用した編成 (アイコン) と 編成② の印 / 編成未登録の注記', () => {
+    test('★ 配線: 模擬タブのユニオン事前比較に、採用した編成 (アイコン) と 編成②③ の印 / 編成未登録の注記', () => {
         const fn = html.match(/async function renderMockCompare\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/characters: Array\.isArray\(lo\.team\) \? lo\.team : \[\]/.test(fn), '提出の編成を比較の材料に渡していない');
-        assert.ok(/renderTeamSnippet\(r\.team, \{ size: 18 \}\)/.test(fn) && /r\.slot === 2 \? '<span[^>]*>編成②<\/span>'/.test(fn) && /編成未登録/.test(fn), '編成を描いていない');
+        assert.ok(/renderTeamSnippet\(r\.team, \{ size: 18 \}\)/.test(fn) && /r\.slot >= 2 \? '<span[^>]*>編成' \+ \(SLOT_JP\[r\.slot\] \|\| r\.slot\) \+ '<\/span>'/.test(fn) && /編成未登録/.test(fn), '編成を描いていない');
         assert.ok(/\$\{teamHtml\}\s*<\/div>\s*<div style="font-size:12px;font-weight:900;color:var\(--t-ink\);font-variant-numeric:tabular-nums;">\$\{fmtVal\(r\)\}/.test(fn), '編成の行が名前の下に無い');
     });
     test('★ 配線: PC の D&D — 凸報告・模擬の提出・BlaBlaLINK 3凸 のシートに画像を落とすと、ファイルを選んだときと同じ関数に同じ形で渡す', () => {
@@ -14102,6 +14109,28 @@ console.log('\n時間割の「あと」:');
         assert.ok(/sm\.infinite\) \{ main = '♾️ 無限'/.test(row) && /sm\.targetB <= 0\) \{ main = '撃破済'/.test(row) && /sm\.cleared\) \{ main = `✅ \$\{sm\.clearHourLabel \|\| '撃破'\}`/.test(row), '無限・撃破済・撃破見込み を区別していない');
         // 置く先 (タップ・ドロップ) は data-h のあるセルだけ (「あと」のセルに data-boss があっても拾わない)
         assert.ok((html.match(/closest\('\[data-boss\]\[data-h\]'\)/g) || []).length >= 3 && !/closest\('\[data-boss\]'\)/.test(html), '置き先の判定が data-boss だけで拾っている');
+    });
+}
+
+// ---- 🗣 2026-10-24 ふるりの決定: 模擬の編成を 1 属性 3 つまで (SQL 55) ----
+console.log('\n編成 3 つ (SQL 55):');
+{
+    const _fs3 = await import('node:fs'); const _p3 = await import('node:path');
+    const rd = (...p) => _fs3.readFileSync(_p3.join(process.cwd(), ...p), 'utf8').replace(/\r\n/g, '\n');
+    test('★ 配線: 編成 3 つ — SQL 55 (CHECK を 1〜3 に広げるだけ・行は消さない) / 99 の判定行 / MOCK_SLOT_MAX = 3 / 本人の提出と 📸 取り込みの枠 / 編成の印 ③ / 55 未適用の案内', () => {
+        const sql = rd('supabase', '55_player_damages_slots_3.sql'), chk = rd('supabase', '99_check_applied.sql');
+        assert.ok(/ALTER TABLE player_damages DROP CONSTRAINT IF EXISTS chk_player_damages_slot;\s*\nALTER TABLE player_damages\s*\n\s*ADD CONSTRAINT chk_player_damages_slot CHECK \(slot IN \(1, 2, 3\)\);/.test(sql), '55 の CHECK が 1〜3 でない');
+        assert.ok(!/DELETE/i.test(sql), '55 が行を消している (32 の再来)');
+        assert.ok(/NOTIFY pgrst, 'reload schema';/.test(sql), '55 に NOTIFY が無い');
+        assert.ok(/UNION ALL SELECT '55_player_damages_slots_3',[\s\S]*?conname = 'chk_player_damages_slot'[\s\S]*?LIKE '%3%'/.test(chk), '99 に 55 の判定行が無い');
+        const client = rd('js', 'supabase-client.js'), html = rd('index.html'), resv = rd('js', 'domain', 'reservations.js');
+        assert.ok(/export const MOCK_SLOT_MAX = 3;/.test(client), 'MOCK_SLOT_MAX が 3 でない');
+        assert.ok(/if \(\/chk_player_damages_slot\/\.test\(String\(res\.error\?\.message\)\) && withSlot\.some\(r => Number\(r\.slot\) >= 3\)\) \{\s*\n\s*throw new Error\('編成③を保存するには supabase\/55_player_damages_slots_3\.sql/.test(client), '55 未適用の DB に編成③を書いたときの案内が無い');
+        assert.ok(/const MY_TEAM_SLOTS = \[1, 2, 3\];/.test(html) && /const SLOT_JP = \{ 1: '①', 2: '②', 3: '③' \};/.test(html), '本人の提出の枠が 3 つでない');
+        assert.ok(/\$\{btn\(1\)\}\$\{btn\(2\)\}\$\{btn\(3\)\}/.test(html) && /_myDmgPreviewData\.slot = \[2, 3\]\.includes\(Number\(n\)\) \? Number\(n\) : 1;/.test(html), '📸 取り込みの保存先に ③ が無い');
+        assert.ok(/r\.slot >= 2 \? '<span style="[^"]*">編成' \+ \(SLOT_JP\[r\.slot\] \|\| r\.slot\) \+ '<\/span>' : ''/.test(html) && /PT\$\{x\.slot >= 2 \? \(SLOT_JP\[x\.slot\] \|\| x\.slot\) : ''\}/.test(html), '編成③の印が出ない (事前比較 / 🧩 ピース)');
+        assert.ok(/const slotMark = \(s\) => \(\{ 1: '①', 2: '②', 3: '③' \}\)\[Number\(s\)\] \|\| '①';/.test(resv) && /編成\$\{slotMark\(r\.loadout_slot\)\}/.test(resv) && /編成\$\{slotMark\(b\.loadoutSlot\)\}/.test(resv), '予約の文の編成の印が ③ に対応していない');
+        assert.equal(globalThis.mockIntakeDomain.defaultSlot({ existing: [{ slot: 1, team: ['a'], dmgB: 1 }, { slot: 2, team: ['b'], dmgB: 1 }], characters: [] }), 3);
     });
 }
 

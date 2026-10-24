@@ -458,7 +458,7 @@ test('起動: 印は編の id。役と開始時刻は編ごと (ops-eve = 運営
     assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-eve', '2026-10-02T20:00']);
     assert.deepEqual(JSON.parse(e.win.localStorage.getItem('shirisuPad.currentPlayer')), { id: IDS.ops, name: OPS_NAME });
     e = bootEnv({ flag: 'ops-day' });
-    assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-day', '2026-10-03T18:00'], '当日の運営編が当日の 18 時 (夕方のブロックの頭) から始まらない');
+    assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-day', '2026-10-03T17:00'], '当日の運営編が当日の 17 時 (夕方のブロックの頭) から始まらない');
     e = bootEnv({ flag: 'ops' });
     assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario], ['ops', 'ops-eve'], '古い印 (ops) を前日の運営編と読めない');
     e = bootEnv({ flag: 'member' });
@@ -593,7 +593,7 @@ test('本物のクライアント: 撃破の通知の宛先 — ブロックご�
     const before = DB().published_plans.length;
     // 1 日ぶん (朝 6 時 = hourIdx 1 に A が B2) → そのあと夜のぶん (21 時 = hourIdx 16 に B が B2。朝の予想 (C・hourIdx 1) も JSON に入っている = 約束ではない)
     await W.supabasePublishPlan({ seasonId: S, levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: A, hourIdx: 1, dmgB: 10 }, { memberId: D, flex: true, hourIdx: null, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);   // D は時刻の無い凸 (⏳ flex)
-    await W.supabasePublishPlan({ seasonId: S, blockScope: { idx: 5, name: '夜', label: '夜 21〜23時', from: 21, to: 23, slots: ['h21', 'h22', 'h23'] },
+    await W.supabasePublishPlan({ seasonId: S, blockScope: { idx: 4, name: '夜', label: '夜 21〜翌0時', from: 21, to: 0, slots: ['h21', 'h22', 'h23', 'h00'] },
         levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: B, hourIdx: 16, dmgB: 10 }, { memberId: C, hourIdx: 1, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);
     const ids = (await W.supabaseBossDefeatNotifyTargets(S, 2, null, 1)).map(Number).sort((x, y) => x - y);
     assert.deepEqual(ids, [A, B, D], '朝の担当 (1 日ぶんの配信) と夜の担当 (夜のぶんの配信) と時刻の無い凸の担当 の 3 人が宛先 — 全体の最新 1 行だけだと朝の担当が落ち、範囲で絞るだけだと時刻の無い凸が落ちる');
@@ -880,15 +880,15 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵・最後の report は手順が要らない)
     const ff = GUIDE.match(/var FF = \{[\s\S]*?\n    \};/)?.[0] || '';
     assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['discord', 'wait', 'ack'], '手前を済ませる手順が課題と合わない');
-    assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-23': 2 \}, actorName: P\.ops\.name \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
+    assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-0': 2 \}, actorName: P\.ops\.name \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
     assert.match(ff, /wait: async function \(\) \{ await publishNight\(\); \}/);
     assert.match(ff, /window\.supabaseAckPlan\(/);
     assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/, '途中で失敗しても戻していない');
     assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/);
     assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
-    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 + 18 時までの凸で作り、失敗したら全部戻す
+    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 + 17 時までの凸で作り、失敗したら全部戻す
     assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
-    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 18, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (18 時まで) を作っていない');
+    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 17, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (18 時まで) を作っていない');
     assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/);
     assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/);
     // 運営役の配信は本物のソルバー・本物の配信。🧱 ブロックで組むときは画面と同じ渡し方 (ブロックの人 + ブロックの頭から) と blockScope の焼き込み
@@ -936,7 +936,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
     // 案内の要所
-    assert.deepEqual(Array.from(P.selectors.availPlusNight), ['#myAvailModal button[onclick="_availStepCount(5, 1)"]'], '夜 (既定の 6 つ目のブロック) の「＋」を指していない');
+    assert.deepEqual(Array.from(P.selectors.availPlusNight), ['#myAvailModal button[onclick="_availStepCount(4, 1)"]'], '夜 (既定の 5 つ目のブロック) の「＋」を指していない');
     assert.match(code, /var hit = document\.elementFromPoint\(cx, cy\);\s*return !!hit && \(hit === el \|\| el\.contains\(hit\) \|\| hit\.contains\(el\)\);/);
     assert.match(code, /if \(pid == null \|\| eq\(pid, c\.me\) \|\| a\.flex\) return;/, 'ほかのメンバーの凸に、自分のぶんを混ぜている');
     assert.match(code, /if \(!\(dmg > 0\) \|\| Number\(boss\.remaining_hp_raw\) - dmg < keep\) return;/, '練習の世界でボスを倒し切る');

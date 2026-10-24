@@ -105,7 +105,7 @@ await test('時間外 / 未登録 / 隙間型 の説明が出る', async () => {
 });
 
 await test('★ 🧱 凸数 (段階 2): 確認の行に凸数があれば帯の下に「凸数: 朝 1 · 夕方 2」/ 難しい・未入力なら出さない', async () => {
-    const a = run({ slots: H(5, 6, 18, 19), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: { '18-20': 2, '5-8': 1 } } }); await a.render({ id: 1 });
+    const a = run({ slots: H(5, 6, 18, 19), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: { '17-20': 2, '5-8': 1 } } }); await a.render({ id: 1 });
     assert.ok(a.els.myAvailStripBody.innerHTML.includes('凸数: 朝 1 · 夕方 2'), `凸数が出ていない: ${a.els.myAvailStripBody.innerHTML.slice(-200)}`);
     const b = run({ slots: H(5, 6), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: true, block_counts: { '5-8': 1 } } }); await b.render({ id: 1 });
     assert.ok(!b.els.myAvailStripBody.innerHTML.includes('凸数:'), '難しいと伝えた人に凸数を出している');

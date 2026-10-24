@@ -309,7 +309,7 @@ const ASA = [5, 6, 7, 8], YUU = [18, 19, 20];
 await test('★ 凸数は実際に保存した時間帯で詰め直して送る (OFF のブロックの凸数は送らない)', async () => {
     const env = makeEnv();
     setSlots(env, ASA);                          // 朝だけ ON
-    env._availUI.counts = { '5-8': 1, '18-20': 2 };   // 夕方は OFF なのに凸数が残っている
+    env._availUI.counts = { '5-8': 1, '17-20': 2 };   // 夕方は OFF なのに凸数が残っている
     await env.handleConfirmAvailability(false);
     assert.deepEqual(confirmRows[0].blockCounts, { '5-8': 1 }, `送った凸数: ${JSON.stringify(confirmRows[0].blockCounts)}`);
     assert.deepEqual(env._myAvailConfirmRef().block_counts, { '5-8': 1 });
@@ -322,7 +322,7 @@ await test('★ 確認の保存を待つ間に −/+ を押しても、この確
     const gate = defer(); saveGate = gate;
     const p = env.handleConfirmAvailability(false);
     await tick();                                      // 時間帯の保存が通信中
-    env._availUI.counts = { '5-8': 1, '18-20': 2 };   // 待っている間に夕方を +2
+    env._availUI.counts = { '5-8': 1, '17-20': 2 };   // 待っている間に夕方を +2
     gate.resolve(); await p;
     assert.deepEqual(confirmRows[0].blockCounts, { '5-8': 1 }, `押したあとの凸数が混ざった: ${JSON.stringify(confirmRows[0].blockCounts)}`);
     env._renderMyAvailConfirm();
@@ -332,14 +332,14 @@ await test('★ 確認の保存を待つ間に −/+ を押しても、この確
 await test('★ 確認したあとに凸数を変えたら「確認しなおして」と出す / 元に戻したら消える', async () => {
     const env = makeEnv();
     setSlots(env, [...ASA, ...YUU]);
-    env._availUI.counts = { '5-8': 1, '18-20': 2 };
+    env._availUI.counts = { '5-8': 1, '17-20': 2 };
     await env.handleConfirmAvailability(false);
     env._renderMyAvailConfirm();
     assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), '確認した直後なのに済んだ表示でない');
-    env._availUI.counts = { '5-8': 2, '18-20': 1 };   // 時間はそのまま・凸数だけ変えた
+    env._availUI.counts = { '5-8': 2, '17-20': 1 };   // 時間はそのまま・凸数だけ変えた
     env._renderMyAvailConfirm();
     assert.ok(env.box._html().includes('確認したあとに凸数を変えました'), '凸数を変えたのに知らせていない');
-    env._availUI.counts = { '18-20': 2, '5-8': 1 };   // 鍵の順だけ違う = 同じ中身
+    env._availUI.counts = { '17-20': 2, '5-8': 1 };   // 鍵の順だけ違う = 同じ中身
     env._renderMyAvailConfirm();
     assert.ok(env.box._html().includes('今回のレイドの確認が済んでいます'), '同じ凸数に戻したのに「変えました」のまま');
 });

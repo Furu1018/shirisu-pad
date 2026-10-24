@@ -15,7 +15,7 @@
     var proto = Storage.prototype;
     var rawGet = proto.getItem, rawSet = proto.setItem, rawDel = proto.removeItem;
     // 印の中身 = 編 (シナリオ) の id。役と開始時刻は編から決める (js/practice/guide.js の SCENARIOS と同じ一覧。テストが突き合わせる)
-    var SCENARIOS = { 'member': { role: 'member', day: 'eve', hour: 20 }, 'ops-eve': { role: 'ops', day: 'eve', hour: 20 }, 'ops-day': { role: 'ops', day: 'hard', hour: 18 } };
+    var SCENARIOS = { 'member': { role: 'member', day: 'eve', hour: 20 }, 'ops-eve': { role: 'ops', day: 'eve', hour: 20 }, 'ops-day': { role: 'ops', day: 'hard', hour: 17 } };
     var scenario = null;
     try { scenario = rawGet.call(SS, KEY); } catch (_) { scenario = null; }
     if (scenario === 'ops') scenario = 'ops-eve';   // 古い印 (役だけ) は 前日の運営編 と読む
@@ -52,7 +52,7 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(hardDate || '')) { hardDate = ymdJst(RealDate.now() + DAY); store.set('hard', hardDate); }
         offset = Number(store.get('clock'));
         if (!isFinite(offset) || store.get('clock') == null) {
-            // はじめの時刻は編ごと (メンバー編・前日の運営編 = 前日 20 時 / 当日の運営編 = 当日 18 時 = 夕方のブロックの頭)
+            // はじめの時刻は編ごと (メンバー編・前日の運営編 = 前日 20 時 / 当日の運営編 = 当日 17 時 = 夕方のブロックの頭)
             var sc = SCENARIOS[scenario];
             offset = atJst(sc.day === 'eve' ? ymdJst(atJst(hardDate, 12) - DAY) : hardDate, sc.hour) - RealDate.now();
             store.set('clock', offset);
