@@ -39,6 +39,7 @@ import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モ�
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
 import '../js/domain/raidReview.js';   // globalThis.raidReviewDomain (レイドの振り返り: 属性別の進捗 / 得意・不得意 / 誰が)
+import '../js/domain/aiVision.js';     // globalThis.aiVisionDomain (画像認識の失敗を日本語で説明する)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -14177,6 +14178,45 @@ console.log('\n編成 3 つ (SQL 55):');
         // Codex 監査 §10 3 回目: 保存先の既定の説明が ①② 前提のまま (CLAUDE.md / 運営向けの文章 / A4 の生成元)
         assert.ok(/空いている枠の若いほう \(① → ② → ③\) \/ 全部埋まっていればダメージの低い枠 \(同じなら後ろ\)/.test(cl) && !/①が空き → 1/.test(cl), 'CLAUDE.md の保存先の既定が ①② 前提のまま');
         assert.ok(/保存先 \(編成① \/ ② \/ ③\) は自動で選ばれる/.test(rd('docs', '使い方_運営向け_2026-10-24.md')) && /保存先 \(編成① \/ ② \/ ③\) は自動 \(同じ編成ならその枠 \/ 空いている枠の若いほう \/ 全部埋まっていればダメージの低い枠\)。/.test(rd('docs', '使い方の説明_2026-10-24', 'src', 'build_a4.mjs')), '運営向けの文章 / A4 の生成元の保存先が ①② のまま');
+    });
+}
+
+console.log('\n画像認識の失敗の説明 (aiVision):');
+{
+    const _fs4 = await import('node:fs'); const _p4 = await import('node:path');
+    const rd = (...p) => _fs4.readFileSync(_p4.join(process.cwd(), ...p), 'utf8').replace(/\r\n/g, '\n');
+    const av = globalThis.aiVisionDomain;
+    test('★ explainError: Edge Function の本文 (Anthropic の失敗) を日本語に — クレジット切れ / レート制限 / 過負荷 / キー / モデル / task / 通信 / 関数が無い。分からなければ null', () => {
+        // 2026-10-24 に実際に返ってきた本文 (1 ピクセルの画像で dynamic-service を直接叩いた)
+        const real = 'Anthropic API error (400): {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CgMG357GkdL3bpTzpaDQy"}';
+        assert.match(av.explainError(real), /クレジット.*切れています.*Plans & Billing/, 'クレジット切れを日本語にしていない');
+        assert.match(av.explainError('Anthropic API error (429): {"type":"error","error":{"type":"rate_limit_error","message":"…"}}'), /混み合って/);
+        assert.match(av.explainError('Anthropic API error (529): {"type":"error","error":{"type":"overloaded_error"}}'), /過負荷/);
+        assert.match(av.explainError('ANTHROPIC_API_KEY not set in Edge Function secrets'), /ANTHROPIC_API_KEY/);
+        assert.match(av.explainError('Anthropic API error (401): {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}'), /API キーが無効/);
+        assert.match(av.explainError('Anthropic API error (404): {"type":"error","error":{"type":"not_found_error","message":"model: claude-haiku-4-5"}}'), /モデルが見つかりません/);
+        assert.match(av.explainError('unknown image task: season_announce2'), /task/);
+        assert.match(av.explainError('Failed to send a request to the Edge Function'), /ネットワーク/);
+        assert.match(av.explainError('Requested function was not found'), /dynamic-service/);
+        assert.equal(av.explainError('解析結果にbosses配列がありません'), null, '分からない文を決めつけている');
+        assert.equal(av.explainError(''), null); assert.equal(av.explainError(null), null);
+        assert.match(av.explainError(new Error('Your credit balance is too low to access the Anthropic API')), /クレジット/, 'Error を受けていない');
+    });
+    test('★ messageOf: 本文の理由 → 無ければ invoke のメッセージ → どちらも説明できなければ「AI Vision呼び出し失敗: 本文 か 素の文」', () => {
+        assert.match(av.messageOf('Anthropic API error (400): … credit balance is too low …', 'Edge Function returned a non-2xx status code'), /クレジット/);
+        assert.match(av.messageOf('', 'Failed to send a request to the Edge Function'), /ネットワーク/);
+        assert.equal(av.messageOf('Anthropic API error (500): something odd', 'Edge Function returned a non-2xx status code'), 'AI Vision呼び出し失敗: Anthropic API error (500): something odd', '本文があるのに素の文を出している');
+        assert.equal(av.messageOf('', 'Edge Function returned a non-2xx status code'), 'AI Vision呼び出し失敗: Edge Function returned a non-2xx status code');
+        assert.equal(av.messageOf('', ''), 'AI Vision呼び出し失敗: 不明なエラー');
+    });
+    test('★ 配線: index.html が aiVision.js を読む / callAiVision が非 2xx の本文 (error.context) を読んで messageOf に渡し、ok:false は explainError を通す', () => {
+        const html = rd('index.html'), client = rd('js', 'supabase-client.js');
+        assert.ok(html.includes('<script defer src="./js/domain/aiVision.js"></script>'), 'aiVision.js を読み込んでいない');
+        const fn = client.slice(client.indexOf('window.callAiVision = async function'), client.indexOf('window.fileToDataUrl = function'));
+        assert.ok(/const ctx = error\.context;/.test(fn) && /typeof ctx\.json === 'function'/.test(fn) && /\.json\(\);\s*\n\s*detail = String\(\(j && \(j\.error \|\| j\.message\)\) \|\| ''\);/.test(fn), '非 2xx の本文を読んでいない (理由が「non-2xx」のまま画面に出る)');
+        assert.ok(/throw new Error\(dom \? dom\.messageOf\(detail, fallback\) : `AI Vision呼び出し失敗: \$\{detail \|\| fallback\}`\);/.test(fn), '本文の理由を日本語にしていない');
+        assert.ok(/throw new Error\(\(dom && dom\.explainError\(raw\)\) \|\| raw\);/.test(fn), 'ok:false の理由を日本語にしていない');
+        assert.ok(/functions\.invoke\('dynamic-service'/.test(fn), 'Edge Function の slug が変わっている (デプロイ名は dynamic-service)');
     });
 }
 

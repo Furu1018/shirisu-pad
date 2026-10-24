@@ -440,6 +440,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   BlaBlaLINK 3凸 (`myBulkAttackModal`)。★ ファイルを選んだときと**同じ関数に同じ形** `{ target: { files, value } }` で渡す (読み取りの経路を増やさない)。
   画像以外は断る。受け口の外に落としても画像が開かないよう document で preventDefault (盤面のドラッグは text/plain なので影響なし)。
   落とせる間は `.player-select-content.drop-over` の点線と「📷 ここに落として読み取る」
+- **🤖 画像認識 (AI Vision) の失敗の説明** (`js/domain/aiVision.js`・2026-10-25): Edge Function `dynamic-service` (リポジトリの `supabase/functions/analyze-image`・モデル `claude-haiku-4-5`) は
+  Anthropic の失敗を HTTP 502 の本文 `{ ok:false, error:"Anthropic API error (400): …" }` で返すが、supabase-js の `functions.invoke` は非 2xx を「Edge Function returned a non-2xx status code」の
+  error 1 つにまとめる。`callAiVision` が `error.context` (Response) の本文を読み、`aiVisionDomain.messageOf` で日本語にする (クレジット切れ → 「console.anthropic.com → Plans & Billing で補充」/ レート制限 / 過負荷 / キー / モデル / task / 通信)。
+  ★ 2026-10-24 の「新シーズン作成時の AI画像認識が起動しない」の実体は **Anthropic の前払いクレジット切れ** (`Your credit balance is too low`)。画面には理由が出ていなかった。
+  AI が全部止まったら、まず `curl` で dynamic-service を 1 ピクセルの画像で直接叩いて本文を見る (anon キーは要らない・課金もされない)。新しい失敗の種類は `RULES` に 1 行足す
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は

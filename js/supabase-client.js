@@ -4986,11 +4986,26 @@ window.callAiVision = async function (imageDataUrl, task, options = {}) {
     const { data, error } = await supabase.functions.invoke('dynamic-service', {
         body: { image: imageDataUrl, task, ...options },
     });
+    const dom = (typeof window !== 'undefined' && window.aiVisionDomain) || null;   // 失敗の説明 (js/domain/aiVision.js)
     if (error) {
-        throw new Error(`AI Vision呼び出し失敗: ${error.message || error}`);
+        // ★ Edge Function は Anthropic の失敗を HTTP 502 の本文 { ok:false, error:"Anthropic API error (400): …" } で返す。
+        //   supabase-js はそれを「Edge Function returned a non-2xx status code」の error 1 つにまとめるので、
+        //   理由は error.context (Response) の本文にしか無い。本文を読んで日本語にする (クレジット切れ・レート制限・キー未設定…)。
+        //   2026-10-24 ふるり「新シーズン作成時の AI画像認識が起動しない」の実体は「Your credit balance is too low」だった
+        let detail = '';
+        try {
+            const ctx = error.context;
+            if (ctx && typeof ctx.json === 'function') {
+                const j = await (typeof ctx.clone === 'function' ? ctx.clone() : ctx).json();
+                detail = String((j && (j.error || j.message)) || '');
+            }
+        } catch { /* 本文が JSON でない / 読めない → 素のメッセージで */ }
+        const fallback = error.message || String(error);
+        throw new Error(dom ? dom.messageOf(detail, fallback) : `AI Vision呼び出し失敗: ${detail || fallback}`);
     }
     if (!data?.ok) {
-        throw new Error(data?.error || 'AI Vision エラー');
+        const raw = data?.error || 'AI Vision エラー';
+        throw new Error((dom && dom.explainError(raw)) || raw);
     }
     return data;  // { ok, result, raw, parseError, usage }
 };

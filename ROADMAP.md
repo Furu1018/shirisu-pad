@@ -2164,5 +2164,7 @@ ARCHITECTURE-AUDIT.md のB案 (段階的モジュール分割) を1日で完走�
   未設定キャラを含む編成は「よく使われる構成」の算出から除外されるので、埋めると候補が増える
   (設定タブ → キャラ管理 → 編集)。burst_alt は現状 ラピ:レッドフード のみ (B3表示・B1枠でも可)
 Edge Function (`analyze-image`=dynamic-service, `send-push`) は変更時に再デプロイが必要。
+★ **AI 画像認識が全部失敗する = たいてい Anthropic のクレジット切れ** (2026-10-24 に発生・「新シーズン作成時の AI画像認識が起動しない」)。console.anthropic.com → Plans & Billing で補充。
+  2026-10-25 から画面に日本語の理由が出る (`js/domain/aiVision.js`)。確かめ方: `curl -X POST https://djahnbzwupxcekneydid.supabase.co/functions/v1/dynamic-service -H 'Content-Type: application/json' -d '{"image":"data:image/png;base64,<1px>","task":"season_announce"}'` の本文。
 OCRの新タスクはクライアントからカスタムプロンプト注入で追加できるため再デプロイ不要
 (`callAiVision(url, 'task名', { prompt })`)。
