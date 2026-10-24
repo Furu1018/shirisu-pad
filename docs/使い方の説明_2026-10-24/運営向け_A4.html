@@ -1,0 +1,69 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>しりすこPAD 運営がやること</title><style>
+@page { size: A4; margin: 0; }
+html, body { margin: 0; }
+body { font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; color: #14161A; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: 600; }
+.page { width: 210mm; height: 297mm; padding: 8mm 9mm; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; gap: 3mm; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 4mm; }
+.tag { display: inline-block; background: #6C42F0; color: #fff; border-radius: 999px; padding: 0.8mm 3mm; font-size: 7pt; font-weight: 900; margin-bottom: 1.2mm; }
+h1 { font-size: 14.5pt; margin: 0; font-weight: 900; line-height: 1.25; letter-spacing: 0.1pt; }
+h1 .em { color: #4b17ed; }
+.lead { font-size: 8.6pt; color: #3D4249; margin: 1mm 0 0; line-height: 1.5; }
+.cols { display: grid; gap: 3mm; flex: 1; min-height: 0; }
+.cols.three { grid-template-columns: repeat(3, 1fr); }
+.cols.two { grid-template-columns: 1fr 1fr; }
+.col { border: 0.35mm solid #E3E5E8; border-radius: 3mm; padding: 2.8mm 3mm; display: flex; flex-direction: column; gap: 2mm; background: #F7F8F9; min-height: 0; }
+.col > .when { font-size: 7pt; font-weight: 900; color: #4b17ed; background: #F0ECFE; border-radius: 999px; padding: 0.6mm 2.5mm; align-self: flex-start; }
+.col h2 { font-size: 11pt; margin: 0; font-weight: 900; line-height: 1.3; display: flex; align-items: center; gap: 2mm; }
+.n { width: 6mm; height: 6mm; border-radius: 50%; background: #14161A; color: #fff; font-weight: 900; font-size: 9pt; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.col p, .col li { margin: 0; font-size: 8pt; line-height: 1.5; color: #3D4249; }
+.col ol { margin: 0; padding-left: 4mm; display: flex; flex-direction: column; gap: 0.8mm; }
+.col b, .box b { color: #14161A; }
+.step { display: grid; grid-template-columns: 1fr auto; gap: 2.5mm; align-items: start; }
+.step.single { grid-template-columns: 1fr; }
+.step h3 { font-size: 9.2pt; margin: 0 0 0.8mm; font-weight: 900; display: flex; gap: 1.6mm; align-items: center; line-height: 1.3; }
+.step h3 .n { width: 5mm; height: 5mm; font-size: 7.5pt; }
+.step p { font-size: 7.6pt; }
+.shots { display: flex; flex-direction: column; gap: 1.5mm; align-items: center; }
+.shot { border-radius: 1.8mm; overflow: hidden; box-shadow: 0 0.4mm 1.6mm rgba(0,0,0,.16); border: 0.25mm solid rgba(0,0,0,.08); background: #fff; flex: none; }
+.shot img { display: block; }
+.cap { font-size: 6.5pt; color: #62666e; text-align: center; font-weight: 800; }
+.foot { display: grid; grid-template-columns: 1.15fr 1fr; gap: 3mm; }
+.box { border-radius: 3mm; padding: 2.5mm 3.5mm; font-size: 7.8pt; line-height: 1.5; }
+.box.dark { background: #14161A; color: #fff; } .box.dark b { color: #fff; }
+.box.light { background: #F0ECFE; color: #14161A; }
+.box h4 { margin: 0 0 1mm; font-size: 9pt; font-weight: 900; }
+.box ul { margin: 0; padding-left: 3.5mm; }
+.blocks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1mm; margin-top: 1.5mm; }
+.blk { background: #fff; border-radius: 1.5mm; text-align: center; padding: 0.8mm 0; font-size: 7.4pt; font-weight: 900; line-height: 1.25; }
+.blk small { display: block; font-size: 6.2pt; color: #62666e; font-weight: 800; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+.tb { background: #F7F8F9; border: 0.35mm solid #E3E5E8; border-radius: 2.5mm; padding: 1.8mm 2.5mm; font-size: 7.2pt; line-height: 1.4; color: #3D4249; }
+.tb b { display: block; font-size: 8.6pt; color: #14161A; }
+.tb.m { border-style: dashed; }
+.foot-note { font-size: 6.8pt; color: #62666e; text-align: right; }
+</style></head><body><div class="page">
+<div class="head"><div><span class="tag">しりすこPAD · 🧱 ブロック制 · 運営担当向け (2026-10 から)</span>
+<h1>運営がやること — 前日に「朝」を配信、<span class="em">当日はブロックの頭ごとに 4 手順</span></h1>
+<p class="lead">メンバーは Discord に書くだけ。PAD への登録はぜんぶ運営が行う。運営タブを開くと、いちばん上の「いちばん先に」が次にやることを 1 つ出す (交代したらそこから)。</p></div></div>
+<div class="tabs">
+ <div class="tb"><b>👥 メンバー</b>メンバー状況 (⏰ 時間と凸数の登録)・📸 模擬の取り込み・📣 催促・一斉通知</div>
+ <div class="tb"><b>🧱 組む</b>このブロックの手順の帯・🔒 凸の予約 (＋ 予約を登録)・算出 (盤 / 時間割)・📤 配信</div>
+ <div class="tb"><b>⚔️ 戦況</b>🎯 ボス HP の更新・📥 結果の取り込み・🏁 締め凸検索</div>
+ <div class="tb m"><b>👑 マスター</b>シーズン・任命・バックアップ (ふるりだけ)</div>
+</div>
+<div class="cols two">
+ <div class="col"><span class="when">前日 — Discord の報告が来たら、人ごとに PAD へ</span>
+  <div class="step"><div><h3><span class="n">1</span>⏰ 時間と凸数を登録</h3><p>👥 メンバー状況の行の <b>⏰</b> (📸 の「時間を登録」でも)。本人のシートと同じ部品に「👑 運営の登録: ○○ さん」と出る。出られるブロックを ON・凸数を ＋/−・<b>「この時間で参加します」</b>。前回の登録が既定で入っている。報告の無い人は <b>📣 催促</b> (文面は「Discord で教えてください」)。時間が無い人は算出の候補に入らない。</p></div><div class="shot" style="width:40mm;aspect-ratio:780/960"><img src="実機画面/o03_ops_avail_sheet.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:-25.641%"></div></div>
+  <div class="step"><div><h3><span class="n">2</span>📸 模擬を登録 → 希望は 🔒 予約</h3><p>👥 › 📸 模擬の取り込み: 「誰の模擬か」→ スクショ (PC は落とす / 貼り付け)。保存先 (編成① / ②) は自動。希望が書かれた人は、保存直後の <b>「🔒 この編成で予約する」</b> か 🧱 組む › 🔒 凸の予約 › <b>「＋ 予約を登録」</b> (誰が → どの編成 → どのブロック)。登録した時点で予約・本人に通知。承認待ちは無い。</p></div><div class="shot" style="width:40mm;aspect-ratio:748/671"><img src="実機画面/o07_resv_card.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div></div>
+  <div class="step"><div><h3><span class="n">3</span>🧱 朝を組む → 📤 配信</h3><p>🧱 組む › 対象「🧱 ブロックの人」(前日は 朝) → <b>🧮 この条件で算出</b> → 🧱 盤で確かめる。足りないボスには候補が出る。手で置くなら 🧩 ピース → 光ったマス (📌 仮置き・本人には見えない)。置けない駒は理由が出る。→ <b>📤 朝のぶんを配信</b> → 運営スレに「朝 配信した」。模擬が早くそろえば「残りのブロックを一気に組む」(🔭 予想)。</p></div><div class="shots"><div class="shot" style="width:40mm;aspect-ratio:672/470"><img src="実機画面/o14_board_rows.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div><div class="shot" style="width:40mm;aspect-ratio:672/214"><img src="実機画面/o15_plan_next.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div></div></div>
+ </div>
+ <div class="col"><span class="when">当日 — ブロックの頭ごとに (🧱 組む の手順の帯のとおり)</span>
+  <div class="step"><div><h3><span class="n">1</span>⚔️ ボスの HP をゲームと合わせる</h3><p>「いちばん先に」の <b>🎯 ボス HP を更新する</b> → BlaBlaLINK のボス一覧のスクショを 選ぶ / 落とす / 貼り付け (PC) → 行に<b>いまの値との差分</b> (読めなかった行は「読めず」) → <b>⏬ 読み取った値を保存</b>。残 HP が 0 になる保存は撃破として通知が飛ぶ。古い HP のまま組むと無駄凸・取りこぼしが出るので、必ずここから。</p></div><div class="shot" style="width:40mm;aspect-ratio:780/745"><img src="実機画面/o11_hp_sheet_diff.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:-27.564%"></div></div>
+  <div class="step"><div><h3><span class="n">2</span>📥 前のブロックの結果を取り込む</h3><p>⚔️ 戦況 › 📥 結果の取り込み › <b>⏰ 結果がまだの凸</b> の「📥 取り込む」→ スクショ (ボス・ダメージ・キャラを読み取る) か ダメージを手で → <b>登録する</b> (✓ 確認済み・残 HP もダメージぶん減る)。凸していなかった人は「凸していない」(次のブロックで組み直す)。聞くなら「📋 聞く」の文面を Discord へ。</p></div><div class="shots"><div class="shot" style="width:40mm;aspect-ratio:672/335"><img src="実機画面/o17_missing.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div><div class="shot" style="width:40mm;aspect-ratio:672/400"><img src="実機画面/o19_result_form_box.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:-49.107%"></div></div></div>
+  <div class="step"><div><h3><span class="n">3</span>🧱 組む → <span class="n">4</span>📤 配信</h3><p>前日と同じ (対象「ブロックの人」= いまのブロック → 算出 → 盤 → 配信 → 運営スレに 1 行)。前に配信した割当は尊重される。配信し直したときは<b>割当が変わった人にだけ</b>通知 (✅ の有無に関わらず・割当が消えた人にも)。</p><p style="margin-top:1mm"><b>🏁 必要なときだけ</b>: 残りが少ないボスは 締め凸検索 →「いま打つか、待つか」→ 📋 名前と文面をコピー → Discord で声をかける → 盤に置いて 🔒 確定 → 配信。</p></div><div class="shot" style="width:40mm;aspect-ratio:672/708"><img src="実機画面/o16_block_steps.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div></div>
+ </div>
+</div>
+<div class="foot">
+ <div class="box dark"><h4>知っておくこと</h4><ul><li><b>1 ブロックは 1 人が組む</b> (📌 は誰が置いてもよい)。共有されるのは DB にあるもの (📌・🔒・HP・結果・模擬・時間・配信)。算出の結果と条件パネルは端末の中だけ。配信の直前に別の運営の配信と照合するので、相手の約束を知らずに上書きしない</li><li><b>置けなかった予約 (未達) は必ず画面に出る</b> — 運営が解除しないと枠を押さえたまま</li><li>「配信中止」は削除ではなく凍結 (前の割当と「組み直し中」の帯)。新しい配信で解除</li><li>誤って登録した凸は 📥 › 登録された凸 の ✏️ 編集・削除</li></ul></div>
+ <div class="box light"><h4>練習・文章</h4><ul><li>設定 › <b>🎮 練習する (運営編・前日 / 当日)</b> — 本番と同じ画面を練習用のデータで各 5 分。前日は 催促 → ⏰ 登録 → 🔒 予約 → 🧱 朝 → 📌 → 配信、当日は ⚔️ HP → 📥 → 🧱 夕方 → 配信 → 締め凸検索</li><li>メンバー向けの文章は 👥 › <b>📣 Discord 用の文面</b> からコピーして Discord にピン留め (レイドの 2 日前からは 🔔 通知の疎通確認も)</li><li>メンバーに PAD の入力は無い。「違っていたら Discord で運営へ」と伝えてある</li></ul></div>
+</div></div></body></html>

@@ -1,0 +1,72 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>しりすこPAD メンバーがやること</title><style>
+@page { size: A4; margin: 0; }
+html, body { margin: 0; }
+body { font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; color: #14161A; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: 600; }
+.page { width: 210mm; height: 297mm; padding: 8mm 9mm; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; gap: 3mm; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 4mm; }
+.tag { display: inline-block; background: #6C42F0; color: #fff; border-radius: 999px; padding: 0.8mm 3mm; font-size: 7pt; font-weight: 900; margin-bottom: 1.2mm; }
+h1 { font-size: 14.5pt; margin: 0; font-weight: 900; line-height: 1.25; letter-spacing: 0.1pt; }
+h1 .em { color: #4b17ed; }
+.lead { font-size: 8.6pt; color: #3D4249; margin: 1mm 0 0; line-height: 1.5; }
+.cols { display: grid; gap: 3mm; flex: 1; min-height: 0; }
+.cols.three { grid-template-columns: repeat(3, 1fr); }
+.cols.two { grid-template-columns: 1fr 1fr; }
+.col { border: 0.35mm solid #E3E5E8; border-radius: 3mm; padding: 2.8mm 3mm; display: flex; flex-direction: column; gap: 2mm; background: #F7F8F9; min-height: 0; }
+.col > .when { font-size: 7pt; font-weight: 900; color: #4b17ed; background: #F0ECFE; border-radius: 999px; padding: 0.6mm 2.5mm; align-self: flex-start; }
+.col h2 { font-size: 11pt; margin: 0; font-weight: 900; line-height: 1.3; display: flex; align-items: center; gap: 2mm; }
+.n { width: 6mm; height: 6mm; border-radius: 50%; background: #14161A; color: #fff; font-weight: 900; font-size: 9pt; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.col p, .col li { margin: 0; font-size: 8pt; line-height: 1.5; color: #3D4249; }
+.col ol { margin: 0; padding-left: 4mm; display: flex; flex-direction: column; gap: 0.8mm; }
+.col b, .box b { color: #14161A; }
+.step { display: grid; grid-template-columns: 1fr auto; gap: 2.5mm; align-items: start; }
+.step.single { grid-template-columns: 1fr; }
+.step h3 { font-size: 9.2pt; margin: 0 0 0.8mm; font-weight: 900; display: flex; gap: 1.6mm; align-items: center; line-height: 1.3; }
+.step h3 .n { width: 5mm; height: 5mm; font-size: 7.5pt; }
+.step p { font-size: 7.6pt; }
+.shots { display: flex; flex-direction: column; gap: 1.5mm; align-items: center; }
+.shot { border-radius: 1.8mm; overflow: hidden; box-shadow: 0 0.4mm 1.6mm rgba(0,0,0,.16); border: 0.25mm solid rgba(0,0,0,.08); background: #fff; flex: none; }
+.shot img { display: block; }
+.cap { font-size: 6.5pt; color: #62666e; text-align: center; font-weight: 800; }
+.foot { display: grid; grid-template-columns: 1.15fr 1fr; gap: 3mm; }
+.box { border-radius: 3mm; padding: 2.5mm 3.5mm; font-size: 7.8pt; line-height: 1.5; }
+.box.dark { background: #14161A; color: #fff; } .box.dark b { color: #fff; }
+.box.light { background: #F0ECFE; color: #14161A; }
+.box h4 { margin: 0 0 1mm; font-size: 9pt; font-weight: 900; }
+.box ul { margin: 0; padding-left: 3.5mm; }
+.blocks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1mm; margin-top: 1.5mm; }
+.blk { background: #fff; border-radius: 1.5mm; text-align: center; padding: 0.8mm 0; font-size: 7.4pt; font-weight: 900; line-height: 1.25; }
+.blk small { display: block; font-size: 6.2pt; color: #62666e; font-weight: 800; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+.tb { background: #F7F8F9; border: 0.35mm solid #E3E5E8; border-radius: 2.5mm; padding: 1.8mm 2.5mm; font-size: 7.2pt; line-height: 1.4; color: #3D4249; }
+.tb b { display: block; font-size: 8.6pt; color: #14161A; }
+.tb.m { border-style: dashed; }
+.foot-note { font-size: 6.8pt; color: #62666e; text-align: right; }
+</style></head><body><div class="page">
+<div class="head"><div><span class="tag">しりすこPAD · 🧱 ブロック制 (2026-10 から)</span>
+<h1>メンバーがやること — <span class="em">前日は Discord に書くだけ</span>、当日は配信を見て ✅ → 凸</h1>
+<p class="lead">PAD の中で入力するものはありません。運営が PAD に登録し、ブロックの前に「あなたの凸」を配信します。</p></div></div>
+<div class="cols three">
+ <div class="col"><span class="when">前日まで</span><h2><span class="n">1</span>Discord に 3 つ書く</h2>
+  <ol><li><b>出られるブロックと、何凸するか</b> — 例「朝 1・夜 2」「夕方だけ 3」。凸数が無ければブロックだけで OK (運営におまかせ)。出られない回は「今回は難しい」</li>
+  <li><b>模擬のスクショ</b> — 属性ごとに 1 つ (編成 5 キャラとダメージが写るもの)。<b>18 時以降に出られる人は、ボス 5 の属性だけ編成を 2 つ</b></li>
+  <li><b>凸先の希望があれば</b> — 「夕方に 風圧PT の編成① で」のように (= 予約。組み直しても動かない)</li></ol>
+  <p>運営が登録すると、ホームの <b>⏰ 参加可能時間</b> / <b>📘 登録された模擬</b> / <b>🔒 予約</b> に出て通知が届きます。違っていたら Discord で運営へ。</p>
+  <div class="shots"><div class="shot" style="width:57mm;aspect-ratio:748/423"><img src="実機画面/m06_avail_strip_after.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div><span class="cap">運営が登録すると ⏰ に時間と「凸数: 夜 2」が出る</span><div class="shot" style="width:57mm;aspect-ratio:748/480"><img src="実機画面/m03_mocks.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div><span class="cap">📘 登録された模擬 (直すときは Discord に出し直す)</span></div></div>
+ <div class="col"><span class="when">当日 · 自分のブロックの前</span><h2><span class="n">2</span>配信を見て ✅</h2>
+  <ol><li>ブロックの前に <b>「🧱 夜 21〜23時 のあなたの凸が決まりました」</b> の通知が来る</li>
+  <li>ホームの <b>📅 きょうの凸</b> で「何時に・どのボスへ・どの PT の どの編成で」を見る</li>
+  <li>読んだら <b>✅ 確認しました</b> を押す</li>
+  <li><b>「プランが変わりました」の通知が来たら、もう一度 📅 を見て ✅</b> (前のブロックの結果で予定が変わることがある)</li></ol>
+  <p>配信されるのは<b>次のブロックのぶんだけ</b>。後ろのブロックは、そのブロックの前に配信されます。</p>
+  <div class="shots"><div class="shot" style="width:57mm;aspect-ratio:748/470"><img src="実機画面/m09_today_published.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:-93.583%"></div><span class="cap">📅 きょうの凸 — 夜 21時 B1 ドリアン / 水冷PT 編成①</span><div class="shot" style="width:57mm;aspect-ratio:720/122"><img src="実機画面/m11_ack_btn.png" alt="" style="width:108.333%;margin-left:-4.167%;margin-top:-6.944%"></div><span class="cap">読んだら ✅ (運営が「見た人 / まだの人」を知るため)</span></div></div>
+ <div class="col"><span class="when">凸したら</span><h2><span class="n">3</span>スクショを Discord へ</h2>
+  <ol><li>その時刻になったらゲームで凸</li>
+  <li><b>結果の画面のスクショを Discord へ</b>。PAD に入れるものはありません</li>
+  <li>運営が取り込むと きょうの凸 に <b>✓</b> が付く</li>
+  <li>その時刻に行けなくなったら Discord で一言。締め凸 (とどめ) は運営が Discord で声をかけます</li></ol>
+  <div class="shots"><div class="shot" style="width:57mm;aspect-ratio:748/433"><img src="実機画面/m08_next_action_day.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:0.000%"></div><span class="cap">当日のホーム — 残り凸と「📅 きょうの凸を見る」</span><div class="shot" style="width:57mm;aspect-ratio:748/355"><img src="実機画面/m12_today_done.png" alt="" style="width:100.000%;margin-left:0.000%;margin-top:-114.973%"></div><span class="cap">運営が取り込むと ✓ (1 / 3 凸 済み)</span></div></div>
+</div>
+<div class="foot">
+ <div class="box dark"><h4>PAD で触るのは、この 4 つだけ</h4><ul><li>最初の 1 回: 名乗る・🔔 通知を ON (iPhone は先に「ホーム画面に追加」。Safari のタブのままだと通知が来ません)</li><li>📅 きょうの凸 を見る</li><li>✅ 確認しました を押す</li><li>困ったら ヘルプ、または 設定 › 🎮 練習する (メンバー編) — 本番と同じ画面を 3 分で試せます</li></ul></div>
+ <div class="box light"><h4>🧱 ブロックは 7 つ</h4><div class="blocks"><div class="blk">朝<small>5〜8時</small></div><div class="blk">午前<small>9〜11時</small></div><div class="blk">昼<small>12〜14時</small></div><div class="blk">午後<small>15〜17時</small></div><div class="blk">夕方<small>18〜20時</small></div><div class="blk">夜<small>21〜23時</small></div><div class="blk">深夜<small>翌0〜4時</small></div></div><p style="margin:1.5mm 0 0;font-size:7.4pt;line-height:1.5;">運営はブロックごとに、そのブロックに出られる人で凸を組み、ブロックの前に配信します。凸数を書いたブロックには、その数より多くは割り当てません。</p></div>
+</div></div></body></html>
