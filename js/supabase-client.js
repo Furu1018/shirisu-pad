@@ -4991,6 +4991,7 @@ window.supabaseLoadRecentActivity = async function (limit = 50) {
 // 純ロジック (大きさ・鍵・単価・記録) は js/domain/aiVision.js。
 const _AI_MEMO_KEY = 'shirisuko_ai_memo_v1', _AI_USAGE_KEY = 'shirisuko_ai_usage_v1', _AI_MEMO_MAX = 40;
 const _aiMemo = new Map();
+const _aiInflight = new Map();   // 鍵 → 進行中の Promise (同じ画像を同時に 2 回落とす・連打しても 1 回しか呼ばない: Codex 監査)
 let _aiMemoLoaded = false;
 function _aiMemoLoad() {
     if (_aiMemoLoaded) return;
@@ -5047,7 +5048,16 @@ window.callAiVision = async function (imageDataUrl, task, options = {}) {
         _aiMemoLoad();
         const hit = _aiMemo.get(key);
         if (hit) { _aiUsageRecord(null, null); return { ...hit, cached: true }; }
+        const running = _aiInflight.get(key);
+        if (running) { const r = await running; _aiUsageRecord(null, null); return { ...r, cached: true }; }
     }
+    const run = _callAiVisionOnce(image, task, options, key, dom);
+    if (key) _aiInflight.set(key, run);
+    try { return await run; } finally { if (key) _aiInflight.delete(key); }
+};
+
+// 実際に 1 回呼ぶ (callAiVision が 控え → 進行中 の順に見たあと)
+async function _callAiVisionOnce(image, task, options, key, dom) {
     const { data, error } = await supabase.functions.invoke('dynamic-service', {
         body: { image, task, ...options },
     });
@@ -5072,10 +5082,14 @@ window.callAiVision = async function (imageDataUrl, task, options = {}) {
         throw new Error((dom && dom.explainError(raw)) || raw);
     }
     // 読めた結果だけ控える (読めなかった = result 無し / parseError は、同じ画像でやり直せるように控えない)
-    if (key && data.result != null && !data.parseError) { _aiMemo.set(key, data); _aiMemoSave(); }
+    if (key && data.result != null && !data.parseError) {
+        _aiMemo.set(key, data);
+        while (_aiMemo.size > _AI_MEMO_MAX) _aiMemo.delete(_aiMemo.keys().next().value);   // 稼働中の控えも 40 件まで (Codex 監査)
+        _aiMemoSave();
+    }
     _aiUsageRecord(data.usage, options && options.model);   // ③ 記録
     return data;  // { ok, result, raw, parseError, usage, (cached) }
-};
+}
 
 // ファイル(File) を data URL に変換するヘルパー
 window.fileToDataUrl = function (file) {

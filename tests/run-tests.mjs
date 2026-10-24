@@ -14211,11 +14211,14 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
     });
     test('★ クレジットを抑える (純ロジック): 送る大きさは Anthropic の限度 (長辺 1568 / 1.15MP) まで・拡大しない / トークンの目安 / 単価 / 同じ画像の鍵 / 月ごとの記録と 1 行', () => {
         // 測った事実 (2026-10-25・season_announce): 1920×2560 も 960×1280 も input 1952 / output 275。1952 − プロンプト約 420 ≈ 1530 = 向こうで縮めたあとの画像のトークン
-        assert.deepEqual(av.fitSize(1920, 2560), { w: 929, h: 1238, scale: av.fitSize(1920, 2560).scale }); assert.ok(av.fitSize(1920, 2560).scale < 0.49 && av.fitSize(1920, 2560).scale > 0.48);
-        assert.equal(av.estimateImageTokens(1920, 2560), 1534, '向こうで縮めたあとのトークンに合っていない'); assert.equal(av.estimateImageTokens(960, 1280), 1534, '限度を超える 2 つの大きさで料金が違うことになっている (測定では同じ)');
+        assert.deepEqual(av.fitSize(1920, 2560), { w: 929, h: 1237, scale: av.fitSize(1920, 2560).scale }); assert.ok(av.fitSize(1920, 2560).scale < 0.49 && av.fitSize(1920, 2560).scale > 0.48);
+        assert.equal(av.estimateImageTokens(1920, 2560), 1533, '向こうで縮めたあとのトークンに合っていない'); assert.equal(av.estimateImageTokens(960, 1280), 1533, '限度を超える 2 つの大きさで料金が違うことになっている (測定では同じ)');
         const ph = av.fitSize(1080, 2340); assert.ok(ph.w === 724 && ph.h === 1568, `スマホのスクショ 1080×2340 → 724×1568 のはず (長辺は限度ぴったり): ${JSON.stringify(ph)}`);
         assert.deepEqual(av.fitSize(800, 600), { w: 800, h: 600, scale: 1 }, '小さい画像を拡大 / 縮小している');
         assert.deepEqual(av.fitSize(3000, 100), { w: 1568, h: 52, scale: av.fitSize(3000, 100).scale }, '長辺の限度が効いていない');
+        // Codex 監査 A: 丸めたあとに画素数の限度を数百ピクセル超えることがある → 1px ずつ縮める
+        const r7 = av.fitSize(748, 1538); assert.ok(r7.w * r7.h <= 1150000, `丸めたあとに限度を超えている: ${JSON.stringify(r7)}`); assert.ok(r7.w >= 747 && r7.h >= 1536, '縮めすぎ');
+        for (const [w, h] of [[748, 1538], [1537, 749], [2000, 575], [1000, 1150], [1151, 1000], [5000, 5000], [1568, 734]]) { const f = av.fitSize(w, h); assert.ok(f.w * f.h <= 1150000 && Math.max(f.w, f.h) <= 1568, `${w}×${h} → ${JSON.stringify(f)}`); }
         assert.equal(av.fitSize(0, 0).w, 1); assert.equal(av.fitSize('x', null).scale, 1);
         assert.equal(av.costUsd({ input_tokens: 1952, output_tokens: 275 }).toFixed(5), '0.00333', 'Haiku 4.5 ($1 / $5 per M) の 1 回の金額が合わない');
         assert.equal(av.costUsd({ input_tokens: 1000, cache_read_input_tokens: 1000, cache_creation_input_tokens: 1000, output_tokens: 0 }).toFixed(5), '0.00235', 'キャッシュの読み (0.1×) / 書き (1.25×) を数えていない');
@@ -14242,10 +14245,12 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
     test('★ 配線: callAiVision は 送る前に prepareImageForAi で縮め → 同じ鍵なら読み直さず (cached) → 読めた結果だけ控え → 利用を記録。オーバーレイに「この端末の今月の AI 利用」', () => {
         const html = rd('index.html'), client = rd('js', 'supabase-client.js');
         const fn = client.slice(client.indexOf('window.callAiVision = async function'), client.indexOf('window.fileToDataUrl = function'));
+        assert.ok(/const running = _aiInflight\.get\(key\);\s*\n\s*if \(running\) \{ const r = await running; _aiUsageRecord\(null, null\); return \{ \.\.\.r, cached: true \}; \}/.test(fn) && /if \(key\) _aiInflight\.set\(key, run\);\s*\n\s*try \{ return await run; \} finally \{ if \(key\) _aiInflight\.delete\(key\); \}/.test(fn), '同じ要求が同時に来たときに 2 回呼ぶ (Codex 監査 B)');
+        assert.ok(/while \(_aiMemo\.size > _AI_MEMO_MAX\) _aiMemo\.delete\(_aiMemo\.keys\(\)\.next\(\)\.value\);/.test(fn), '稼働中の控えが無制限に増える');
         assert.ok(/const image = await window\.prepareImageForAi\(imageDataUrl\);/.test(fn) && /body: \{ image, task, \.\.\.options \}/.test(fn), '縮めた画像を送っていない');
         assert.ok(/const key = dom \? dom\.cacheKey\(task, options, image\) : null;/.test(fn) && /const hit = _aiMemo\.get\(key\);\s*\n\s*if \(hit\) \{ _aiUsageRecord\(null, null\); return \{ \.\.\.hit, cached: true \}; \}/.test(fn), '同じ画像を読み直している');
         assert.ok(fn.indexOf('const hit = _aiMemo.get(key)') < fn.indexOf("supabase.functions.invoke('dynamic-service'"), '控えを見る前に呼んでいる');
-        assert.ok(/if \(key && data\.result != null && !data\.parseError\) \{ _aiMemo\.set\(key, data\); _aiMemoSave\(\); \}/.test(fn), '読めなかった結果まで控えている (同じ画像でやり直せない) / 控えていない');
+        assert.ok(/if \(key && data\.result != null && !data\.parseError\) \{\s*\n\s*_aiMemo\.set\(key, data\);\s*\n\s*while \(_aiMemo\.size > _AI_MEMO_MAX\)[^\n]*\n\s*_aiMemoSave\(\);\s*\n\s*\}/.test(fn), '読めなかった結果まで控えている (同じ画像でやり直せない) / 控えていない');
         assert.ok(/_aiUsageRecord\(data\.usage, options && options\.model\);/.test(fn), '利用を記録していない');
         const prep = client.slice(client.indexOf('window.prepareImageForAi = async function'), client.indexOf('window.callAiVision = async function'));
         assert.ok(/const fit = dom\.fitSize\(w, h\);/.test(prep) && /canvas\.toDataURL\('image\/jpeg', 0\.9\)/.test(prep) && /return out\.length < dataUrl\.length \? out : dataUrl;/.test(prep), '縮め方が限度 (fitSize) と JPEG 0.9 でない / 大きくなっても送っている');
@@ -14256,6 +14261,37 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
         assert.ok(/window\.aiVisionUsageLabel = function \(\)/.test(client), 'オーバーレイ用の 1 行が無い');
         const spin = html.slice(html.indexOf('function _aiSpinShow()'), html.indexOf('function _aiSpinHide()'));
         assert.ok(/const usageLine = \(typeof window\.aiVisionUsageLabel === 'function' \? window\.aiVisionUsageLabel\(\) : ''\) \|\| '';/.test(spin) && /\$\{escapeHtml\(usageLine\)\}/.test(spin), '解析中のオーバーレイに今月の利用が出ない');
+    });
+    await testAsync('★ 実行: callAiVision — 同じ画像は 1 回しか呼ばない (順でも同時でも)・違う画像は呼ぶ・読めなかった結果 (parseError / result 無し / 失敗) は控えない・記録は 控えで済んだ回も数える', async () => {
+        const client = rd('js', 'supabase-client.js');
+        const src = client.slice(client.indexOf('window.callAiVision = async function'), client.indexOf('// ファイル(File) を data URL に変換するヘルパー'));
+        const calls = []; let answer = (body) => ({ data: { ok: true, result: { v: body.image }, usage: { input_tokens: 100, output_tokens: 10 } }, error: null });
+        const supabase = { functions: { invoke: async (slug, { body }) => { calls.push(body.image); await new Promise(r => setTimeout(r, 5)); return answer(body); } } };
+        const memo = new Map(), inflight = new Map(), usage = [];
+        const win = { aiVisionDomain: av, prepareImageForAi: async (u) => u };
+        const make = new Function('supabase', 'window', '_aiMemo', '_aiInflight', '_aiMemoLoad', '_aiMemoSave', '_aiUsageRecord', '_AI_MEMO_MAX', src + '\nreturn window.callAiVision;');
+        const call = make(supabase, win, memo, inflight, () => {}, () => {}, (u, m) => usage.push(u ? 'paid' : 'free'), 3);
+        const a1 = await call('data:image/jpeg;base64,AAAA', 'attack_result', { known_characters: ['x'] });
+        assert.deepEqual([a1.result, a1.cached, calls.length], [{ v: 'data:image/jpeg;base64,AAAA' }, undefined, 1]);
+        const a2 = await call('data:image/jpeg;base64,AAAA', 'attack_result', { known_characters: ['x'] });
+        assert.deepEqual([a2.result, a2.cached, calls.length], [{ v: 'data:image/jpeg;base64,AAAA' }, true, 1], '同じ画像を順に 2 回読んでいる');
+        const [c1, c2, c3] = await Promise.all([call('data:image/jpeg;base64,BBBB', 'bla_progress'), call('data:image/jpeg;base64,BBBB', 'bla_progress'), call('data:image/jpeg;base64,BBBB', 'bla_progress')]);
+        assert.equal(calls.length, 2, '同じ画像を同時に 3 回落として 3 回呼んでいる (Codex 監査 B)');
+        assert.deepEqual([c1.cached, c2.cached, c3.cached].filter(Boolean).length, 2); assert.deepEqual(c2.result, { v: 'data:image/jpeg;base64,BBBB' });
+        assert.equal(inflight.size, 0, '進行中の控えが残っている');
+        await call('data:image/jpeg;base64,AAAA', 'bla_progress'); assert.equal(calls.length, 3, 'task が違うのに控えを返している');
+        await call('data:image/jpeg;base64,AAAA', 'attack_result', { known_characters: ['y'] }); assert.equal(calls.length, 4, 'options が違うのに控えを返している');
+        assert.equal(memo.size, 3, `控えは 3 件まで (指定): ${memo.size}`);
+        answer = () => ({ data: { ok: true, result: null, parseError: 'x', usage: { input_tokens: 1, output_tokens: 1 } }, error: null });
+        await call('data:image/jpeg;base64,CCCC', 'season_announce'); await call('data:image/jpeg;base64,CCCC', 'season_announce');
+        assert.equal(calls.length, 6, '読めなかった結果を控えて、同じ画像でやり直せない');
+        answer = () => ({ data: { ok: false, error: 'Anthropic API error (400): Your credit balance is too low' }, error: null });
+        await assert.rejects(() => call('data:image/jpeg;base64,DDDD', 'season_announce'), /クレジット/);
+        await assert.rejects(() => call('data:image/jpeg;base64,DDDD', 'season_announce'), /クレジット/); assert.equal(calls.length, 8, '失敗を控えている');
+        assert.equal(inflight.size, 0, '失敗のあとに進行中の控えが残っている');
+        answer = () => ({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { clone() { return this; }, async json() { return { ok: false, error: 'Anthropic API error (429): rate_limit_error' }; } } } });
+        await assert.rejects(() => call('data:image/jpeg;base64,EEEE', 'season_announce'), /混み合って/, '非 2xx の本文を日本語にしていない');
+        assert.deepEqual(usage.filter(x => x === 'paid').length, 6); assert.deepEqual(usage.filter(x => x === 'free').length, 3, '控えで済んだ回を記録していない');
     });
     test('★ 配線: index.html が aiVision.js を読む / callAiVision が非 2xx の本文 (error.context) を読んで messageOf に渡し、ok:false は explainError を通す', () => {
         const html = rd('index.html'), client = rd('js', 'supabase-client.js');

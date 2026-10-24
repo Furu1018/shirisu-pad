@@ -73,7 +73,8 @@
         if (W * H * scale * scale > L.maxPixels) scale = Math.min(scale, Math.sqrt(L.maxPixels / (W * H)));
         if (scale >= 1) return { w: W, h: H, scale: 1 };
         // 四捨五入 (2340 × 1568/2340 が浮動小数で 1567.99… になり floor だと 1 ピクセル欠ける)。長辺は限度を超えないように止める
-        const rw = Math.min(Math.max(1, Math.round(W * scale)), L.maxLongEdge), rh = Math.min(Math.max(1, Math.round(H * scale)), L.maxLongEdge);
+        let rw = Math.min(Math.max(1, Math.round(W * scale)), L.maxLongEdge), rh = Math.min(Math.max(1, Math.round(H * scale)), L.maxLongEdge);
+        while (rw * rh > L.maxPixels && rw > 1 && rh > 1) { if (rw >= rh) rw--; else rh--; }   // 丸めで数百ピクセル超えることがある (Codex 監査)
         return { w: rw, h: rh, scale };
     }
 
