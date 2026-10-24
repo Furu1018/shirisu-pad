@@ -12860,10 +12860,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/document\.addEventListener\('paste', \(ev\) => \{/.test(init) && /filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);\s*\n\s*if \(!files\.length\) return;/.test(init), '貼り付けで読み取れない / 文字の貼り付けまで取っている');
         assert.ok(/const target = _pasteTargetFor\(document\.activeElement\);/.test(init) && /if \(input && input\.disabled\) return;\s*\n\s*ev\.preventDefault\(\);\s*\n\s*handler\(\{ target: \{ files, value: '' \} \}\);/.test(init), 'ファイル選択と同じ形で渡していない / 読み取り中にも受ける');
         const pt = html.match(/function _pasteTargetFor\(active\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const modalOpen = !!document\.querySelector\('\.player-select-modal\.open'\);/.test(pt) && /\(!modalOpen && el\.classList\.contains\('dc-card'\) && el\.offsetParent !== null\)/.test(pt), 'シートが開いているのに裏のカードへ読ませる');
-        // Codex 9e B: 受け口のシートが 2 つ以上開いていたら前面が分からない → 受けない (焦点も当てにしない)。開いていなければ 焦点のあるカード → 見えているカードが 1 つだけ
-        assert.ok(/const opens = live\.filter\(\(\[, el\]\) => el\.classList\.contains\('open'\)\);\s*\n\s*if \(opens\.length\) return opens\.length === 1 \? opens\[0\]\[0\] : null;\s*\n\s*if \(!live\.length\) return null;\s*\n\s*const focused = /.test(pt), 'シートが 2 つ開いているときに受けている / シートより先に焦点を見ている');
-        assert.ok(/if \(focused\) return focused\[0\];/.test(pt) && /return live\.length === 1 \? live\[0\]\[0\] : null;/.test(pt), '行き先が決まらないときに貼り付けを受けている');
+        // Codex 9e B (再監査): 前面に出ているもの (シート・ドロワー・ヘルプ・名乗り = body を固定する一覧 _MODAL_LOCK_SEL) を先に見る。前面があるなら「受け口のシート 1 つだけ」のときだけそのシートへ
+        //   (ドロワーの裏に見えているカードへ読ませない・2 つ以上なら受けない・焦点も当てにしない)。前面が無ければ 焦点のあるカード → 見えているカードが 1 つだけ
+        assert.ok(/const overlays = \[\.\.\.document\.querySelectorAll\(_MODAL_LOCK_SEL\)\];/.test(pt), '前面を body を固定する一覧 (_MODAL_LOCK_SEL) で見ていない (ドロワー・ヘルプの裏のカードへ読ませる)');
+        assert.ok(/if \(overlays\.length\) \{\s*\n\s*const opens = drops\.filter\(\(\[, el\]\) => el\.classList\.contains\('open'\)\);\s*\n\s*return \(overlays\.length === 1 && opens\.length === 1 && overlays\[0\] === opens\[0\]\[1\]\) \? opens\[0\]\[0\] : null;\s*\n\s*\}/.test(pt), '前面が「受け口のシート 1 つだけ」でないのに受けている');
+        assert.ok(/const cards = drops\.filter\(\(\[, el\]\) => el\.classList\.contains\('dc-card'\) && el\.offsetParent !== null\);/.test(pt) && /if \(focused\) return focused\[0\];/.test(pt) && /return cards\.length === 1 \? cards\[0\]\[0\] : null;/.test(pt), '行き先が決まらないときに貼り付けを受けている');
+        assert.ok(/const _MODAL_LOCK_SEL = '\.player-select-modal\.open, \.fururi-help-modal\.open, \.player-modal\.open, \.drawer\.open';/.test(html), '_MODAL_LOCK_SEL の一覧が変わった (貼り付けの行き先の判定も見直す)');
         // Codex 9e C: 読み取り中 (input.disabled) は 選ぶ・落とす・貼り付け のどれも受けない — 本物の input に印を立て、finally で戻す
         assert.ok(/const input = document\.getElementById\('opsBossHpOcrInput'\);\s*\n\s*if \(input\?\.disabled\) \{ showNotification\('読み取り中です。終わるまで待ってください'\); return; \}\s*\n\s*if \(input\) input\.disabled = true;/.test(ocr), '読み取り中の二重受付を止めていない');
         assert.ok(/\} finally \{\s*\n\s*if \(input\) input\.disabled = false;\s*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない');

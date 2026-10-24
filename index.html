@@ -28781,18 +28781,21 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
                 handler({ target: { files, value: '' } });
             });
         }
-        // 貼り付けの行き先: 開いているシート (.open) か、シートが無ければ見えているカード。焦点のある受け口 → 開いているシート (手前) → 見えている受け口が 1 つだけ のとき
+        // 貼り付けの行き先 (Codex 9e B・再監査): 前面に何か出ているか (シート・ドロワー・ヘルプ・名乗り = body を固定する一覧 _MODAL_LOCK_SEL) を先に見る。
+        //   前面があるなら、それが「受け口のシート 1 つだけ」のときだけそのシートへ (ドロワーやヘルプの裏に見えているカードへは読ませない・2 つ以上なら前面がどれか分からないので受けない・焦点も当てにしない)。
+        //   前面が無ければ 焦点のあるカード → 見えているカードが 1 つだけ のとき
         function _pasteTargetFor(active) {
-            const modalOpen = !!document.querySelector('.player-select-modal.open');
-            const live = _FILE_DROPS.map(d => [d, document.getElementById(d[0])])
-                .filter(([, el]) => el && (el.classList.contains('open') || (!modalOpen && el.classList.contains('dc-card') && el.offsetParent !== null)));
-            // シートが開いているときは、開いている受け口のシートが 1 つのときだけ (2 つ以上なら前面がどれか分からない → 受けない。焦点も当てにしない: Codex 9e B)
-            const opens = live.filter(([, el]) => el.classList.contains('open'));
-            if (opens.length) return opens.length === 1 ? opens[0][0] : null;
-            if (!live.length) return null;
-            const focused = active ? live.find(([, el]) => el.contains(active)) : null;
+            const overlays = [...document.querySelectorAll(_MODAL_LOCK_SEL)];
+            const drops = _FILE_DROPS.map(d => [d, document.getElementById(d[0])]).filter(([, el]) => el);
+            if (overlays.length) {
+                const opens = drops.filter(([, el]) => el.classList.contains('open'));
+                return (overlays.length === 1 && opens.length === 1 && overlays[0] === opens[0][1]) ? opens[0][0] : null;
+            }
+            const cards = drops.filter(([, el]) => el.classList.contains('dc-card') && el.offsetParent !== null);
+            if (!cards.length) return null;
+            const focused = active ? cards.find(([, el]) => el.contains(active)) : null;
             if (focused) return focused[0];
-            return live.length === 1 ? live[0][0] : null;
+            return cards.length === 1 ? cards[0][0] : null;
         }
 
         // ========== 共通 AI解析スピナー ==========
