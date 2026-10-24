@@ -28847,6 +28847,8 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             _aiSpinCount++;
             if (_aiSpinHideTimer) { clearTimeout(_aiSpinHideTimer); _aiSpinHideTimer = null; }
             if (document.getElementById('aiSpinOverlay')) return;
+            // この端末の今月の AI 利用 (回数・トークン・金額の目安)。使う瞬間に見えるので、消費に気づける (2026-10-25)
+            const usageLine = (typeof window.aiVisionUsageLabel === 'function' ? window.aiVisionUsageLabel() : '') || '';
             const o = document.createElement('div');
             o.id = 'aiSpinOverlay';
             o.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(20,22,26,0.45);display:flex;align-items:center;justify-content:center;animation:dcFadeIn .15s ease;';
@@ -28856,6 +28858,7 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
                     <div>
                         <div style="font-size:13px;font-weight:900;color:var(--card);letter-spacing:0.2px;">${spIcon('camera', 13)} AI解析中…</div>
                         <div style="font-size:10.5px;font-weight:700;color:var(--on-ink-soft);margin-top:2px;">1枚あたり10〜20秒かかります</div>
+                        ${usageLine ? `<div style="font-size:10px;font-weight:700;color:var(--on-ink-soft);margin-top:4px;">${escapeHtml(usageLine)}</div>` : ''}
                     </div>
                 </div>`;
             document.body.appendChild(o);

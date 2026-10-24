@@ -445,6 +445,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   error 1 つにまとめる。`callAiVision` が `error.context` (Response) の本文を読み、`aiVisionDomain.messageOf` で日本語にする (クレジット切れ → 「console.anthropic.com → Plans & Billing で補充」/ レート制限 / 過負荷 / キー / モデル / task / 通信)。
   ★ 2026-10-24 の「新シーズン作成時の AI画像認識が起動しない」の実体は **Anthropic の前払いクレジット切れ** (`Your credit balance is too low`)。画面には理由が出ていなかった。
   AI が全部止まったら、まず `curl` で dynamic-service を 1 ピクセルの画像で直接叩いて本文を見る (anon キーは要らない・課金もされない)。新しい失敗の種類は `RULES` に 1 行足す
+  ★ **クレジットを抑える** (2026-10-25 ふるりの要望): 測った事実 — 同じポスターを 1920×2560 (1.5MB) で送っても 960×1280 (350KB) で送っても **input 1952 / output 275 トークンで同額** (≈ $0.0033・Haiku 4.5 は $1 / $5 per M)。
+  Anthropic は長辺 1568px・約 1.15MP を超える画像を向こうで縮めてから数えるので、画像を小さくしても料金は変わらない (精度を落とさず節約する余地は画像には無い)。だから `callAiVision` は
+  ① `prepareImageForAi` でその限度まで縮めて JPEG 0.9 にする (**料金は同じ・送る量が 1/3〜1/10・速い**。小さくならなければ元のまま) ② **同じ画像・同じ task・同じ options は読み直さない** (`aiVisionDomain.cacheKey` = FNV-1a ×2・結果を sessionStorage `shirisuko_ai_memo_v1` に 40 件・読めた結果だけ)
+  ③ 回数・トークン・金額の目安を localStorage `shirisuko_ai_usage_v1` に月ごとに記録し、解析中のオーバーレイに「この端末の今月の AI 利用: N 回・約 M トークン (≈ $X)」。
+  Edge Function の `cache_control` は効いていない (測定で cache_creation 0 — プロンプトが短すぎる)。触るなら再デプロイ。1 回 ≈ $0.003〜0.005 なので、1 レイド (模擬 150 + 結果 90 + HP 20 ≈ 260 回) ≈ $1
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は

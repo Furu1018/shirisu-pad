@@ -4982,11 +4982,75 @@ window.supabaseLoadRecentActivity = async function (limit = 50) {
 // ============================================================================
 // 画像 (data URL) と task を渡して構造化結果を受け取る
 // task: 'attack_result' / 'bla_progress' / 'season_announce'
-window.callAiVision = async function (imageDataUrl, task, options = {}) {
-    const { data, error } = await supabase.functions.invoke('dynamic-service', {
-        body: { image: imageDataUrl, task, ...options },
+// ---- 画像認識のクレジットを抑える (2026-10-25 ふるり「画像の処理でなるべくクレジットの消費を抑える工夫を」) ----
+// 測った事実: 同じポスターを 1920×2560 (1.5MB) で送っても 960×1280 (350KB) で送っても input 1952 / output 275 トークンで同額
+// (Anthropic が長辺 1568px・約 1.15MP を超える画像を向こうで縮めてから数える)。だから
+//   ① 送る前にその限度まで縮めて JPEG にする → 料金は同じ・送る量が 1/3〜1/10 (スマホの PNG のスクショは 5〜8MB) ・速い
+//   ② 同じ画像・同じ task は読み直さない (結果をこの端末の sessionStorage に控える。閉じて開き直し・落とす + 貼り付け・やり直しで二重に払わない)
+//   ③ 何回・何トークン・いくら使ったかをこの端末に月ごとに記録し、解析中のオーバーレイに出す (気づけるように)
+// 純ロジック (大きさ・鍵・単価・記録) は js/domain/aiVision.js。
+const _AI_MEMO_KEY = 'shirisuko_ai_memo_v1', _AI_USAGE_KEY = 'shirisuko_ai_usage_v1', _AI_MEMO_MAX = 40;
+const _aiMemo = new Map();
+let _aiMemoLoaded = false;
+function _aiMemoLoad() {
+    if (_aiMemoLoaded) return;
+    _aiMemoLoaded = true;
+    try { const j = JSON.parse(sessionStorage.getItem(_AI_MEMO_KEY) || '[]'); if (Array.isArray(j)) for (const [k, v] of j) _aiMemo.set(k, v); } catch { /* 読めなければ空から */ }
+}
+function _aiMemoSave() {
+    try { sessionStorage.setItem(_AI_MEMO_KEY, JSON.stringify([..._aiMemo].slice(-_AI_MEMO_MAX))); } catch { /* 容量超過などは諦める (記録が無いだけ) */ }
+}
+function _aiUsageRecord(usage, model) {
+    try {
+        const dom = window.aiVisionDomain; if (!dom) return;
+        const cur = JSON.parse(localStorage.getItem(_AI_USAGE_KEY) || 'null');
+        localStorage.setItem(_AI_USAGE_KEY, JSON.stringify(dom.usageAdd(cur, usage, model)));
+    } catch { /* 記録は表示のためだけ */ }
+}
+/** 解析中のオーバーレイに出す「この端末の今月の AI 利用」の 1 行 (無ければ '') */
+window.aiVisionUsageLabel = function () {
+    try { const dom = window.aiVisionDomain; const cur = JSON.parse(localStorage.getItem(_AI_USAGE_KEY) || 'null'); return dom ? dom.usageLabel(cur) : ''; } catch { return ''; }
+};
+async function _decodeImageBlob(blob) {
+    if (typeof createImageBitmap === 'function') return await createImageBitmap(blob);
+    return await new Promise((resolve, reject) => {   // 古い WebView 向け
+        const url = URL.createObjectURL(blob); const im = new Image();
+        im.onload = () => { URL.revokeObjectURL(url); resolve(im); }; im.onerror = (e) => { URL.revokeObjectURL(url); reject(e); }; im.src = url;
     });
-    const dom = (typeof window !== 'undefined' && window.aiVisionDomain) || null;   // 失敗の説明 (js/domain/aiVision.js)
+}
+/** 送る画像を Anthropic が向こうで縮める限度 (長辺 1568px・約 1.15MP) に合わせて縮め、JPEG にする。縮められなければ・小さくならなければ元のまま */
+window.prepareImageForAi = async function (dataUrl) {
+    const dom = window.aiVisionDomain;
+    if (!dom || typeof dataUrl !== 'string' || !/^data:image\//i.test(dataUrl)) return dataUrl;
+    try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const im = await _decodeImageBlob(blob);
+        const w = im.width || im.naturalWidth, h = im.height || im.naturalHeight;
+        const fit = dom.fitSize(w, h);
+        if (fit.scale >= 1 && blob.size <= 600 * 1024) { if (typeof im.close === 'function') im.close(); return dataUrl; }   // 小さい画像はそのまま
+        const canvas = document.createElement('canvas'); canvas.width = fit.w; canvas.height = fit.h;
+        const cx = canvas.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, fit.w, fit.h);   // 透過 PNG が黒くならないように
+        cx.drawImage(im, 0, 0, fit.w, fit.h);
+        if (typeof im.close === 'function') im.close();
+        const out = canvas.toDataURL('image/jpeg', 0.9);
+        return out.length < dataUrl.length ? out : dataUrl;
+    } catch { return dataUrl; }   // 縮められなくても読み取りは止めない
+};
+
+window.callAiVision = async function (imageDataUrl, task, options = {}) {
+    const dom = (typeof window !== 'undefined' && window.aiVisionDomain) || null;   // 失敗の説明・節約 (js/domain/aiVision.js)
+    // ① 縮めて送る → ② 同じ画像は読み直さない
+    const image = await window.prepareImageForAi(imageDataUrl);
+    const key = dom ? dom.cacheKey(task, options, image) : null;
+    if (key) {
+        _aiMemoLoad();
+        const hit = _aiMemo.get(key);
+        if (hit) { _aiUsageRecord(null, null); return { ...hit, cached: true }; }
+    }
+    const { data, error } = await supabase.functions.invoke('dynamic-service', {
+        body: { image, task, ...options },
+    });
     if (error) {
         // ★ Edge Function は Anthropic の失敗を HTTP 502 の本文 { ok:false, error:"Anthropic API error (400): …" } で返す。
         //   supabase-js はそれを「Edge Function returned a non-2xx status code」の error 1 つにまとめるので、
@@ -5007,7 +5071,10 @@ window.callAiVision = async function (imageDataUrl, task, options = {}) {
         const raw = data?.error || 'AI Vision エラー';
         throw new Error((dom && dom.explainError(raw)) || raw);
     }
-    return data;  // { ok, result, raw, parseError, usage }
+    // 読めた結果だけ控える (読めなかった = result 無し / parseError は、同じ画像でやり直せるように控えない)
+    if (key && data.result != null && !data.parseError) { _aiMemo.set(key, data); _aiMemoSave(); }
+    _aiUsageRecord(data.usage, options && options.model);   // ③ 記録
+    return data;  // { ok, result, raw, parseError, usage, (cached) }
 };
 
 // ファイル(File) を data URL に変換するヘルパー
