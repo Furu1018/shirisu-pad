@@ -5048,12 +5048,14 @@ window.callAiVision = async function (imageDataUrl, task, options = {}) {
         _aiMemoLoad();
         const hit = _aiMemo.get(key);
         if (hit) { _aiUsageRecord(null, null); return { ...hit, cached: true }; }
-        const running = _aiInflight.get(key);
-        if (running) { const r = await running; _aiUsageRecord(null, null); return { ...r, cached: true }; }
     }
+    // 同じ要求の同時実行は 1 回だけ呼ぶ。ドメインが読めていなくても (key が無い) 中身そのものを鍵に進行中の間だけ共有する (Codex 再監査)
+    const flightKey = key || `${String(task)}\n${JSON.stringify(options || {})}\n${String(image)}`;
+    const running = _aiInflight.get(flightKey);
+    if (running) { const r = await running; _aiUsageRecord(null, null); return { ...r, cached: true }; }
     const run = _callAiVisionOnce(image, task, options, key, dom);
-    if (key) _aiInflight.set(key, run);
-    try { return await run; } finally { if (key) _aiInflight.delete(key); }
+    _aiInflight.set(flightKey, run);
+    try { return await run; } finally { _aiInflight.delete(flightKey); }
 };
 
 // 実際に 1 回呼ぶ (callAiVision が 控え → 進行中 の順に見たあと)

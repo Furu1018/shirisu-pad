@@ -14245,7 +14245,7 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
     test('★ 配線: callAiVision は 送る前に prepareImageForAi で縮め → 同じ鍵なら読み直さず (cached) → 読めた結果だけ控え → 利用を記録。オーバーレイに「この端末の今月の AI 利用」', () => {
         const html = rd('index.html'), client = rd('js', 'supabase-client.js');
         const fn = client.slice(client.indexOf('window.callAiVision = async function'), client.indexOf('window.fileToDataUrl = function'));
-        assert.ok(/const running = _aiInflight\.get\(key\);\s*\n\s*if \(running\) \{ const r = await running; _aiUsageRecord\(null, null\); return \{ \.\.\.r, cached: true \}; \}/.test(fn) && /if \(key\) _aiInflight\.set\(key, run\);\s*\n\s*try \{ return await run; \} finally \{ if \(key\) _aiInflight\.delete\(key\); \}/.test(fn), '同じ要求が同時に来たときに 2 回呼ぶ (Codex 監査 B)');
+        assert.ok(/const flightKey = key \|\| `\$\{String\(task\)\}\\n\$\{JSON\.stringify\(options \|\| \{\}\)\}\\n\$\{String\(image\)\}`;/.test(fn) && /const running = _aiInflight\.get\(flightKey\);\s*\n\s*if \(running\) \{ const r = await running; _aiUsageRecord\(null, null\); return \{ \.\.\.r, cached: true \}; \}/.test(fn) && /_aiInflight\.set\(flightKey, run\);\s*\n\s*try \{ return await run; \} finally \{ _aiInflight\.delete\(flightKey\); \}/.test(fn), '同じ要求が同時に来たときに 2 回呼ぶ / ドメインが無いと共有しない (Codex 監査 B・再監査)');
         assert.ok(/while \(_aiMemo\.size > _AI_MEMO_MAX\) _aiMemo\.delete\(_aiMemo\.keys\(\)\.next\(\)\.value\);/.test(fn), '稼働中の控えが無制限に増える');
         assert.ok(/const image = await window\.prepareImageForAi\(imageDataUrl\);/.test(fn) && /body: \{ image, task, \.\.\.options \}/.test(fn), '縮めた画像を送っていない');
         assert.ok(/const key = dom \? dom\.cacheKey\(task, options, image\) : null;/.test(fn) && /const hit = _aiMemo\.get\(key\);\s*\n\s*if \(hit\) \{ _aiUsageRecord\(null, null\); return \{ \.\.\.hit, cached: true \}; \}/.test(fn), '同じ画像を読み直している');
@@ -14292,6 +14292,17 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
         answer = () => ({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: { clone() { return this; }, async json() { return { ok: false, error: 'Anthropic API error (429): rate_limit_error' }; } } } });
         await assert.rejects(() => call('data:image/jpeg;base64,EEEE', 'season_announce'), /混み合って/, '非 2xx の本文を日本語にしていない');
         assert.deepEqual(usage.filter(x => x === 'paid').length, 6); assert.deepEqual(usage.filter(x => x === 'free').length, 3, '控えで済んだ回を記録していない');
+        // Codex 再監査: ドメインが読めていない (鍵が無い) ときも、同じ要求の同時実行は 1 回だけ・失敗しても進行中の控えが残らない
+        const calls2 = []; let answer2 = () => ({ data: { ok: true, result: { v: 1 }, usage: { input_tokens: 1, output_tokens: 1 } }, error: null });
+        const sb2 = { functions: { invoke: async (slug, { body }) => { calls2.push(body.image); await new Promise(r => setTimeout(r, 5)); return answer2(); } } };
+        const memo2 = new Map(), inflight2 = new Map();
+        const call2 = make(sb2, { aiVisionDomain: null, prepareImageForAi: async (u) => u }, memo2, inflight2, () => {}, () => {}, () => {}, 40);
+        const [n1, n2] = await Promise.all([call2('data:image/jpeg;base64,ZZZZ', 'bla_progress'), call2('data:image/jpeg;base64,ZZZZ', 'bla_progress')]);
+        assert.equal(calls2.length, 1, 'ドメインが無いと同時の同じ要求を 2 回呼ぶ'); assert.deepEqual([n1.result, n2.result, n2.cached], [{ v: 1 }, { v: 1 }, true]);
+        assert.equal(memo2.size, 0, 'ドメインが無いのに控えている (sessionStorage に収まらない鍵)'); assert.equal(inflight2.size, 0);
+        await call2('data:image/jpeg;base64,ZZZZ', 'bla_progress'); assert.equal(calls2.length, 2, 'ドメインが無いときは順の 2 回目は呼ぶ (控えは持たない)');
+        answer2 = () => ({ data: { ok: false, error: 'x' }, error: null });
+        await assert.rejects(() => call2('data:image/jpeg;base64,YYYY', 'bla_progress'), /x/); assert.equal(inflight2.size, 0, '失敗のあとに進行中の控えが残っている (鍵なし)');
     });
     test('★ 配線: index.html が aiVision.js を読む / callAiVision が非 2xx の本文 (error.context) を読んで messageOf に渡し、ok:false は explainError を通す', () => {
         const html = rd('index.html'), client = rd('js', 'supabase-client.js');
