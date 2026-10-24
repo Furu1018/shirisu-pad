@@ -176,6 +176,25 @@
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
 
     /**
+     * 🗣 9d (2026-10-24): 駒 (人 × 属性の編成) を、いまの盤 (ボスの並び × 時刻のマス) のどこにも置けないときの理由。判定は増やさない (canPlace を使い回す)。
+     * 置ける所が 1 つでもあれば null。順に見る: 3 凸を使い切った → その属性のボスが盤にいない → 時刻のマスが無い → 参加可能時間に合う時刻のマスが無い
+     * @returns {{reason:string, label:string}|null}
+     */
+    function noPlaceReason({ player, attr, bosses, hourIdxs, hourOrder, remaining } = {}) {
+        if (!player) return { reason: 'no_player', label: 'メンバーが盤面にいません' };
+        const name = player.name || '';
+        if (remaining != null && Number(remaining) <= 0) return { reason: 'spent', label: `${name} は 3 凸を使い切っています` };
+        const list = (Array.isArray(bosses) ? bosses : []).filter(Boolean);
+        const pt = attr ? (ATTR_JP[attr] || attr) : '';
+        const fit = list.filter(b => b.weakness === attr);
+        if (!fit.length) return { reason: 'attr', label: `${pt}PT のボス (弱点が ${pt}) がこの盤にいません` };
+        const hours = (Array.isArray(hourIdxs) ? hourIdxs : []).filter(h => Number.isInteger(h));
+        if (!hours.length) return { reason: 'no_hours', label: 'このブロックに置ける時刻のマスがありません' };
+        for (const b of fit) for (const h of hours) if (canPlace({ player, attr, boss: b, hourIdx: h, hourOrder }).ok) return null;
+        return { reason: 'time', label: `${name} の参加可能時間に合う時刻のマスがありません` };
+    }
+
+    /**
      * 🧱 段階 6 ① ブロック盤 (モック docs/ブロック盤モック_2026-10-21.html)。ボスの行ごとに「枠 = このブロックの頭の残り HP」へ、
      * そのブロックの凸を「幅 = ダメージ」のピースで並べる。盤は量を決め、時刻は行の時刻のマスと時間割で確かめる (2 層)。
      * ★ 撃破の時刻は「時刻の順に足して残り HP に届いた凸の時刻」(並べた最後のピースの時刻ではない)。
@@ -352,6 +371,6 @@
     }
     const CHIP_FILTERS = ['all', 'promise', 'pinned', 'fixed'];
 
-    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, chipCounts, CHIP_FILTERS, WHO, FROM, PREV, ATTR_JP, SWAP_JP,
+    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, noPlaceReason, swapOptions, chipCounts, CHIP_FILTERS, WHO, FROM, PREV, ATTR_JP, SWAP_JP,
         blockBoardRows, boardCandidates, blockSteps };
 })(typeof window !== 'undefined' ? window : globalThis);

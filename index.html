@@ -3124,6 +3124,7 @@
         .plan-piece .team { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
         .plan-piece .dm { font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .plan-piece .where { grid-column: 1 / -1; font-size: 9.5px; font-weight: 800; color: var(--t-muted); }
+        .plan-piece .where.nowhere { color: var(--warn-deep); }   /* 🗣 9d: 置ける所が無い理由 */
         .plan-piece.placed { opacity: 0.5; }
         .plan-piece.sel { box-shadow: 0 0 0 2px var(--ops-solid), inset 3px 0 0 var(--pc, var(--ops-solid)); }
         .plan-piece.dim { opacity: 0.35; }
@@ -22663,6 +22664,34 @@
             if (!o.silent) renderOpsPlanView();
         }
         function _opsPlanClearSel() { _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false; renderOpsPlanView(); }
+        // 🗣 9d (2026-10-24): 選んだ駒がいまの盤のどこにも置けないなら、理由をその場で言う (「なぜかここにはめれない」を無くす)。
+        //   マス ([data-boss][data-h]) に data-can を付け、1 つも置けなければ planBoardDomain.noPlaceReason (判定は canPlace を使い回す)。同じ選択で 1 回だけ (描き直しのたびに出さない)
+        function _opsPlanNoPlaceCheck(el) {
+            const sel = _opsPlanSel, dom = window.planBoardDomain, snap = opsStore.get();
+            if (!el || !sel || !dom || !snap || sel.pinned) return;
+            const p = (snap.players || []).find(x => String(x.id) === String(sel.memberId));
+            const cells = [...el.querySelectorAll('[data-boss][data-h]')].filter(c => c.dataset.h !== '');
+            let any = false;
+            const bossNums = new Set(), hours = new Set();
+            for (const cell of cells) {
+                const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(cell.dataset.boss));
+                const h = Number(cell.dataset.h);
+                bossNums.add(Number(cell.dataset.boss)); hours.add(h);
+                const ok = !!p && dom.canPlace({ player: p, attr: sel.attr, boss, hourIdx: h, hourOrder: HOUR_ORDER }).ok;
+                cell.dataset.can = ok ? '1' : '0';
+                if (ok) any = true;
+            }
+            if (any) return;
+            const key = `${sel.kind}|${sel.memberId}|${sel.attr}|${sel.loadoutSlot}|${_opsPlanViewMode}`;
+            if (sel.noPlaceTold === key) return;
+            sel.noPlaceTold = key;
+            const why = dom.noPlaceReason({ player: p, attr: sel.attr, bosses: (snap.bosses || []).filter(b => bossNums.has(Number(b.boss_number))), hourIdxs: [...hours], hourOrder: HOUR_ORDER,
+                remaining: p ? 3 - (Number(p.attackCount) || 0) : null });
+            if (!why) return;
+            // 時間割の行は凸のある時刻だけ。🧱 盤の行の時刻のマスなら、このブロックのいまより後のどの時刻にも置ける
+            const hint = (why.reason === 'time' || why.reason === 'no_hours') && _opsPlanViewMode === 'timetable' ? ' — 🧱 盤 に切り替えると、このブロックのどの時刻にも置けます' : '';
+            showNotification(`置ける場所がありません: ${why.label}${hint}`);
+        }
         // ドラッグ中: 描き直さずに、置けるマスに印を付ける (描き直すと掴んだ要素が消えてドラッグが切れる)。
         // ★ 握った人の出られる時間も同時に見せる (2026-10-10 運営チーム): 行の見出し (時刻) を光らせ、下の帯 (#opsPlanFocusBar) を差し替える
         function _opsPlanPaintTargets() {
@@ -22688,6 +22717,7 @@
                 cell.style.outlineOffset = ok ? '-2px' : '';
                 cell.style.opacity = ok ? '' : '0.35';
             });
+            _opsPlanNoPlaceCheck(el);   // 🗣 9d
         }
         // 置く: 判定 (属性 / 時間 → planBoardDomain.canPlace、予約の衝突 / 残凸 / キャラ被り → reservationsDomain.canPin) →
         //   📌 を作る (or 置き直す) → 算出し直す。レベルは選ばない (算出が「その時刻にそのボスがいるレベル」に当てはめる)
@@ -23062,6 +23092,19 @@
             const all = dom.piecesOf({ players: snap.players || [], plan, reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) ? _resv.rows : [], isFixed: rv ? rv.isFixed : null });
             const unused = all.filter(x => !x.placed).length;
             const list = all.filter(x => !_opsPlanTrayAttr || x.attr === _opsPlanTrayAttr).filter(x => !_opsPlanTrayUnusedOnly || !x.placed);
+            // 🗣 9d: 箱が見ている盤の範囲 (ボス × 時刻のマス)。時間割の行は凸のある時刻だけ (_planTimetableModel と同じ材料)、🧱 盤はこのブロックのいまより後の時刻 (_planBlockBoardHtml の railHours と同じ)
+            const planBossNums = new Set((Array.isArray(plan?.levels) ? plan.levels : []).flatMap(lv => (lv.bosses || []).map(b => Number(b.bossNumber))));
+            const viewBosses = (snap.bosses || []).filter(b => planBossNums.has(Number(b.boss_number)));
+            let viewHours = [];
+            if (plan && _opsPlanViewMode === 'board' && plan.blockScope) {
+                const idxOfHour = (h) => HOUR_ORDER.indexOf(((Number(h) % 24) + 24) % 24);
+                const fromIdx = idxOfHour(plan.blockScope.from), toIdx = idxOfHour(plan.blockScope.to), nowIdx = Math.max(0, _planNowIdx(plan));
+                if (fromIdx >= 0 && toIdx >= fromIdx) viewHours = Array.from({ length: toIdx - fromIdx + 1 }, (_, k) => fromIdx + k).filter(i => i >= nowIdx);
+            } else if (plan) {
+                const hs = new Set();
+                (plan.levels || []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => { if (a.hourIdx != null && !a.flex) hs.add(Number(a.hourIdx)); })));
+                viewHours = [...hs];
+            }
             const drag = _opsPlanDragOk();
             const groups = []; const seen = new Map();
             for (const x of list) { const k = String(x.memberId); if (!seen.has(k)) { seen.set(k, { name: x.name, remaining: x.remaining, items: [], memberId: x.memberId }); groups.push(seen.get(k)); } seen.get(k).items.push(x); }
@@ -23083,9 +23126,12 @@
                     if (_opsPlanSel && _opsPlanSel.attr && _opsPlanSel.attr !== x.attr) cls.push('dim');
                     const where = x.placed && x.where ? `<span class="where">盤にある: B${x.where.bossNumber}${x.where.hourLabel ? ' ' + esc(String(x.where.hourLabel)) : ''}${x.where.pinned ? ' 📌' : x.where.promise ? ' 🔒' : ''}</span>` : '';
                     const team = Array.isArray(x.team) && x.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(x.team, { size: 16 }) : '';
+                    // 🗣 9d: 置ける所が無いピースには理由を添える (選ぶ前から分かる)
+                    const why = (!x.placed && typeof dom.noPlaceReason === 'function') ? dom.noPlaceReason({ player: (snap.players || []).find(pp => String(pp.id) === String(x.memberId)), attr: x.attr, bosses: viewBosses, hourIdxs: viewHours, hourOrder: HOUR_ORDER, remaining: x.remaining }) : null;
+                    const nowhere = why ? `<span class="where nowhere" title="${esc(why.label)}">⚠ 置ける所なし: ${esc(why.label)}</span>` : '';
                     const tk = `--attr-${esc(x.attr)}`;   // トークン名は変数に組んでから var() に入れる (走査が動的な名前を未定義と読む)
                     return `<div class="${cls.join(' ')}" data-piece="${esc(String(x.memberId))}" data-attr="${esc(x.attr)}" data-slot="${x.slot}" draggable="${drag && !x.placed ? 'true' : 'false'}" style="--pc:var(${tk}-solid);--pt:var(${tk});" title="${esc(`${x.name} · ${v ? v.name : x.attr}PT 編成${x.slot === 2 ? '②' : '①'} · ${x.dmgB.toFixed(1)}B`)}">`
-                        + `<span class="pt">${esc(v ? v.name : x.attr)}PT${x.slot === 2 ? '②' : ''}</span><span class="team">${team}</span><span class="dm">${x.dmgB.toFixed(1)}B</span>${where}</div>`;
+                        + `<span class="pt">${esc(v ? v.name : x.attr)}PT${x.slot === 2 ? '②' : ''}</span><span class="team">${team}</span><span class="dm">${x.dmgB.toFixed(1)}B</span>${where}${nowhere}</div>`;
                 }).join('')).join('');
             const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
             // ★ 45 未適用なら箱の頭で言う (置こうとして初めて分かるのでは遅い。読み出しが列の有無を覚えている)
@@ -23642,6 +23688,7 @@
             summary = _planCondStampHtml(plan.conditions) + summary;   // 🧮 「この条件で組みました」を結果の頭に (パズル盤 ①)
             el.innerHTML = summary + stickyHtml + viewToggle + bodyHtml + warnHtml;
             _renderOpsBlockSteps();
+            _opsPlanNoPlaceCheck(el);   // 🗣 9d: 選んだ駒が置ける場所が無ければ理由を言う
             // 算出したあとの操作 (配信 / 共有画像) は結果の下に
             const next = document.getElementById('opsPlanNext');
             if (next) next.style.display = '';
@@ -23660,7 +23707,8 @@
                     if (chip) { _opsPlanSelectChip(chip.dataset); return; }
                     // 置く先のマスをタップ (選んでいる駒があるときだけ)
                     const cell = ev.target.closest('[data-boss][data-h]');
-                    if (cell && _opsPlanSel && cell.dataset.h !== '') _opsPlanPlace(Number(cell.dataset.boss), Number(cell.dataset.h));
+                    if (cell && _opsPlanSel && cell.dataset.h !== '') _opsPlanPlace(Number(cell.dataset.boss), Number(cell.dataset.h));   // 沈んだマスでも押せる → 「置けません: 理由」が出る (🗣 9d)
+                    else if (cell && !_opsPlanSel && cell.dataset.h !== '' && _opsMode) showNotification('先に 🧩 模擬ピースか割当のチップを押して、光ったマスを押します');   // 🗣 9d: 何も起きないままにしない
                 });
                 // PC: つかんで落とす = タップと同じ関数 (_opsPlanPlace)。つかんだ瞬間に置ける場所を光らせる (描き直さずに塗る)
                 el.addEventListener('dragstart', (ev) => {
@@ -24105,9 +24153,12 @@
                         { senderPlayerId: me?.id || null });
                     await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', ref);
                     // 🗣 9h (Codex 再監査 A): 変わった人に送れたら、同じ中身の ref も送信済みにする → 次の配信し直しで変わらなければ (中身の ref) 送り直さない
+                    //   ★ ここで失敗しても本体の通知は送れているので、失敗扱い (out.failed・id 付きの ref の release) にしない。中身の ref は確保したままでもリース (90 秒) が切れれば引き継げる (= まれに重複し得る at-least-once)
                     if (ref !== contentRef && claim) {
-                        const st2 = await claim(seasonId, 'block_publish', contentRef, me?.id || null);
-                        if (st2 === 'claimed') await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', contentRef);
+                        try {
+                            const st2 = await claim(seasonId, 'block_publish', contentRef, me?.id || null);
+                            if (st2 === 'claimed') await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', contentRef);
+                        } catch (e) { console.warn('[publish] 中身の鍵の送信済み化に失敗 (次の配信し直しで重複し得る):', e?.message || e); }
                     }
                     out.covered.add(Number(n.memberId));
                     // 相手が 0 人 (書庫・テスト回の方針で外れた = skipped) は「送れた」に数えない。確保は送信済みにする (送り直しても同じ結果: Codex指摘 3792ddd)
