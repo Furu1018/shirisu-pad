@@ -24712,16 +24712,20 @@
         // 🗣 9e (Codex 再監査 C): 読み取りの世代。開く・閉じるで進め、開いた時と違えば読み取りの結果を反映しない (読み取り中に閉じて開き直したとき、古いスクショが新しい行に入らない)
         let _opsBossHpGen = 0;
         async function openOpsBossHpModal() {
-            _opsBossHpGen++;
+            const gen = ++_opsBossHpGen;   // この「開く」の世代。await のあとに照合 (閉じて開き直したあとに古い open が遅れて着いても、新しい行を上書きしない: Codex 9e C・4 回目)
             document.getElementById('opsBossHpModal').classList.add('open');
             document.getElementById('opsBossHpMessage').textContent = '';
             const ocrStatus = document.getElementById('opsBossHpOcrStatus');
             if (ocrStatus) { ocrStatus.innerHTML = '&nbsp;'; ocrStatus.style.color = ''; }
+            const ocrInput = document.getElementById('opsBossHpOcrInput');
+            if (ocrInput) ocrInput.disabled = false;   // 前の読み取りが走っていても受け口は戻す (その結果は世代で捨てる)
             const listEl = document.getElementById('opsBossHpList');
             listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
             const ctx = await ensureActiveSeasonLoaded();
+            if (gen !== _opsBossHpGen) return;
             seasonStore.invalidate(); // 次回開く時最新を取得するため
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+            if (gen !== _opsBossHpGen) return;
             if (!fresh.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:13px;">アクティブシーズン無し</p>'; return; }
             const saveAll = document.getElementById('opsBossHpSaveAllBtn');
             if (saveAll) saveAll.textContent = '⏬ 全ボスを一括保存';   // 🗣 9e: 読み取りのあとの文を戻す
@@ -24812,10 +24816,11 @@
                 statusEl.textContent = `✅ ${filled}/${rows.length} ボスを読み取り${lvText}${diffText}。確認して「⏬ 読み取った値を保存」`;
                 statusEl.style.color = 'var(--ok)';
             } catch (e) {
+                if (gen !== _opsBossHpGen) return;   // 閉じた / 開き直したあとの失敗は、新しいシートに出さない
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = 'var(--bad)';
             } finally {
-                if (input) input.disabled = false;
+                if (gen === _opsBossHpGen && input) input.disabled = false;   // 同じ世代のときだけ戻す (開き直したシートの受け口は open が戻している。新しい読み取り中なら触らない)
             }
         }
         // 🗣 9e (2026-10-24・運用の見直し Q5): 読み取り → 差分 → 1 タップ保存。読み取った値と いまの値 の差分を行に出し、保存ボタンを「読み取った値を保存」にする。
@@ -25719,7 +25724,7 @@
 ━━━━━━━━━━━━━━
 1. ブロックの前に **「🧱 夕方 18〜20時 のあなたの凸が決まりました」** の通知が届きます → ホームの **📅 きょうの凸** に 時刻・ボス・PT・編成 (5 キャラ) が出るので **✅ 確認しました** を押す
 2. その時刻に配信どおりに凸 → **結果のスクショを Discord に貼る**だけ (PAD に凸を報告する操作はありません。運営が取り込むと ✓ が付きます)
-3. 前のブロックの結果で予定が変わることがあります。**「プランが変わりました」の通知が来たら、もう一度 **📅 きょうの凸** を見て **✅**** (✅ を押していなくても、変わった人には届きます)
+3. 前のブロックの結果で予定が変わることがあります。**「プランが変わりました」の通知が来たら、もう一度 📅 きょうの凸 を見て ✅** (✅ を押していなくても、変わった人には届きます)
 4. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
 
 PAD の中で入力するものは無くなりました (時間・模擬・希望・凸の結果はすべて Discord へ)。PAD は「見る・✅ 確認しました を押す」だけです。分からないことは PAD のヘルプか、ここで聞いてください!`;
