@@ -47,7 +47,7 @@ h1 .em { color: #4b17ed; }
 .box.light { background: #F0ECFE; color: #14161A; }
 .box h4 { margin: 0 0 1mm; font-size: 9pt; font-weight: 900; }
 .box ul { margin: 0; padding-left: 3.5mm; }
-.blocks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1mm; margin-top: 1.5mm; }
+.blocks { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1mm; margin-top: 1.5mm; }
 .blk { background: #fff; border-radius: 1.5mm; text-align: center; padding: 0.8mm 0; font-size: 7.4pt; font-weight: 900; line-height: 1.25; }
 .blk small { display: block; font-size: 6.2pt; color: #62666e; font-weight: 800; }
 .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
@@ -57,7 +57,7 @@ h1 .em { color: #4b17ed; }
 .foot-note { font-size: 6.8pt; color: #62666e; text-align: right; }
 `;
 const page = (title, body) => `<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>${title}</title><style>${CSS}</style></head><body><div class="page">${body}</div></body></html>`;
-const blocks = `<div class="blocks">${[['朝', '5〜8時'], ['午前', '9〜11時'], ['昼', '12〜14時'], ['午後', '15〜17時'], ['夕方', '18〜20時'], ['夜', '21〜23時'], ['深夜', '翌0〜4時']].map(([a, b]) => `<div class="blk">${a}<small>${b}</small></div>`).join('')}</div>`;
+const blocks = `<div class="blocks">${[['朝', '5〜8時'], ['午前', '9〜12時'], ['午後', '13〜16時'], ['夕方', '17〜20時'], ['夜', '21〜翌0時'], ['深夜', '翌1〜4時']].map(([a, b]) => `<div class="blk">${a}<small>${b}</small></div>`).join('')}</div>`;
 
 // ===== メンバー向け =====
 const member = page('しりすこPAD メンバーがやること', `
@@ -67,12 +67,12 @@ const member = page('しりすこPAD メンバーがやること', `
 <div class="cols three">
  <div class="col"><span class="when">前日まで</span><h2><span class="n">1</span>Discord に 3 つ書く</h2>
   <ol><li><b>出られるブロックと、何凸するか</b> — 例「朝 1・夜 2」「夕方だけ 3」。凸数が無ければブロックだけで OK (運営におまかせ)。出られない回は「今回は難しい」</li>
-  <li><b>模擬のスクショ</b> — 属性ごとに 1 つ (編成 5 キャラとダメージが写るもの)。<b>18 時以降に出られる人は、ボス 5 の属性だけ編成を 2 つ</b></li>
+  <li><b>模擬のスクショ</b> — 属性ごとに 1 つ (編成 5 キャラとダメージが写るもの・属性ごとに 3 編成まで登録できます)。<b>18 時以降に出られる人は、ボス 5 の属性だけ編成を 2 つ</b></li>
   <li><b>凸先の希望があれば</b> — 「夕方に 風圧PT の編成① で」のように (= 予約。組み直しても動かない)</li></ol>
   <p>運営が登録すると、ホームの <b>⏰ 参加可能時間</b> / <b>📘 登録された模擬</b> / <b>🔒 予約</b> に出て通知が届きます。違っていたら Discord で運営へ。</p>
   <div class="shots">${crop('m06', null, 57)}<span class="cap">運営が登録すると ⏰ に時間と「凸数: 夜 2」が出る</span>${crop('m03', [0, 0, 748, 480], 57)}<span class="cap">📘 登録された模擬 (直すときは Discord に出し直す)</span></div></div>
  <div class="col"><span class="when">当日 · 自分のブロックの前</span><h2><span class="n">2</span>配信を見て ✅</h2>
-  <ol><li>ブロックの前に <b>「🧱 夜 21〜23時 のあなたの凸が決まりました」</b> の通知が来る</li>
+  <ol><li>ブロックの前に <b>「🧱 夜 21〜翌0時 のあなたの凸が決まりました」</b> の通知が来る</li>
   <li>ホームの <b>📅 きょうの凸</b> で「何時に・どのボスへ・どの PT の どの編成で」を見る</li>
   <li>読んだら <b>✅ 確認しました</b> を押す</li>
   <li><b>「プランが変わりました」の通知が来たら、もう一度 📅 を見て ✅</b> (前のブロックの結果で予定が変わることがある)</li></ol>
@@ -87,7 +87,7 @@ const member = page('しりすこPAD メンバーがやること', `
 </div>
 <div class="foot">
  <div class="box dark"><h4>PAD で触るのは、この 4 つだけ</h4><ul><li>最初の 1 回: 名乗る・🔔 通知を ON (iPhone は先に「ホーム画面に追加」。Safari のタブのままだと通知が来ません)</li><li>📅 きょうの凸 を見る</li><li>✅ 確認しました を押す</li><li>困ったら ヘルプ、または 設定 › 🎮 練習する (メンバー編) — 本番と同じ画面を 3 分で試せます</li></ul></div>
- <div class="box light"><h4>🧱 ブロックは 7 つ</h4>${blocks}<p style="margin:1.5mm 0 0;font-size:7.4pt;line-height:1.5;">運営はブロックごとに、そのブロックに出られる人で凸を組み、ブロックの前に配信します。凸数を書いたブロックには、その数より多くは割り当てません。</p></div>
+ <div class="box light"><h4>🧱 ブロックは 6 つ (5 時から 4 時間ずつ)</h4>${blocks}<p style="margin:1.5mm 0 0;font-size:7.4pt;line-height:1.5;">運営はブロックごとに、そのブロックに出られる人で凸を組み、ブロックの前に配信します。凸数を書いたブロックには、その数より多くは割り当てません。</p></div>
 </div>`);
 
 // ===== 運営向け =====
