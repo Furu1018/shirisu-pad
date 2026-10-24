@@ -12871,7 +12871,9 @@ console.log('\ngrowthDomain:');
         // Codex 9e C (再監査 2〜4 回目): 読み取りの世代 — 開く・閉じるで進め、読み取っている間に変わっていたら結果 (成功も失敗も) を反映しない。開く側も await のあとに照合 (古い open が遅れて新しい行を上書きしない)。
         //   finally は同じ世代のときだけ受け口を戻す (開き直したシートの受け口は open が戻す・新しい読み取り中なら触らない)
         assert.ok(/let _opsBossHpGen = 0;/.test(html) && /async function openOpsBossHpModal\(\) \{\s*\n\s*const gen = \+\+_opsBossHpGen;/.test(html) && /function closeOpsBossHpModal\(\) \{\s*\n\s*_opsBossHpGen\+\+;/.test(html), '開く・閉じるで世代を進めていない');
-        assert.ok(/const ctx = await ensureActiveSeasonLoaded\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;\s*\n\s*seasonStore\.invalidate\(\);[^\n]*\n\s*const fresh = await window\.supabaseLoadActiveSeasonWithBosses\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;/.test(open), '開くときの await のあとに世代を照合していない (古い open が新しい行を上書きする)');
+        assert.ok(/try \{\s*\n\s*await ensureActiveSeasonLoaded\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;\s*\n\s*seasonStore\.invalidate\(\);[^\n]*\n\s*fresh = await window\.supabaseLoadActiveSeasonWithBosses\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;\s*\n\s*\} catch \(e\) \{\s*\n\s*if \(gen !== _opsBossHpGen\) return;/.test(open), '開くときの await のあとに世代を照合していない (古い open が新しい行を上書きする) / 読み込みの失敗を受け止めていない');
+        // Codex 9e C (6 回目): 読み込みが失敗したら、行が無いので受け口は閉じたまま。代わりに「もう一度読み込む」の導線 (開き直しで受け口が整う)
+        assert.ok(/❌ 読み込めませんでした \(\$\{escapeHtml\(e\?\.message \|\| String\(e\)\)\}\)/.test(open) && /onclick="openOpsBossHpModal\(\)"[^\n]*>もう一度読み込む<\/button>/.test(open), '読み込みの失敗に導線が無い');
         // Codex 9e C (5 回目): 開くあいだは受け口を閉じ、行を描き終えてから開く (同じ世代の中で、読み取りが行より先に返って描画で消えない)
         assert.ok(/if \(ocrInput\) ocrInput\.disabled = true;[^\n]*\n\s*const listEl = document\.getElementById\('opsBossHpList'\);/.test(open), '開くあいだ受け口を閉じていない');
         assert.ok(/\}\)\.join\(''\);\s*\n\s*if \(ocrInput\) ocrInput\.disabled = false;[^\n]*\n\s*\}\n$/.test(open), '行を描き終えたあとに受け口を開いていない');

@@ -24721,11 +24721,20 @@
             if (ocrInput) ocrInput.disabled = true;   // 行を描き終えるまで受け口は閉じる (開き直した直後の読み取りが、行の無い所に入って描画で消えない: Codex 9e C・5 回目)。前の読み取りの結果は世代で捨てる
             const listEl = document.getElementById('opsBossHpList');
             listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
-            const ctx = await ensureActiveSeasonLoaded();
-            if (gen !== _opsBossHpGen) return;
-            seasonStore.invalidate(); // 次回開く時最新を取得するため
-            const fresh = await window.supabaseLoadActiveSeasonWithBosses();
-            if (gen !== _opsBossHpGen) return;
+            let fresh;
+            try {
+                await ensureActiveSeasonLoaded();
+                if (gen !== _opsBossHpGen) return;
+                seasonStore.invalidate(); // 次回開く時最新を取得するため
+                fresh = await window.supabaseLoadActiveSeasonWithBosses();
+                if (gen !== _opsBossHpGen) return;
+            } catch (e) {
+                if (gen !== _opsBossHpGen) return;
+                // 行が描けなかった = 受け口は閉じたまま (読み取っても入れる行が無い)。読み込み直しの導線を出す (Codex 9e C・6 回目)
+                listEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">❌ 読み込めませんでした (${escapeHtml(e?.message || String(e))}) `
+                    + `<button type="button" onclick="openOpsBossHpModal()" style="margin-left:6px;padding:4px 10px;border-radius:6px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">もう一度読み込む</button></p>`;
+                return;
+            }
             if (!fresh.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:13px;">アクティブシーズン無し</p>'; return; }
             const saveAll = document.getElementById('opsBossHpSaveAllBtn');
             if (saveAll) saveAll.textContent = '⏬ 全ボスを一括保存';   // 🗣 9e: 読み取りのあとの文を戻す
