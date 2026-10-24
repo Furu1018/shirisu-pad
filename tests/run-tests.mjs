@@ -12764,7 +12764,7 @@ console.log('\ngrowthDomain:');
         // ブロックの配信の通知: 配信 1 回につき 1 度 (block_publish) / 同じブロックの配信し直しは変わった人だけ / 通知した人に L4 を重ねない
         const notify = html.match(/async function _notifyBlockPublish\(\{ pub, plan, seasonId, me, changedIds, ackedIds, goneIds \}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';   // 🗣 9h: 確認の有無と割当が消えた人も受け取る
         // ★ 二重送信よけは人ごと・中身ごと (配信 1 回ぶんにすると、送れなかった人に二度と届かない: Codex指摘 1901a8a)
-        assert.ok(/const contentRef = `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|\$\{n\.lines\.join\(' \/ '\)\}`;\s*\n\s*const ref = \(n\.changed && !n\.gone\) \? `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|p\$\{pub\.id\}\|\$\{n\.lines\.join\(' \/ '\)\}` : contentRef;/.test(notify) && /if \(ref !== contentRef && claim\) \{\s*\n\s*const st2 = await claim\(seasonId, 'block_publish', contentRef, me\?\.id \|\| null\);\s*\n\s*if \(st2 === 'claimed'\) await window\.supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', contentRef\);/.test(notify) && /await claim\(seasonId, 'block_publish', ref, me\?\.id \|\| null\)/.test(notify), '二重送信よけが人ごと・中身ごとでない');
+        assert.ok(/const contentRef = `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|\$\{n\.lines\.join\(' \/ '\)\}`;\s*\n\s*const ref = \(n\.changed && !n\.gone\) \? `\$\{scope\.from\}-\$\{scope\.to\}\|\$\{n\.memberId\}\|p\$\{pub\.id\}\|\$\{n\.lines\.join\(' \/ '\)\}` : contentRef;/.test(notify) && /if \(ref !== contentRef && claim\) \{\s*\n\s*try \{\s*\n\s*const st2 = await claim\(seasonId, 'block_publish', contentRef, me\?\.id \|\| null\);\s*\n\s*if \(st2 === 'claimed'\) await window\.supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', contentRef\);\s*\n\s*\} catch \(e\) \{/.test(notify) && /await claim\(seasonId, 'block_publish', ref, me\?\.id \|\| null\)/.test(notify), '二重送信よけが人ごと・中身ごとでない');
         assert.ok(/supabaseReleaseRaidNotice\?\.\(seasonId, 'block_publish', ref\)/.test(notify) && /supabaseMarkRaidNoticeSent\?\.\(seasonId, 'block_publish', ref\)/.test(notify), '送れなかったときに確保を戻していない');
         const pubFn = html.match(/async function handleOpsPublishPlan\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const sameBlock = !!\(prevScope && Number\(prevScope\.from\) === Number\(published\.blockScope\.from\) && Number\(prevScope\.to\) === Number\(published\.blockScope\.to\)\);/.test(pubFn)
@@ -12780,6 +12780,39 @@ console.log('\ngrowthDomain:');
         assert.ok(pubFn.includes('名 (目安) には ✅ 確認の有無に関わらず通知します (✅ 確認済み ${ackedChanged} 名 / 未確認 ${changedN - ackedChanged} 名') && pubFn.includes('このブロックに割当のある人へ「あなたの凸が決まりました」を 1 通ずつ送ります。'), '配信の確認ダイアログが 9h の通知を説明していない');
         assert.ok(html.includes('✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます') && html.includes('押していなくても、あなたの割当が変わったときは通知が届きます。'), '✅ 確認しました の説明が「押した人だけ通知」のまま (9h)');
         assert.ok(/if \(!sameBlock && !\(r\.sent === 0 && r\.failed > 0\)\) targets = \[\];/.test(pubFn), '新しいブロックの初回の配信で、仮の割当との差分を「割当が変わりました」と送っている / 通知が全部失敗したのに L4 にも任せない');
+    });
+    test('★ 🗣 9d planBoardDomain.noPlaceReason: 置ける所が 1 つも無い理由 (3 凸を使い切った → 属性のボスがいない → 時刻のマスが無い → 参加可能時間に合わない) / 置けるなら null / ⏳隙間型は時間を見ない', () => {
+        const d = globalThis.planBoardDomain;
+        const HO = Array.from({ length: 24 }, (_, i) => i);   // 添字 = 時
+        const p = { id: 7, name: 'あお', availableSlots: ['h18', 'h19'], flexTime: false };
+        const bosses = [{ boss_number: 1, weakness: 'iron' }, { boss_number: 3, weakness: 'fire' }];
+        assert.equal(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18, 19, 20], hourOrder: HO, remaining: 2 }), null, '置けるのに理由を出した');
+        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO, remaining: 0 }), { reason: 'spent', label: 'あお は 3 凸を使い切っています' });
+        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'water', bosses, hourIdxs: [18], hourOrder: HO, remaining: 2 }), { reason: 'attr', label: '水冷PT のボス (弱点が 水冷) がこの盤にいません' });
+        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [], hourOrder: HO, remaining: 2 }), { reason: 'no_hours', label: 'このブロックに置ける時刻のマスがありません' });
+        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [20, 21], hourOrder: HO, remaining: 2 }), { reason: 'time', label: 'あお の参加可能時間に合う時刻のマスがありません' });
+        assert.equal(d.noPlaceReason({ player: { ...p, flexTime: true, availableSlots: [] }, attr: 'fire', bosses, hourIdxs: [20], hourOrder: HO, remaining: 1 }), null, '⏳隙間型は時間を見ない (canPlace と同じ)');
+        assert.equal(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO }), null, 'remaining 無しは上限を見ない');
+        assert.deepEqual(d.noPlaceReason({ player: null, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO }), { reason: 'no_player', label: 'メンバーが盤面にいません' });
+    });
+    test('★ 配線: 🗣 9d 置けない理由をその場で — 選んだ駒が置ける場所が無ければ理由 (描いた直後・ドラッグの塗り直し) / 🧩 ピースに「置ける所なし」/ 駒を選ばずにマスを押したら案内 / 沈んだマスも押せる (置けません: 理由)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const fn = html.match(/function _opsPlanNoPlaceCheck\(el\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.length > 0, '_opsPlanNoPlaceCheck が無い');
+        assert.ok(/if \(!el \|\| !sel \|\| !dom \|\| !snap \|\| sel\.pinned\) return;/.test(fn), '📌 を置き直すときにも出る / 駒が無いのに出る');
+        assert.ok(/if \(sel\.noPlaceTold === key\) return;\s*\n\s*sel\.noPlaceTold = key;/.test(fn), '同じ選択で描き直すたびに出る');
+        assert.ok(/dom\.noPlaceReason\(\{ player: p, attr: sel\.attr, bosses: \(snap\.bosses \|\| \[\]\)\.filter\(b => bossNums\.has\(Number\(b\.boss_number\)\)\), hourIdxs: \[\.\.\.hours\], hourOrder: HOUR_ORDER,/.test(fn), '盤に出ているボス × 時刻のマスで理由を見ていない');
+        assert.ok(fn.includes("showNotification(`置ける場所がありません: ${why.label}${hint}`)") && fn.includes("' — 🧱 盤 に切り替えると、このブロックのどの時刻にも置けます'"), '理由の文 / 時間割から 🧱 盤 への案内が無い');
+        assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;\s*\n\s*_renderOpsBlockSteps\(\);\s*\n\s*_opsPlanNoPlaceCheck\(el\);/.test(html), '描いた直後に見ていない');
+        const paint = html.match(/function _opsPlanPaintTargets\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/\}\);\s*\n\s*_opsPlanNoPlaceCheck\(el\);[^\n]*\n\s*\}\n$/.test(paint), 'ドラッグの塗り直しで見ていない');
+        assert.ok(html.includes("else if (cell && !_opsPlanSel && cell.dataset.h !== '' && _opsMode) showNotification('先に 🧩 模擬ピースか割当のチップを押して、光ったマスを押します');"), '駒を選ばずにマスを押したときの案内が無い');
+        assert.ok(/if \(cell && _opsPlanSel && cell\.dataset\.h !== ''\) _opsPlanPlace\(Number\(cell\.dataset\.boss\), Number\(cell\.dataset\.h\)\);/.test(html) && !/cell\.dataset\.can !== '1'\) return;\s*\n\s*_opsPlanPlace/.test(html), '沈んだマスを押しても何も言わない (置けません: 理由 を出す経路が塞がれている)');
+        const tray = html.match(/function _opsPlanTrayHtml\(plan\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const why = \(!x\.placed && typeof dom\.noPlaceReason === 'function'\) \? dom\.noPlaceReason\(\{ player: \(snap\.players \|\| \[\]\)\.find\(pp => String\(pp\.id\) === String\(x\.memberId\)\), attr: x\.attr, bosses: viewBosses, hourIdxs: viewHours, hourOrder: HOUR_ORDER, remaining: x\.remaining \}\) : null;/.test(tray), 'ピースの理由を見ていない');
+        assert.ok(tray.includes('<span class="where nowhere" title="${esc(why.label)}">⚠ 置ける所なし: ${esc(why.label)}</span>') && tray.includes('${where}${nowhere}</div>'), 'ピースに理由を添えていない');
+        assert.ok(/if \(plan && _opsPlanViewMode === 'board' && plan\.blockScope\) \{[\s\S]*?filter\(i => i >= nowIdx\);/.test(tray) && /if \(a\.hourIdx != null && !a\.flex\) hs\.add\(Number\(a\.hourIdx\)\);/.test(tray), '箱が見ている時刻のマスが 盤 (ブロックのいまより後) / 時間割 (凸のある時刻) と違う');
+        assert.ok(html.includes('.plan-piece .where.nowhere { color: var(--warn-deep); }'), '理由の色が無い');
     });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
         const d = globalThis.planBoardDomain;

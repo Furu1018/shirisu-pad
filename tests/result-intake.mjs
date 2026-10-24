@@ -346,6 +346,12 @@ await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 �
     const heldC = makeEnv(); heldC._claim = (ref) => (ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'held' : 'claimed');
     await heldC._notifyBlockPublish({ pub: { id: 508 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
     assert.deepEqual(heldC.calls.filter(c => c[0] === 'markSent').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p508|19時 B3 灼熱PT 編成①'], '誰かが送信中の中身の鍵を送信済みにした');
+    // 中身の鍵の送信済み化が失敗しても、本体の通知は送れている → 失敗扱いにしない (covered・sent に入れ、id 付きの鍵は戻さない)
+    const markBad = makeEnv();
+    markBad.window.supabaseMarkRaidNoticeSent = async (...a) => { if (a[2] === '18-20|8|19時 B3 灼熱PT 編成①') throw new Error('mark failed'); markBad.calls.push(['markSent', ...a]); };
+    const r6 = await markBad._notifyBlockPublish({ pub: { id: 509 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
+    assert.deepEqual([[...r6.covered], r6.sent, r6.failed], [[7, 8], 2, 0], '中身の鍵の送信済み化の失敗を本体の失敗にした');
+    assert.ok(!markBad.calls.some(c => c[0] === 'release'), '送れているのに id 付きの鍵を戻した');
     // 配信し直し (変わった人なし): 同じ中身をもう送ってある人 (done) には送らないが、L4 の重ね送りからは外す (covered)。
     //   前の配信で「変わった」として送れた人 (8) は中身の鍵も done なので送り直さない (Codex 9h 再監査 A)
     const again = makeEnv(); again._claim = (ref) => (ref.startsWith('18-20|7|') || ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'done' : 'claimed');
