@@ -354,8 +354,11 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM pg_constraint
                 WHERE conname = 'chk_player_damages_slot'
                   -- 55 は CHECK (slot IN (1, 2, 3))。32 (1, 2) の定義には 3 が現れない
-                  AND pg_get_constraintdef(oid) LIKE '%3%'),
-        '模擬の編成を 1 属性 3 つまで (player_damages.slot 1〜3)'
+                  AND pg_get_constraintdef(oid) LIKE '%3%')
+        AND EXISTS (SELECT 1 FROM pg_constraint
+                WHERE conrelid = to_regclass('public.plan_reservations') AND contype = 'c'
+                  AND pg_get_constraintdef(oid) LIKE '%loadout_slot%' AND pg_get_constraintdef(oid) LIKE '%3%'),
+        '模擬の編成を 1 属性 3 つまで (player_damages.slot 1〜3・予約の loadout_slot も 1〜3)'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),

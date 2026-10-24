@@ -5442,7 +5442,7 @@
                         </div>
                         <ul>
                             <li>最低ラインは<strong>キャラ被りなしで 3 属性</strong>。5 属性そろうと運営が助かります</li>
-                            <li><strong>1 属性に 2 編成</strong>まで登録できます (キャラの被らない別の編成)</li>
+                            <li><strong>1 属性に 3 編成</strong>まで登録できます (キャラの被らない別の編成。2026-10-24 から)</li>
                             <li><strong>18 時以降に出られる人は、ボス 5 の弱点の模擬を 2 編成</strong>出してください。Lv3 を踏破すると開く「Lv4 = ボス 5 だけ・HP 無限」で 2 凸目に使います (2 編成目は Lv4 でだけ使います)</li>
                         </ul>
                         <div class="help-callout">
@@ -9792,7 +9792,7 @@
                         if (_homeSimple()) {
                             const when = pz.flex ? '<span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? esc(pz.hourLabel) : '');
                             const team = Array.isArray(pz.team) && pz.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(pz.team, { size: 22 }) : '';
-                            return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:6px;"></span><span style="flex:1;min-width:0;">${when ? `<b>${when}</b> ` : ''}${esc(bossName(pz.bossNumber))}${pz.level ? ` <span style="color:var(--t-muted);">Lv${Number(pz.level)}</span>` : ''}<br><span style="font-size:11.5px;color:var(--t-body);">${pt ? `${esc(pt)}PT ` : ''}編成${Number(pz.loadoutSlot) === 2 ? '②' : '①'} · ${pz.dmgB.toFixed(1)}B</span>${team ? `<span style="display:flex;gap:2px;flex-wrap:wrap;margin-top:4px;">${team}</span>` : ''}</span></div>`;
+                            return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:6px;"></span><span style="flex:1;min-width:0;">${when ? `<b>${when}</b> ` : ''}${esc(bossName(pz.bossNumber))}${pz.level ? ` <span style="color:var(--t-muted);">Lv${Number(pz.level)}</span>` : ''}<br><span style="font-size:11.5px;color:var(--t-body);">${pt ? `${esc(pt)}PT ` : ''}編成${SLOT_JP[Number(pz.loadoutSlot)] || '①'} · ${pz.dmgB.toFixed(1)}B</span>${team ? `<span style="display:flex;gap:2px;flex-wrap:wrap;margin-top:4px;">${team}</span>` : ''}</span></div>`;
                         }
                         // ★ 本文は 1 つの span に (flex の子にテキストを直に並べると横に散って折り返す)
                         return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:5px;"></span><span style="flex:1;min-width:0;">${esc(bossName(pz.bossNumber))}${pt ? ` <span style="color:var(--t-muted);">${esc(pt)}PT</span>` : ''} · ${pz.dmgB.toFixed(1)}B${pz.flex ? ' <span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? ` <span style="color:var(--t-muted);">${esc(pz.hourLabel)}</span>` : '')}</span></div>`;
@@ -10297,7 +10297,7 @@
                 const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
                 return `<div style="padding:11px 12px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--warn-solid);margin-bottom:8px;">
                     <div style="font-size:12px;font-weight:900;color:var(--warn-deep);">📣 運営からのお願い${r.pinned_by ? ` (${escapeHtml(String(r.pinned_by))})` : ''}${dl}</div>
-                    <div style="margin-top:6px;font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
+                    <div style="margin-top:6px;font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
                     ${team ? `<div style="margin-top:6px;display:flex;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
                     <div data-member-input style="display:flex;gap:8px;margin-top:10px;">
                         <button type="button" onclick="handleAcceptPin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">引き受ける</button>
@@ -10345,7 +10345,7 @@
                     }
                     await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
                         characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
-                    window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${window.reservationsDomain?.whenOf(row) || row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
+                    window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${window.reservationsDomain?.whenOf(row) || row.time_slot || '⏳'} B${row.boss_number} 編成${SLOT_JP[Number(row.loadout_slot)] || '①'}`, { playerId: me.id, actorName: me.name });
                     showNotification('🔒 引き受けました。運営が組み直したプランに予約として入ります');
                     _notifyOps({ title: '🔒 お願いを引き受けました', body: `${me.name || '#' + me.id}: ${_resvRowJp(row)}`, tag: 'ops-pin-answer', except: me.id });
                 } else {
@@ -13955,7 +13955,7 @@
                 }
                 // 測定ボスレベルは廃止 (2026-09-06) — level は渡さない (= 未指定 '0' として保存される)
                 const res = await window.supabaseSaveMockSubmission(id.id, attr, {
-                    damageB, slot: forPlayer ? (Number(d.slot) === 2 ? 2 : 1) : 1,   // 📸 運営の取り込みは選んだ保存先 (段階 5: ボス 5 の 2 編成目)
+                    damageB, slot: forPlayer ? (MY_TEAM_SLOTS.includes(Number(d.slot)) ? Number(d.slot) : 1) : 1,   // 📸 運営の取り込みは選んだ保存先 (① / ② / ③。段階 5 → 2026-10-24 に 3 つまで)
                     characters: canon && canon.length > 0 ? canon : null,
                     actorName: forPlayer ? ((getCurrentIdentity() || {}).name || '運営') : null,   // 代理登録の印 (活動ログ)
                 });
@@ -22816,7 +22816,7 @@
                         kept += 1;
                     } catch (e) { showNotification(`⚠ B${k.bossNumber} の凸を残す仮置きに失敗: ${e?.message || e}`); }
                 }
-                window.supabaseLogActivity?.('ops', `📌 仮置き: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}${kept ? ` / 残す ${kept} 凸も仮置き` : ''}`, { actorName: me?.name || null });
+                window.supabaseLogActivity?.('ops', `📌 仮置き: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${SLOT_JP[Number(sel.loadoutSlot)] || '①'} に${existing ? '置き直し' : ''}${kept ? ` / 残す ${kept} 凸も仮置き` : ''}`, { actorName: me?.name || null });
                 showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に仮置きして組み直します${kept ? ` (残す ${kept} 凸も仮置き)` : ''}`);
                 _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
                 opsStore.invalidate();
@@ -22832,7 +22832,7 @@
         function _opsPlanSwapHtml(sw, piece) {
             const esc = escapeHtml, JP = (window.planBoardDomain && window.planBoardDomain.ATTR_JP) || {};
             const snip = (t) => (Array.isArray(t) && t.length && typeof renderTeamSnippet === 'function') ? renderTeamSnippet(t, { size: 18 }) : '';
-            const pt = (attr, slot) => `${esc(JP[attr] || attr || '')}PT${Number(slot) === 2 ? '②' : ''}`;
+            const pt = (attr, slot) => `${esc(JP[attr] || attr || '')}PT${Number(slot) >= 2 ? (SLOT_JP[Number(slot)] || slot) : ''}`;
             const single = sw.pickable && sw.free.length === 1 ? sw.free[0].key : null;   // 選べるのが 1 つなら選んでおく
             const head = `<div class="ps-new"><b>📌 置く</b> ${esc(piece.name)} · ${pt(piece.attr, piece.slot)} ${Number(piece.dmgB || 0).toFixed(1)}B → B${Number(piece.bossNumber)} ${esc(piece.hourLabel || '')}<span class="ps-team">${snip(piece.team)}</span></div>`;
             const ICON = { promise: '🔒', pinned: '📌', requested: '📝', conflict: '✕', free: '·' };
@@ -24667,9 +24667,11 @@
                 return;
             }
             el.style.display = '';
+            // 🧱 区切りを変えたあと (既定 7 つ → 6 つ・2026-10-24 など) に残る「どのブロックにも効かない配信」。黙って消えると約束を失うので、組み直して配信し直すよう知らせる (Codex 監査 §10 B)
+            const strayNote = _opsStrayPubNote();
             if (!published) {
                 el.style.background = 'rgba(255,61,68,0.10)'; el.style.color = 'var(--bad-deep)';
-                el.textContent = '🚫 いま配信中のプランはありません — メンバーは自分の割当を見られません';
+                el.textContent = '🚫 いま配信中のプランはありません — メンバーは自分の割当を見られません' + strayNote;
                 return;
             }
             if (published.frozen_at) {
@@ -24704,7 +24706,21 @@
             const blkName = published.plan?.blockScope ? ` (🧱 ${published.plan.blockScope.name || published.plan.blockScope.label || ''})` : '';   // 🧱 段階 7: どのブロックの配信か
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中${blkName}: ${when}${ago}${who}`
                 + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。承認済みの予約を反映して組み直し、配信し直してください`
-                    : (stale ? ' — 盤面が動いていないか確認してください' : ''));
+                    : (stale ? ' — 盤面が動いていないか確認してください' : ''))
+                + strayNote;
+        }
+        // 🧱 いまの区切りのどのブロックにも効かない配信 (blockScope の鍵が合わない行) の案内。無ければ ''。取り直した配信の一覧 (_opsPublishedRows) と、いまのシーズンの区切りで見る
+        function _opsStrayPubNote() {
+            try {
+                const dom = window.publishedPlansDomain, rb = window.raidBlocksDomain;
+                if (!dom || !rb || typeof dom.strayRows !== 'function') return '';
+                const season = _opsStageSeason();
+                const rows = (Array.isArray(_opsPublishedRows) ? _opsPublishedRows : []).filter(r => r && season && Number(r.season_id) === Number(season.id));
+                const stray = dom.strayRows(rows, rb.blocksOfSeason(season));
+                if (!stray.length) return '';
+                const labels = [...new Set(stray.map(x => x.label))].slice(0, 3).join(' / ');
+                return ` — ⚠️ 区切りを変える前の配信が ${stray.length}件 (${labels}${stray.length > 3 ? ' …' : ''}) あり、いまのブロックには効きません。そのブロックを組み直して配信し直してください`;
+            } catch { return ''; }
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
@@ -25746,7 +25762,7 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
 レイドの日 (5時〜翌4時) を 朝 / 午前 / 午後 / 夕方 / 夜 / 深夜 に区切り、運営はブロックの頭に「そのブロックに出られる人だけ」で組んで配信します。後ろのブロックはまだ決めないので、途中で組み直しても誰も振り回されません。
 
 **📥 材料にしているもの (5 つ)**
-参加可能時間と凸数 / 登録された模擬 (属性ごとに編成①・②) / 🔒 承認済みの予約 / ボスの残り HP / 済んだ凸 (運営が取り込んだ結果)
+参加可能時間と凸数 / 登録された模擬 (属性ごとに編成①・②・③) / 🔒 承認済みの予約 / ボスの残り HP / 済んだ凸 (運営が取り込んだ結果)
 **つまり、みんなの登録の質 = プランの質**です。
 
 **⚖️ 割り当てのルール**
@@ -30063,7 +30079,7 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
         function _resvDraftJp(d) {
             const wrapH = (h) => (Number(h) >= 0 && Number(h) <= 4) ? `翌${Number(h)}` : String(Number(h));
             const t = d?.block ? `${wrapH(d.block.from)}〜${wrapH(d.block.to)}時のどこか` : d?.flex ? '⏳' : (d?.timeSlot ? `${Number(String(d.timeSlot).slice(1))}時` : '');   // 🧱 段階 3
-            return `B${Number(d?.bossNumber)} ${t} 編成${Number(d?.loadoutSlot) === 2 ? '②' : '①'}`.replace(/\s+/g, ' ');
+            return `B${Number(d?.bossNumber)} ${t} 編成${SLOT_JP[Number(d?.loadoutSlot)] || '①'}`.replace(/\s+/g, ' ');
         }
         function _resvRowJp(r) {
             return _resvDraftJp({ bossNumber: r?.boss_number, timeSlot: r?.time_slot, flex: r?.time_mode === 'flex', loadoutSlot: r?.loadout_slot,

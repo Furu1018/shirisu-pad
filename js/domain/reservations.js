@@ -179,7 +179,7 @@
             const loadoutSlot = Number(r.loadout_slot);
             if (level !== null && (!Number.isInteger(level) || level < 1 || level > 4)) return;
             if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return;
-            if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > 2) return;
+            if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > SLOT_MAX) return;
             if (r.player_id == null) return;
             out.push({
                 reservationId: r.id ?? null,
@@ -259,6 +259,7 @@
     const idxOfHourB = (h) => { const n = Number(h); return (h != null && h !== '' && Number.isInteger(n) && n >= 0 && n <= 23) ? ((n - 5 + 24) % 24) : null; };
     const wrapHour = (h) => (Number(h) >= 0 && Number(h) <= 4) ? `翌${Number(h)}` : String(Number(h));
     const slotMark = (s) => ({ 1: '①', 2: '②', 3: '③' })[Number(s)] || '①';   // 編成の印 (1 属性 3 つまで・2026-10-24)
+    const SLOT_MAX = 3;   // 編成の枠の上限 (SQL 55・supabase-client の MOCK_SLOT_MAX と同じ)
     /** ブロックの予約の窓 (時間帯インデックス・5時始まり)。ブロックの予約でなければ / 読めなければ null */
     function blockWindowOf(r) {
         if (!r || r.time_mode !== 'block') return null;
@@ -365,7 +366,7 @@
         // 行のレベルは形式だけ見る (壊れた行を弾く)。予約には**載せない** — レベルは本人が選ばない
         if (!Number.isInteger(level) || level < 1 || level > 4) return { ok: false, reason: 'bad_level' };
         if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return { ok: false, reason: 'bad_boss' };
-        if (loadoutSlot !== 1 && loadoutSlot !== 2) return { ok: false, reason: 'bad_slot' };
+        if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > SLOT_MAX) return { ok: false, reason: 'bad_slot' };
         const flex = !!row.flex;
         // ★ 時刻は「約束できる形」でだけ固定する。⏳隙間型は時刻を約束しない (flex)。
         //   時刻不明を fixed のまま出すと DB の CHECK で弾かれる = 押しても何も起きない

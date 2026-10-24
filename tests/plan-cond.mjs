@@ -63,7 +63,7 @@ function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, o
         _opsPlanSel: sel,
         _opsPlanPromiseNote: promiseNote,
         _planCueSeq: 0,
-        HOUR_ORDER,
+        HOUR_ORDER, SLOT_JP: { 1: '①', 2: '②', 3: '③' },
         _planNowIdx: () => 16,   // 21時
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
         renderTeamSnippet: (t) => `<i>${t.length}人</i>`,

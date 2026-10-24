@@ -142,9 +142,9 @@
     // 30B の根拠: 第44回の総与ダメ 2,981B の約1% で、1人1凸ぶんに近い (ユーザー承認 2026-09-07)
     const STICKY_GAIN_RATIO = 0.05;
     const STICKY_MIN_GAIN_B = 30;
-    // 拘束として受け付ける編成スロットの上限 (supabase/32 で DB の CHECK も 1|2)。
+    // 拘束として受け付ける編成スロットの上限 (supabase/55 で DB の CHECK も 1|2|3。2026-10-24 までは 2)。
     // 範囲外は壊れた配信データなので、その行ごと捨てる
-    const MOCK_SLOT_MAX_STICKY = 2;
+    const MOCK_SLOT_MAX_STICKY = 3;
     const MAX_BRANCH = 16;       // 1ラウンドで試す決定点の数
     const MAX_DEPTH = 3;        // 改善した分岐に重ねて分岐する深さ (1決定点だけでは弱い)
     // 解くシナリオの総数 (基準解を含む)。**実時間で打ち切ってはいけない** —

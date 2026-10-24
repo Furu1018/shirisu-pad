@@ -144,5 +144,23 @@
         }
         return l.slice().sort((a, b) => idOf(b.pub) - idOf(a.pub))[0];
     }
-    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctEffective, timelessOnly, effectivePlans, mergedPlan, distinctCount, pickDefault };
+    /**
+     * 🧱 区切りを変えたあとに残る「どのブロックにも効かない配信」 (blockScope の鍵がいまのブロックのどれとも一致しない行・1 日ぶん (all) は除く)。
+     *   既定を 7 つ → 6 つに変えた 2026-10-24 のため: 旧い 18-20 の配信は新しい 17-20 のブロックに効かず、黙って消えると約束を失う → 運営に「組み直して配信し直す」と知らせる (Codex 監査 §10 B)
+     * @returns {Array<{ row: Object, key: string, label: string }>} id の順
+     */
+    function strayRows(rows, blocks) {
+        const keys = new Set((Array.isArray(blocks) ? blocks : []).map(b => keyOfBlock(b)).filter(Boolean));
+        const out = [];
+        for (const r of (Array.isArray(rows) ? rows : [])) {
+            if (!r) continue;
+            const k = keyOf(r);
+            if (k === 'all' || keys.has(k)) continue;
+            const sc = r.plan && r.plan.blockScope ? r.plan.blockScope : {};
+            out.push({ row: r, key: k, label: sc.label || sc.name || k });
+        }
+        return out.sort((a, b) => idOf(a.row) - idOf(b.row));
+    }
+
+    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctEffective, timelessOnly, effectivePlans, mergedPlan, distinctCount, pickDefault, strayRows };
 })(typeof window !== 'undefined' ? window : globalThis);

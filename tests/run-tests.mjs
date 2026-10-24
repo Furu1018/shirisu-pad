@@ -4961,7 +4961,7 @@ console.log('\nreservationsDomain (凸の予約):');
 
     test('予約: 壊れた行は拘束にしない (範囲外のレベル・ボス・編成)', () => {
         const bad = [res({ lv: 0 }), res({ lv: 9 }), res({ boss: 0 }), res({ boss: 6 }),
-                     res({ lo: 0 }), res({ lo: 3 }), { ...res(), player_id: null }];
+                     res({ lo: 0 }), res({ lo: 4 }), { ...res(), player_id: null }];   // lo: 3 は 2026-10-24 から正 (SLOT_MAX)
         assert.deepEqual(rv.toSolverConstraints(bad), []);
         assert.deepEqual(rv.toSolverConstraints(null), []);
     });
@@ -5388,7 +5388,7 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(rv.planRowToDraft(planRow({ lv: 0 }), hourKeyOf).ok, false);
             assert.equal(rv.planRowToDraft(planRow({ lv: 5 }), hourKeyOf).ok, false);
             assert.equal(rv.planRowToDraft(planRow({ boss: 6 }), hourKeyOf).ok, false);
-            assert.equal(rv.planRowToDraft(planRow({ slot: 3 }), hourKeyOf).ok, false);
+            assert.equal(rv.planRowToDraft(planRow({ slot: 4 }), hourKeyOf).ok, false);   // 2026-10-24 から 3 は正 (上限は SLOT_MAX)
             assert.equal(rv.planRowToDraft(null, hourKeyOf).ok, false);
         });
 
@@ -5726,7 +5726,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(html.includes('font-weight:900;">枠を予約する</h2>'), 'シートの見出しが「枠を予約する」でない');
         // 📅 きょうの凸: 割当の行に 時刻・Lv・PT・編成・5 キャラ
         const today = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(_homeSimple\(\)\) \{[\s\S]*?renderTeamSnippet\(pz\.team, \{ size: 22 \}\)[\s\S]*?編成\$\{Number\(pz\.loadoutSlot\) === 2 \? '②' : '①'\}/.test(today), 'きょうの凸に編成と 5 キャラが無い');
+        assert.ok(/if \(_homeSimple\(\)\) \{[\s\S]*?renderTeamSnippet\(pz\.team, \{ size: 22 \}\)[\s\S]*?編成\$\{SLOT_JP\[Number\(pz\.loadoutSlot\)\] \|\| '①'\}/.test(today), 'きょうの凸に編成と 5 キャラが無い');
     });
     test('★ 配線: 全体監査 2026-10-23 (A シンプル化): 隠したものの描画と通信を止める / 代理凸のボタンを出さない / 凸の編集・削除の入口 / Discord 用の文面は新しい流れ / 運営編の練習は運営だけ', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
@@ -13335,7 +13335,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/window\.mockIntakeDomain\.b5SecondOf\(p, _mbB5W\)/.test(html) && /\$\{mock\}\$\{excl\}\$\{b5\(r\)\}/.test(html), '👥 メンバー状況に ボス 5 の 2 編成目が無い');
         // 運営の取り込みは保存先 (編成① / ②) を選べる。本人の提出は従来どおり編成① (同じ編成なら自動で寄る)
         const save = html.match(/async function handleMyDmgPreviewSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/damageB, slot: forPlayer \? \(Number\(d\.slot\) === 2 \? 2 : 1\) : 1,/.test(save), '運営の取り込みが常に編成①に保存する (ボス 5 の 2 編成目を足せない)');
+        assert.ok(/damageB, slot: forPlayer \? \(MY_TEAM_SLOTS\.includes\(Number\(d\.slot\)\) \? Number\(d\.slot\) : 1\) : 1,/.test(save), '運営の取り込みが常に編成①に保存する (ボス 5 の 2 編成目・3 編成目を足せない)');
         assert.ok(/_renderMyDmgPreviewSlot\(d\);/.test(html) && /if \(!d\.slotTouched\) d\.slot = window\.mockIntakeDomain\.defaultSlot\(\{ existing, characters: d\.characters \}\);/.test(html), '保存先の既定を出していない');
         assert.ok(/_myDmgPreviewData\.selectedAttr = key;\s*\n\s*_myDmgPreviewData\.slotTouched = false;/.test(html), '属性を選び直しても保存先の既定を出し直さない');
     });
@@ -14131,6 +14131,26 @@ console.log('\n編成 3 つ (SQL 55):');
         assert.ok(/r\.slot >= 2 \? '<span style="[^"]*">編成' \+ \(SLOT_JP\[r\.slot\] \|\| r\.slot\) \+ '<\/span>' : ''/.test(html) && /PT\$\{x\.slot >= 2 \? \(SLOT_JP\[x\.slot\] \|\| x\.slot\) : ''\}/.test(html), '編成③の印が出ない (事前比較 / 🧩 ピース)');
         assert.ok(/const slotMark = \(s\) => \(\{ 1: '①', 2: '②', 3: '③' \}\)\[Number\(s\)\] \|\| '①';/.test(resv) && /編成\$\{slotMark\(r\.loadout_slot\)\}/.test(resv) && /編成\$\{slotMark\(b\.loadoutSlot\)\}/.test(resv), '予約の文の編成の印が ③ に対応していない');
         assert.equal(globalThis.mockIntakeDomain.defaultSlot({ existing: [{ slot: 1, team: ['a'], dmgB: 1 }, { slot: 2, team: ['b'], dmgB: 1 }], characters: [] }), 3);
+        // Codex 監査 §10 C: ③を選んだのに①へ保存 / 予約の③が DB・ドメイン・ソルバーで捨てられる / 印が①に化ける
+        assert.ok(/damageB, slot: forPlayer \? \(MY_TEAM_SLOTS\.includes\(Number\(d\.slot\)\) \? Number\(d\.slot\) : 1\) : 1,/.test(html), '📸 取り込みで選んだ編成③が①として保存される');
+        assert.ok(/ALTER TABLE plan_reservations\s*\n\s*ADD CONSTRAINT chk_plan_reservations_loadout_slot CHECK \(loadout_slot IN \(1, 2, 3\)\);/.test(sql) && /pg_get_constraintdef\(oid\) LIKE '%loadout_slot%' LOOP/.test(sql), '55 が予約の loadout_slot の CHECK を広げていない');
+        assert.ok(/to_regclass\('public\.plan_reservations'\) AND contype = 'c'/.test(chk), '99 が予約の CHECK を見ていない');
+        assert.ok(/const SLOT_MAX = 3;/.test(resv) && /loadoutSlot > SLOT_MAX\) return;/.test(resv) && /loadoutSlot > SLOT_MAX\) return \{ ok: false, reason: 'bad_slot' \};/.test(resv), '予約のドメインが③を捨てる');
+        assert.ok(/const MOCK_SLOT_MAX_STICKY = 3;/.test(rd('js', 'optimal-plan.js')), '前回尊重が③の約束を捨てる');
+        assert.ok(!/=== 2 \? '②'/.test(html), '③を②/①と誤表示する所が残っている');
+        const rv = globalThis.reservationsDomain, HK = (h) => `h${String(h).padStart(2, '0')}`;
+        const row3 = { id: 9, season_id: 1, player_id: 7, boss_number: 3, loadout_slot: 3, status: 'approved', time_mode: 'fixed', time_slot: 'h21', raid_level: null, characters_snapshot: ['a', 'b'], expected_damage_b: 10 };
+        assert.equal(rv.toSolverConstraints([row3]).length, 1, '③の予約を拘束にしていない');
+        assert.equal(rv.toSolverConstraints([{ ...row3, loadout_slot: 4 }]).length, 0, '④を通している');
+        assert.equal(rv.planRowToDraft({ memberId: 7, bossNumber: 3, loadoutSlot: 3, level: 1, hourIdx: 16 }, HK).ok, true, '③の下書きが bad_slot');
+        assert.equal(rv.planRowToDraft({ memberId: 7, bossNumber: 3, loadoutSlot: 4, level: 1, hourIdx: 16 }, HK).reason, 'bad_slot');
+        // Codex 監査 §10 B: 区切りを変える前の配信 (鍵が合わない) は消さずに運営へ知らせる
+        const pp = globalThis.publishedPlansDomain, blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
+        const P = (id, scope) => ({ id, season_id: 1, plan: scope ? { blockScope: scope, levels: [] } : { levels: [] } });
+        const stray = pp.strayRows([P(1, { from: 18, to: 20, label: '夕方 18〜20時' }), P(2, { from: 17, to: 20 }), P(3, null), P(4, { from: 21, to: 23, name: '夜' })], blocks);
+        assert.deepEqual(stray.map(x => [x.row.id, x.key, x.label]), [[1, '18-20', '夕方 18〜20時'], [4, '21-23', '夜']], '区切りに合わない配信を拾えていない / 1 日ぶんや合う行を拾った');
+        assert.deepEqual(pp.strayRows(null, blocks), []); assert.deepEqual(pp.strayRows([P(1, { from: 18, to: 20 })], []).length, 1);
+        assert.ok(/const strayNote = _opsStrayPubNote\(\);/.test(html) && /\+ strayNote;\s*\n\s*\}/.test(html) && /return ` — ⚠️ 区切りを変える前の配信が \$\{stray\.length\}件/.test(html), '配信の状況に「区切りを変える前の配信」の案内が無い');
     });
 }
 
