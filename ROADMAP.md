@@ -16,7 +16,10 @@
   **⏸ 9d (置けないマスを押したら理由) は実装・テスト済み・未監査 → ブランチ `9d-wip-2026-10-24` (1 commit `3d49697`・origin に push 済み) に退避** (10/24 夜・職場PCを締めるため。main は本番のまま)。
   中身: `planBoardDomain.noPlaceReason` (置ける所が無い理由・判定は canPlace / canPin のまま) / `_opsPlanNoPlaceCheck` (選んだ駒が置けなければ「置ける場所がありません: 理由」・時間割なら 🧱 盤 への案内) / 🧩 ピースに「⚠ 置ける所なし: 理由」/ 駒を選ばずにマスを押したら案内 / 9h の小さな直し (中身の ref の送信済み化を自前の try/catch に)。CLAUDE.md ★ 9d・運用の見直し §4 もその commit に。
   **▶ 別 PC で最初にやること**: `git pull` → `git merge --ff-only origin/9d-wip-2026-10-24` → テスト (`node tests/run-tests.mjs` 696 / `node tests/result-intake.mjs` 11 / `node tests/practice.mjs` 29 / `node tests/practice-e2e.mjs`) → **Codex 監査** (依頼文は `docs/codex-audit-prompts-2026-10-23.md` の「9d」・diff は `git diff f7391c1 HEAD` を貼る・`codex exec --sandbox read-only --skip-git-repo-check - < prompt.txt`) → 指摘を直して「push 可」で push → `git push origin --delete 9d-wip-2026-10-24`。監査の記録は `docs/AUDIT-2026-10-23.md` に I として。
-  ※ 職場PCで監査を 1 回始めたが、締めるために結果を待たずに退避した (結果は見ていない → 別 PC でやり直す)。e2e の「ツアーから凸したら Discord へ」は既知の揺れ (トーストの重なり・単独 `ONLY=member:report` では通る)。
+  ※ 職場PCで Codex 監査 1 回目 (120k) は締める直前に届いた → **push 不可・2 件** (別 PC で直してから再監査):
+  　A 高: `_opsPlanNoPlaceCheck` は canPlace (属性・時間) が 1 マスでも通ると return するので、3 凸を使い切った人 (`noPlaceReason` の spent) を選んでも事前の理由が出ず、マスが光って押して初めて canPin に止められる → any で return する前に `noPlaceReason` を見て spent なら知らせる (マスも光らせない)。
+  　C 中: 🧩 箱の `viewHours` は予定の凸の時刻だけで、時間割に出る「済んだ凸だけの時刻の行」(`_planTimetableModel` の done) を含まない / `viewBosses` は時間割のボスの絞り込み・盤で除いた撃破済みの行を反映しない → 箱の範囲は別計算せず `_planTimetableModel(plan, _planDoneFor(season))` + 表示の絞り込み / `blockBoardRows` + `railHours` から導く。
+  　B (noPlaceTold の鍵)・D (駒を選ばずに押した案内)・E (9h の try/catch)・F (文書) は問題なし。e2e の「ツアーから凸したら Discord へ」は既知の揺れ (トーストの重なり・単独 `ONLY=member:report` では通る)。
   **→ その後 9g (Discord の文章・使い方の説明画像の作り直し) → 9e (小)**。新しい SQL は要らない見込み。
   **実機で (9h)**: 同じブロックを配信し直して、✅ を押していた人・押していない人・割当が消えた人の通知の文を見る (配信の確認ダイアログの人数と合うか)。
   **実機で (9c)**: メンバーで名乗ってホームに ⏰ の「変更する」と MY設定の時間の行が無い / 帯に「登録されている時間です…」/ 🔒 予約のカードに「枠を予約する」と「取り消し」が無く Discord の案内 / 時間未登録のヒーローが Discord へ (ボタン無し) / ツアー ③④ とヘルプ §3・§5 が Discord の流れ / 👥 の 📣 Discord 用の文面が新運用。練習は ヘルプ › 練習する で 3 編 (運営編・前日の 🔒 は「誰の予約か」を自分で選ぶ)
