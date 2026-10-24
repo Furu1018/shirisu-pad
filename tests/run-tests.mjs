@@ -12872,7 +12872,9 @@ console.log('\ngrowthDomain:');
         //   finally は同じ世代のときだけ受け口を戻す (開き直したシートの受け口は open が戻す・新しい読み取り中なら触らない)
         assert.ok(/let _opsBossHpGen = 0;/.test(html) && /async function openOpsBossHpModal\(\) \{\s*\n\s*const gen = \+\+_opsBossHpGen;/.test(html) && /function closeOpsBossHpModal\(\) \{\s*\n\s*_opsBossHpGen\+\+;/.test(html), '開く・閉じるで世代を進めていない');
         assert.ok(/const ctx = await ensureActiveSeasonLoaded\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;\s*\n\s*seasonStore\.invalidate\(\);[^\n]*\n\s*const fresh = await window\.supabaseLoadActiveSeasonWithBosses\(\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;/.test(open), '開くときの await のあとに世代を照合していない (古い open が新しい行を上書きする)');
-        assert.ok(/if \(ocrInput\) ocrInput\.disabled = false;/.test(open), '開き直したときに受け口を戻していない');
+        // Codex 9e C (5 回目): 開くあいだは受け口を閉じ、行を描き終えてから開く (同じ世代の中で、読み取りが行より先に返って描画で消えない)
+        assert.ok(/if \(ocrInput\) ocrInput\.disabled = true;[^\n]*\n\s*const listEl = document\.getElementById\('opsBossHpList'\);/.test(open), '開くあいだ受け口を閉じていない');
+        assert.ok(/\}\)\.join\(''\);\s*\n\s*if \(ocrInput\) ocrInput\.disabled = false;[^\n]*\n\s*\}\n$/.test(open), '行を描き終えたあとに受け口を開いていない');
         assert.ok(/const gen = _opsBossHpGen;/.test(ocr) && /await window\.callAiVision\(dataUrl, 'bla_progress'\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;/.test(ocr), '読み取りのあとに世代を照合していない');
         assert.ok(/\} catch \(e\) \{\s*\n\s*if \(gen !== _opsBossHpGen\) return;[^\n]*\n\s*statusEl\.textContent = `❌/.test(ocr), '古い読み取りの失敗を新しいシートに出す');
         assert.ok(/\} finally \{\s*\n\s*if \(gen === _opsBossHpGen && input\) input\.disabled = false;[^\n]*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない / 別の世代の受け口を戻している');

@@ -24718,7 +24718,7 @@
             const ocrStatus = document.getElementById('opsBossHpOcrStatus');
             if (ocrStatus) { ocrStatus.innerHTML = '&nbsp;'; ocrStatus.style.color = ''; }
             const ocrInput = document.getElementById('opsBossHpOcrInput');
-            if (ocrInput) ocrInput.disabled = false;   // 前の読み取りが走っていても受け口は戻す (その結果は世代で捨てる)
+            if (ocrInput) ocrInput.disabled = true;   // 行を描き終えるまで受け口は閉じる (開き直した直後の読み取りが、行の無い所に入って描画で消えない: Codex 9e C・5 回目)。前の読み取りの結果は世代で捨てる
             const listEl = document.getElementById('opsBossHpList');
             listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
             const ctx = await ensureActiveSeasonLoaded();
@@ -24753,6 +24753,7 @@
                         </div>
                     </div>`;
             }).join('');
+            if (ocrInput) ocrInput.disabled = false;   // 行がそろってから受け口を開く (選ぶ・落とす・貼り付け のどれも input.disabled を見る)
         }
         function closeOpsBossHpModal() {
             _opsBossHpGen++;   // 読み取り中に閉じたら、その結果は捨てる (🗣 9e)

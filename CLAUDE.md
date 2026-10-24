@@ -1306,8 +1306,8 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数に渡す (読み取りの経路を増やさない)。**読み取り中は本物の `opsBossHpOcrInput` を disabled にして finally で戻す** (選ぶ・落とす・貼り付け の連打で古い結果が新しい差分を上書きしない: Codex 9e C)。
   `bossHpDiff` の丸めは入力欄と同じ `toFixed(2)`・いまの値が空や不正なら「いまの値が不明 → XB」(のまま と言わない: Codex 9e A)。
   **読み取りの世代 `_opsBossHpGen`** (開く・閉じるで進む): 読み取っている間に閉じた / 開き直したら結果 (成功も失敗も) を反映しない (古いスクショが新しい行に入って保存候補にならない)。
-  `openOpsBossHpModal` も `const gen = ++_opsBossHpGen` を控えて **await のあとに照合** (古い open が遅れて着いて新しい行・手入力・差分を上書きしない)。開くときに受け口 (input.disabled) と読み取りの状態表示を戻し、
-  読み取りの finally は**同じ世代のときだけ**受け口を戻す (Codex 9e C・再監査 2〜4 回目)。運営だけの変更なので release-notes は無し
+  `openOpsBossHpModal` も `const gen = ++_opsBossHpGen` を控えて **await のあとに照合** (古い open が遅れて着いて新しい行・手入力・差分を上書きしない)。**開くあいだは受け口 (input.disabled) を閉じ、行を描き終えてから開く**
+  (同じ世代の中で、読み取りが行より先に返って描画で消えない)。読み取りの状態表示は開くときに戻し、読み取りの finally は**同じ世代のときだけ**受け口を戻す (Codex 9e C・再監査 2〜5 回目)。運営だけの変更なので release-notes は無し
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と
