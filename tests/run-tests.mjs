@@ -12869,6 +12869,11 @@ console.log('\ngrowthDomain:');
         // Codex 9e C: 読み取り中 (input.disabled) は 選ぶ・落とす・貼り付け のどれも受けない — 本物の input に印を立て、finally で戻す
         assert.ok(/const input = document\.getElementById\('opsBossHpOcrInput'\);\s*\n\s*if \(input\?\.disabled\) \{ showNotification\('読み取り中です。終わるまで待ってください'\); return; \}\s*\n\s*if \(input\) input\.disabled = true;/.test(ocr), '読み取り中の二重受付を止めていない');
         assert.ok(/\} finally \{\s*\n\s*if \(input\) input\.disabled = false;\s*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない');
+        // Codex 9e C (再監査): 読み取りの世代 — 開く・閉じるで進め、読み取っている間に変わっていたら結果を反映しない (古いスクショが開き直した行に入らない)
+        assert.ok(/let _opsBossHpGen = 0;/.test(html) && /async function openOpsBossHpModal\(\) \{\s*\n\s*_opsBossHpGen\+\+;/.test(html) && /function closeOpsBossHpModal\(\) \{\s*\n\s*_opsBossHpGen\+\+;/.test(html), '開く・閉じるで世代を進めていない');
+        assert.ok(/const gen = _opsBossHpGen;/.test(ocr) && /await window\.callAiVision\(dataUrl, 'bla_progress'\);\s*\n\s*if \(gen !== _opsBossHpGen\) return;/.test(ocr), '読み取りのあとに世代を照合していない');
+        // Codex 9e E: アプリ内の Discord 文面にも 9h の「プランが変わったら もう一度 ✅」
+        assert.ok(/「プランが変わりました」の通知が来たら、もう一度 \*\*📅 きょうの凸\*\* を見て \*\*✅\*\*/.test(html), 'Discord 文面に 9h の再確認の手順が無い');
     });
     test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
         const d = globalThis.planBoardDomain;

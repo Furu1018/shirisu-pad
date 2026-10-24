@@ -24709,9 +24709,14 @@
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
+        // 🗣 9e (Codex 再監査 C): 読み取りの世代。開く・閉じるで進め、開いた時と違えば読み取りの結果を反映しない (読み取り中に閉じて開き直したとき、古いスクショが新しい行に入らない)
+        let _opsBossHpGen = 0;
         async function openOpsBossHpModal() {
+            _opsBossHpGen++;
             document.getElementById('opsBossHpModal').classList.add('open');
             document.getElementById('opsBossHpMessage').textContent = '';
+            const ocrStatus = document.getElementById('opsBossHpOcrStatus');
+            if (ocrStatus) { ocrStatus.innerHTML = '&nbsp;'; ocrStatus.style.color = ''; }
             const listEl = document.getElementById('opsBossHpList');
             listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
             const ctx = await ensureActiveSeasonLoaded();
@@ -24746,6 +24751,7 @@
             }).join('');
         }
         function closeOpsBossHpModal() {
+            _opsBossHpGen++;   // 読み取り中に閉じたら、その結果は捨てる (🗣 9e)
             document.getElementById('opsBossHpModal').classList.remove('open');
         }
         // BlaBlaLINK画像から全ボスHPを一括取り込み
@@ -24758,12 +24764,14 @@
             const input = document.getElementById('opsBossHpOcrInput');
             if (input?.disabled) { showNotification('読み取り中です。終わるまで待ってください'); return; }
             if (input) input.disabled = true;
+            const gen = _opsBossHpGen;   // 開いた時の世代 (閉じる・開き直すと進む)
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
             statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
 
             try {
                 const dataUrl = await window.fileToDataUrl(file);
                 const res = await window.callAiVision(dataUrl, 'bla_progress');
+                if (gen !== _opsBossHpGen) return;   // 読み取っている間に閉じた / 開き直した → 新しい行には入れない (finally で受け口だけ戻す)
                 const r = res.result;
                 if (!r || !Array.isArray(r.bosses)) {
                     throw new Error('解析結果にbosses配列がありません');
@@ -25711,7 +25719,8 @@
 ━━━━━━━━━━━━━━
 1. ブロックの前に **「🧱 夕方 18〜20時 のあなたの凸が決まりました」** の通知が届きます → ホームの **📅 きょうの凸** に 時刻・ボス・PT・編成 (5 キャラ) が出るので **✅ 確認しました** を押す
 2. その時刻に配信どおりに凸 → **結果のスクショを Discord に貼る**だけ (PAD に凸を報告する操作はありません。運営が取り込むと ✓ が付きます)
-3. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
+3. 前のブロックの結果で予定が変わることがあります。**「プランが変わりました」の通知が来たら、もう一度 **📅 きょうの凸** を見て **✅**** (✅ を押していなくても、変わった人には届きます)
+4. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
 
 PAD の中で入力するものは無くなりました (時間・模擬・希望・凸の結果はすべて Discord へ)。PAD は「見る・✅ 確認しました を押す」だけです。分からないことは PAD のヘルプか、ここで聞いてください!`;
 

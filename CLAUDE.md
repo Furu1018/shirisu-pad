@@ -1304,7 +1304,8 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   (前面に出ているもの = body を固定する一覧 `_MODAL_LOCK_SEL` (シート・ドロワー・ヘルプ・名乗り) を先に見て、**前面があるなら「受け口のシート 1 つだけ」のときだけ**そのシートへ — ドロワーやヘルプの裏に見えているカードには読ませない・2 つ以上なら前面が分からないので受けず、焦点も当てにしない (Codex 9e B・再監査)。
   前面が無ければ 焦点のあるカード → 見えているカードが 1 つだけ。画像以外の貼り付け (文字) は触らない)。
   ファイル選択と同じ形 `{ target: { files, value: '' } }` で同じ関数に渡す (読み取りの経路を増やさない)。**読み取り中は本物の `opsBossHpOcrInput` を disabled にして finally で戻す** (選ぶ・落とす・貼り付け の連打で古い結果が新しい差分を上書きしない: Codex 9e C)。
-  `bossHpDiff` の丸めは入力欄と同じ `toFixed(2)`・いまの値が空や不正なら「いまの値が不明 → XB」(のまま と言わない: Codex 9e A)。運営だけの変更なので release-notes は無し
+  `bossHpDiff` の丸めは入力欄と同じ `toFixed(2)`・いまの値が空や不正なら「いまの値が不明 → XB」(のまま と言わない: Codex 9e A)。
+  **読み取りの世代 `_opsBossHpGen`** (開く・閉じるで進む): 読み取っている間に閉じた / 開き直したら結果を反映しない (古いスクショが新しい行に入って保存候補にならない: Codex 9e C・再監査)。運営だけの変更なので release-notes は無し
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と
