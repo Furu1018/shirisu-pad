@@ -24095,7 +24095,8 @@
             for (const n of notices) {
                 // 🗣 9h (Codex C): 変わった人の ref には配信の id を入れる — 文の行 (時刻・ボス・編成①②) が同じでもレベルや編成の中身が変わった人、A → B → A と戻った人に届かせる。
                 //   変わっていない人と割当が消えた人は中身で抑える (配信し直しで同じ中身なら送らない)
-                const ref = (n.changed && !n.gone) ? `${scope.from}-${scope.to}|${n.memberId}|p${pub.id}|${n.lines.join(' / ')}` : `${scope.from}-${scope.to}|${n.memberId}|${n.lines.join(' / ')}`;
+                const contentRef = `${scope.from}-${scope.to}|${n.memberId}|${n.lines.join(' / ')}`;
+                const ref = (n.changed && !n.gone) ? `${scope.from}-${scope.to}|${n.memberId}|p${pub.id}|${n.lines.join(' / ')}` : contentRef;
                 const st = claim ? await claim(seasonId, 'block_publish', ref, me?.id || null) : 'claimed';
                 if (st === 'done') { out.covered.add(Number(n.memberId)); continue; }   // 同じ中身をもう送ってある (配信し直しで変わらなかった人)
                 if (st !== 'claimed') continue;                                          // 誰かが送信中
@@ -24103,6 +24104,11 @@
                     const res = await window.sendPushNotification({ title: n.title, body: n.body, url: './?tab=mypage&focus=plan', playerIds: [n.memberId] },
                         { senderPlayerId: me?.id || null });
                     await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', ref);
+                    // 🗣 9h (Codex 再監査 A): 変わった人に送れたら、同じ中身の ref も送信済みにする → 次の配信し直しで変わらなければ (中身の ref) 送り直さない
+                    if (ref !== contentRef && claim) {
+                        const st2 = await claim(seasonId, 'block_publish', contentRef, me?.id || null);
+                        if (st2 === 'claimed') await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', contentRef);
+                    }
                     out.covered.add(Number(n.memberId));
                     // 相手が 0 人 (書庫・テスト回の方針で外れた = skipped) は「送れた」に数えない。確保は送信済みにする (送り直しても同じ結果: Codex指摘 3792ddd)
                     if (!res?.skipped) out.sent++;

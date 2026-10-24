@@ -334,17 +334,27 @@ await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 �
     const r = await t._notifyBlockPublish({ pub: { id: 501 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
     assert.deepEqual([[...r.covered], r.sent, r.failed], [[7, 8], 2, 0]);
     assert.deepEqual(t.calls.filter(c => c[0] === 'claim').map(c => c.slice(1)), [
-        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|p501|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない / 変わった人の鍵に配信の id が無い (🗣 9h Codex C: 文の行が同じでも中身が変わった人に届かせる)');
+        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|p501|19時 B3 灼熱PT 編成①', 1],
+        [45, 'block_publish', '18-20|8|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない / 変わった人の鍵に配信の id が無い (🗣 9h Codex C: 文の行が同じでも中身が変わった人に届かせる) / 変わった人に送れたら中身の鍵も確保していない (Codex 再監査 A)');
     const pushes = t.calls.filter(c => c[0] === 'push').map(c => c[1]);
     assert.deepEqual(pushes.map(p => [p.playerIds, p.title, p.body]), [
         [[7], '🧱 夕方 18〜20時 のあなたの凸が決まりました', '18時 B3 灼熱PT 編成② — ホームで確認してください'],
         [[8], '🔄 夕方 18〜20時 のあなたの凸が変わりました', '19時 B3 灼熱PT 編成① — ホームで確認してください'],
     ], '夜の割当まで書いている / 文が違う');
-    assert.equal(t.calls.filter(c => c[0] === 'markSent').length, 2);
-    // 配信し直し: 同じ中身をもう送ってある人 (done) には送らないが、L4 の重ね送りからは外す (covered)
-    const again = makeEnv(); again._claim = (ref) => (ref.startsWith('18-20|7|') ? 'done' : 'claimed');
+    assert.deepEqual(t.calls.filter(c => c[0] === 'markSent').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p501|19時 B3 灼熱PT 編成①', '18-20|8|19時 B3 灼熱PT 編成①'], '変わった人に送れたのに中身の鍵を送信済みにしていない');
+    // 中身の鍵が「誰かが送信中」(held) なら送信済みにしない (他の運営の送信を上書きしない)
+    const heldC = makeEnv(); heldC._claim = (ref) => (ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'held' : 'claimed');
+    await heldC._notifyBlockPublish({ pub: { id: 508 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
+    assert.deepEqual(heldC.calls.filter(c => c[0] === 'markSent').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p508|19時 B3 灼熱PT 編成①'], '誰かが送信中の中身の鍵を送信済みにした');
+    // 配信し直し (変わった人なし): 同じ中身をもう送ってある人 (done) には送らないが、L4 の重ね送りからは外す (covered)。
+    //   前の配信で「変わった」として送れた人 (8) は中身の鍵も done なので送り直さない (Codex 9h 再監査 A)
+    const again = makeEnv(); again._claim = (ref) => (ref.startsWith('18-20|7|') || ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'done' : 'claimed');
     const r2 = await again._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set() });
-    assert.deepEqual([[...r2.covered], r2.sent], [[7, 8], 1]); assert.deepEqual(again.calls.filter(c => c[0] === 'push').map(c => c[1].playerIds[0]), [8]);
+    assert.deepEqual([[...r2.covered], r2.sent], [[7, 8], 0], '変わった人に送れたあとの、同じ中身の配信し直しで送り直した'); assert.ok(!again.calls.some(c => c[0] === 'push'));
+    // 前の配信で送れなかった人 (中身の鍵は確保されていない) には、同じ中身の配信し直しで送る
+    const retry = makeEnv(); retry._claim = (ref) => (ref.startsWith('18-20|7|') ? 'done' : 'claimed');
+    const r2b = await retry._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set() });
+    assert.deepEqual([[...r2b.covered], r2b.sent], [[7, 8], 1]); assert.deepEqual(retry.calls.filter(c => c[0] === 'push').map(c => c[1].playerIds[0]), [8], '前の配信で送れなかった人に送っていない');
     // 誰かが送信中 (held) → 送らない・covered にも入れない
     const held = makeEnv(); held._claim = 'held';
     const r3 = await held._notifyBlockPublish({ pub: { id: 503 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
@@ -355,6 +365,11 @@ await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 �
     assert.deepEqual([r4.covered.size, r4.sent, r4.failed], [0, 0, 2]);
     assert.deepEqual(bad.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|19時 B3 灼熱PT 編成①'], '送れなかった人の確保を戻していない');
     assert.ok(!bad.calls.some(c => c[0] === 'markSent'), '送れなかったのに送信済みにした');
+    // 変わった人に送れなかった → 配信の id 付きの鍵だけ戻す。中身の鍵は触らない (確保も送信済みも無し) → 次の配信し直しで届く
+    const bad2 = makeEnv(); bad2._pushFail = true;
+    await bad2._notifyBlockPublish({ pub: { id: 507 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
+    assert.deepEqual(bad2.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p507|19時 B3 灼熱PT 編成①'], '変わった人の確保を戻していない');
+    assert.ok(!bad2.calls.some(c => c[0] === 'markSent') && !bad2.calls.some(c => c[0] === 'claim' && c[3] === '18-20|8|19時 B3 灼熱PT 編成①'), '送れなかったのに中身の鍵を確保・送信済みにした');
     // 相手が 0 人 (方針で外れた = skipped) は「送れた」に数えない (確保は送信済み)
     const skip = makeEnv(); skip.window.sendPushNotification = async (payload) => { skip.calls.push(['push', payload]); return { sent: 0, skipped: true }; };
     const r5 = await skip._notifyBlockPublish({ pub: { id: 506 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });

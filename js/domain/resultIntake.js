@@ -137,9 +137,11 @@
     /**
      * 🧱 ブロックの配信の通知 (ユーザー決定 h「次のブロックの配信は通知する」)。割当のある人ごとに、自分の凸を 1 通にまとめる。
      * @param {Object} scoped   配信プランを blockScope で絞ったもの (raidBlocksDomain.scopePlan)
-     * @param {{ label: string, ptName?: (weakness:string)=>string, bosses?: Array, changedIds?: Set }} o
-     *   changedIds = 前の配信を確認していて、割当が変わった人 (L4)。その人は「変わりました」と言う
-     * @returns {Array<{ memberId:*, title:string, body:string, lines:string[] }>}  memberId の順 (決定的)
+     * @param {{ label: string, ptName?: (weakness:string)=>string, bosses?: Array, changedIds?: Set, ackedIds?: Set|null, goneIds?: Set }} o
+     *   changedIds = 前の配信と比べて割当が変わった人 (確認の有無は見ない・planDiff の changed)。その人は「変わりました」
+     *   ackedIds   = 前の配信を ✅ 確認していた人 (Set なら文を分ける / Set でなければ確認の有無を断定しない)
+     *   goneIds    = 前の配信に居て、新しいプランに居ない人 (「外れました」を送る)
+     * @returns {Array<{ memberId:*, title:string, body:string, lines:string[], changed:boolean, gone?:boolean }>}  memberId の順 (決定的)。changed = 変わった人・消えた人 (二重送信よけの ref に配信の id を入れる判断に使う)
      */
     // 🗣 9h (2026-10-24 Q2): 変わった人 (changedIds) には ✅ 確認の有無 (ackedIds = 前の配信を確認していた人) で文を分ける。
     //   割当が消えた人 (goneIds・新しいプランに居ない) にも「外れました」を送る (lines は '割当なし' = 二重送信よけの ref に使う)。
