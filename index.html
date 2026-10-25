@@ -6492,7 +6492,7 @@
                     新シーズンの最適プランや締め凸候補は、提出された模擬に基づいて算出されます。
                 </div>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
-                    <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
+                    <input type="checkbox" id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged()" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
                     <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--t-body);">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
                 </label>
             </div>
@@ -25847,6 +25847,8 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             const modal = document.getElementById('opsSeasonCreateModal');
             modal.classList.add('open');
             document.getElementById('opsSeasonMessage').textContent = '';
+            const tchk = document.getElementById('opsSeasonIsTest'); if (tchk) tchk.checked = false;
+            _opsSeasonIsTestChanged();
             // 日付デフォルト: 今日
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -26180,14 +26182,26 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             }
         }
 
+        // 🧪 テストシーズンの月キーは自動 (運営が考えなくてよい・本番と重ならない)。2026-10-26 ふるり「テストに月キーは要るのか」
+        function _opsTestMonthKey() {
+            const n = new Date(), p2 = (v) => String(v).padStart(2, '0');
+            const rnd = (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') ? globalThis.crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
+            return `TEST-${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}${p2(n.getHours())}${p2(n.getMinutes())}${p2(n.getSeconds())}-${rnd}`;
+        }
+        function _opsSeasonIsTestChanged() {
+            const on = !!document.getElementById('opsSeasonIsTest')?.checked;
+            const mk = document.getElementById('opsSeasonMonthKey');
+            if (mk) { mk.disabled = on; mk.style.opacity = on ? '0.5' : ''; mk.title = on ? 'テストシーズンの月キーは自動で付きます' : ''; }
+        }
         async function handleOpsSeasonCreateSave() {
             const hardDate = document.getElementById('opsSeasonHardDate').value;
-            const monthKey = document.getElementById('opsSeasonMonthKey').value.trim();
+            const isTestPre = !!document.getElementById('opsSeasonIsTest')?.checked;
+            const monthKey = isTestPre ? _opsTestMonthKey() : document.getElementById('opsSeasonMonthKey').value.trim();
             const msg = document.getElementById('opsSeasonMessage');
             const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
 
             if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
-            if (!/^\d{4}-(0[1-9]|1[0-2])[b-z]?$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)。同じ月の 2 回目のレイドは末尾に b (例: 2026-10b)', true); return; }
+            if (!isTestPre && !/^\d{4}-(0[1-9]|1[0-2])[b-z]?$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)。同じ月の 2 回目のレイドは末尾に b (例: 2026-10b)', true); return; }
 
             // ボス情報を収集
             const rows = Array.from(document.querySelectorAll('#opsSeasonBossRows > div[data-pos]'));   // 先頭の列見出し行を除外

@@ -14323,7 +14323,7 @@ console.log('\n月キー (同じ月の 2 回目・テストで本番を消さな
         const re = /^\d{4}-(0[1-9]|1[0-2])[b-z]?$/;
         for (const ok of ['2026-10', '2026-10b', '2026-11', '2026-12c']) assert.ok(re.test(ok), ok);
         for (const ng of ['2026-13', '2026-10a', '2026-10B', '2026-1', 'TEST-1', '2026-10bb']) assert.ok(!re.test(ng), ng);
-        assert.equal((html.match(/if \(!\/\^\\d\{4\}-\(0\[1-9\]\|1\[0-2\]\)\[b-z\]\?\$\/\.test\(monthKey\)\)/g) || []).length, 2, '作成と編集の両方で b を受けていない');
+        assert.equal((html.match(/!\/\^\\d\{4\}-\(0\[1-9\]\|1\[0-2\]\)\[b-z\]\?\$\/\.test\(monthKey\)\)/g) || []).length, 2, '作成と編集の両方で b を受けていない');
         const fn = client.slice(client.indexOf('window.supabaseCreateSeason = async function'), client.indexOf('window.supabaseQuickCreateTestSeason'));
         assert.ok(/\.select\('id, month_key, is_active, is_test'\)\s*\n\s*\.eq\('month_key', payload\.monthKey\)/.test(fn), '既存のシーズンが本番かテストかを読んでいない');
         const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test !== true))'), d = fn.indexOf(".from('seasons').delete().eq('id', existing.id)");
@@ -14417,6 +14417,22 @@ console.log('\n🧪 模擬を 8〜9 割に / 未提出の札:');
         const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
         assert.ok(/if \(seedTotal > 0 && confirm\('模擬を「8〜9 割の人から届いた」状態にしますか？/.test(h) && /await window\.supabaseThinTestMocks\(r\.id\);/.test(h), '8〜9 割を選べない');
         assert.ok(/\$\{r\.b5Short && r\.missing\.length < 5 \? /.test(html), '未提出の人にもボス 5 の注記が付く');
+    });
+}
+
+console.log('\n🧪 シーズン作成のシートでテスト: 月キーは自動:');
+{
+    const _fs8 = await import('node:fs');
+    const html = _fs8.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    test('★ 🧪 に印を付けたら月キーは自動 (TEST-日時-乱数・検査しない・欄は押せない) / 本番は従来どおり YYYY-MM[b]', () => {
+        const fn = html.slice(html.indexOf('function _opsTestMonthKey()'), html.indexOf('async function handleOpsSeasonCreateSave()'));
+        const mk = new Function(fn + '\nreturn _opsTestMonthKey;')();
+        const k = mk(); assert.ok(/^TEST-\d{14}-[a-z0-9-]{8}$/.test(k), k); assert.notEqual(k, mk());
+        const h = html.slice(html.indexOf('async function handleOpsSeasonCreateSave()'), html.indexOf('async function handleOpsEndSeason()'));
+        assert.ok(/const monthKey = isTestPre \? _opsTestMonthKey\(\) : document\.getElementById\('opsSeasonMonthKey'\)\.value\.trim\(\);/.test(h), 'テストでも月キー欄を使っている');
+        assert.ok(/if \(!isTestPre && !\/\^\\d\{4\}/.test(h), 'テストの月キーまで YYYY-MM で検査している (作れない)');
+        assert.ok(/id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged\(\)"/.test(html) && /mk\.disabled = on;/.test(fn), '印を付けても月キー欄が押せる');
+        assert.ok(/if \(tchk\) tchk\.checked = false;\s*\n\s*_opsSeasonIsTestChanged\(\);/.test(html), '開いたときに前の印が残る');
     });
 }
 
