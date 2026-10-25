@@ -14397,10 +14397,22 @@ console.log('\n🧪 模擬を 8〜9 割に / 未提出の札:');
         assert.deepEqual(ts.thinMocks([], {}), { none: [], partial: [] });
         assert.equal(ts.thinMocks(Array.from({ length: 40 }, (_, i) => i), { seed: 1 }).none.length, 4);
     });
-    test('★ 配線: 間引くのは動いているテストシーズンだけ / 未提出は全部消す・一部は 3 属性を消す / ハンドラは聞いてから / 未提出の札にボス 5 の注記を付けない', () => {
+    await testAsync('★ 配線: 間引くのは動いているテストシーズンだけ / 未提出は全部消す・一部は 3 属性を消す / ハンドラは聞いてから / 未提出の札にボス 5 の注記を付けない', async () => {
         const fn = client.slice(client.indexOf('window.supabaseThinTestMocks = async function'), client.indexOf('window.supabaseQuickCreateTestSeason = async function'));
         assert.ok(/if \(!act \|\| !act\.is_test \|\| Number\(act\.id\) !== Number\(seasonId\)\) throw new Error/.test(fn), '本番の模擬を消せる');
-        assert.ok(fn.indexOf('!act.is_test') < fn.indexOf(".delete()"), '確かめる前に消している');
+        // 消す呼び出しの直前には必ず stillTest() (実行して確かめる: 途中で本番に戻ったら消さない)
+        const dels = []; let active = { id: 50, is_test: true }; let n = 0;
+        const q = (table) => {
+            const o = { _del: false, select: () => o, eq: () => o, in: () => o, delete: () => { o._del = true; dels.push(table); return o; },
+                maybeSingle: () => Promise.resolve({ data: active, error: null }),
+                then: (ok) => ok(table === 'players' ? { data: [{ id: 1 }, { id: 2 }, { id: 3, archived: true }, ...Array.from({ length: 17 }, (_, i) => ({ id: 10 + i }))], error: null }
+                    : o._del ? (n++, active = n === 1 ? { id: 38, is_test: false } : active, { error: null }) : { data: [1, 2, 3, ...Array.from({ length: 17 }, (_, i) => 10 + i)].flatMap(id => ['fire', 'water', 'electric', 'iron', 'wind'].map(a => ({ player_id: id, attribute: a }))), error: null }) };
+            return o;
+        };
+        const thin = new Function('supabase', 'window', fn + '\nreturn window.supabaseThinTestMocks;')({ from: q }, { testSeasonDomain: globalThis.testSeasonDomain });
+        await assert.rejects(() => thin(50), /テストシーズンが動いていない/, '途中で本番に戻っても消し続けた');
+        assert.equal(dels.length, 1, `本番に戻ったあとに消している (${dels.length} 回)`);
+        assert.ok(/const live = new Set\(\(ps \|\| \[\]\)\.filter\(p => !p\.archived\)/.test(fn), '書庫の人も母集団に入れている');
         assert.ok(/\.delete\(\)\.in\('player_id', pick\.none\)/.test(fn) && /\.delete\(\)\.eq\('player_id', pid\)\.in\('attribute', \['fire', 'electric', 'wind'\]\)/.test(fn));
         const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
         assert.ok(/if \(seedTotal > 0 && confirm\('模擬を「8〜9 割の人から届いた」状態にしますか？/.test(h) && /await window\.supabaseThinTestMocks\(r\.id\);/.test(h), '8〜9 割を選べない');

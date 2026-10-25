@@ -2966,21 +2966,33 @@ window.supabaseCreateTestFromActive = async function (opts = {}) {
 window.supabaseThinTestMocks = async function (seasonId) {
     const dom = window.testSeasonDomain;
     if (!dom) throw new Error('js/domain/testSeason.js が読み込まれていません');
-    const { data: act, error: aErr } = await supabase.from('seasons').select('id, is_test').eq('is_active', true).maybeSingle();
-    if (aErr) throw aErr;
-    if (!act || !act.is_test || Number(act.id) !== Number(seasonId)) throw new Error('テストシーズンが動いていないので模擬を間引きません');
+    // ★ 消す直前ごとに「いま動いているのがこのテストシーズンか」を確かめ直す (別の運営がテストを終えて本番の模擬が戻った直後に消さない: Codex 監査)。
+    //   確かめてから消すまでの数十ミリ秒の競合は残る (テストの作成直後に別の運営が終了する場合だけ・承知)
+    const stillTest = async () => {
+        const { data: act, error: aErr } = await supabase.from('seasons').select('id, is_test').eq('is_active', true).maybeSingle();
+        if (aErr) throw aErr;
+        if (!act || !act.is_test || Number(act.id) !== Number(seasonId)) throw new Error('テストシーズンが動いていないので模擬を間引きません');
+    };
+    await stillTest();
     const { data: rows, error } = await supabase.from('player_damages').select('player_id, attribute');
     if (error) throw error;
-    const pick = dom.thinMocks((rows || []).map(r => r.player_id), { seed: Number(seasonId) });
+    // 母集団は「届いていない人」の一覧と同じ = 書庫の人を除く (Codex 監査)
+    const { data: ps, error: pErr } = await supabase.from('players').select('id, archived');
+    if (pErr) throw pErr;
+    const live = new Set((ps || []).filter(p => !p.archived).map(p => Number(p.id)));
+    const ids = (rows || []).map(r => Number(r.player_id)).filter(id => live.has(id));
+    const pick = dom.thinMocks(ids, { seed: Number(seasonId) });
     if (pick.none.length) {
+        await stillTest();
         const { error: e1 } = await supabase.from('player_damages').delete().in('player_id', pick.none);
         if (e1) throw e1;
     }
     for (const pid of pick.partial) {   // 2 属性だけ残す (水冷・鉄甲以外を消す = 「あと 灼熱・電撃・風圧」に見える)
+        await stillTest();
         const { error: e2 } = await supabase.from('player_damages').delete().eq('player_id', pid).in('attribute', ['fire', 'electric', 'wind']);
         if (e2) throw e2;
     }
-    return { none: pick.none.length, partial: pick.partial.length, total: new Set((rows || []).map(r => Number(r.player_id))).size };
+    return { none: pick.none.length, partial: pick.partial.length, total: new Set(ids).size };
 };
 
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
