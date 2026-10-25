@@ -2819,6 +2819,8 @@ window.supabaseCreateSeason = async function (payload) {
             damages_snapshot: dmgs,
             nikke_characters_snapshot: charNames,
             previous_active_season_id: previousActiveSeasonId,
+            // 本番のボスでテストするとき: 本番の区切り (blocks) と メンバーの入力 (member_input) も写す
+            ...(payload.copyMeta && typeof payload.copyMeta === 'object' ? payload.copyMeta : {}),
         };
     }
 
@@ -2925,6 +2927,36 @@ window.supabaseCreateSeason = async function (payload) {
 // プレースホルダのボス (テストボス1〜5) + 既存5コードのローテーション + 標準ティア配分
 // 完全独立: 前回シーズンからのシードなし、終了時に player_damages と nikke_characters は復元される。
 // opts.scenario: 'midraid' (既定・数名が凸済みのレイド中盤) / 'fresh' (序盤・未凸・全ボス満タン = 予約の練習用)
+// 🧪 いまの本番のボスでテストする (2026-10-25 ふるり「もっと簡単にテストシーズンを作れないか」):
+//   アクティブな本番シーズンのボス (名前・コード・級) と区切りを写し、月キーは TEST-… (本番と衝突しない)。
+//   day = 'pre' → ハード日は明日 (前日の流れから) / 'day' → きょう (当日の流れ)。凸は入れない (序盤)。
+//   テストを終えると本番シーズンに戻る (previous_active_season_id)。
+window.supabaseCreateTestFromActive = async function (opts = {}) {
+    const { data: act, error: aErr } = await supabase.from('seasons').select('id, month_key, is_test, metadata').eq('is_active', true).maybeSingle();
+    if (aErr) throw aErr;
+    if (!act) throw new Error('いま動いている本番シーズンがありません (シーズン作成から作ってください)');
+    if (act.is_test) throw new Error('いまはテストシーズン中です。先に 🧪 ✕ 終了 で本番に戻してください');
+    const { data: bs, error: bErr } = await supabase.from('bosses').select('boss_number, boss_code, name, tier').eq('season_id', act.id).order('boss_number');
+    if (bErr) throw bErr;
+    if (!Array.isArray(bs) || bs.length !== 5) throw new Error(`本番シーズンのボスが 5 体そろっていません (${(bs || []).length} 体)`);
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (opts.day === 'day' ? 0 : 1));
+    const p2 = (n) => String(n).padStart(2, '0');
+    const ts = `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
+    const meta = act.metadata && typeof act.metadata === 'object' && !Array.isArray(act.metadata) ? act.metadata : {};
+    const copyMeta = {};
+    if (Array.isArray(meta.blocks)) copyMeta.blocks = meta.blocks;
+    if (meta.member_input != null) copyMeta.member_input = meta.member_input;
+    return window.supabaseCreateSeason({
+        testScenario: 'fresh',
+        hardDate: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`,
+        monthKey: `TEST-${ts}`,
+        bosses: bs.map(b => ({ bossNumber: b.boss_number, bossCode: b.boss_code, name: b.name || '', tier: b.tier })),
+        isTest: true,
+        copyMeta,
+    });
+};
+
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     const testScenario = opts.scenario === 'fresh' ? 'fresh' : 'midraid';
     const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];

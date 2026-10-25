@@ -14336,6 +14336,43 @@ console.log('\n月キー (同じ月の 2 回目・テストで本番を消さな
     });
 }
 
+console.log('\n🧪 本番のボスでテスト:');
+{
+    const _fs6 = await import('node:fs');
+    const html = _fs6.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs6.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+    await testAsync('★ supabaseCreateTestFromActive: 本番のボス 5 体・区切りを写し、月キー TEST-…・ハード日は明日 (前日から) / きょう (当日)・凸なし。テスト中・本番なし・ボス不足は止める', async () => {
+        const src = client.slice(client.indexOf('window.supabaseCreateTestFromActive = async function'), client.indexOf('window.supabaseQuickCreateTestSeason = async function'));
+        const run = async (active, bosses, opts) => {
+            let got = null;
+            const q = (data) => { const o = { select: () => o, eq: () => o, order: () => Promise.resolve({ data, error: null }), maybeSingle: () => Promise.resolve({ data, error: null }) }; return o; };
+            const supabase = { from: (t) => t === 'seasons' ? q(active) : q(bosses) };
+            const win = { supabaseCreateSeason: async (p) => { got = p; return { month_key: p.monthKey }; } };
+            const fn = new Function('supabase', 'window', src + '\nreturn window.supabaseCreateTestFromActive;')(supabase, win);
+            await fn(opts); return got;
+        };
+        const B = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, boss_code: ['Z.E.U.S.', 'P.S.I.D.', 'A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.'][n - 1], name: 'ボス' + n, tier: n === 3 || n === 5 ? 'tyrant' : 'lord' }));
+        const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
+        const p = await run({ id: 38, month_key: '2026-10b', is_test: false, metadata: { blocks, member_input: 'full' } }, B, { day: 'pre' });
+        assert.ok(/^TEST-\d{14}$/.test(p.monthKey), p.monthKey); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
+        assert.deepEqual(p.bosses.map(b => [b.bossNumber, b.bossCode, b.name, b.tier]), B.map(b => [b.boss_number, b.boss_code, b.name, b.tier]), 'ボスを写していない');
+        assert.deepEqual(p.copyMeta, { blocks, member_input: 'full' }, '区切り・メンバーの入力を写していない');
+        const t = new Date(); const tm = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1); const p2 = n => String(n).padStart(2, '0');
+        assert.equal(p.hardDate, `${tm.getFullYear()}-${p2(tm.getMonth() + 1)}-${p2(tm.getDate())}`, '前日から = ハード日は明日');
+        const pd = await run({ id: 38, is_test: false, metadata: {} }, B, { day: 'day' });
+        assert.equal(pd.hardDate, `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`, '当日 = ハード日はきょう'); assert.deepEqual(pd.copyMeta, {});
+        await assert.rejects(() => run({ id: 39, is_test: true, metadata: {} }, B, {}), /テストシーズン中/);
+        await assert.rejects(() => run(null, B, {}), /本番シーズンがありません/);
+        await assert.rejects(() => run({ id: 38, is_test: false, metadata: {} }, B.slice(0, 4), {}), /5 体そろっていません/);
+    });
+    test('★ 配線: 写した区切りを metadata に入れる / ボタンは前日・当日・終了で出て、テスト中は隠す / ハンドラは確認してから作る', () => {
+        assert.ok(/previous_active_season_id: previousActiveSeasonId,\s*\n\s*\/\/[^\n]*\n\s*\.\.\.\(payload\.copyMeta && typeof payload\.copyMeta === 'object' \? payload\.copyMeta : \{\}\),/.test(client), 'copyMeta を metadata に入れていない');
+        assert.equal((html.match(/onclick="handleOpsTestFromActive\('(pre|day)'\)" class="dc-ops-action" data-stage="pre day end" data-test-from-active/g) || []).length, 2, 'ボタン 2 つが前日・当日・終了で出ない');
+        assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-test-from-active\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にも出る');
+        const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
+        assert.ok(h.indexOf('if (!confirm(msg)) return;') > 0 && h.indexOf('if (!confirm(msg)) return;') < h.indexOf('supabaseCreateTestFromActive('), '確認せずに作っている');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -4806,6 +4806,8 @@
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:var(--t-ink);color:var(--card);"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
                     <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 予約テスト (序盤)</button>
                     <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-testlink" data-stage="prep">🧪 クイックテスト (中盤)</button>
+                    <button onclick="handleOpsTestFromActive('pre')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (前日から)</button>
+                    <button onclick="handleOpsTestFromActive('day')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (当日)</button>
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
@@ -20100,6 +20102,28 @@
             }
         }
 
+        // 🧪 いまの本番のボスでテスト (1 タップ・段階を切り替えなくてよい)。終了すると本番に戻る
+        async function handleOpsTestFromActive(day) {
+            const pre = day !== 'day';
+            const msg = `🧪 いまの本番シーズンのボスでテストを始めますか？\n\n`
+                + `・ボス 5 体と区切りは本番と同じ / 月キーは TEST-… (本番は消えません)\n`
+                + `・${pre ? 'ハード日は明日 = 前日の流れ (⏰ 登録 → 📸 模擬 → 🔒 予約 → 朝を組んで配信) から' : 'ハード日はきょう = 当日の流れ (HP → 結果の取り込み → 組む → 配信) から'}\n`
+                + `・凸ゼロ・全ボス満タン。模擬はテスト用にシード (いまの模擬は終了時に元へ戻ります)\n`
+                + `・テスト中に登録した模擬・凸・予約・配信は、🧪 ✕ 終了 で消えて本番に戻ります\n`
+                + `・通知は 運営担当 と「🧪 テスト通知も受け取る」を ON にした人だけに届きます`;
+            if (!confirm(msg)) return;
+            try {
+                const r = await window.supabaseCreateTestFromActive({ day: pre ? 'pre' : 'day' });
+                seasonStore.invalidate();
+                opsStore.invalidate();
+                const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
+                showNotification(`✅ ${r.month_key} (本番のボス・${pre ? '前日から' : '当日'}) を作成しました${seedTotal > 0 ? ` · 模擬 ${seedTotal}件シード` : ''}`);
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`❌ テストを作れませんでした: ${e?.message || e}`);
+            }
+        }
+
         async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
             const fresh = scenario === 'fresh';
             const msg = fresh
@@ -30440,6 +30464,8 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             document.querySelectorAll('#tab-ops [data-stage]').forEach(el => {
                 el.style.display = String(el.dataset.stage || '').split(/\s+/).includes(st.stage) ? '' : 'none';
             });
+            // 🧪 本番のボスでテスト は本番シーズンのときだけ (テスト中は 🧪 ✕ 終了 で戻ってから)
+            if (season && season.is_test) document.querySelectorAll('#tab-ops [data-test-from-active]').forEach(el => { el.style.display = 'none'; });
         }
         function _opsStageBarHtml(st, season) {
             const dom = window.opsStageDomain, esc = escapeHtml;
