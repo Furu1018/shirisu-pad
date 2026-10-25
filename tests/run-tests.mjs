@@ -14353,7 +14353,7 @@ console.log('\n🧪 本番のボスでテスト:');
         const B = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, boss_code: ['Z.E.U.S.', 'P.S.I.D.', 'A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.'][n - 1], name: 'ボス' + n, tier: n === 3 || n === 5 ? 'tyrant' : 'lord' }));
         const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
         const p = await run({ id: 38, month_key: '2026-10b', is_test: false, metadata: { blocks, member_input: 'full' } }, B, { day: 'pre' });
-        assert.ok(/^TEST-\d{14}-[a-z0-9]{1,4}$/.test(p.monthKey), p.monthKey); assert.notEqual(p.monthKey, (await run({ id: 38, is_test: false, metadata: {} }, B, {})).monthKey, '同じ秒に 2 回で月キーが衝突する'); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
+        assert.ok(/^TEST-\d{14}-[a-z0-9-]{4,8}$/.test(p.monthKey), p.monthKey); assert.notEqual(p.monthKey, (await run({ id: 38, is_test: false, metadata: {} }, B, {})).monthKey, '同じ秒に 2 回で月キーが衝突する'); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
         assert.deepEqual(p.bosses.map(b => [b.bossNumber, b.bossCode, b.name, b.tier]), B.map(b => [b.boss_number, b.boss_code, b.name, b.tier]), 'ボスを写していない');
         assert.deepEqual(p.copyMeta, { blocks, member_input: 'full' }, '区切り・メンバーの入力を写していない');
         const t = new Date(); const tm = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1); const p2 = n => String(n).padStart(2, '0');

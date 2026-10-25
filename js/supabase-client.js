@@ -2953,7 +2953,8 @@ window.supabaseCreateTestFromActive = async function (opts = {}) {
     return window.supabaseCreateSeason({
         testScenario: 'fresh',
         hardDate: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`,
-        monthKey: `TEST-${ts}-${Math.random().toString(36).slice(2, 6)}`,   // 同じ秒に 2 回でも衝突しない (Codex 監査)
+        // 同じ秒に 2 回でも衝突しない (Codex 監査)。2 人の運営が同時にシーズンを作る競合そのものは従来から残る (承知・運用で 1 人が作る)
+        monthKey: `TEST-${ts}-${(globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') ? globalThis.crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)}`,
         bosses: bs.map(b => ({ bossNumber: b.boss_number, bossCode: b.boss_code, name: b.name || '', tier: b.tier })),
         isTest: true,
         copyMeta,
