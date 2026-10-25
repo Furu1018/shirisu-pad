@@ -13337,7 +13337,7 @@ console.log('\ngrowthDomain:');
         assert.equal((html.match(/secondB5Lv4Only: true,/g) || []).length, 2, 'ソルバーの呼び出し口 2 か所 (算出 / 承認の影響) で渡していない');
         assert.equal((html.match(/excludeTimeUnknown: true,[^\n]*\n\s*secondB5Lv4Only: true,/g) || []).length, 2, '段階 2b と同じ呼び出し口に並べていない');
         const intake = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /r\.b5Short \?/.test(intake), '届いていない人に ボス 5 の 2 編成目が無い');
+        assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /r\.b5Short && r\.missing\.length < 5 \?/.test(intake), '届いていない人に ボス 5 の 2 編成目が無い (未提出の人には付けない・2026-10-26)');
         assert.ok(/window\.mockIntakeDomain\.b5SecondOf\(p, _mbB5W\)/.test(html) && /\$\{mock\}\$\{excl\}\$\{b5\(r\)\}/.test(html), '👥 メンバー状況に ボス 5 の 2 編成目が無い');
         // 運営の取り込みは保存先 (編成① / ②) を選べる。本人の提出は従来どおり編成① (同じ編成なら自動で寄る)
         const save = html.match(/async function handleMyDmgPreviewSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -14377,6 +14377,34 @@ console.log('\n🧪 本番のボスでテスト:');
         assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-test-from-active\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にも出る');
         const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
         assert.ok(h.indexOf('if (!confirm(msg)) return;') > 0 && h.indexOf('if (!confirm(msg)) return;') < h.indexOf('supabaseCreateTestFromActive('), '確認せずに作っている');
+    });
+}
+
+console.log('\n🧪 模擬を 8〜9 割に / 未提出の札:');
+{
+    const _fs7 = await import('node:fs');
+    const html = _fs7.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs7.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+    test('★ thinMocks: 未提出 1 割・一部 0.5 割 (重ならない・決まった選び方・種で変わる) / 19 人なら 2 人と 1 人', () => {
+        const ts = globalThis.testSeasonDomain;
+        const ids = Array.from({ length: 19 }, (_, i) => i + 1);
+        const a = ts.thinMocks([...ids, 3, 3], { seed: 40 });
+        assert.equal(a.none.length, 2); assert.equal(a.partial.length, 1);
+        assert.equal(new Set([...a.none, ...a.partial]).size, 3, '未提出と一部が重なっている');
+        assert.ok([...a.none, ...a.partial].every(x => ids.includes(x)));
+        assert.deepEqual(ts.thinMocks(ids, { seed: 40 }), a, '同じ種で選び方が変わる');
+        const others = [41, 42, 43, 44, 45].map(sd => JSON.stringify(ts.thinMocks(ids, { seed: sd })));
+        assert.ok(new Set(others).size > 1, '種で選ぶ人が変わらない');
+        assert.deepEqual(ts.thinMocks([], {}), { none: [], partial: [] });
+        assert.equal(ts.thinMocks(Array.from({ length: 40 }, (_, i) => i), { seed: 1 }).none.length, 4);
+    });
+    test('★ 配線: 間引くのは動いているテストシーズンだけ / 未提出は全部消す・一部は 3 属性を消す / ハンドラは聞いてから / 未提出の札にボス 5 の注記を付けない', () => {
+        const fn = client.slice(client.indexOf('window.supabaseThinTestMocks = async function'), client.indexOf('window.supabaseQuickCreateTestSeason = async function'));
+        assert.ok(/if \(!act \|\| !act\.is_test \|\| Number\(act\.id\) !== Number\(seasonId\)\) throw new Error/.test(fn), '本番の模擬を消せる');
+        assert.ok(fn.indexOf('!act.is_test') < fn.indexOf(".delete()"), '確かめる前に消している');
+        assert.ok(/\.delete\(\)\.in\('player_id', pick\.none\)/.test(fn) && /\.delete\(\)\.eq\('player_id', pid\)\.in\('attribute', \['fire', 'electric', 'wind'\]\)/.test(fn));
+        const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
+        assert.ok(/if \(seedTotal > 0 && confirm\('模擬を「8〜9 割の人から届いた」状態にしますか？/.test(h) && /await window\.supabaseThinTestMocks\(r\.id\);/.test(h), '8〜9 割を選べない');
+        assert.ok(/\$\{r\.b5Short && r\.missing\.length < 5 \? /.test(html), '未提出の人にもボス 5 の注記が付く');
     });
 }
 

@@ -2961,6 +2961,28 @@ window.supabaseCreateTestFromActive = async function (opts = {}) {
     });
 };
 
+// 🧪 テストシーズンの模擬を「8〜9 割の人から届いた」状態にする (未提出 1 割 = 全部消す / 一部だけ 0.5 割 = 2 属性だけ残す)。
+//   ★ 動いているのがテストシーズン (seasonId) のときだけ。本番の模擬は消さない (テストの終了時にスナップショットから戻る)
+window.supabaseThinTestMocks = async function (seasonId) {
+    const dom = window.testSeasonDomain;
+    if (!dom) throw new Error('js/domain/testSeason.js が読み込まれていません');
+    const { data: act, error: aErr } = await supabase.from('seasons').select('id, is_test').eq('is_active', true).maybeSingle();
+    if (aErr) throw aErr;
+    if (!act || !act.is_test || Number(act.id) !== Number(seasonId)) throw new Error('テストシーズンが動いていないので模擬を間引きません');
+    const { data: rows, error } = await supabase.from('player_damages').select('player_id, attribute');
+    if (error) throw error;
+    const pick = dom.thinMocks((rows || []).map(r => r.player_id), { seed: Number(seasonId) });
+    if (pick.none.length) {
+        const { error: e1 } = await supabase.from('player_damages').delete().in('player_id', pick.none);
+        if (e1) throw e1;
+    }
+    for (const pid of pick.partial) {   // 2 属性だけ残す (水冷・鉄甲以外を消す = 「あと 灼熱・電撃・風圧」に見える)
+        const { error: e2 } = await supabase.from('player_damages').delete().eq('player_id', pid).in('attribute', ['fire', 'electric', 'wind']);
+        if (e2) throw e2;
+    }
+    return { none: pick.none.length, partial: pick.partial.length, total: new Set((rows || []).map(r => Number(r.player_id))).size };
+};
+
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     const testScenario = opts.scenario === 'fresh' ? 'fresh' : 'midraid';
     const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];

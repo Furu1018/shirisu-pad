@@ -18358,7 +18358,7 @@
                 <button type="button" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として登録する (スクショを選ぶ)"
                         style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--s1);color:var(--t-ink);font-size:11.5px;font-weight:800;cursor:pointer;">
                     <span>${escapeHtml(r.name)}</span>
-                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : r.missing.length ? 'あと ' + escapeHtml(r.missingJp.join('・')) : ''}${r.b5Short ? `${r.missing.length ? ' · ' : ''}ボス5 (${escapeHtml(b5Pt)}PT) の編成${r.b5Short === 2 ? '①②' : '②'}` : ''}</span>
+                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : r.missing.length ? 'あと ' + escapeHtml(r.missingJp.join('・')) : ''}${r.b5Short && r.missing.length < 5 ? `${r.missing.length ? ' · ' : ''}ボス5 (${escapeHtml(b5Pt)}PT) の編成${r.b5Short === 2 ? '①②' : '②'}` : ''}</span>
                     <span style="color:${r.deadline ? 'var(--warn-deep)' : 'var(--t-muted)'};font-weight:800;">${r.deadline ? '〆 ' + escapeHtml(r.deadline.name) + 'の前' : (r.noSlots ? '時間 未登録' : 'いつでも')}</span>
                 </button>`).join('') + '</div>';
         }
@@ -20120,7 +20120,16 @@
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
-                showNotification(`✅ ${r.month_key} (本番のボス・${pre ? '前日から' : '当日'}) を作成しました${seedTotal > 0 ? ` · 模擬 ${seedTotal}件シード` : ''}`);
+                // 模擬は全員ぶん入る。8〜9 割の人から届いた状態 (未提出・一部だけの人がいる) で練習するなら間引く
+                let thin = '';
+                if (seedTotal > 0 && confirm('模擬を「8〜9 割の人から届いた」状態にしますか？\n\nOK = 約 1 割を未提出・約 0.5 割を 2 属性だけにする\nキャンセル = 全員ぶんのまま')) {
+                    try {
+                        const t = await window.supabaseThinTestMocks(r.id);
+                        opsStore.invalidate();
+                        thin = ` · ${t.total - t.none - t.partial}/${t.total} 人の模擬がそろった状態 (未提出 ${t.none}・一部 ${t.partial})`;
+                    } catch (e) { thin = ` · 模擬を間引けませんでした (${e?.message || e})`; }
+                }
+                showNotification(`✅ ${r.month_key} (本番のボス・${pre ? '前日から' : '当日'}) を作成しました${seedTotal > 0 ? ` · 模擬 ${seedTotal}件シード` : ''}${thin}`);
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ テストを作れませんでした: ${e?.message || e}`);

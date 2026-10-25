@@ -83,5 +83,24 @@
         return out;
     }
 
-    root.testSeasonDomain = { classifyTestSeasonChars, filterDeletableChars };
+    /**
+     * 🧪 テストで「模擬が 8〜9 割の人から届いた」状態を作る (2026-10-26 ふるり「8〜9 割の人の模擬が出た状態でテストしたい」)。
+     * 全員ぶん入れた模擬から、未提出にする人 (全部消す) と 一部だけの人 (2 属性だけ残す) を選ぶ。
+     * 並びは id と種 (シーズン id) の決まった混ぜ方 = 何度呼んでも同じ人・シーズンごとに違う人。
+     * @param {Array<number>} playerIds  模擬のある人
+     * @param {{ seed?: number, noneShare?: number, partialShare?: number }} o  既定: 未提出 1 割・一部だけ 0.5 割 (= 8.5 割がそろう)
+     * @returns {{ none: number[], partial: number[] }}
+     */
+    function thinMocks(playerIds, o = {}) {
+        const ids = [...new Set((Array.isArray(playerIds) ? playerIds : []).map(Number).filter(Number.isFinite))];
+        const seed = Number(o.seed) || 0;
+        const mix = (n) => { let h = (Math.imul(n ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(seed + 1, 0xc2b2ae35)) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0x27d4eb2f) >>> 0; return h ^ (h >>> 16); };
+        const order = ids.slice().sort((a, b) => (mix(a) - mix(b)) || (a - b));
+        const n = order.length;
+        const noneN = Math.round(n * (o.noneShare == null ? 0.1 : Number(o.noneShare)));
+        const partialN = Math.round(n * (o.partialShare == null ? 0.05 : Number(o.partialShare)));
+        return { none: order.slice(0, noneN), partial: order.slice(noneN, noneN + partialN) };
+    }
+
+    root.testSeasonDomain = { classifyTestSeasonChars, filterDeletableChars, thinMocks };
 })(typeof window !== 'undefined' ? window : globalThis);
