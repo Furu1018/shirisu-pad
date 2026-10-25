@@ -14315,6 +14315,23 @@ console.log('\n画像認識の失敗の説明 (aiVision):');
     });
 }
 
+console.log('\n月キー (同じ月の 2 回目・テストで本番を消さない):');
+{
+    const _fs5 = await import('node:fs');
+    const html = _fs5.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs5.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+    test('★ 月キーは YYYY-MM か末尾に b〜z (同じ月の 2 回目) / テストの作成は 稼働中・本番 のシーズンを消さない / 凸のある月キーには b を案内', () => {
+        const re = /^\d{4}-(0[1-9]|1[0-2])[b-z]?$/;
+        for (const ok of ['2026-10', '2026-10b', '2026-11', '2026-12c']) assert.ok(re.test(ok), ok);
+        for (const ng of ['2026-13', '2026-10a', '2026-10B', '2026-1', 'TEST-1', '2026-10bb']) assert.ok(!re.test(ng), ng);
+        assert.equal((html.match(/if \(!\/\^\\d\{4\}-\(0\[1-9\]\|1\[0-2\]\)\[b-z\]\?\$\/\.test\(monthKey\)\)/g) || []).length, 2, '作成と編集の両方で b を受けていない');
+        const fn = client.slice(client.indexOf('window.supabaseCreateSeason = async function'), client.indexOf('window.supabaseQuickCreateTestSeason'));
+        assert.ok(/\.select\('id, month_key, is_active, is_test'\)\s*\n\s*\.eq\('month_key', payload\.monthKey\)/.test(fn), '既存のシーズンが本番かテストかを読んでいない');
+        const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test === false))'), d = fn.indexOf(".from('seasons').delete().eq('id', existing.id)");
+        assert.ok(g > 0 && d > g, 'テストの作成で本番 / 稼働中のシーズンを消せる (止めが削除より前に無い)');
+        assert.ok(/「\$\{payload\.monthKey\}b」のように末尾に b を付けてください/.test(fn), '凸のある月キーで b を案内していない');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

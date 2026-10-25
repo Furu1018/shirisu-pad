@@ -2826,16 +2826,21 @@ window.supabaseCreateSeason = async function (payload) {
     // 凸記録が無い限り自動で削除して再作成可能にする
     const { data: existing } = await supabase
         .from('seasons')
-        .select('id, month_key, is_active')
+        .select('id, month_key, is_active, is_test')
         .eq('month_key', payload.monthKey)
         .maybeSingle();
     if (existing) {
+        // ★ 稼働中のシーズン・本番のシーズンを、テストの作成で消さない (2026-10-25: シーズン作成のシートで 🧪 に印を付けて
+        //   ポスターを読ませると本番と同じ月キーが入り、凸 0 件の本番シーズンが確認なしで消えていた)
+        if (existing.is_active || (payload.isTest && existing.is_test === false)) {
+            throw new Error(`月キー "${payload.monthKey}" は${existing.is_active ? 'いま使っているシーズン' : '本番のシーズン'}の月キーです。テストは別の月キー (例: TEST-${payload.monthKey}) にしてください`);
+        }
         const { count: atkCount } = await supabase
             .from('attacks')
             .select('id', { count: 'exact', head: true })
             .eq('season_id', existing.id);
         if ((atkCount || 0) > 0) {
-            throw new Error(`月キー "${payload.monthKey}" のシーズンに既に ${atkCount} 件の凸記録があります。手動確認のため Supabase Dashboard で削除してください。`);
+            throw new Error(`月キー "${payload.monthKey}" のシーズン (${existing.is_test ? 'テスト' : '本番'}) には ${atkCount} 件の凸記録があるので使えません。同じ月の 2 回目のレイドなら「${payload.monthKey}b」のように末尾に b を付けてください`);
         }
         // 凸ゼロ → 安全に削除して再作成 (CASCADE で bosses も消える)
         const { error: delErr } = await supabase.from('seasons').delete().eq('id', existing.id);
