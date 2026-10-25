@@ -2814,13 +2814,16 @@ window.supabaseCreateSeason = async function (payload) {
                 .select('canonical_name');
             charNames = (chars || []).map(c => c.canonical_name);
         } catch { /* テーブル未マイグ環境では空配列のまま */ }
+        // 本番のボスでテストするとき: 本番の区切り (blocks) と メンバーの入力 (member_input) だけを写す。
+        //   白リストで取り、復元に使う鍵 (is_test / damages_snapshot / previous_active_season_id) より前に置く (上書きさせない: Codex 監査)
+        const cm = payload.copyMeta && typeof payload.copyMeta === 'object' ? payload.copyMeta : {};
         metadata = {
+            ...(Array.isArray(cm.blocks) ? { blocks: cm.blocks } : {}),
+            ...(cm.member_input != null ? { member_input: cm.member_input } : {}),
             is_test: true,
             damages_snapshot: dmgs,
             nikke_characters_snapshot: charNames,
             previous_active_season_id: previousActiveSeasonId,
-            // 本番のボスでテストするとき: 本番の区切り (blocks) と メンバーの入力 (member_input) も写す
-            ...(payload.copyMeta && typeof payload.copyMeta === 'object' ? payload.copyMeta : {}),
         };
     }
 
@@ -2950,7 +2953,7 @@ window.supabaseCreateTestFromActive = async function (opts = {}) {
     return window.supabaseCreateSeason({
         testScenario: 'fresh',
         hardDate: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`,
-        monthKey: `TEST-${ts}`,
+        monthKey: `TEST-${ts}-${Math.random().toString(36).slice(2, 6)}`,   // 同じ秒に 2 回でも衝突しない (Codex 監査)
         bosses: bs.map(b => ({ bossNumber: b.boss_number, bossCode: b.boss_code, name: b.name || '', tier: b.tier })),
         isTest: true,
         copyMeta,

@@ -14353,7 +14353,7 @@ console.log('\n🧪 本番のボスでテスト:');
         const B = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, boss_code: ['Z.E.U.S.', 'P.S.I.D.', 'A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.'][n - 1], name: 'ボス' + n, tier: n === 3 || n === 5 ? 'tyrant' : 'lord' }));
         const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
         const p = await run({ id: 38, month_key: '2026-10b', is_test: false, metadata: { blocks, member_input: 'full' } }, B, { day: 'pre' });
-        assert.ok(/^TEST-\d{14}$/.test(p.monthKey), p.monthKey); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
+        assert.ok(/^TEST-\d{14}-[a-z0-9]{1,4}$/.test(p.monthKey), p.monthKey); assert.notEqual(p.monthKey, (await run({ id: 38, is_test: false, metadata: {} }, B, {})).monthKey, '同じ秒に 2 回で月キーが衝突する'); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
         assert.deepEqual(p.bosses.map(b => [b.bossNumber, b.bossCode, b.name, b.tier]), B.map(b => [b.boss_number, b.boss_code, b.name, b.tier]), 'ボスを写していない');
         assert.deepEqual(p.copyMeta, { blocks, member_input: 'full' }, '区切り・メンバーの入力を写していない');
         const t = new Date(); const tm = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1); const p2 = n => String(n).padStart(2, '0');
@@ -14365,7 +14365,14 @@ console.log('\n🧪 本番のボスでテスト:');
         await assert.rejects(() => run({ id: 38, is_test: false, metadata: {} }, B.slice(0, 4), {}), /5 体そろっていません/);
     });
     test('★ 配線: 写した区切りを metadata に入れる / ボタンは前日・当日・終了で出て、テスト中は隠す / ハンドラは確認してから作る', () => {
-        assert.ok(/previous_active_season_id: previousActiveSeasonId,\s*\n\s*\/\/[^\n]*\n\s*\.\.\.\(payload\.copyMeta && typeof payload\.copyMeta === 'object' \? payload\.copyMeta : \{\}\),/.test(client), 'copyMeta を metadata に入れていない');
+        // copyMeta は白リスト (blocks / member_input) で、復元に使う鍵より前 — 実行して確かめる
+        const endTok = 'previous_active_season_id: previousActiveSeasonId,\n        };';
+        const mm = client.slice(client.indexOf('const cm = payload.copyMeta'), client.indexOf(endTok) + endTok.length);
+        const build = new Function('payload', 'dmgs', 'charNames', 'previousActiveSeasonId', 'let metadata;\n' + mm + '\nreturn metadata;');
+        const evil = build({ copyMeta: { blocks: [1], member_input: 'full', is_test: false, damages_snapshot: 'x', previous_active_season_id: 999, nikke_characters_snapshot: 'y', foo: 1 } }, ['d'], ['c'], 38);
+        assert.deepEqual(evil, { blocks: [1], member_input: 'full', is_test: true, damages_snapshot: ['d'], nikke_characters_snapshot: ['c'], previous_active_season_id: 38 }, 'copyMeta が復元の鍵を上書きできる / 白リスト外を入れている');
+        assert.deepEqual(build({}, [], [], null), { is_test: true, damages_snapshot: [], nikke_characters_snapshot: [], previous_active_season_id: null });
+        assert.ok(/if \(_opsTestFromActiveBusy\) return;/.test(html) && /_opsTestFromActiveBusy = true;\s*\n\s*try \{/.test(html) && /\} finally \{\s*\n\s*_opsTestFromActiveBusy = false;/.test(html), '二重押しで 2 つ作れる');
         assert.equal((html.match(/onclick="handleOpsTestFromActive\('(pre|day)'\)" class="dc-ops-action" data-stage="pre day end" data-test-from-active/g) || []).length, 2, 'ボタン 2 つが前日・当日・終了で出ない');
         assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-test-from-active\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にも出る');
         const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));

@@ -20103,7 +20103,9 @@
         }
 
         // 🧪 いまの本番のボスでテスト (1 タップ・段階を切り替えなくてよい)。終了すると本番に戻る
+        let _opsTestFromActiveBusy = false;
         async function handleOpsTestFromActive(day) {
+            if (_opsTestFromActiveBusy) return;   // 二重押しで 2 つ作らない
             const pre = day !== 'day';
             const msg = `🧪 いまの本番シーズンのボスでテストを始めますか？\n\n`
                 + `・ボス 5 体と区切りは本番と同じ / 月キーは TEST-… (本番は消えません)\n`
@@ -20112,6 +20114,7 @@
                 + `・テスト中に登録した模擬・凸・予約・配信は、🧪 ✕ 終了 で消えて本番に戻ります\n`
                 + `・通知は 運営担当 と「🧪 テスト通知も受け取る」を ON にした人だけに届きます`;
             if (!confirm(msg)) return;
+            _opsTestFromActiveBusy = true;
             try {
                 const r = await window.supabaseCreateTestFromActive({ day: pre ? 'pre' : 'day' });
                 seasonStore.invalidate();
@@ -20121,6 +20124,8 @@
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ テストを作れませんでした: ${e?.message || e}`);
+            } finally {
+                _opsTestFromActiveBusy = false;
             }
         }
 
