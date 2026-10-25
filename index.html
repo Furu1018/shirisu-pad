@@ -26833,10 +26833,11 @@ PAD の中で入力するものは無くなりました (時間・模擬・希�
             // ----- Supabase (完了済みシーズン) と ローカルJSON (直近5か月) を並列取得 -----
             // 以前は直列 (Supabase → JSON×5 を順に await) で初回表示のボトルネックだった
             const d = new Date();
+            // 同じ月の 2 回目のレイド (2026-10b) の JSON も探す (月キーの末尾 b・2026-10-25)
             const monthKeys = Array.from({ length: 5 }, (_, i) => {
                 const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
                 return `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
-            });
+            }).flatMap(k => [k, `${k}b`]);
             const [supRows, ...jsonRows] = await Promise.all([
                 (async () => {
                     try {

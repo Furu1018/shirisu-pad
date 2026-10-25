@@ -14326,9 +14326,13 @@ console.log('\n月キー (同じ月の 2 回目・テストで本番を消さな
         assert.equal((html.match(/if \(!\/\^\\d\{4\}-\(0\[1-9\]\|1\[0-2\]\)\[b-z\]\?\$\/\.test\(monthKey\)\)/g) || []).length, 2, '作成と編集の両方で b を受けていない');
         const fn = client.slice(client.indexOf('window.supabaseCreateSeason = async function'), client.indexOf('window.supabaseQuickCreateTestSeason'));
         assert.ok(/\.select\('id, month_key, is_active, is_test'\)\s*\n\s*\.eq\('month_key', payload\.monthKey\)/.test(fn), '既存のシーズンが本番かテストかを読んでいない');
-        const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test === false))'), d = fn.indexOf(".from('seasons').delete().eq('id', existing.id)");
+        const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test !== true))'), d = fn.indexOf(".from('seasons').delete().eq('id', existing.id)");
         assert.ok(g > 0 && d > g, 'テストの作成で本番 / 稼働中のシーズンを消せる (止めが削除より前に無い)');
         assert.ok(/「\$\{payload\.monthKey\}b」のように末尾に b を付けてください/.test(fn), '凸のある月キーで b を案内していない');
+        assert.ok(/\}\)\.flatMap\(k => \[k, `\$\{k\}b`\]\);/.test(html), '分析の月次 JSON で 2 回目 (YYYY-MMb) を探していない');
+        // 止めの条件を実行して確かめる (is_test が NULL の古い本番行もテストの作成で消さない)
+        const stop = (existing, payload) => !!(existing.is_active || (payload.isTest && existing.is_test !== true));
+        assert.deepEqual([stop({ is_active: false, is_test: null }, { isTest: true }), stop({ is_active: false, is_test: false }, { isTest: true }), stop({ is_active: false, is_test: true }, { isTest: true }), stop({ is_active: true, is_test: true }, { isTest: true }), stop({ is_active: false, is_test: null }, { isTest: false })], [true, true, false, true, false]);
     });
 }
 

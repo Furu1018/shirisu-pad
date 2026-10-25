@@ -2832,7 +2832,7 @@ window.supabaseCreateSeason = async function (payload) {
     if (existing) {
         // ★ 稼働中のシーズン・本番のシーズンを、テストの作成で消さない (2026-10-25: シーズン作成のシートで 🧪 に印を付けて
         //   ポスターを読ませると本番と同じ月キーが入り、凸 0 件の本番シーズンが確認なしで消えていた)
-        if (existing.is_active || (payload.isTest && existing.is_test === false)) {
+        if (existing.is_active || (payload.isTest && existing.is_test !== true)) {   // is_test が NULL の古い行も本番
             throw new Error(`月キー "${payload.monthKey}" は${existing.is_active ? 'いま使っているシーズン' : '本番のシーズン'}の月キーです。テストは別の月キー (例: TEST-${payload.monthKey}) にしてください`);
         }
         const { count: atkCount } = await supabase
