@@ -13795,13 +13795,17 @@
             const n = Number(String(v || '').replace(/,/g, ''));
             const raw = Number.isFinite(n) && n > 0 ? Math.round(n * 1e9) : null;
             d.totalDamage = Number.isFinite(raw) ? raw : null;
-            // 保存ボタンと「入力してください」の警告を今の値で更新する (描き直すと焦点が飛ぶので、その 2 つだけ)
-            const ok = _myDmgPreviewSyncSave();
+            // 保存ボタンと警告を今の値で更新する (描き直すと焦点が飛ぶので、その 2 つだけ)。警告は開いたときと同じ判定 (属性・ダメージ) — Codex 再監査
+            _myDmgPreviewSyncSave();
             const warn = document.getElementById('myDmgPreviewWarn'), warnText = document.getElementById('myDmgPreviewWarnText');
-            if (warn && warnText) {
-                if (d.totalDamage == null) { warn.style.display = 'flex'; warnText.textContent = d.manual ? 'ダメージ (B) を入力してください' : 'ダメージ値が読めませんでした'; }
-                else if (ok) warn.style.display = 'none';
-            }
+            if (warn && warnText) { const warns = _myDmgPreviewWarns(d); warn.style.display = warns.length ? 'flex' : 'none'; warnText.textContent = warns.join(' / '); }
+        }
+        // プレビューの警告 (属性が無い / ダメージが無い)。開いたときと、ダメージの欄に入力したときの両方がここを通る
+        function _myDmgPreviewWarns(d) {
+            const warns = [];
+            if (!(d && d.selectedAttr && PT_ATTRS.some(a => a.key === d.selectedAttr))) warns.push('属性が判別できませんでした。下のボタンから選んでください');
+            if (!d || d.totalDamage == null) warns.push(d && d.manual ? 'ダメージ (B) を入力してください' : 'ダメージ値が読めませんでした');
+            return warns;
         }
         function editMyDmgPreviewChar(i) {
             const d = _myDmgPreviewData;
@@ -13880,10 +13884,8 @@
             charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:9.5px;color:var(--t-muted);text-align:center;margin-top:2px;">${d.manual ? 'アイコンをタップして選びます (任意・よく使われる順)' : '認識ミスはアイコンをタップして修正できます'}</div>`;
             charsEl.style.flexWrap = 'wrap';
 
-            // 警告
-            const warns = [];
-            if (!attr) warns.push('属性が判別できませんでした。下のボタンから選んでください');
-            if (d.totalDamage == null) warns.push(d.manual ? 'ダメージ (B) を入力してください' : 'ダメージ値が読めませんでした');
+            // 警告 (ダメージを手で入れたときも同じ判定で更新する: _myDmgPreviewWarns)
+            const warns = _myDmgPreviewWarns(d);
             if (warns.length > 0) {
                 warn.style.display = 'flex';
                 warnText.textContent = warns.join(' / ');

@@ -14488,7 +14488,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         const pv = html.slice(html.indexOf('function openMyDmgPreviewModal()'), html.indexOf('async function handleMyDmgPreviewSave()'));
         assert.ok(/id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0\.01" min="0"[^>]*oninput="_myDmgPreviewSetDamage\(this\.value\)"/.test(pv), '手入力のダメージの欄が無い');
         assert.ok(/titleEl\.innerHTML = d\.manual \? '✏️ 模擬を手で入力'/.test(pv) && /retryBtn\.style\.display = d\.manual \? 'none' : ''/.test(pv), '手入力の見出し / 再撮影の非表示');
-        assert.ok(/warns\.push\(d\.manual \? 'ダメージ \(B\) を入力してください' : 'ダメージ値が読めませんでした'\);/.test(pv) && /\$\{d\.manual \? 'アイコンをタップして選びます \(任意・よく使われる順\)' : '認識ミスはアイコンをタップして修正できます'\}/.test(pv), '手入力なのに「読めませんでした」「認識ミス」と出る');
+        assert.ok(/warns\.push\(d && d\.manual \? 'ダメージ \(B\) を入力してください' : 'ダメージ値が読めませんでした'\);/.test(html) && /const warns = _myDmgPreviewWarns\(d\);/.test(pv) && /\$\{d\.manual \? 'アイコンをタップして選びます \(任意・よく使われる順\)' : '認識ミスはアイコンをタップして修正できます'\}/.test(pv), '手入力なのに「読めませんでした」「認識ミス」と出る');
         // 実行: ダメージの欄に入れると保存ボタンが有効になる (Codex 監査 S1: 値を書くだけでボタンが無効のままだった)
         const src = html.slice(html.indexOf('function _myDmgPreviewSetDamage(v)'), html.indexOf('function editMyDmgPreviewChar(i)')) + '\n' + html.slice(html.indexOf('function _myDmgPreviewSyncSave()'), html.indexOf('async function handleMyDmgPreviewSave()'));
         const mkDoc = () => { const els = { myDmgPreviewSaveBtn: { disabled: true, style: {} }, myDmgPreviewWarn: { style: { display: 'flex' } }, myDmgPreviewWarnText: { textContent: '' } }; return { getElementById: (id) => els[id] || null, els }; };
@@ -14497,7 +14497,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.deepEqual(run({ manual: true, selectedAttr: 'water', totalDamage: null }, []), { ok: false, dmg: null, warn: 'flex', text: '' }, 'ダメージ無しで保存できる');
         assert.deepEqual(run({ manual: true, selectedAttr: 'water', totalDamage: null }, ['28.4', '']).ok, false, '消したのに保存できる');
         assert.equal(run({ manual: true, selectedAttr: 'water', totalDamage: null }, ['28.4', '']).text, 'ダメージ (B) を入力してください');
-        assert.deepEqual(run({ manual: true, selectedAttr: null, totalDamage: null }, ['28.4']).ok, false, '属性なしで保存できる');
+        const na = run({ manual: true, selectedAttr: null, totalDamage: null }, ['28.4']); assert.equal(na.ok, false, '属性なしで保存できる'); assert.deepEqual([na.warn, na.text], ['flex', '属性が判別できませんでした。下のボタンから選んでください'], '属性なしのとき古い「入力してください」が残る / 属性の警告が出ない (Codex 再監査)');
         assert.deepEqual(run({ manual: false, selectedAttr: 'fire', totalDamage: null }, ['0']).dmg, null); assert.deepEqual(run({ manual: false, selectedAttr: 'fire', totalDamage: null }, ['-3']).ok, false);
         assert.deepEqual(run({ manual: false, selectedAttr: 'fire', totalDamage: null }, ['1e400']).ok, false, 'Infinity を保存できる');
         assert.ok(/_myDmgPreviewSyncSave\(\);\s*\n\s*modal\.classList\.add\('open'\);/.test(pv), '開いたときに同じ判定を通していない');
