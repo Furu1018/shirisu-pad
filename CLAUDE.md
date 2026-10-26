@@ -1332,6 +1332,13 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   保存後に戻る先 (このカード・`opsStore.invalidate()` → 届いていない人とメンバー状況を描き直す) だけ。活動ログは `actorName` で「(運営が代理で登録)」。
   「届いていない人」= 5 属性そろっていない人 (書庫・今回は難しい を除く)、〆 = その人が最初に出られるブロック (⏳隙間・未登録は いつでも)。
   純ロジックは `js/domain/mockIntake.js` (`missingRows` / `summary`)。名前を押すとその人を選んでスクショ選択が開く。
+  ★ **▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26 ふるりの構想「名前・属性・ダメージを入力 / 一覧表 / 被りは赤枠」・設計案 `docs/シンプル化_設計案_2026-10-26.md`・モック `docs/シンプル化モック_2026-10-26.html`)**:
+  📸 のカードの「届いていない人」のチップを **人 × 属性の表** に置き換えた (`mockIntakeDomain.tableRows`・列は `attrOrderOfBosses` = ボス 1〜5 の弱点の順・〆 は `deadlineOf`)。
+  マス = その人のその属性の編成 (ダメージ・編成①②③)。**被り (`dup`) = 同じ人の別の編成 (属性を問わず) と同じキャラが 1 人でもいる** (同じキャラは 1 日 1 回) → 赤い枠。キャラの無い編成は判定しない。
+  空のマスの ＋ と編成のチップは **✏️ 手で入力 `_opsMockManual(playerId, attr, slot)`** = 読み取りと同じプレビュー `myDmgPreviewModal` を画像なし (`manual: true`) で開く
+  (ダメージは `<input>` → `_myDmgPreviewSetDamage` が `totalDamage` = B × 1e9・見出し「✏️ 模擬を手で入力」・再撮影なし・slot を渡せばその編成を直す `slotTouched: true`)。保存は従来の `handleMyDmgPreviewSave` (キャラは任意 = null 可)。
+  Q1「使用頻度の高いキャラが選びやすく」= `editMyDmgPreviewChar` が `openIconPicker` に属性を渡す → 既存の「ユニオンの採用数の順」(`_charUsageFor`)。色は `_MK_ATTR_CSS` (トークン名は静的に書く — 「定義されていない var(--…)」の見張り)。
+  名前を押す = 従来どおり読み取り (`_opsMockIntakePickFromList`)。次は S2 (配分表の手動) → S3 (自動) → S4 (決定・時間割) → S5 (予約などを隠す)
   ★ **③-f 凸報告の確認** (2026-10-18): 戦況タブ「✅ 凸報告の確認」(`opsSecAttackCheck`・当日と終了・幅 12・当日は開く)。盤面の凸 (`players[].attacks`) を
   配信プラン (`_opsPublishedPlan.plan`・`_syncOpsUnpublishBtn` の取り直しの最後に描く = 別クエリを増やさない) と突き合わせ、印 = 計画にない / 予定よりかなり低い (70% 未満) /
   予定の時刻とずれ (3 時間以上)。予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。✓ → `supabaseSetAttackConfirmed` → `attacks.confirmed_at / confirmed_by`
