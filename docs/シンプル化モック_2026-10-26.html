@@ -224,8 +224,8 @@ function render() {
   for (const r of rs) {
     if (r.lv !== lastLv) { html += `<tr class="lvh"><td colspan="7">Lv${r.lv}${r.lv === 4 ? ' (ボス 5 だけ・HP 無限)' : ''}</td></tr>`; lastLv = r.lv; }
     const pct = r.hp === Infinity ? 0 : Math.min(100, r.got / r.hp * 100);
-    html += `<tr class="${r.done ? 'done' : ''}"><td class="boss"><div class="name">B${r.b.n} ${r.b.name}</div><div class="hp"><span class="pill a-${r.b.weak}">${ATTR[r.b.weak]}PT</span> ${r.done ? '撃破 ✓ 余り ' + fmt(r.got - r.hp) : 'あと ' + fmt(r.rem)}</div><div class="bar"><i style="width:${pct}%"></i></div></td>`;
-    html += BLOCKS.map((b, bi) => { const p = sel != null ? pieces[sel] : null; const cls = p ? (canDrop(p, r, bi) ? 'no' : 'can') : ''; const here = placed.filter(x => x.lv === r.lv && x.boss === r.b.n && x.blk === bi); return `<td class="slot ${cls}" data-lv="${r.lv}" data-boss="${r.b.n}" data-blk="${bi}">${here.map(x => `<span class="piece" data-un="${x.id}" title="押すと戻す"><span class="pill a-${x.attr}">${ATTR[x.attr]}</span>${x.name} ${x.dmg.toFixed(1)}</span>`).join('')}</td>`; }).join('');
+    html += `<tr class="${r.done ? 'done' : ''}"><td class="boss bg-${r.b.weak}"><div class="name">B${r.b.n} ${r.b.name}</div><div class="hp"><span class="pill a-${r.b.weak}">${ATTR[r.b.weak]}PT</span> ${r.done ? '撃破 ✓ 余り ' + fmt(r.got - r.hp) : 'あと ' + fmt(r.rem)}</div><div class="bar"><i style="width:${pct}%"></i></div></td>`;
+    html += BLOCKS.map((b, bi) => { const p = sel != null ? pieces[sel] : null; const cls = p ? (canDrop(p, r, bi) ? 'no' : 'can') : ''; const here = placed.filter(x => x.lv === r.lv && x.boss === r.b.n && x.blk === bi); return `<td class="slot ${cls}" data-lv="${r.lv}" data-boss="${r.b.n}" data-blk="${bi}">${here.map(x => `<span class="piece bg-${x.attr}" data-un="${x.id}" title="押すと戻す"><span class="pill a-${x.attr}">${ATTR[x.attr]}</span>${x.name} ${x.dmg.toFixed(1)}</span>`).join('')}</td>`; }).join('');
     html += '</tr>';
   }
   g.innerHTML = html;
