@@ -14488,6 +14488,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         const pv = html.slice(html.indexOf('function openMyDmgPreviewModal()'), html.indexOf('async function handleMyDmgPreviewSave()'));
         assert.ok(/id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0\.01" min="0"[^>]*oninput="_myDmgPreviewSetDamage\(this\.value\)"/.test(pv), '手入力のダメージの欄が無い');
         assert.ok(/titleEl\.innerHTML = d\.manual \? '✏️ 模擬を手で入力'/.test(pv) && /retryBtn\.style\.display = d\.manual \? 'none' : ''/.test(pv), '手入力の見出し / 再撮影の非表示');
+        assert.ok(/warns\.push\(d\.manual \? 'ダメージ \(B\) を入力してください' : 'ダメージ値が読めませんでした'\);/.test(pv) && /\$\{d\.manual \? 'アイコンをタップして選びます \(任意・よく使われる順\)' : '認識ミスはアイコンをタップして修正できます'\}/.test(pv), '手入力なのに「読めませんでした」「認識ミス」と出る');
         assert.ok(/d\.totalDamage = Number\.isFinite\(n\) && n > 0 \? Math\.round\(n \* 1e9\) : null;/.test(html), 'ダメージの欄が totalDamage (生の値) に書いていない');
         assert.ok(/\}, `📚 編成の修正 \(\$\{i \+ 1\}枠目\)`, \{ attr: d\.selectedAttr \|\| null \}\);/.test(html), 'キャラ選びが属性の採用数の順になっていない (Q1)');
         assert.ok(/const _MK_ATTR_CSS = \{/.test(html) && /fire: \{ bg: 'var\(--attr-fire-bg\)', deep: 'var\(--attr-fire-deep\)' \}/.test(html), '属性の色がトークンでない');

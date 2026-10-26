@@ -13869,13 +13869,13 @@
                         <div style="font-size:10px;font-weight:700;color:var(--t-body);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(r?.canonical || norm)}</div>
                     </div>`;
             }).join('');
-            charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:9.5px;color:var(--t-muted);text-align:center;margin-top:2px;">認識ミスはアイコンをタップして修正できます</div>`;
+            charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:9.5px;color:var(--t-muted);text-align:center;margin-top:2px;">${d.manual ? 'アイコンをタップして選びます (任意・よく使われる順)' : '認識ミスはアイコンをタップして修正できます'}</div>`;
             charsEl.style.flexWrap = 'wrap';
 
             // 警告
             const warns = [];
             if (!attr) warns.push('属性が判別できませんでした。下のボタンから選んでください');
-            if (d.totalDamage == null) warns.push('ダメージ値が読めませんでした');
+            if (d.totalDamage == null) warns.push(d.manual ? 'ダメージ (B) を入力してください' : 'ダメージ値が読めませんでした');
             if (warns.length > 0) {
                 warn.style.display = 'flex';
                 warnText.textContent = warns.join(' / ');
