@@ -14718,6 +14718,21 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
     });
 }
 
+{
+    const bb = globalThis.blockBuildDomain;
+    const blocks = [{ from: 5, to: 8 }, { from: 9, to: 12 }];
+    const pin = (o = {}) => ({ id: 1, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, player_id: 7, boss_number: 2, loadout_slot: 1, expected_damage_b: 30, characters_snapshot: ['a', 'b'], ...o });
+    test('★ 駒の指紋: pinsPlan が読む値 (人・ボス・編成・状態・ダメージ・キャラ) が変われば変わる / ほかのブロック・並び順では変わらない (Codex 監査)', () => {
+        const base = bb.pinsFingerprint([pin()], blocks, 0);
+        for (const ch of [{ expected_damage_b: 31 }, { characters_snapshot: ['a', 'c'] }, { player_id: 8 }, { boss_number: 3 }, { loadout_slot: 2 }, { status: 'approved' }, { id: 2 }])
+            assert.notEqual(bb.pinsFingerprint([pin(ch)], blocks, 0), base, `変わっていない: ${JSON.stringify(ch)}`);
+        assert.equal(bb.pinsFingerprint([pin(), pin({ id: 9, block_from: 9, block_to: 12 })], blocks, 0), base, 'ほかのブロックの駒で変わった');
+        const two = [pin(), pin({ id: 3, boss_number: 4 })];
+        assert.equal(bb.pinsFingerprint(two, blocks, 0), bb.pinsFingerprint([...two].reverse(), blocks, 0), '並び順で変わった');
+        assert.equal(bb.pinsFingerprint([], blocks, 0), '');
+    });
+}
+
 console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2):');
 {
     const _fsA = await import('node:fs');

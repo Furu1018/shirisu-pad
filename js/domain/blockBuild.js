@@ -59,6 +59,17 @@
         return { pinsOnly: true, startLevel: Number(level) || 1, levels: bossRows.size ? [{ level: infinite ? 4 : Number(level) || 1, infinite, bosses: [...bossRows.values()] }] : [] };
     }
 
+    /**
+     * ブロックの駒 (📌・約束) の指紋。pinsPlan と自動で組むときの拘束が読む値をすべて含む
+     * (人・ボス・編成の番号・状態・ダメージ・キャラ)。自動で組んだときの指紋と違えば、その自動の結果は古い。
+     */
+    function pinsFingerprint(pins, blocks, idx) {
+        return (Array.isArray(pins) ? pins : []).filter(r => r && pinBlockIdx(r, blocks) === idx)
+            .map(r => JSON.stringify([Number(r.id), String(r.status), String(r.player_id), Number(r.boss_number), Number(r.loadout_slot) || 1,
+                Number(r.expected_damage_b) || 0, Array.isArray(r.characters_snapshot) ? r.characters_snapshot.map(String) : []]))
+            .sort().join('|');
+    }
+
     /** プランの凸のうち、このブロックの範囲・このレベルのもの (時刻の順) */
     function attacksAt(plan, block, level) {
         const all = pc() ? pc().attacksIn(plan, block) : [];
@@ -205,5 +216,5 @@
         return { ok: true };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, attacksAt, overview, availableBlocks, trayPieces, canDrop, hourIdxOfIso, EPS };
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, trayPieces, canDrop, hourIdxOfIso, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);

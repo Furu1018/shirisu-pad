@@ -22549,7 +22549,7 @@
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
-        const _obPinsFp = (pins, blocks, idx) => pins.filter(r => window.blockBuildDomain.pinBlockIdx(r, blocks) === idx).map(r => `${r.id}:${r.status}:${r.boss_number}:${r.loadout_slot}`).sort().join(',');
+        const _obPinsFp = (pins, blocks, idx) => window.blockBuildDomain.pinsFingerprint(pins, blocks, idx);
         const _obHpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
         function _obFirstIdx(season, blocks) {
             const rb = window.raidBlocksDomain;
