@@ -22549,7 +22549,13 @@
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
-        const _obPinsFp = (pins, blocks, idx) => window.blockBuildDomain.pinsFingerprint(pins, blocks, idx);
+        // = このブロックの駒 (pinsPlan が読む値) + 自動で組むときにソルバーへ渡す拘束 (全ブロックの約束・📌: レベル・時刻・窓を含む)
+        const _obPinsFp = (rows, blocks, idx) => {
+            const rv = window.reservationsDomain;
+            const pins = window.blockBuildDomain.blockPins(rows || [], rv && rv.isFixed ? rv.isFixed : null);
+            const cons = rv && rv.toSolverConstraints ? JSON.stringify(rv.toSolverConstraints(rows || [])) : '';
+            return window.blockBuildDomain.pinsFingerprint(pins, blocks, idx) + '#' + cons;
+        };
         const _obHpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
         function _obFirstIdx(season, blocks) {
             const rb = window.raidBlocksDomain;
@@ -22577,7 +22583,7 @@
             // 自動で組んだあとにそのブロックの駒が変わっていたら (別の端末・取り直し)、その結果と後ろのブロックの結果は古い → 捨てて要組み直し (Codex 監査)
             for (const k of [..._ob.plans.keys()].sort((a, b) => a - b)) {
                 if (!_ob.plans.has(k)) continue;
-                if ((_ob.plans.get(k).obPinsFp ?? '') !== _obPinsFp(pins, blocks, k)) { _obAfterChange(k); _ob.stale.add(k); }
+                if ((_ob.plans.get(k).obPinsFp ?? '') !== _obPinsFp(_ob.pins, blocks, k)) { _obAfterChange(k); _ob.stale.add(k); }
             }
             const planOf = (idx, level, cur) => _ob.plans.get(idx) || bb.pinsPlan(pins, blocks[idx], level, cur.bosses, cur.players);
             const ov = bb.overview({ board: { season: snap.season, bosses: snap.bosses, players: snap.players }, blocks, first, planOf, hpOf: _obHpOf });
@@ -22801,7 +22807,7 @@
                 plan.seasonId = snap.season.id;
                 plan.blockScope = { idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                 plan.builtAt = new Date().toISOString();
-                plan.obPinsFp = _obPinsFp(window.blockBuildDomain.blockPins(rows, window.reservationsDomain?.isFixed || null), blocks, idx);   // このブロックの駒が変わったら古い
+                plan.obPinsFp = _obPinsFp(rows, blocks, idx);   // 駒・拘束が変わったら古い (Codex 監査)
                 if (!_obSame(epoch, sid)) return;
                 _ob.plans.set(idx, plan);
                 _ob.stale.delete(idx);
