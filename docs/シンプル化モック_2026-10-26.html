@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>運営の組み立て モック</title>
+<meta name="description" content="しりすこPAD 運営の組み立てをシンプルにする案のモック: 模擬ダメージ表 → 凸時間帯配分表 (ドラッグ & ドロップ / 自動) → 決定 → みんなの時間割 (架空のデータ)">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap">
+<style>
+:root { --bg: #f3f2f7; --card: #ffffff; --s1: #f6f5fa; --line: #e3e1ea; --ink: #16151c; --body: #3f3e4a; --muted: #6f6e7c;
+  --ops: #6c42f0; --ops-bg: #efeafd; --ok: #1f8f4e; --ok-bg: #e6f6ec; --bad: #d12f3a; --bad-bg: #fde9ea; --warn: #b56a00; --warn-bg: #fff3dc;
+  --fire: #e2493a; --water: #2d7ad6; --electric: #9a3fd6; --iron: #e08a1e; --wind: #2aa36a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141319; --card: #1f1e27; --s1: #26252f; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; } }
+:root[data-theme="dark"] { --bg: #141319; --card: #1f1e27; --s1: #26252f; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 14px; line-height: 1.5; padding: 12px 16px 60px; }
+h1 { font-size: 17px; font-weight: 900; margin: 4px 0 2px; }
+.sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.tabs { display: flex; gap: 4px; background: var(--line); border-radius: 12px; padding: 3px; margin: 0 0 12px; }
+.tabs button { flex: 1; border: 0; background: transparent; color: var(--body); font: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 4px; border-radius: 9px; cursor: pointer; }
+.tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,.04); }
+.card h2 { font-size: 14px; font-weight: 900; margin: 0 0 6px; }
+.note { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+input, select { font: inherit; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--ink); min-width: 0; }
+.btn { font: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 12px; border-radius: 9px; border: 0; cursor: pointer; background: var(--s1); color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--card); }
+.btn.ops { background: var(--ops); color: #fff; }
+.btn.ok { background: var(--ok); color: #fff; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+th, td { padding: 5px 6px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: 11px; color: var(--muted); font-weight: 800; }
+.wrap { overflow-x: auto; }
+.pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: #fff; }
+.a-fire { background: var(--fire); } .a-water { background: var(--water); } .a-electric { background: var(--electric); } .a-iron { background: var(--iron); } .a-wind { background: var(--wind); }
+.cell { border-radius: 8px; padding: 4px 6px; background: var(--s1); min-width: 74px; display: inline-block; font-variant-numeric: tabular-nums; }
+.cell.dup { outline: 2px solid var(--bad); outline-offset: -2px; }
+.cell.used { opacity: .35; text-decoration: line-through; }
+.cell small { color: var(--muted); font-weight: 700; }
+.piece { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; background: var(--card); border: 1.5px solid var(--line); font-size: 11.5px; font-weight: 800; cursor: grab; user-select: none; }
+.piece.dup { border-color: var(--bad); }
+.piece.used { opacity: .35; cursor: default; }
+.piece.sel { outline: 2px solid var(--ops); }
+.tray { display: flex; flex-wrap: wrap; gap: 6px; }
+.grid { width: 100%; }
+.grid th.blk { text-align: center; min-width: 96px; }
+.grid td.slot { min-height: 44px; height: 44px; border: 1px dashed var(--line); border-radius: 8px; padding: 3px; }
+.grid td.slot.can { background: var(--ops-bg); border-color: var(--ops); }
+.grid td.slot.no { opacity: .45; }
+.grid td.slot .piece { cursor: pointer; margin: 1px; font-size: 11px; padding: 3px 7px; }
+.boss { min-width: 150px; }
+.boss .name { font-weight: 900; }
+.boss .hp { font-size: 11px; color: var(--muted); font-weight: 700; }
+.bar { height: 6px; border-radius: 999px; background: var(--line); margin-top: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--ops); }
+.done .bar i { background: var(--ok); }
+.done .hp { color: var(--ok); }
+.lvh td { padding-top: 10px; font-weight: 900; font-size: 12.5px; color: var(--ops); border: 0; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 9px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 800; display: none; z-index: 9; max-width: 90vw; }
+.tt { border-left: 4px solid var(--ops); padding: 6px 10px; margin-bottom: 8px; background: var(--s1); border-radius: 0 10px 10px 0; }
+.tt .h { font-weight: 900; font-size: 13px; }
+.tt .l { font-size: 12px; color: var(--body); }
+.tt .mine { background: var(--ops-bg); color: var(--ops); font-weight: 900; border-radius: 6px; padding: 0 5px; }
+.hidden { display: none; }
+@media (max-width: 700px) { body { padding: 10px 16px 60px; } .side { order: 2; } }
+.two { display: grid; grid-template-columns: 1fr 260px; gap: 12px; }
+@media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>運営の組み立てをシンプルに (モック)</h1>
+<p class="sub">架空の 12 人・ボスは 2026-10b と同じ。① 模擬を打つ → ② ブロックに配る (ドラッグ & ドロップ / スマホは押して押す) → ③ 決定でみんなの時間割に</p>
+<div class="tabs"><button class="on" data-t="t1">① 模擬ダメージ表</button><button data-t="t2">② 凸時間帯配分表</button><button data-t="t3">③ 決定 → 時間割</button></div>
+
+<section id="t1">
+  <div class="card">
+    <h2>模擬を登録</h2>
+    <p class="note">提出してもらった 名前・属性・ダメージ を打つだけ。📸 スクショで読ませると 5 キャラも入り、被りが自動で分かる (任意)</p>
+    <div class="row">
+      <select id="inName"></select>
+      <select id="inAttr"><option value="fire">灼熱PT</option><option value="water">水冷PT</option><option value="electric">電撃PT</option><option value="iron">鉄甲PT</option><option value="wind">風圧PT</option></select>
+      <input id="inDmg" type="number" step="0.1" placeholder="ダメージ (B)" style="width:120px">
+      <button class="btn primary" id="btnAdd">登録</button>
+      <button class="btn" title="このモックでは動きません">📸 スクショで登録</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>みんなの模擬 <span id="cnt" class="note"></span></h2>
+    <p class="note">赤い枠 = 同じ人の 2 つの編成に同じキャラ (1 日に両方は使えない)。薄い = ②で使った</p>
+    <div class="wrap"><table id="mockTbl"></table></div>
+  </div>
+</section>
+
+<section id="t2" class="hidden">
+  <div class="two">
+    <div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">ボス × ブロック</h2>
+          <div class="row"><button class="btn ops" id="btnAuto">🧮 自動で組む (残り)</button><button class="btn" id="btnClear">やり直す</button></div>
+        </div>
+        <p class="note">ピースを置けるのは「その人が出られるブロック」×「ピースの属性が弱点のボス」だけ (明るいマス)。行の HP が 0 で撃破 ✓・5 体そろうと次の Lv の行が出る。置いた駒を押すと戻る</p>
+        <div class="wrap"><table class="grid" id="grid"></table></div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>模擬のピース <span class="note" id="trayCnt"></span></h2>
+        <p class="note">赤 = 被りあり (片方を置くと相方も薄くなる)</p>
+        <div class="tray" id="tray"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="t3" class="hidden">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">凸プラン決定</h2>
+      <button class="btn ok" id="btnDecide">✅ 決定してみんなに出す</button>
+    </div>
+    <p class="note" id="decideNote">②で置いた駒がそのまま 1 日ぶんの配信になる。決定し直せば上書き (変わった人に通知)</p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">みんなの時間割 (メンバーの画面)</h2>
+      <label class="note">あなた = <select id="viewer"></select></label>
+    </div>
+    <p class="note">配信カードのタブ・📅 きょうの凸・🧱 盤 はこれ 1 つに。自分の凸は強調。下に ✅ 確認しました</p>
+    <div id="tt"></div>
+    <button class="btn primary" style="width:100%">✅ 確認しました</button>
+  </div>
+</section>
+<div class="toast" id="toast"></div>
+
+<script>
+const ATTR = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
+const BLOCKS = [['朝', '5〜8'], ['午前', '9〜12'], ['午後', '13〜16'], ['夕方', '17〜20'], ['夜', '21〜翌0'], ['深夜', '翌1〜4']];
+const BOSSES = [ { n: 1, name: 'オベリスク', weak: 'iron', tier: 'lord' }, { n: 2, name: 'クリスタルアーマー', weak: 'electric', tier: 'lord' }, { n: 3, name: 'アルトアイゼン', weak: 'fire', tier: 'tyrant' }, { n: 4, name: 'リビルドビッグアームズ', weak: 'wind', tier: 'lord' }, { n: 5, name: 'ブラックスミス', weak: 'water', tier: 'tyrant' } ];
+const HP = { 1: { lord: 99.86, tyrant: 150.84 }, 2: { lord: 149.78, tyrant: 226.26 }, 3: { lord: 292.45, tyrant: 349.23 } };
+// 架空の 12 人: 出られるブロック (添字) と模擬 (属性 → [{dmg, team}])
+const C = (s) => s.split(' ');
+const M = [
+  ['あかり', [0, 1], { fire: [[28.4, C('紅蓮 ラピ アニス クラウン リター')]], water: [[24.6, C('ベル マスト ナガ ティア リター')]], iron: [[22.8, C('ラプンツェル サクラ ドロシー クラウン アリス')]] }],
+  ['いぶき', [3, 4], { water: [[31.2, C('ベル アニス クラウン ラピ ドロシー')], [19.0, C('マスト ナガ ティア モダニア リター')]], electric: [[26.1, C('モダニア アニス ベル クラウン リター')]], wind: [[27.3, C('ソダ ブリッド エクシア アリス クラウン')]] }],
+  ['うた', [1, 2, 3], { fire: [[33.0, C('紅蓮 クラウン アニス リター ラピ')]], electric: [[20.5, C('モダニア ベル ティア ナガ マスト')]], iron: [[25.5, C('ラプンツェル サクラ ドロシー アリス ブリッド')]], wind: [[21.8, C('ソダ エクシア ブリッド クラウン ラピ')]] }],
+  ['えま', [4, 5], { water: [[29.9, C('ベル マスト ナガ クラウン アニス')]], fire: [[22.0, C('紅蓮 ラピ クラウン アニス リター')]], wind: [[30.2, C('ソダ エクシア ブリッド アリス ドロシー')]] }],
+  ['おと', [0, 1, 2], { electric: [[35.1, C('モダニア アニス クラウン ベル リター')]], iron: [[24.0, C('ラプンツェル サクラ ドロシー アリス ティア')]], water: [[18.4, C('ベル マスト ナガ ティア モダニア')]] }],
+  ['かな', [3, 4, 5], { fire: [[27.7, C('紅蓮 ラピ アニス クラウン リター')]], water: [[26.3, C('ベル マスト ナガ ティア ドロシー')], [15.2, C('アニス クラウン モダニア リター ラピ')]], electric: [[23.3, C('モダニア ベル ティア ナガ マスト')]] }],
+  ['きり', [2, 3], { iron: [[30.8, C('ラプンツェル サクラ ドロシー クラウン アニス')]], wind: [[24.4, C('ソダ エクシア ブリッド アリス リター')]], fire: [[19.9, C('紅蓮 ラピ ティア ナガ マスト')]] }],
+  ['くる', [0, 4, 5], { water: [[22.1, C('ベル マスト ナガ ティア リター')]], electric: [[28.0, C('モダニア アニス クラウン ベル ドロシー')]], wind: [[20.0, C('ソダ エクシア ブリッド アリス サクラ')]] }],
+  ['けい', [1, 2], { fire: [[25.0, C('紅蓮 ラピ アニス クラウン リター')]], iron: [[27.1, C('ラプンツェル サクラ ドロシー アリス ブリッド')]], electric: [[21.6, C('モダニア ベル ティア ナガ マスト')]] }],
+  ['こと', [3, 4], { wind: [[32.5, C('ソダ エクシア ブリッド クラウン アニス')]], water: [[23.8, C('ベル マスト ナガ ティア リター')]], iron: [[18.7, C('ラプンツェル サクラ ドロシー モダニア ラピ')]] }],
+  ['さく', [4, 5], { water: [[27.4, C('ベル マスト ナガ クラウン アニス')], [21.0, C('ティア モダニア リター ラピ ドロシー')]], fire: [[24.2, C('紅蓮 ラピ ティア ナガ マスト')]] }],
+  ['しの', [0, 1, 2, 3], {} ],
+];
+// ピース = { id, m, name, attr, slot, dmg, team, dup: [id...], placed: null|{lv, boss, blk} }
+let pieces = [], placed = [], decided = null, sel = null;
+function build() {
+  pieces = []; placed = []; decided = null; sel = null;
+  M.forEach((row, mi) => { const [name, , mocks] = row; Object.entries(mocks).forEach(([attr, list]) => list.forEach((l, si) => pieces.push({ id: pieces.length, m: mi, name, attr, slot: si + 1, dmg: l[0], team: l[1], dup: [] }))); });
+  for (const a of pieces) for (const b of pieces) if (a.m === b.m && a.id < b.id && a.team.some(c => b.team.includes(c))) { a.dup.push(b.id); b.dup.push(a.id); }
+}
+const isUsed = (p) => placed.some(x => x.id === p.id) || p.dup.some(d => placed.some(x => x.id === d));
+function rows() { // 表示する Lv の行 (Lv1 → 5 体撃破で Lv2 …)
+  const out = []; let lv = 1;
+  while (lv <= 3) {
+    const r = BOSSES.map(b => { const hp = HP[lv][b.tier]; const got = placed.filter(x => x.lv === lv && x.boss === b.n).reduce((s, x) => s + x.dmg, 0); return { lv, b, hp, got, rem: Math.max(0, hp - got), done: got >= hp }; });
+    out.push(...r); if (!r.every(x => x.done)) break; lv++;
+  }
+  if (lv > 3) out.push({ lv: 4, b: BOSSES[4], hp: Infinity, got: placed.filter(x => x.lv === 4).reduce((s, x) => s + x.dmg, 0), rem: Infinity, done: false });
+  return out;
+}
+const fmt = (v) => v === Infinity ? '∞' : v.toFixed(1) + 'B';
+function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2200); }
+function canDrop(p, r, blk) {
+  if (!p || isUsed(p)) return '使えません';
+  if (r.done) return `Lv${r.lv} の ${r.b.name} は撃破済み`;
+  if (p.attr !== r.b.weak) return `${ATTR[p.attr]}PT は ${r.b.name} (弱点 ${ATTR[r.b.weak]}) には効きません`;
+  if (!M[p.m][1].includes(blk)) return `${p.name} は ${BLOCKS[blk][0]} に出られません`;
+  if (placed.filter(x => x.m === p.m).length >= 3) return `${p.name} は 3 凸を使い切っています`;
+  return '';
+}
+function place(p, r, blk) { const why = canDrop(p, r, blk); if (why) { toast('置けません: ' + why); return; } placed.push({ ...p, lv: r.lv, boss: r.b.n, blk }); sel = null; render(); const rr = rows().find(x => x.lv === r.lv && x.b.n === r.b.n); if (rr && rr.done) toast(`${r.b.name} Lv${r.lv} 撃破 ✓`); }
+function unplace(id) { placed = placed.filter(x => x.id !== id); // 後ろの Lv に置いたものが宙に浮いたら戻す
+  for (;;) { const rs = rows(); const bad = placed.filter(x => !rs.some(r => r.lv === x.lv && r.b.n === x.boss)); if (!bad.length) break; placed = placed.filter(x => !bad.includes(x)); } render(); }
+function auto() { // 見本の貪欲: 残り HP の多い行から、置ける一番大きいピースを一番早いブロックへ
+  for (let guard = 0; guard < 200; guard++) {
+    const rs = rows().filter(r => !r.done && r.lv <= 3).sort((a, b) => b.rem - a.rem); if (!rs.length) break;
+    let did = false;
+    for (const r of rs) { const cands = pieces.filter(p => !isUsed(p) && p.attr === r.b.weak).sort((a, b) => b.dmg - a.dmg);
+      for (const p of cands) { const blk = M[p.m][1].find(b => !canDrop(p, r, b)); if (blk != null) { placed.push({ ...p, lv: r.lv, boss: r.b.n, blk }); did = true; break; } }
+      if (did) break; }
+    if (!did) break;
+  }
+  render(); toast('残りを自動で置きました (見本の計算)');
+}
+function render() {
+  // ① 表
+  const tbl = document.getElementById('mockTbl');
+  tbl.innerHTML = `<tr><th>名前</th><th>出られる</th>${Object.values(ATTR).map(a => `<th>${a}PT</th>`).join('')}</tr>` + M.map((row, mi) => `<tr><td><b>${row[0]}</b></td><td class="note" style="white-space:nowrap">${row[1].map(b => BLOCKS[b][0]).join('・')}</td>${Object.keys(ATTR).map(a => { const ps = pieces.filter(p => p.m === mi && p.attr === a); return `<td>${ps.length ? ps.map(p => `<span class="cell ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''}">${p.dmg.toFixed(1)}<small>B 編成${'①②③'[p.slot - 1]}</small></span>`).join(' ') : '<span class="note">—</span>'}</td>`; }).join('')}</tr>`).join('');
+  const okN = M.filter((row, mi) => new Set(pieces.filter(p => p.m === mi).map(p => p.attr)).size >= 3).length;
+  document.getElementById('cnt').textContent = `そろった人 (3 属性以上) ${okN} / ${M.length}`;
+  // ② ピース
+  const tray = document.getElementById('tray');
+  const free = pieces.filter(p => !isUsed(p));
+  tray.innerHTML = pieces.map(p => `<span class="piece a ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''} ${sel === p.id ? 'sel' : ''}" draggable="${!isUsed(p)}" data-id="${p.id}"><span class="pill a-${p.attr}">${ATTR[p.attr]}</span>${p.name} ${p.dmg.toFixed(1)}B</span>`).join('');
+  document.getElementById('trayCnt').textContent = `残り ${free.length}`;
+  // ② 表
+  const g = document.getElementById('grid'); const rs = rows(); let html = `<tr><th class="boss">ボス</th>${BLOCKS.map(b => `<th class="blk">${b[0]}<br><span class="note">${b[1]}時</span></th>`).join('')}</tr>`; let lastLv = 0;
+  for (const r of rs) {
+    if (r.lv !== lastLv) { html += `<tr class="lvh"><td colspan="7">Lv${r.lv}${r.lv === 4 ? ' (ボス 5 だけ・HP 無限)' : ''}</td></tr>`; lastLv = r.lv; }
+    const pct = r.hp === Infinity ? 0 : Math.min(100, r.got / r.hp * 100);
+    html += `<tr class="${r.done ? 'done' : ''}"><td class="boss"><div class="name">B${r.b.n} ${r.b.name}</div><div class="hp"><span class="pill a-${r.b.weak}">${ATTR[r.b.weak]}PT</span> ${r.done ? '撃破 ✓ 余り ' + fmt(r.got - r.hp) : 'あと ' + fmt(r.rem)}</div><div class="bar"><i style="width:${pct}%"></i></div></td>`;
+    html += BLOCKS.map((b, bi) => { const p = sel != null ? pieces[sel] : null; const cls = p ? (canDrop(p, r, bi) ? 'no' : 'can') : ''; const here = placed.filter(x => x.lv === r.lv && x.boss === r.b.n && x.blk === bi); return `<td class="slot ${cls}" data-lv="${r.lv}" data-boss="${r.b.n}" data-blk="${bi}">${here.map(x => `<span class="piece" data-un="${x.id}" title="押すと戻す"><span class="pill a-${x.attr}">${ATTR[x.attr]}</span>${x.name} ${x.dmg.toFixed(1)}</span>`).join('')}</td>`; }).join('');
+    html += '</tr>';
+  }
+  g.innerHTML = html;
+  // ③ 時間割
+  renderTT();
+}
+function renderTT() {
+  const vsel = document.getElementById('viewer'); if (!vsel.options.length) { vsel.innerHTML = M.map((r, i) => `<option value="${i}">${r[0]}</option>`).join(''); vsel.value = '2'; }
+  const me = Number(vsel.value); const src = decided; const el = document.getElementById('tt');
+  if (!src) { el.innerHTML = '<p class="note">まだ決定していません (②で置いて「決定」を押す)</p>'; return; }
+  el.innerHTML = BLOCKS.map((b, bi) => { const here = src.filter(x => x.blk === bi).sort((a, c) => a.lv - c.lv || a.boss - c.boss); return `<div class="tt"><div class="h">${b[0]} ${b[1]}時 ${here.some(x => x.m === me) ? '<span class="mine">あなたの凸</span>' : ''}</div>${here.length ? here.map(x => `<div class="l">Lv${x.lv} B${x.boss} ${BOSSES[x.boss - 1].name} — ${x.m === me ? `<span class="mine">${x.name}</span>` : x.name} ${ATTR[x.attr]}PT 編成${'①②③'[x.slot - 1]} ${x.dmg.toFixed(1)}B</div>`).join('') : '<div class="l note">この時間の凸はありません</div>'}</div>`; }).join('');
+}
+// 操作
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); ['t1', 't2', 't3'].forEach(t => document.getElementById(t).classList.toggle('hidden', t !== b.dataset.t)); });
+document.getElementById('inName').innerHTML = M.map((r, i) => `<option value="${i}">${r[0]}</option>`).join('');
+document.getElementById('btnAdd').onclick = () => { const mi = Number(document.getElementById('inName').value), attr = document.getElementById('inAttr').value, dmg = Number(document.getElementById('inDmg').value); if (!(dmg > 0)) { toast('ダメージを入れてください'); return; } const n = pieces.filter(p => p.m === mi && p.attr === attr).length; if (n >= 3) { toast('1 属性は 3 編成まで'); return; } pieces.push({ id: pieces.length, m: mi, name: M[mi][0], attr, slot: n + 1, dmg, team: [], dup: [] }); document.getElementById('inDmg').value = ''; render(); toast(`${M[mi][0]} の ${ATTR[attr]}PT ${dmg}B を登録 (キャラ無し = 被り判定なし)`); };
+document.getElementById('btnAuto').onclick = auto;
+document.getElementById('btnClear').onclick = () => { placed = []; sel = null; render(); };
+document.getElementById('btnDecide').onclick = () => { if (!placed.length) { toast('まだ何も置いていません'); return; } decided = placed.map(x => ({ ...x })); document.getElementById('decideNote').textContent = `✅ ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} に決定 (${placed.length} 凸・${new Set(placed.map(x => x.m)).size} 人)。変わった人には通知が届く (見本)`; renderTT(); toast('決定しました → 下の時間割がメンバーに出ます'); };
+document.getElementById('viewer').onchange = renderTT;
+const tray = document.getElementById('tray'), grid = document.getElementById('grid');
+tray.addEventListener('click', e => { const el = e.target.closest('.piece'); if (!el) return; const p = pieces[Number(el.dataset.id)]; if (isUsed(p)) { toast(p.dup.some(d => placed.some(x => x.id === d)) ? '被りの相方を置いたので使えません' : '置いてあります'); return; } sel = sel === p.id ? null : p.id; render(); if (sel != null) toast('置くマスを押してください (明るいマス)'); });
+tray.addEventListener('dragstart', e => { const el = e.target.closest('.piece'); if (!el) return; sel = Number(el.dataset.id); e.dataTransfer.setData('text/plain', el.dataset.id); render(); });
+tray.addEventListener('dragend', () => { sel = null; render(); });
+grid.addEventListener('dragover', e => { const td = e.target.closest('td.slot'); if (td) e.preventDefault(); });
+grid.addEventListener('drop', e => { const td = e.target.closest('td.slot'); if (!td) return; e.preventDefault(); const id = Number(e.dataTransfer.getData('text/plain')); const r = rows().find(x => x.lv === Number(td.dataset.lv) && x.b.n === Number(td.dataset.boss)); place(pieces[id], r, Number(td.dataset.blk)); });
+grid.addEventListener('click', e => { const un = e.target.closest('[data-un]'); if (un) { unplace(Number(un.dataset.un)); return; } const td = e.target.closest('td.slot'); if (!td) return; if (sel == null) { toast('先に右 (下) のピースを押してください'); return; } const r = rows().find(x => x.lv === Number(td.dataset.lv) && x.b.n === Number(td.dataset.boss)); place(pieces[sel], r, Number(td.dataset.blk)); });
+build(); render();
+</script>
+</body>
+</html>
