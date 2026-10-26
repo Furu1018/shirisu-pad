@@ -13793,7 +13793,15 @@
         function _myDmgPreviewSetDamage(v) {
             const d = _myDmgPreviewData; if (!d) return;
             const n = Number(String(v || '').replace(/,/g, ''));
-            d.totalDamage = Number.isFinite(n) && n > 0 ? Math.round(n * 1e9) : null;
+            const raw = Number.isFinite(n) && n > 0 ? Math.round(n * 1e9) : null;
+            d.totalDamage = Number.isFinite(raw) ? raw : null;
+            // 保存ボタンと「入力してください」の警告を今の値で更新する (描き直すと焦点が飛ぶので、その 2 つだけ)
+            const ok = _myDmgPreviewSyncSave();
+            const warn = document.getElementById('myDmgPreviewWarn'), warnText = document.getElementById('myDmgPreviewWarnText');
+            if (warn && warnText) {
+                if (d.totalDamage == null) { warn.style.display = 'flex'; warnText.textContent = d.manual ? 'ダメージ (B) を入力してください' : 'ダメージ値が読めませんでした'; }
+                else if (ok) warn.style.display = 'none';
+            }
         }
         function editMyDmgPreviewChar(i) {
             const d = _myDmgPreviewData;
@@ -13897,13 +13905,18 @@
                 picker.style.display = 'none';
             }
 
-            // 保存ボタン: 属性 + ダメージがあれば有効、なければ無効
-            const canSave = !!attr && d.totalDamage != null;
-            saveBtn.disabled = !canSave;
-            saveBtn.style.opacity = canSave ? '1' : '0.5';
-            saveBtn.style.cursor = canSave ? 'pointer' : 'not-allowed';
+            // 保存ボタン: 属性 + ダメージがあれば有効、なければ無効 (ダメージを手で入れたときも同じ判定で更新する: Codex 監査 S1)
+            _myDmgPreviewSyncSave();
 
             modal.classList.add('open');
+        }
+        // 保存ボタンの有効・無効 (属性 + ダメージ) — 開いたときと、ダメージの欄に入力したときの両方がここを通る
+        function _myDmgPreviewSyncSave() {
+            const d = _myDmgPreviewData;
+            const ok = !!(d && d.selectedAttr && PT_ATTRS.some(a => a.key === d.selectedAttr) && d.totalDamage != null);
+            const saveBtn = document.getElementById('myDmgPreviewSaveBtn');
+            if (saveBtn) { saveBtn.disabled = !ok; saveBtn.style.opacity = ok ? '1' : '0.5'; saveBtn.style.cursor = ok ? 'pointer' : 'not-allowed'; }
+            return ok;
         }
 
         function closeMyDmgPreviewModal() {
