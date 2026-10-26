@@ -31,6 +31,7 @@ function cutConst(marker) {
 const SRC = [
     html.includes('        let _opsBoardCands = [];') ? 'let _opsBoardCands = [];' : (console.error('NG: _opsBoardCands が見つかりません'), process.exit(2)),
     cutConst('        const _BB_FILL = {'),
+    cutConst('        const _bbFill = (w) =>'),   // S4: 弱点は own プロパティで引く
     cutFn('        function _planBoardRail(plan) {'),
     cutFn('        function _planBlockBoardHtml(plan, opts = {}) {'),
     // 🗣 9d (Codex A / C): 置けない理由と、箱・理由が見る範囲。時間割のモデルは本物を切り出す (済んだ凸だけの時刻の行・絞り込み)

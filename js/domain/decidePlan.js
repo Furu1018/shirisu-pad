@@ -33,18 +33,45 @@
     /** 決定のブロックの印 (key → 決定の中のブロック) */
     function decidedBlocks(plan) {
         const m = new Map();
-        if (isDecided(plan)) for (const b of plan.decided.blocks) if (b && b.key) m.set(String(b.key), b);
+        if (isDecided(plan)) for (const b of plan.decided.blocks) if (b && typeof b === 'object' && b.key != null) m.set(String(b.key), b);
         return m;
     }
 
     /**
+     * 前の決定の凸のうち済んだもの (ブロックの鍵 → 凸の配列)。✓ (planKey) を先に・数字の報告は ブロックの順に 人|レベル|ボス の数で消し込む
+     */
+    function doneInPrev(bl, prevBlocks, prevPlan, done) {
+        const out = new Map();
+        if (!prevPlan || !pc() || !done) return out;
+        const keys = new Set([...(done.keys || [])].map(String));
+        const loose = new Map(done.loose instanceof Map ? [...done.loose] : Object.entries(done.loose || {}));
+        if (!keys.size && !loose.size) return out;
+        const perBlock = [];
+        for (const blk of bl) {
+            const key = keyOf(blk);
+            if (!prevBlocks.has(key)) continue;
+            perBlock.push({ key, atks: pc().attacksIn(prevPlan, blk).map(a => ({ a, done: keys.has(planKey({ ...a, block: key })) })) });
+        }
+        for (const b of perBlock) for (const x of b.atks) {
+            if (x.done) continue;
+            const lk = `${x.a.memberId}|${Number(x.a.level) || 1}|${Number(x.a.bossNumber)}`;
+            if ((Number(loose.get(lk)) || 0) > 0) { loose.set(lk, Number(loose.get(lk)) - 1); x.done = true; }
+        }
+        for (const b of perBlock) out.set(b.key, b.atks.filter(x => x.done).map(x => x.a));
+        return out;
+    }
+
+    /**
      * 決定のプランを作る。
-     * @param {{ blocks:Object[], ov:Object[], newIdxs:number[], prevPlan?:Object|null, bosses?:Object[], at?:string }} a
+     * @param {{ blocks:Object[], ov:Object[], newIdxs:number[], prevPlan?:Object|null, bosses?:Object[], at?:string,
+     *           done?:{ keys:Set<string>|string[], loose:Map<string,number>|Object }|null, fpOf?:(idx:number)=>string|null }} a
      *   blocks = シーズンのブロック / ov = blockBuildDomain.overview の結果 (いまのブロックから先) / newIdxs = 今回決めるブロック (組めたもの)
      *   prevPlan = 前の決定のプラン (時間の過ぎたブロック・今回組み直していないブロックをそのまま写す)
+     *   done = 済んだ凸。keys = ✓ の planKey / loose = 数字の報告の数 (鍵 `人|レベル|ボス`)。組み直したブロックでも、前の決定の済んだ凸は残す (S4 引き継ぎ 1)
+     *   fpOf = ブロックの駒の指紋 (決定したときのもの)。decided.blocks[].fp に残し、読み戻しはそれを使う (S4 引き継ぎ 3)
      * @returns {Object} levels[].bosses[].attacks[] の形 (ソルバーの出力と同じ読み方ができる) + decided
      */
-    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null } = {}) {
+    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null, done = null, fpOf = null } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const newSet = new Set((Array.isArray(newIdxs) ? newIdxs : []).map(Number));
         const prevBlocks = decidedBlocks(prevPlan);
@@ -61,6 +88,9 @@
             }
             m.get(bossNumber).attacks.push(a);
         };
+        // ★ 済んだ凸は決定し直しても残す (S4 引き継ぎ 1)。組み直したブロックの自動の結果は「まだの凸」だけなので、前の決定の済んだ凸を足す。
+        //   ✓ は planKey で先に全部見てから、数字の報告 (planKey なし) を 人・レベル・ボス の数でブロックの順 (前のブロックから) に消し込む
+        const doneOf = doneInPrev(bl, prevBlocks, prevPlan, done);
         bl.forEach((blk, idx) => {
             const key = keyOf(blk);
             let level = null, atks = [], kept = false;
@@ -69,12 +99,16 @@
                 if (!o || o.past || o.level == null) return;
                 level = Number(o.level);
                 for (const r of (o.rows || [])) for (const p of (r.pieces || [])) atks.push({ ...p, level, bossNumber: Number(r.bossNumber), _meta: { name: r.name, weakness: r.weakness, tier: r.tier } });
+                const have = new Set(atks.map(a => planKey({ ...a, block: key })));
+                for (const a of (doneOf.get(key) || [])) if (!have.has(planKey({ ...a, block: key }))) atks.push({ ...a, _meta: {} });   // 自動の結果に同じ凸があれば足さない
             } else if (prevBlocks.has(key) && pc()) {
                 level = Number(prevBlocks.get(key).level) || null;
                 atks = pc().attacksIn(prevPlan, blk).map(a => ({ ...a, _meta: {} }));
                 kept = true;
             } else return;
-            entries.push({ key, idx, name: blk.name || null, label: blk.label || key, from: Number(blk.from), to: Number(blk.to), level, kept, attacks: atks.length });
+            const fp0 = !kept ? (typeof fpOf === 'function' ? fpOf(idx) : null) : prevBlocks.get(key).fp;
+            entries.push({ key, idx, name: blk.name || null, label: blk.label || key, from: Number(blk.from), to: Number(blk.to), level, kept, attacks: atks.length,
+                ...(typeof fp0 === 'string' ? { fp: fp0 } : {}) });
             for (const a of atks) {
                 const lv = Number(a.level) || level || 1;
                 const { _meta, level: _l, bossNumber, infinite: _i, ...rest } = a;
@@ -146,7 +180,8 @@
                         memberName: a.memberName || null, loadoutSlot: Number(a.loadoutSlot) || 1, team: Array.isArray(a.team) ? a.team : null,
                         dmgB: Number(a.dmgB) || 0, reservationId: a.reservationId ?? null, mine: viewerId != null && String(a.memberId) === String(viewerId), done: doneSet.has(k) };
                 }) : [];
-            return { idx, key, name: blk.name || null, label: blk.label || key, state, decided: !!d, level: d ? d.level : null, entries,
+            const lv = d ? Number(d.level) : NaN;
+            return { idx, key, name: blk.name || null, label: blk.label || key, state, decided: !!d, level: Number.isInteger(lv) && lv >= 1 && lv <= 4 ? lv : null, entries,   // 数でなければ null (S4 引き継ぎ 2: XSS)
                 mine: entries.filter(e => e.mine) };
         });
     }
@@ -163,7 +198,7 @@
                 level: a.level, bossNumber: a.bossNumber, weakness: a.weakness, slot: Number(a.loadoutSlot) || 1,
                 sig: `${a.block || ''}|L${a.level}|B${a.bossNumber}|S${Number(a.loadoutSlot) || 1}|${team}` });
         }
-        for (const v of m.values()) v.sort((x, y) => (x.order - y.order) || (x.level - y.level) || (x.bossNumber - y.bossNumber));
+        for (const v of m.values()) v.sort((x, y) => (x.order - y.order) || (x.level - y.level) || (x.bossNumber - y.bossNumber) || (x.sig < y.sig ? -1 : x.sig > y.sig ? 1 : 0));   // 最後に sig (S4 引き継ぎ 11)
         return m;
     }
 
@@ -211,5 +246,5 @@
         return { notices: out, unchanged };
     }
 
-    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, build, rangeToDecide, planKey, flat, timetable, rowsOf, notices, SLOT_JP };
+    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, doneInPrev, build, rangeToDecide, planKey, flat, timetable, rowsOf, notices, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);
