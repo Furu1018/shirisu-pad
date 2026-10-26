@@ -14555,6 +14555,41 @@ console.log('\n🧱 レベルはブロックの頭でしか変わらない (leve
         const ok = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h22') });
         assert.ok(ok.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx === 17))), '次のブロック (22 時) の B5 予約を Lv4 に置いていない');
     });
+    test('★ ソルバー (レビュー低・乱数 300 盤面): 渡したとき、時刻が 24 以上の凸・「undefined」の表示・最後のブロックで踏破したのに開いたレベルは出ない', () => {
+        let seed = 7; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+        const ri = (n) => Math.floor(rnd() * n);
+        for (let k = 0; k < 300; k++) {
+            const lv = 1 + ri(3), slot = ['h05', 'h09', 'h13', 'h17', 'h21', 'h22', 'h01', 'h03'][ri(8)];
+            const bsx = W5.map((w, i) => boss(i + 1, w, { remainingB: 5 + ri(60), tier: (i === 2 || i === 4) ? 'tyrant' : 'lord' }));
+            const n = 8 + ri(24);
+            const psx = Array.from({ length: n }, (_, j) => {
+                const a = ri(24), len = ri(8);
+                const slots = ri(4) === 0 ? [] : Array.from({ length: len + 1 }, (_, q) => `h${String((a + q + 5) % 24).padStart(2, '0')}`);
+                return player('Q' + j, Object.fromEntries(W5.map(w => [w, 10 + ri(40)])), { availableSlots: slots });
+            });
+            const p = compute({ ...timeInput(bsx, psx, { currentSlot: slot, currentLevel: lv }), timeStrict: rnd() < 0.5, levelStartsAtBlock: STARTS });
+            const js = JSON.stringify(p);
+            assert.ok(!js.includes('undefined'), `undefined の表示 (盤面 ${k})`);
+            const hours = p.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.map(a => a.hourIdx))).filter(h => h != null);
+            assert.ok(hours.every(h => h >= 0 && h <= 23), `時刻が 24 以上の凸 (盤面 ${k})`);
+            for (const l of p.levels) if (l.openHourIdx != null) assert.ok(l.openHourIdx <= 23, `開放が 24 以上 (盤面 ${k})`);
+            for (let q = 1; q < p.levels.length; q++) {
+                const prev = p.levels[q - 1], cur = p.levels[q];
+                if (prev.clearHourIdx != null && cur.openHourIdx != null) assert.ok(STARTS.includes(cur.openHourIdx) || cur.openHourIdx === prev.clearHourIdx && false || STARTS.some(st => st > prev.clearHourIdx && st === cur.openHourIdx), `次のレベルがブロックの頭から開いていない (盤面 ${k}: ${prev.clearHourIdx} → ${cur.openHourIdx})`);
+            }
+        }
+    });
+    test('★ ソルバー (レビュー低): 温存パスで Lv3 の踏破が最後のブロックにずれても Lv4 を開かない (乱数で見つけた盤面を固定)', () => {
+        let seed = 1251882496; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff); const ri = (n) => Math.floor(rnd() * n);
+        const slot = ['h21', 'h22', 'h23', 'h01', 'h02'][ri(5)];
+        const bsx = W5.map((w, i) => boss(i + 1, w, { remainingB: 20 + ri(150), totalB: 300, tier: (i === 2 || i === 4) ? 'tyrant' : 'lord' }));
+        const n = 15 + ri(15);
+        const psx = Array.from({ length: n }, (_, j) => { const a = ri(24), len = ri(8); const slots = ri(3) === 0 ? [] : Array.from({ length: len + 1 }, (_, q) => `h${String((a + q + 5) % 24).padStart(2, '0')}`);
+            const slv = 300 + ri(400); return player('Q' + j, Object.fromEntries(W5.map(w => [w, 10 + ri(50)])), { availableSlots: slots, slv }); });
+        const p = compute({ ...timeInput(bsx, psx, { currentSlot: slot, currentLevel: 3 }), timeStrict: rnd() < 0.5, levelStartsAtBlock: STARTS });
+        assert.ok(!p.levels.some(l => (l.openHourIdx ?? 0) > 23), 'レベルの開放が 24 以上');
+        assert.ok(!JSON.stringify(p).includes('undefined'), '時刻の表示に undefined');
+    });
     test('★ ソルバー (レビュー高): ブロックの頭で踏破できるブロックでも、手で置いた駒 (窓の予約) は置ける (以前は Lv1 の窓が空になって no_boss_at_time)', () => {
         const B60 = W5.map((w, i) => boss(i + 1, w, { remainingB: 60, totalB: 60 }));
         const E = Array.from({ length: 12 }, (_, k) => player('E' + k, Object.fromEntries(W5.map(w => [w, 40])), { availableSlots: ['h05', 'h06', 'h07', 'h08'] }));

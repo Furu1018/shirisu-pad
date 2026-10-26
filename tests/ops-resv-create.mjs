@@ -54,7 +54,7 @@ function makeEnv(o = {}) {
     const el = (id) => ({ id, style: {}, textContent: '', classList: { add() { }, remove() { } },
         set innerHTML(v) { if (id === 'opsResvCreateBody') bodyHtml = String(v); }, get innerHTML() { return id === 'opsResvCreateBody' ? bodyHtml : ''; } });
     const players = o.players || [
-        { id: 9, name: 'B', attackCount: 0, availableSlots: ['h18', 'h19', 'h20', 'h21', 'h22', 'h23'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }, { slot: 2, dmgB: 25, team: ['f', 'g', 'h', 'i', 'j'] }], water: [{ slot: 1, dmgB: 20, team: ['k', 'l', 'm', 'n', 'o'] }], wind: [{ slot: 1, dmgB: 10, team: [] }] } },
+        { id: 9, name: 'B', attackCount: 0, availableSlots: ['h17', 'h18', 'h19', 'h20', 'h21', 'h22', 'h23', 'h00'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }, { slot: 2, dmgB: 25, team: ['f', 'g', 'h', 'i', 'j'] }], water: [{ slot: 1, dmgB: 20, team: ['k', 'l', 'm', 'n', 'o'] }], wind: [{ slot: 1, dmgB: 10, team: [] }] } },
         { id: 10, name: 'C', attackCount: 3, availableSlots: [], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 40, team: ['p', 'q', 'r', 's', 't'] }] } },
         { id: 11, name: 'D', attackCount: 0, availableSlots: ['h05'], unavailableThisSeason: true, loadoutsByAttr: {} },
         { id: 12, name: 'E', attackCount: 0, availableSlots: ['h18'], loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['a', 'b', 'c', 'd', 'e'] }] } },   // 夕方の一部 (18 時) だけ
@@ -111,26 +111,26 @@ await test('★ 人を選ぶと、その人の模擬 (対応するボスがあ�
     assert.ok(!b.includes("'wind|1'"), '対応するボスが無い属性 (風圧) を候補に出した');
     assert.ok(b.includes('→ B1 ボス1') && b.includes('→ B2 ボス2 (いまのレベルでは倒れています)'), '行き先のボスと「倒れている」の注記');
     const chips = [...b.matchAll(/class="avail-blk" data-state="(on|off)"[^>]*onclick="_opsResvCreateSet\('blockIdx', (\d)\)"/g)].map(m => [Number(m[2]), m[1]]);
-    assert.deepEqual(chips.filter(c => c[1] === 'on').map(c => c[0]), [4, 5], '出られるブロック (夕方 18〜20・夜 21〜23) だけ押せる');
+    assert.deepEqual(chips.filter(c => c[1] === 'on').map(c => c[0]), [3, 4], '出られるブロック (夕方 17〜20・夜 21〜翌0) だけ押せる (2026-10-24 から 6 ブロック)');
     assert.ok(/data-state="off"[^>]*disabled/.test(b), '出られないブロックが押せる');
     assert.ok(/id="opsResvCreateSubmit" disabled/.test(b), '選び終える前に登録ボタンが押せる');
-    env._opsResvCreateSet('lo', 'fire|2'); env._opsResvCreateSet('blockIdx', 4);
-    assert.ok(env.body().includes('B さん: 夕方 18〜20時 のどこかで 灼熱PT 編成② → B1') && !/id="opsResvCreateSubmit" disabled/.test(env.body()), '要約と登録ボタン');
+    env._opsResvCreateSet('lo', 'fire|2'); env._opsResvCreateSet('blockIdx', 3);
+    assert.ok(env.body().includes('B さん: 夕方 17〜20時 のどこかで 灼熱PT 編成② → B1') && !/id="opsResvCreateSubmit" disabled/.test(env.body()), '要約と登録ボタン');
 });
 
 await test('★ 登録 = いまの予約で canPin → 📌 (pinned・ブロック・編成のキャラ・pinnedBy) → すぐ 🔒 確定 (ops_registered) → 本人に通知 → 閉じる', async () => {
     const env = makeEnv();
     await env.openOpsResvCreate(9, 'fire', 2);            // 📸 の保存直後から (人・編成が入っている)
     assert.ok(env.body().includes('aria-pressed="true"'), '📸 から開いたときに編成が選ばれていない');
-    env._opsResvCreateSet('blockIdx', 5);
+    env._opsResvCreateSet('blockIdx', 4);
     await env.handleOpsResvCreateSubmit();
     assert.equal(env.created.length, 1, '予約を作っていない: ' + JSON.stringify(env.alerts));
     const c = env.created[0];
     assert.equal(c.status, 'pinned'); assert.equal(c.pinnedBy, 'O'); assert.equal(c.playerId, 9); assert.equal(c.bossNumber, 1); assert.equal(c.loadoutSlot, 2);
-    assert.deepEqual(c.block, { from: 21, to: 23 }, 'ブロックが入っていない'); assert.deepEqual(c.characters, ['f', 'g', 'h', 'i', 'j'], '編成のキャラが入っていない'); assert.equal(c.expectedDamageB, 25);
+    assert.deepEqual(c.block, { from: 21, to: 0 }, 'ブロックが入っていない'); assert.deepEqual(c.characters, ['f', 'g', 'h', 'i', 'j'], '編成のキャラが入っていない'); assert.equal(c.expectedDamageB, 25);
     assert.deepEqual(env.transitions.map(t => [t.id, t.to, t.expectFrom, t.reason]), [[501, 'approved', 'pinned', 'ops_registered']], '📌 → 🔒 確定 の遷移');
     assert.deepEqual(env.notices.map(n => [n.playerId, n.title]), [[9, '🔒 運営があなたの予約を登録しました']], '本人への通知');
-    assert.ok(env.notices[0].body.includes('ボス1 21〜23時のどこか 編成②'), '通知の中身: ' + env.notices[0].body);
+    assert.ok(env.notices[0].body.includes('ボス1 21〜翌0時のどこか 編成②'), '通知の中身: ' + env.notices[0].body);
     assert.ok(env.logs.some(l => l.detail.includes('運営が代理で登録') && l.opts.actorName === 'O'), '活動ログ');
     assert.equal(env.alerts.length, 0);
     assert.equal(env.loads, 1, '置けるかを見る前に盤面 (凸数) を取り直していない');
@@ -156,9 +156,9 @@ await test('★ 置けないとき (3 凸済み) は作らない / キャンセ�
 });
 
 await test('★ 登録中は二重に押せない (busy) / 既にある予約を一覧に出す', async () => {
-    const env = makeEnv({ rows: [{ id: 1, player_id: 9, status: 'approved', boss_number: 2, loadout_slot: 1, time_mode: 'block', block_from: 18, block_to: 20 }] });
+    const env = makeEnv({ rows: [{ id: 1, player_id: 9, status: 'approved', boss_number: 2, loadout_slot: 1, time_mode: 'block', block_from: 17, block_to: 20 }] });
     await env.openOpsResvCreate(9, 'fire', 1); env._opsResvCreateSet('blockIdx', 4);
-    assert.ok(env.body().includes('いまの予約・仮置き: ') && env.body().includes('ボス2 18〜20時のどこか 編成①'), '既にある予約が出ていない');
+    assert.ok(env.body().includes('いまの予約・仮置き: ') && env.body().includes('ボス2 17〜20時のどこか 編成①'), '既にある予約が出ていない');
     let release; env.window.supabaseLoadReservations = () => new Promise(r => { release = () => r([]); });
     const p1 = env.handleOpsResvCreateSubmit();
     await new Promise(r => setImmediate(r));
@@ -179,8 +179,8 @@ await test('★ Codex 9b: 置けるかは いまの盤面の凸数で (開いた
     // 一部しか出られないブロック (E は 18 時だけ) は押せない
     const env2 = makeEnv();
     await env2.openOpsResvCreate(12, 'fire', 1);
-    assert.ok(/class="avail-blk" data-state="partial"[^>]*disabled[^>]*onclick="_opsResvCreateSet\('blockIdx', 4\)"/.test(env2.body()), '一部だけ出られるブロック (夕方) が押せる');
-    assert.ok(env2.body().includes('一部 1/3時間 (不可)') && env2.body().includes('丸ごと ON にしてから'), '一部の案内が無い');
+    assert.ok(/class="avail-blk" data-state="partial"[^>]*disabled[^>]*onclick="_opsResvCreateSet\('blockIdx', 3\)"/.test(env2.body()), '一部だけ出られるブロック (夕方) が押せる');
+    assert.ok(env2.body().includes('一部 1/4時間 (不可)') && env2.body().includes('丸ごと ON にしてから'), '一部の案内が無い');
     // 盤面が無い (📸 の保存直後の invalidate) → 読んでから開く
     const env3 = makeEnv(); env3._boardNull = true;
     await env3.openOpsResvCreate(9, 'fire', 1);
