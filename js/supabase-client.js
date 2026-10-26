@@ -431,12 +431,17 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
         });
 
         // 3b) 凸記録 (プレイヤー名のみネスト。bosses は複合FKのため別取得)
-        const { data: atks, error: aErr } = await supabase
+        // ✓ 凸しました (56) の数字の無い行はダメージ・平均に入れない (source 列が無い = 56 未適用なら列なしで読む)
+        const loadAtks = (cols) => supabase
             .from('attacks')
-            .select('attack_number, damage_raw, level, characters, boss_code, boss_number, players(name)')
+            .select(cols)
             .eq('season_id', s.id)
             .order('attack_number', { ascending: true });
+        const ATK_BASE = 'attack_number, damage_raw, level, characters, boss_code, boss_number, players(name)';
+        let { data: atks, error: aErr } = await loadAtks(ATK_BASE + ', source');
+        if (aErr && _isMissingColumnErr(aErr, 'source')) ({ data: atks, error: aErr } = await loadAtks(ATK_BASE));
         if (aErr) throw aErr;
+        atks = (atks || []).filter(a => !(a.source && !(Number(a.damage_raw) > 0)));
 
         // 4) Fururi 模擬戦スコア
         const { data: sims, error: simErr } = await supabase
@@ -1410,15 +1415,50 @@ window.supabaseClearMyFinishCoordination = async function (playerId) {
 
 // プレイヤーの本日の凸記録を取得
 window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
-    const { data, error } = await supabase
+    // ✓ 凸しました (56) の列も読む。56 未適用なら列なしで読み直す
+    const load = (cols) => supabase
         .from('attacks')
-        .select('id, attack_number, boss_number, boss_code, damage_raw, level, characters, reported_at')
+        .select(cols)
         .eq('season_id', seasonId)
         .eq('player_id', playerId)
         .eq('attack_date', date)
         .order('attack_number', { ascending: true });
+    const BASE = 'id, attack_number, boss_number, boss_code, damage_raw, level, characters, reported_at';
+    let { data, error } = await load(BASE + ', source, plan_key, planned_damage_raw');
+    if (error && /source|plan_key|planned_damage_raw/.test(String(error.message || ''))) ({ data, error } = await load(BASE));
     if (error) throw error;
     return data || [];
+};
+
+// ✓ 凸しました (シンプル化 S4・supabase/56): ダメージ 0・予定の編成の行を 1 つ。ボスの残り HP は動かさない。
+//   同じ凸 (planKey) に二重に付けても 1 行 (already: true)。reservationId = その凸の 📌 / 約束 (📌 は外し、約束は実行済みに)
+//   56 未適用なら code 'NO_RPC' で投げる (呼び出し側が「SQL 56 を実行してください」と出す)
+window.supabaseMarkAttackDone = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, level, characters, plannedDamageRaw, planKey, reservationId = null }, opts = {}) {
+    await _gateGuard('attack');
+    const source = opts.byOps ? 'ops_tap' : 'tap';
+    const { data, error } = await supabase.rpc('mark_attack_done', {
+        p_season_id: seasonId, p_player_id: playerId, p_attack_date: attackDate,
+        p_boss_number: bossNumber, p_boss_code: bossCode || null, p_level: level || 1,
+        p_characters: Array.isArray(characters) ? characters : [],
+        p_planned_damage_raw: Math.max(0, Math.round(Number(plannedDamageRaw) || 0)),
+        p_plan_key: planKey, p_source: source,
+        p_reservation_id: reservationId ?? null, p_actor: opts.actorName || null,
+    });
+    if (error) {
+        const msg = String(error.message || '');
+        if (/mark_attack_done/.test(msg) && /does not exist|schema cache|function/i.test(msg) || error.code === 'PGRST202') {
+            const e = new Error('✓ 凸しました には supabase/56_attack_done_tap.sql の適用が必要です (運営に伝えてください)');
+            e.code = 'NO_RPC';
+            throw e;
+        }
+        throw error;
+    }
+    if (!data?.already) {
+        window.supabaseLogActivity?.(opts.byOps ? 'proxy_attack' : 'attack',
+            `✓ B${bossNumber} Lv${level || 1} 凸しました (${data?.attack_number}凸目${opts.byOps ? '・運営が代わりに' : ''})`,
+            { playerId, actorName: opts.actorName || null });
+    }
+    return { id: data?.id ?? null, attack_number: data?.attack_number ?? null, already: !!data?.already, reservation: data?.reservation || null };
 };
 
 // 凸を1件追加
@@ -5340,11 +5380,20 @@ window.supabaseLoadOpsDashboardData = async function () {
         // ✅ 凸報告の確認 (52・③-f): 運営の ✓ (confirmed_at / confirmed_by)。列が無い (52 未適用) ときだけ落として取り直し、
         //    attackConfirm=false を盤面に添える (一覧と印は出す・✓ だけ止める)
         const ATK_CONFIRM = ', confirmed_at, confirmed_by';
+        // ✓ 凸しました (56): どの予定の凸か (plan_key)・数字の無い ✓ か (source)。列が無い (56 未適用) ときだけ落とす
+        const ATK_TAP = ', source, plan_key, planned_damage_raw';
         let { data: atks, error: aErr } = await supabase
             .from('attacks')
-            .select(`${ATK_COLS}, characters${ATK_CONFIRM}`)
+            .select(`${ATK_COLS}, characters${ATK_CONFIRM}${ATK_TAP}`)
             .eq('season_id', season.id)
             .eq('attack_date', season.hard_date);
+        if (aErr && (_isMissingColumnErr(aErr, 'source') || _isMissingColumnErr(aErr, 'plan_key') || _isMissingColumnErr(aErr, 'planned_damage_raw'))) {
+            ({ data: atks, error: aErr } = await supabase
+                .from('attacks')
+                .select(`${ATK_COLS}, characters${ATK_CONFIRM}`)
+                .eq('season_id', season.id)
+                .eq('attack_date', season.hard_date));
+        }
         if (aErr && (_isMissingColumnErr(aErr, 'confirmed_at') || _isMissingColumnErr(aErr, 'confirmed_by'))) {
             attackConfirm = false;
             ({ data: atks, error: aErr } = await supabase

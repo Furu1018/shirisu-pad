@@ -86,7 +86,9 @@
                     const rest = [...new Set(mine.filter(p => !p.used).map(p => `B${p.bossNumber}`))];
                     flags.push({ key: 'unplanned', text: mine.length === 0 ? '配信に割当なし' : (rest.length ? `計画は ${rest.join('・')}` : '計画より多い') });
                 } else {
-                    if (matched.dmgB > 0 && damageB < matched.dmgB * lowRatio) flags.push({ key: 'low', text: `予定 ${matched.dmgB.toFixed(1)}B → ${damageB.toFixed(1)}B` });
+                    // ✓ 凸しました (56・数字の無い行) はダメージを持たないので「予定より低い」にしない
+                    const tapOnly = !!a.source && !(Number(a.damage_raw) > 0);
+                    if (!tapOnly && matched.dmgB > 0 && damageB < matched.dmgB * lowRatio) flags.push({ key: 'low', text: `予定 ${matched.dmgB.toFixed(1)}B → ${damageB.toFixed(1)}B` });
                     if (!matched.flex && matched.hourIdx != null && hourIdx != null && Math.abs(matched.hourIdx - hourIdx) >= timeGapH) {
                         flags.push({ key: 'time', text: `予定 ${hourLabelOfIdx(matched.hourIdx)} → 報告 ${hourLabelOfIdx(hourIdx)}` });
                     }

@@ -359,6 +359,10 @@ SELECT * FROM (
                 WHERE conrelid = to_regclass('public.plan_reservations') AND contype = 'c'
                   AND pg_get_constraintdef(oid) LIKE '%loadout_slot%' AND pg_get_constraintdef(oid) LIKE '%3%'),
         '模擬の編成を 1 属性 3 つまで (player_damages.slot 1〜3・予約の loadout_slot も 1〜3)'
+    UNION ALL SELECT '56_attack_done_tap',
+        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attacks' AND column_name = 'plan_key')
+        AND to_regprocedure('public.mark_attack_done(bigint,bigint,date,integer,text,integer,jsonb,bigint,text,text,bigint,text)') IS NOT NULL,
+        '✓ 凸しました (attacks.source / planned_damage_raw / plan_key・RPC mark_attack_done = ダメージ 0・HP を動かさない)。未適用だと ✓ ボタンが止まる'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),

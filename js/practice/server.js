@@ -8,7 +8,7 @@
 // ★ 本番と揃えるもの (supabase/*.sql を写している。SQL を変えたらここも直すこと):
 //   - 表ごとの主キー・一意制約・既定値 (SCHEMA)
 //   - plan_reservations のトリガー (39 残凸の枠 / 39 状態は RPC 経由のみ・承認後は中身を変えない / 47 📌 と約束の枠)
-//   - RPC: report_attack (40) / reservation_set_status (47)
+//   - RPC: report_attack (40) / reservation_set_status (47) / mark_attack_done (56 ✓ 凸しました)
 //   揃えないもの (承知のうえ): CHECK 制約の大半・外部キーの存在確認・player_damages の levels 畳み直し (31。新しいクライアントは常に揃えて送る)
 // ★ 使える問い合わせの口は BUILDER_METHODS が唯一。js/supabase-client.js がここに無い口を使ったら
 //   tests/run-tests.mjs が落ちる (本番にだけ足して練習が黙って壊れる、を防ぐ)
@@ -37,8 +37,10 @@ export const SCHEMA = {
     bosses: { pk: ['season_id', 'boss_number'], required: ['season_id', 'boss_number', 'boss_code', 'attribute', 'weakness', 'tier'], touch: 'updated_at', uniques: [{ cols: ['season_id', 'boss_code'] }],
         defaults: { name: null, total_hp_raw: 0, remaining_hp_raw: 0, updated_at: NOW } },
     player_sync_levels: { pk: ['season_id', 'player_id'], required: ['season_id', 'player_id'], defaults: { sync_level: 0 } },
-    attacks: { pk: ['id'], required: ['season_id', 'player_id', 'attack_date', 'attack_number'], serial: 'id', uniques: [{ cols: ['reservation_id'] }],
-        defaults: { boss_number: null, boss_code: null, damage_raw: 0, level: 1, characters: () => [], reported_at: NOW, reservation_id: null, confirmed_at: null, confirmed_by: null } },   // confirmed_*: ✅ 凸報告の確認 (52・③-f)
+    attacks: { pk: ['id'], required: ['season_id', 'player_id', 'attack_date', 'attack_number'], serial: 'id',
+        uniques: [{ cols: ['reservation_id'] }, { cols: ['season_id', 'player_id', 'attack_date', 'plan_key'] }],   // 56 uq_attacks_plan_key (plan_key が NULL の行は互いに別物)
+        defaults: { boss_number: null, boss_code: null, damage_raw: 0, level: 1, characters: () => [], reported_at: NOW, reservation_id: null, confirmed_at: null, confirmed_by: null,   // confirmed_*: ✅ 凸報告の確認 (52・③-f)
+            source: null, planned_damage_raw: null, plan_key: null } },   // 56 ✓ 凸しました
     day_offs: { pk: ['player_id', 'date'], required: ['player_id', 'date'], defaults: {} },
     availability: { pk: ['player_id', 'time_slot'], required: ['player_id', 'time_slot'], defaults: {} },
     finish_claims: { pk: ['season_id', 'level', 'boss_number', 'date'], required: ['season_id', 'level', 'boss_number', 'date'], defaults: { claimed_by: null, claimed_at: null } },
@@ -493,6 +495,35 @@ export function createPracticeClient(opts = {}) {
                     reason: mismatch ? `凸報告により実行済み (${mismatch})` : '凸報告により実行済み' });
             }
             return { id: attack.id, attack_number: attack.attack_number, hp_after: hpAfter, reservation_id: resId, mismatch, over_capacity: over, reservations_at_risk: atRisk };
+        },
+        // 56: ✓ 凸しました = ダメージ 0 の行 (HP は動かさない)。同じ凸 (plan_key) は 1 行だけ。駒は 📌 → released / 約束 → fulfilled
+        mark_attack_done(a) {
+            const seasonId = a.p_season_id, playerId = a.p_player_id, resId = a.p_reservation_id ?? null;
+            if (!['tap', 'ops_tap'].includes(a.p_source ?? 'tap')) throw check('✓ の種類が不正です');
+            if (!a.p_plan_key) throw check('どの凸の ✓ か分かりません');
+            if (!(Number(a.p_boss_number) >= 1 && Number(a.p_boss_number) <= 5)) throw check('ボスの番号が不正です');
+            const dup = T.attacks.find(x => eqv(x.season_id, seasonId) && eqv(x.player_id, playerId) && x.attack_date === a.p_attack_date && x.plan_key === a.p_plan_key);
+            if (dup) return { id: dup.id, attack_number: dup.attack_number, already: true, reservation: null };
+            const used = T.attacks.filter(x => eqv(x.season_id, seasonId) && eqv(x.player_id, playerId) && x.attack_date === a.p_attack_date).map(x => Number(x.attack_number));
+            const num = [1, 2, 3].find(n => !used.includes(n)) || 0;
+            if (!num) throw check('既に3凸済みです');
+            let res = null, to = null;
+            if (resId != null) {
+                res = T.plan_reservations.find(r => eqv(r.id, resId)) || null;
+                if (res && eqv(res.player_id, playerId) && eqv(res.season_id, seasonId) && eqv(res.boss_number, a.p_boss_number)) {
+                    if (res.status === 'pinned') to = 'released';
+                    else if (res.status === 'approved' || (res.status === 'cancel_requested' && res.approved_at != null)) to = 'fulfilled';
+                }
+            }
+            const attack = insertRow('attacks', { season_id: seasonId, player_id: playerId, attack_date: a.p_attack_date, boss_number: a.p_boss_number,
+                boss_code: a.p_boss_code ?? null, damage_raw: 0, attack_number: num, level: a.p_level ?? 1, characters: a.p_characters ?? [],
+                reservation_id: to === 'fulfilled' ? resId : null, source: a.p_source ?? 'tap', planned_damage_raw: Math.max(0, Number(a.p_planned_damage_raw) || 0), plan_key: a.p_plan_key });
+            if (to) {
+                const from = res.status;
+                updateRow('plan_reservations', res, { status: to, release_reason: 'fulfilled', updated_at: nowIso() }, { rpc: true });
+                insertRow('plan_reservation_events', { reservation_id: resId, from_status: from, to_status: to, actor_name: a.p_actor ?? null, reason: '✓ 凸しました により実行済み' });
+            }
+            return { id: attack.id, attack_number: attack.attack_number, already: false, reservation: to };
         },
     };
 

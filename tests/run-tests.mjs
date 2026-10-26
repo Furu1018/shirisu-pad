@@ -40,7 +40,8 @@ import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオン�
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
 import '../js/domain/raidReview.js';   // globalThis.raidReviewDomain (レイドの振り返り: 属性別の進捗 / 得意・不得意 / 誰が)
 import '../js/domain/aiVision.js';     // globalThis.aiVisionDomain (画像認識の失敗を日本語で説明する)
-import '../js/domain/blockBuild.js';   // globalThis.blockBuildDomain (凸プランを組む: ブロックの様子・手で置く駒・ピース — シンプル化 S2)
+import '../js/domain/blockBuild.js';
+import '../js/domain/decidePlan.js';   // globalThis.decidePlanDomain (決定 = 組めたブロックまでを 1 行に・時間割・通知 — シンプル化 S4)   // globalThis.blockBuildDomain (凸プランを組む: ブロックの様子・手で置く駒・ピース — シンプル化 S2)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -7976,7 +7977,7 @@ console.log('\nclientGateDomain (互換ゲート):');
         // 配信には版を載せ、読む側は自分より新しい版を描かない
         // 🧱 配信に付ける版はプランで決める (blockScope があれば 3・従来どおりなら 2)
         assert.ok(/supabasePublishPlan\(_opsLastPlan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, _planSchemaOf\(_opsLastPlan\)\)/.test(html));
-        assert.ok(/const _planSchemaOf = \(plan\) => \(plan && plan\.blockScope\) \? 3 : 2;/.test(html), '版の付け方が無い');
+        assert.ok(/const _planSchemaOf = \(plan\) => \(plan && plan\.decided\) \? 4 : \(\(plan && plan\.blockScope\) \? 3 : 2\);/.test(html), '版の付け方が無い (決定 = 4 / ブロック = 3 / 従来 = 2)');
         assert.ok(/planReadable\(\{[\s\S]{0,120}supportedSchema: PLAN_SCHEMA/.test(html));
         // 41未適用でも配信は止めない (列を落として入れ直す)
         assert.ok(/_isMissingColumnErr\(error, 'plan_schema'\)/.test(client));
@@ -9706,7 +9707,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/function _opsPlanStartSlot\(options, base\) \{[\s\S]*?return window\.raidBlocksDomain\.laterSlot\(base, bs\) \|\| base;/.test(html) && /currentSlot: _opsPlanStartSlot\(options, /.test(html), '起点をブロックの頭と比べていない');
         assert.ok(/blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};/.test(html), 'ブロックの頭を渡していない');
         assert.ok(/from: blk \? \(plan\.currentSlot === _hourKey\(blk\.from\) \? 'block' : 'now'\) : \(plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode\),/.test(html), '起点の焼き込みがブロックを知らない (頭から / 途中から)');
-        assert.ok(/const PLAN_SCHEMA = 3;/.test(html), '配信の版を 3 に上げていない (古い版が 1 日ぶんを見てしまう)');
+        assert.ok(/const PLAN_SCHEMA = 4;/.test(html), '配信の版を 4 (決定) に上げていない (古い版が決定の行を 1 日ぶんとして見てしまう)');
         assert.ok(/window\._planSchemaOf\(plan\)/.test(_grRd('js', 'practice', 'guide.js')), '練習の配信が版の付け方を揃えていない');
         // 20時 → 夜 (21〜翌0時) のブロックを組む: 起点は laterSlot で h21 になり、ブロックの頭より前には置かれない (統合)
         const rbd2 = globalThis.raidBlocksDomain, night = rbd2.normalize(null).blocks[4];
@@ -14733,6 +14734,84 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
     });
 }
 
+console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
+{
+    const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+    const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+    const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, name: `ボス${n}`, weakness: ['fire', 'water', 'wind', 'iron', 'electric'][n - 1], tier: 'lord' }));
+    const piece = (memberId, dmgB, hourIdx, o = {}) => ({ memberId, memberName: `m${memberId}`, dmgB, team: [`c${memberId}a`, `c${memberId}b`], loadoutSlot: 1, hourIdx, hourLabel: `${hourIdx + 5}時`, ...o });
+    // 朝 (idx 0) Lv1: B1 に 1 と 2 / B2 に 3。午前 (idx 1) Lv1: B3 に 1 (編成②)
+    const ov = [
+        { idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, name: 'ボス1', weakness: 'fire', pieces: [piece(1, 30, 1), piece(2, 20, 0)] }, { bossNumber: 2, name: 'ボス2', weakness: 'water', pieces: [piece(3, 10, 2)] }] },
+        { idx: 1, past: false, level: 1, rows: [{ bossNumber: 3, name: 'ボス3', weakness: 'wind', pieces: [piece(1, 15, 4, { loadoutSlot: 2, pinned: true, reservationId: 77 })] }] },
+    ];
+    test('★ build: 組めたブロックの実行される凸をレベル → ボスにまとめる・時刻はブロックの中・ブロックの鍵と名前を付ける', () => {
+        const p = dp.build({ blocks, ov, newIdxs: [0, 1], bosses, at: 'T' });
+        assert.deepEqual(p.decided.blocks.map(b => [b.key, b.idx, b.level, b.kept, b.attacks]), [['5-8', 0, 1, false, 3], ['9-12', 1, 1, false, 1]]);
+        assert.equal(p.decided.upTo, 1); assert.equal(p.decided.at, 'T'); assert.equal(p.timeAware, true);
+        assert.deepEqual(p.levels.map(l => l.level), [1]);
+        assert.deepEqual(p.levels[0].bosses.map(b => [b.bossNumber, b.name, b.weakness, b.attacks.map(a => a.memberId)]), [[1, 'ボス1', 'fire', [2, 1]], [2, 'ボス2', 'water', [3]], [3, 'ボス3', 'wind', [1]]]);
+        const a = p.levels[0].bosses[2].attacks[0];
+        assert.equal(a.block, '9-12'); assert.equal(a.blockLabel, blocks[1].label); assert.equal(a.pinned, true); assert.equal(a.reservationId, 77); assert.equal(a.loadoutSlot, 2);
+        assert.ok(!('_meta' in a) && !('level' in a), '中の印が残っている');
+    });
+    test('★ build: 今回決めないブロックは前の決定から写す (kept)・前にも無ければ入れない・過ぎたブロックも前の決定のまま', () => {
+        const prev = dp.build({ blocks, ov: [ov[0], { ...ov[1] }, { idx: 2, past: false, level: 2, rows: [{ bossNumber: 4, name: 'ボス4', weakness: 'iron', pieces: [piece(5, 40, 8)] }] }], newIdxs: [0, 1, 2], bosses });
+        const next = dp.build({ blocks, ov: [{ idx: 0, past: true, level: null, rows: [] }, { idx: 1, past: false, level: 1, rows: [{ bossNumber: 5, name: 'ボス5', weakness: 'electric', pieces: [piece(9, 50, 5)] }] }], newIdxs: [1], prevPlan: prev, bosses });
+        assert.deepEqual(next.decided.blocks.map(b => [b.key, b.kept, b.level, b.attacks]), [['5-8', true, 1, 3], ['9-12', false, 1, 1], ['13-16', true, 2, 1]]);
+        assert.deepEqual(dp.flat(next).map(a => [a.block, a.memberId, a.bossNumber, a.level]).sort(), [['13-16', 5, 4, 2], ['5-8', 1, 1, 1], ['5-8', 2, 1, 1], ['5-8', 3, 2, 1], ['9-12', 9, 5, 1]].sort());
+        const none = dp.build({ blocks, ov: [ov[0]], newIdxs: [0, 3], bosses });
+        assert.deepEqual(none.decided.blocks.map(b => b.key), ['5-8'], '組んでいない (ov に無い) ブロックを入れた');
+    });
+    test('★ rangeToDecide: いまのブロックから組めたブロックが続くところまで (途中で止める)', () => {
+        const built = (s) => (i) => s.includes(i);
+        assert.deepEqual(dp.rangeToDecide({ first: 1, count: 6, built: built([1, 2, 4]) }), [1, 2]);
+        assert.deepEqual(dp.rangeToDecide({ first: 0, count: 6, built: built([1, 2]) }), []);
+        assert.deepEqual(dp.rangeToDecide({ first: 4, count: 6, built: built([4, 5]) }), [4, 5]);
+    });
+    test('★ latestDecided / currentDecided: 最新の決定の行 / 最新の行が決定のときだけ', () => {
+        const d = { id: 5, plan: { decided: { blocks: [] } } }, old = { id: 3, plan: { decided: { blocks: [] } } }, blk = { id: 6, plan: { blockScope: { from: 5, to: 8 } } };
+        assert.equal(dp.latestDecided([old, blk, d]).id, 5);
+        assert.equal(dp.currentDecided([old, d]).id, 5);
+        assert.equal(dp.currentDecided([old, blk, d]), null, '後の従来の配信を無視した');
+        assert.equal(dp.latestDecided([blk]), null);
+    });
+    test('★ timetable: 決まったブロックは全員の行 (自分は mine・✓ は planKey)・決まっていないブロックは空・いまのブロックの印', () => {
+        const p = dp.build({ blocks, ov, newIdxs: [0, 1], bosses });
+        const k = dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: 1, loadoutSlot: 1 });
+        const t = dp.timetable({ blocks, plan: p, viewerId: 1, nowIdx: 1, done: new Set([k]) });
+        assert.equal(t.length, blocks.length);
+        assert.deepEqual(t.map(r => [r.decided, r.state]), [[true, 'past'], [true, 'now'], [false, 'later'], [false, 'later'], [false, 'later'], [false, 'later']]);
+        assert.deepEqual(t[0].entries.map(e => [e.bossNumber, e.memberId, e.mine, e.done]), [[1, 2, false, false], [1, 1, true, true], [2, 3, false, false]], 'レベル → ボス → 時刻の順');
+        assert.equal(t[0].entries[0].memberName, 'm2'); assert.equal(t[1].mine.length, 1); assert.equal(t[1].mine[0].loadoutSlot, 2);
+        assert.equal(k, '5-8|L1|B1|1|S1');
+    });
+    test('★ notices: 初めて = 決まりました / 増えただけ = 決まりました / 前のブロックが変わった = 変わりました (✅ で文を分ける) / 外れた / 変わらない人には送らない', () => {
+        const pt = (w) => ({ fire: '火', water: '水', wind: '風', iron: '鉄', electric: '電' })[w];
+        const first = dp.build({ blocks, ov: [ov[0]], newIdxs: [0], bosses });
+        const n0 = dp.notices({ prevPlan: null, nextPlan: first, blocks, ptName: pt });
+        assert.deepEqual(n0.notices.map(n => [n.memberId, n.changed, n.title]), [[1, false, '🧱 あなたの凸が決まりました'], [2, false, '🧱 あなたの凸が決まりました'], [3, false, '🧱 あなたの凸が決まりました']]);
+        assert.equal(n0.notices[0].lines[0], `${blocks[0].label} B1 火PT 編成①`);
+        // 午前を足す: 1 は増えただけ (決まりました)・2 と 3 は変わらない (送らない)
+        const both = dp.build({ blocks, ov, newIdxs: [0, 1], bosses });
+        const n1 = dp.notices({ prevPlan: first, nextPlan: both, blocks, ackedIds: new Set([1]) });
+        assert.deepEqual(n1.notices.map(n => [n.memberId, n.changed, n.lines.length]), [[1, false, 2]]);
+        assert.deepEqual(n1.unchanged, [2, 3]);
+        // 朝を組み直す: 2 は B1 → B2 (変わった・✅ 済み)・3 は外れる・4 が新しく入る
+        const ov2 = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, pieces: [piece(1, 30, 1)] }, { bossNumber: 2, pieces: [piece(2, 20, 0), piece(4, 5, 3)] }] }, ov[1]];
+        const re = dp.build({ blocks, ov: ov2, newIdxs: [0, 1], bosses });
+        const n2 = dp.notices({ prevPlan: both, nextPlan: re, blocks, ackedIds: new Set([2]) });
+        const by = new Map(n2.notices.map(n => [n.memberId, n]));
+        assert.equal(by.get(2).title, '🔄 あなたの凸が変わりました'); assert.match(by.get(2).body, /✅ 確認したあとに/);
+        assert.equal(by.get(3).gone, true); assert.match(by.get(3).body, /まだ確認していませんが/);
+        assert.equal(by.get(4).title, '🧱 あなたの凸が決まりました');
+        assert.ok(!by.has(1)); assert.deepEqual(n2.unchanged, [1]);
+        // 編成のキャラが変わった人も「変わりました」
+        const ov3 = [{ ...ov2[0], rows: [{ bossNumber: 1, pieces: [piece(1, 30, 1, { team: ['x'] })] }, ov2[0].rows[1]] }, ov[1]];
+        assert.deepEqual(dp.notices({ prevPlan: re, nextPlan: dp.build({ blocks, ov: ov3, newIdxs: [0, 1], bosses }), blocks }).notices.map(n => [n.memberId, n.changed]), [[1, true]]);
+    });
+}
+
 console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2):');
 {
     const _fsA = await import('node:fs');
@@ -14762,7 +14841,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const rs = fn('async function _obReset()', '\n\n');
         assert.ok(/await _opsReloadBoardCards\(\);/.test(rs) && /r\.status === 'pinned' && window\.blockBuildDomain\.pinBlockIdx\(r, ctx\.blocks\) === ctx\.idx/.test(rs), 'やり直しの後の取り直し / 約束を外さない');
         assert.ok(/const unmet = \(plan\.unmetReservations \|\| \[\]\)\.filter\(u => mineIds\.has\(Number\(u\.reservationId\)\)\)\.length;/.test(au), '置けなかった数にほかのブロックの予約を数えている');
-        assert.ok(/else if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) \{\s*\n\s*_obLoadPins\(snap\.season\.id\);/.test(html), '読めなかった駒を取り直していない');
+        assert.ok(/if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) _obLoadPins\(snap\.season\.id\);/.test(html) && /if \(\(_ob\.decErr \|\| _ob\.dec == null\) && Date\.now\(\) - _ob\.decTriedAt > 15000\) _obLoadDecided\(snap\.season\.id\);/.test(html), '読めなかった駒・決定を取り直していない');
         const ac = fn('function _obAfterChange(idx)');
         assert.ok(/if \(k >= idx\) \{ _ob\.plans\.delete\(k\); if \(k > idx\) _ob\.stale\.add\(k\); \}/.test(ac));
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
@@ -14784,6 +14863,46 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(iRead > 0 && iSame > iRead && iCtx > iSame && iCalc > iCtx, '読み直した駒で盤面を作り直してから組んでいない');
         assert.ok(/plan\.obPinsFp = _obPinsFp\(/.test(au), '組んだときの駒の指紋を残していない');
         assert.ok(/const cons = rv && rv\.toSolverConstraints \? JSON\.stringify\(rv\.toSolverConstraints\(rows \|\| \[\]\)\) : '';/.test(html) && /return window\.blockBuildDomain\.pinsFingerprint\(pins, blocks, idx\) \+ '#' \+ cons;/.test(html) && /plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);/.test(au), '指紋がソルバーに渡す拘束 (全ブロック・レベル) を含んでいない');
+    });
+    test('★ 決定 (S4) の配線: 押した時点の DB で 駒と決定を読み直す → 別の運営の決定なら止める → 組めた範囲 → 確認 → もう一度照合 → 版 4 で 1 行 → 通知 (decide|)', () => {
+        const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
+        const order = ['await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans()])', 'if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0))',
+            'const ctx = _obCtx(', 'dp.rangeToDecide(', 'dp.build(', 'if (!confirm(msg)) return;', 'pubs2 = await window.supabaseGetPublishedPlans()',
+            'Number(latest2?.id || 0) !== Number(_ob.dec?.basisId || 0)', 'window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan))', 'await _obNotifyDecide('];
+        let at = -1;
+        for (const k of order) { const i = d.indexOf(k); assert.ok(i > at, `決定の順が違う / 無い: ${k}`); at = i; }
+        assert.ok(/_gateAllows\('publish'\)/.test(d) && /if \(_ob\.busy\) return;/.test(d) && /_obSame\(epoch, sid\)/.test(d), 'ゲート・二重押し・シーズン');
+        const n = fn('async function _obNotifyDecide(', '// ブロックの時間の言い方');
+        assert.ok(/claim\(seasonId, 'decide', ref,/.test(n) && /`decide\|\$\{n\.memberId\}\|p\$\{pub\.id\}\|\$\{n\.sig\}`/.test(n) && /supabaseReleaseRaidNotice\?\.\(seasonId, 'decide', ref\)/.test(n), '通知の二重送信よけ (decide|…)');
+        assert.ok(/supabaseCarryOverPlanAcks\(seasonId, keep, pub\.id, prev\.id\)/.test(n), '変わらない人の ✅ を引き継いでいない');
+        assert.ok(html.includes('<script defer src="./js/domain/decidePlan.js"></script>'), 'decidePlan.js を読み込んでいない');
+        const seed = fn('function _obSeedDecided(', 'function _obCtx(');
+        assert.ok(/if \(\[\.\.\._ob\.plans\.values\(\)\]\.some\(p => p\.fromDecided == null\)\) return;/.test(seed), '組みかけを決定の読み戻しで上書きしている');
+    });
+    test('★ メンバーの時間割 (S4): 最新の行が決定なら 1 枚 (絞らない) / ✓ = mark_attack_done (planKey・予定の編成・予定のダメージ・駒) / 56 未適用は案内 / 運営は代わりに', () => {
+        assert.ok(/const decRow = window\.decidePlanDomain \? window\.decidePlanDomain\.currentDecided\(pubRows\) : null;\s*\n\s*if \(decRow\) \{ pub = decRow; pubList = \[\]; pubSel = null; \}/.test(html), '決定の行を選んでいない');
+        assert.ok(/if \(st\?\.plan\?\.decided && window\.decidePlanDomain\) \{\s*\n\s*_renderMyDecided\(/.test(html), 'きょうの凸を時間割にしていない');
+        const r = fn('function _renderMyDecided(', 'let _myMarkBusy');
+        assert.ok(/rbd\.blockIndexOfSlot\(blocks, _planNowSlot\(season\)\)/.test(r), 'いまのブロックをレイド日の時計で決めていない (前日の夜に朝が「済」になる)');
+        assert.ok(/escapeHtml/.test(r) && /esc\(e\.memberName \|\| ''\)/.test(r) && /data-mt-done="\$\{esc\(e\.planKey\)\}"/.test(r), '名前・鍵を escapeHtml していない');
+        assert.ok(/const canProxy = role === 'ops' \|\| role === 'master';/.test(r), '運営だけが代わりに付けられる');
+        const m = fn('async function _myMarkDone(', 'async function _myUndoDone(');
+        assert.ok(/window\.supabaseMarkAttackDone\(\{ seasonId: season\.id, playerId: e\.memberId, attackDate: season\.hard_date, bossNumber: e\.bossNumber, bossCode: b\?\.boss_code \|\| null,\s*\n\s*level: e\.level, characters: e\.team \|\| \[\], plannedDamageRaw: e\.dmgB \* 1e9, planKey, reservationId: e\.reservationId \}, \{ byOps, actorName: me\.name \|\| null \}\)/.test(m), '✓ の中身が違う');
+        assert.ok(/err\?\.code === 'NO_RPC'/.test(m) && /String\(season\.id\) !== String\(v\.seasonId\)/.test(m), '56 未適用の案内 / シーズンの照合');
+        const c = _fsA.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/supabase\.rpc\('mark_attack_done', \{/.test(c) && /const source = opts\.byOps \? 'ops_tap' : 'tap';/.test(c) && /await _gateGuard\('attack'\);\s*\n\s*const source/.test(c), 'クライアントの ✓');
+        assert.ok(/atks = \(atks \|\| \[\]\)\.filter\(a => !\(a\.source && !\(Number\(a\.damage_raw\) > 0\)\)\);/.test(c), '過去シーズンの分析から数字の無い ✓ を外していない');
+        const sql = _fsA.readFileSync('supabase/56_attack_done_tap.sql', 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/ADD COLUMN IF NOT EXISTS source TEXT/.test(sql) && /ADD COLUMN IF NOT EXISTS plan_key TEXT/.test(sql) && /CREATE UNIQUE INDEX IF NOT EXISTS uq_attacks_plan_key/.test(sql), '56 の列・索引');
+        assert.ok(/pg_advisory_xact_lock\(hashtextextended\('attack:' \|\| p_season_id \|\| ':' \|\| p_player_id, 0\)\)/.test(sql) && !/UPDATE bosses/.test(sql) && /NOTIFY pgrst, 'reload schema';/.test(sql), '56: report_attack と同じ鍵で直列化 / HP を動かさない');
+        assert.ok(/UNION ALL SELECT '56_attack_done_tap',/.test(_fsA.readFileSync('supabase/99_check_applied.sql', 'utf8').replace(/\r\n/g, '\n')), '99 に 56 の判定が無い');
+    });
+    test('★ 凸報告の確認: 数字の無い ✓ の行は「予定より低い」にしない', () => {
+        const ac = globalThis.attackCheckDomain;
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 0 }] }] }] };
+        const flagsOf = (a) => { const out = ac.buildRows({ attacks: [{ id: 1, player_id: 1, boss_number: 1, level: 1, reported_at: '2026-10-31T20:30:00Z', ...a }], plan, nowMs: Date.parse('2026-10-31T21:00:00Z') }); const rows = Array.isArray(out) ? out : (out.rows || []); return (rows[0]?.flags || []).map(f => f.key); };
+        assert.ok(!flagsOf({ damage_raw: 0, source: 'tap' }).includes('low'), '✓ の行を低いにしている');
+        assert.ok(flagsOf({ damage_raw: 0 }).includes('low'), '従来の 0 の報告は低いのまま');
     });
     test('★ 描画: 名前・ボス名は escapeHtml / onclick に名前を埋めない (data 属性の鍵と id だけ) / 色はトークン', () => {
         const r = fn('function renderOpsBuild()', 'const _obHours');

@@ -258,6 +258,33 @@ test('凸報告 (report_attack): 採番・残HP・予約の消し込み・3凸�
     assert.equal(r.data.mismatch, '編成が違う');
     assert.equal((await sb3.from('plan_reservation_events').select('reason').eq('to_status', 'fulfilled').single()).data.reason, '凸報告により実行済み (編成が違う)');
 });
+test('✓ 凸しました (mark_attack_done): ダメージ 0・HP は動かさない・予定のダメージと鍵を控える・二重押しは 1 行・3 凸済み・📌 は外し約束は実行済み (56 の写し)', async () => {
+    const sb = mini();
+    const args = (o = {}) => ({ p_season_id: 1, p_player_id: 10, p_attack_date: '2026-10-03', p_boss_number: 1, p_boss_code: 'B1', p_level: 1, p_characters: ['a', 'b'],
+        p_planned_damage_raw: 30e9, p_plan_key: '5-8|L1|B1|10|S1', p_source: 'tap', ...o });
+    const hp0 = (await sb.from('bosses').select('remaining_hp_raw').eq('boss_number', 1).single()).data.remaining_hp_raw;
+    let r = await sb.rpc('mark_attack_done', args());
+    clean(r.data);
+    assert.deepEqual([r.data.attack_number, r.data.already, r.data.reservation], [1, false, null]);
+    const row = (await sb.from('attacks').select('damage_raw, planned_damage_raw, plan_key, source, characters').single()).data;
+    assert.deepEqual(row, { damage_raw: 0, planned_damage_raw: 30e9, plan_key: '5-8|L1|B1|10|S1', source: 'tap', characters: ['a', 'b'] });
+    assert.equal((await sb.from('bosses').select('remaining_hp_raw').eq('boss_number', 1).single()).data.remaining_hp_raw, hp0, 'HP を動かした');
+    r = await sb.rpc('mark_attack_done', args());
+    assert.deepEqual([r.data.attack_number, r.data.already], [1, true], '二重押しで 2 行目を作った');
+    assert.match((await sb.rpc('mark_attack_done', args({ p_plan_key: '' }))).error.message, /どの凸の ✓ か分かりません/);
+    assert.match((await sb.rpc('mark_attack_done', args({ p_source: 'x', p_plan_key: 'k' }))).error.message, /✓ の種類が不正です/);
+    // 📌 は外す / 約束は実行済み / 合わない駒には触らない
+    const pin = (await sb.from('plan_reservations').insert(resvRow({ boss_number: 2, status: 'pinned', pinned_by: '運営' })).select('id').single()).data.id;
+    r = await sb.rpc('mark_attack_done', args({ p_boss_number: 2, p_boss_code: 'B2', p_plan_key: 'k2', p_reservation_id: pin, p_source: 'ops_tap' }));
+    assert.equal(r.data.reservation, 'released');
+    assert.equal((await sb.from('plan_reservations').select('status').eq('id', pin).single()).data.status, 'released');
+    assert.equal((await sb.from('attacks').select('source, reservation_id').eq('plan_key', 'k2').single()).data.source, 'ops_tap');
+    const other = (await sb.from('plan_reservations').insert(resvRow({ boss_number: 4 })).select('id').single()).data.id;
+    r = await sb.rpc('mark_attack_done', args({ p_boss_number: 3, p_boss_code: 'B3', p_plan_key: 'k3', p_reservation_id: other }));
+    assert.equal(r.data.reservation, null, 'ボスの違う駒に触った');
+    assert.equal(r.data.attack_number, 3);
+    assert.match((await sb.rpc('mark_attack_done', args({ p_plan_key: 'k4' }))).error.message, /既に3凸済みです/);
+});
 test('通知 (send-push) は送ったことにして控える / 画像の読み取りと画像の保存は使えないと返す', async () => {
     const got = [];
     const sb = createPracticeClient({ now: () => T0, onPush: (x) => got.push(x), tables: { players: [{ id: 10, name: 'あ' }, { id: 11, name: 'い' }, { id: 12, name: 'う', archived: true }] } });
@@ -738,7 +765,7 @@ test('見張り: 偽のサーバの表・列・主キーが supabase/*.sql と�
     }
 });
 test('見張り: 予約の遷移表・断り文が supabase/47 と一致する / 凸報告の断り文が 40 と一致する', () => {
-    const sql47 = sqlOf('47_approval_counts_pins.sql'), sql40 = sqlOf('40_attack_with_reservation_rpc.sql'), sql39 = sqlOf('39_plan_reservations.sql');
+    const sql47 = sqlOf('47_approval_counts_pins.sql'), sql40 = sqlOf('40_attack_with_reservation_rpc.sql'), sql39 = sqlOf('39_plan_reservations.sql'), sql56 = sqlOf('56_attack_done_tap.sql');
     const fromSql = {}, fromJs = {};
     for (const m of sql47.matchAll(/\(v_from = '(\w+)'\s+AND p_to IN \(([^)]*)\)\)/g)) fromSql[m[1]] = m[2].match(/'(\w+)'/g).map(x => x.slice(1, -1));
     for (const m of SERVER.matchAll(/\(from === '(\w+)' && \[([^\]]*)\]\.includes\(to\)\)/g)) fromJs[m[1]] = m[2].match(/'(\w+)'/g).map(x => x.slice(1, -1));
@@ -746,7 +773,7 @@ test('見張り: 予約の遷移表・断り文が supabase/47 と一致する /
     assert.deepEqual(fromJs, fromSql, '遷移表が 47 と違う');
     // 断り文: クライアントは文面で読み替える (js/supabase-client.js) ので、SQL と一字一句そろえる
     const said = (sql, re) => [...sql.matchAll(re)].map(m => m[1].replace(/\s*\(.*$/, '').replace(/ — .*$/, ''));
-    const msgs = [...said(sql47, /RAISE EXCEPTION '([^']*)'/g), ...said(sql40, /RAISE EXCEPTION '([^']*)'/g), ...said(sql39, /RAISE EXCEPTION '([^']*)'/g)];
+    const msgs = [...said(sql47, /RAISE EXCEPTION '([^']*)'/g), ...said(sql40, /RAISE EXCEPTION '([^']*)'/g), ...said(sql39, /RAISE EXCEPTION '([^']*)'/g), ...said(sql56, /RAISE EXCEPTION '([^']*)'/g)];
     assert.ok(msgs.length >= 12, `断り文を読めていない (${msgs.length})`);
     for (const head of new Set(msgs)) assert.ok(SERVER.includes(head), `偽のサーバに「${head}」の断り文が無い (SQL と文面がずれた)`);
 });
