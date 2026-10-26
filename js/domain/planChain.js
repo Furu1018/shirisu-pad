@@ -48,7 +48,8 @@
      * @param {{ season:Object, bosses:Object[], players:Object[] }} board  ソルバーに渡す形の盤面 (opsStore の写しでよい)
      * @param {Object} plan  ソルバーの出力 (levels[].bosses[].attacks[])
      * @param {{ fromIdx:number, toIdx:number }} block
-     * @param {{ hpOf: (level:number, tier:string) => number }} o  レベルの HP (B)。ソルバーの表を渡す
+     * @param {{ hpOf: (level:number, tier:string) => number, levelLockInBlock?: boolean }} o  レベルの HP (B)。ソルバーの表を渡す。
+     *   levelLockInBlock = レベルはブロックの頭でしか変わらない (2026-10-26)。このブロックで踏破したら残りの凸は実行しない (次のレベルは次のブロックから)
      * @returns {{ season, bosses, players, done: Object[], level: number, cleared: number[] }}  done = 実行したことにした凸 / cleared = このブロックで踏破したレベル
      */
     function projectBoard(board, plan, block, o = {}) {
@@ -59,7 +60,9 @@
         const players = (board && Array.isArray(board.players) ? board.players : []).map(p => ({ ...p, attacks: Array.isArray(p.attacks) ? p.attacks.slice() : [] }));
         const remB = (b) => (Number(b.remaining_hp_raw) || 0) / 1e9;
         const done = [], cleared = [];
+        const startLevel = level;   // 🧱 o.levelLockInBlock: このブロックで踏破したら、同じブロックの残りの凸は実行しない (レベルはブロックの頭でしか変わらない)
         for (const a of attacksIn(plan, block)) {
+            if (o.levelLockInBlock && level !== startLevel) continue;
             const p = players.find(x => String(x.id) === String(a.memberId));
             if (!p) continue;
             const count = Number(p.attackCount) || p.attacks.length;

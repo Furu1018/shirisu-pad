@@ -14508,6 +14508,62 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
     });
 }
 
+console.log('\n🧱 レベルはブロックの頭でしか変わらない (levelStartsAtBlock・2026-10-26):');
+{
+    const W5 = ['iron', 'electric', 'fire', 'wind', 'water'];
+    const ALLH = Array.from({ length: 24 }, (_, i) => `h${String((i + 5) % 24).padStart(2, '0')}`);
+    const bs = (rem) => W5.map((w, i) => boss(i + 1, w, { remainingB: rem, tier: (i === 2 || i === 4) ? 'tyrant' : 'lord' }));
+    const ps = Array.from({ length: 30 }, (_, k) => player('P' + k, Object.fromEntries(W5.map(w => [w, 25 + (k % 7)])), { availableSlots: ALLH }));
+    const inp = (o = {}) => ({ ...timeInput(bs(o.rem ?? 10), ps, { currentSlot: o.slot ?? 'h05', currentLevel: o.lv ?? 1 }), timeStrict: true });
+    const STARTS = [0, 4, 8, 12, 16, 20];
+    const lvs = (p) => p.levels.map(l => [l.level, !!l.infinite, l.openHourIdx, Math.min(...l.bosses.flatMap(b => b.attacks.map(a => a.hourIdx)))]);
+    test('★ ソルバー: 朝 (5〜8 時) の中で Lv1 を踏破したら Lv2 は午前 (9 時 = idx 4) から・Lv3 は午後 (13 時 = idx 8) から。朝の残りに次のレベルの凸を置かない', () => {
+        const off = compute(inp()), on = compute({ ...inp(), levelStartsAtBlock: STARTS });
+        assert.deepEqual(lvs(off).map(x => x[2]), [0, 0, 0], '前提: 渡さなければ踏破した時刻から次のレベル');
+        assert.deepEqual(lvs(on).map(x => [x[0], x[2], x[3]]), [[1, 0, 0], [2, 4, 4], [3, 8, 8]], 'レベルがブロックの頭で始まっていない');
+        assert.equal(on.levels[0].clearHourIdx, 0, '踏破の時刻 (実際の時刻) は変えない');
+        assert.ok(!JSON.stringify(on).includes('undefined'), '時刻の表示に undefined');
+    });
+    test('★ ソルバー: 最後のブロック (深夜) で踏破したら次のレベルは開かない / Lv3 を深夜で踏破したら Lv4 も開かない / 夕方で踏破なら Lv4 は夜 (21 時) から', () => {
+        const b = compute({ ...inp({ slot: 'h01' }), levelStartsAtBlock: STARTS });
+        assert.deepEqual(lvs(b).map(x => x[0]), [1], '最後のブロックで踏破したのに次のレベルを組んでいる');
+        assert.equal(b.fullyClearedThrough, 1);
+        assert.ok(!JSON.stringify(b).includes('undefined'));
+        const c = compute({ ...inp({ lv: 3, slot: 'h01' }), levelStartsAtBlock: STARTS });
+        assert.deepEqual(lvs(c).map(x => [x[0], x[1]]), [[3, false]], 'Lv3 を最後のブロックで踏破したのに Lv4 を開いている');
+        const d = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS });
+        assert.deepEqual(lvs(d).map(x => [x[0], x[1], x[2], x[3]]), [[3, false, 12, 12], [4, true, 16, 16]], 'Lv4 が次のブロックの頭から開いていない');
+        const d0 = compute(inp({ lv: 3, slot: 'h17' }));
+        assert.equal(d0.levels.find(l => l.infinite).openHourIdx, 12, '前提: 渡さなければ Lv4 は踏破した時刻から');
+    });
+    test('★ ソルバー: 渡さない / 空の配列 / 時間を見ないモード では出力が 1 バイトも変わらない (指紋)', () => {
+        const a = JSON.stringify(compute(inp()));
+        assert.equal(JSON.stringify(compute({ ...inp(), levelStartsAtBlock: undefined })), a);
+        assert.equal(JSON.stringify(compute({ ...inp(), levelStartsAtBlock: [] })), a);
+        const nt = { ...makeInput(bs(10), ps, { currentSlot: 'h05' }) };
+        assert.equal(JSON.stringify(compute({ ...nt, levelStartsAtBlock: STARTS })), JSON.stringify(compute(nt)), 'timeAware でないのに効いている');
+    });
+    test('★ ソルバー: B5 のブロックの予約は、踏破したブロックの残り (隙間) では Lv4 にならない — 次のブロックの頭からなら Lv4', () => {
+        const resv = (slot) => [{ reservationId: 9, memberId: 'P1', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: slot, team: [], expectedB: 0 }];
+        const gap = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h19') });
+        assert.ok(!gap.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9))), '踏破したブロックの残り (19 時) の B5 予約を Lv4 にしている');
+        const ok = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h22') });
+        assert.ok(ok.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx === 17))), '次のブロック (22 時) の B5 予約を Lv4 に置いていない');
+    });
+    test('★ projectBoard levelLockInBlock: このブロックで踏破したら同じブロックの残りの凸は実行しない (次のレベルは次のブロックから)・渡さなければ従来どおり', () => {
+        const pc = globalThis.planChainDomain;
+        const board = { season: { current_level: 1, hard_date: '2026-10-31' }, bosses: [{ boss_number: 1, tier: 'lord', remaining_hp_raw: 10e9, total_hp_raw: 10e9 }],
+            players: [{ id: 1, attackCount: 0, attacks: [] }, { id: 2, attackCount: 0, attacks: [] }] };
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, hourIdx: 0, dmgB: 12, team: ['a'] }] }] },
+            { level: 2, bosses: [{ bossNumber: 1, attacks: [{ memberId: 2, hourIdx: 1, dmgB: 5, team: ['b'] }] }] }] };
+        const blk = { fromIdx: 0, toIdx: 3 }, hpOf = () => 100;
+        const off = pc.projectBoard(board, plan, blk, { hpOf }), on = pc.projectBoard(board, plan, blk, { hpOf, levelLockInBlock: true });
+        assert.deepEqual([off.done.length, off.level, off.bosses[0].remaining_hp_raw], [2, 2, 95e9], '前提: 従来は踏破した同じブロックで次のレベルも実行');
+        assert.deepEqual([on.done.length, on.level, on.bosses[0].remaining_hp_raw, on.cleared], [1, 2, 100e9, [1]], '踏破したブロックの残りの凸を実行している');
+        assert.equal(on.players.find(p => p.id === 2).attackCount, 0, '実行しなかった人の凸を数えている');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

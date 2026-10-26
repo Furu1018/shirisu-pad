@@ -51,6 +51,10 @@
  *                                          true = 宣言した戦闘可能時間がレベルの開放に合わない人を、時間外 (⚠ mismatch) で組み込まない
  *                                          (その人はそのレベルの候補から外れ、どのレベルにも合わなければ未割当 'time')。
  *                                          false (既定) = 従来どおり最寄りの時間で組み込む (ダメージ優先)。⏳隙間型・ハイブリッドの時間外は両方とも隙間扱い
+ * @property {number[]=} levelStartsAtBlock  🧱 レベルはブロックの頭でしか変わらない (2026-10-26 ふるり「朝で Lv1 が終わったら、朝では Lv2 をやらず次のブロックから」)。
+ *                                          ブロックの最初の時間帯の index (HOUR_ORDER・5 時 = 0) の並び。渡すと、あるレベルをブロック k の中で踏破したら
+ *                                          次のレベルはブロック k+1 の頭から開く (k の残りの時間は使わない)。最後のブロックで踏破したら次のレベルは無い (Lv4 も開かない)。
+ *                                          渡さなければ従来どおり (踏破した時刻から次のレベル) = 出力は 1 バイトも変わらない
  *
  * @typedef {Object} PlanAttack             プラン内の1凸 (出力)
  * @property {*} memberId
@@ -198,6 +202,15 @@
         // 時間軸: 現在時刻 (currentSlot) からリセット (HOUR_ORDER 末尾) まで
         const nowIdx = timeAware ? (IDX_BY_KEY.get(currentSlot) ?? 0) : 0;
         const LAST_IDX = HOUR_ORDER.length - 1;
+        // 🧱 レベルはブロックの頭でしか変わらない (input.levelStartsAtBlock・渡したときだけ)。踏破した時刻 → 次のレベルが開く時刻
+        const levelBlockStarts = (timeAware && Array.isArray(input.levelStartsAtBlock) && input.levelStartsAtBlock.length)
+            ? [...new Set(input.levelStartsAtBlock.filter(i => Number.isInteger(i) && i >= 0 && i <= LAST_IDX))].sort((a, b) => a - b)
+            : null;
+        const nextLevelOpenIdx = (clearIdx) => {
+            if (!levelBlockStarts) return clearIdx;
+            const n = levelBlockStarts.find(s => s > clearIdx);
+            return n == null ? LAST_IDX + 1 : n;   // 最後のブロックで踏破 = 次のレベルはレイド日の中では開かない
+        };
 
         // ボス番号 → 弱点(PT属性) のマップ。各メンバーの属性別凸回数は attacks から逆引きする。
         const bossWeaknessByNum = new Map();
@@ -1084,7 +1097,8 @@
             });
                 if (levelCleared) fullyClearedThrough = L;
                 else break;  // このレベルを越えられないので以降は計画しない
-                openIdx = levelClearIdx;   // 次レベルはこのレベルのクリア想定時刻から
+                openIdx = nextLevelOpenIdx(levelClearIdx);   // 次レベルはこのレベルのクリア想定時刻から (🧱 渡されていれば次のブロックの頭から)
+                if (openIdx > LAST_IDX) break;   // 🧱 最後のブロックで踏破した = 次のレベルはこの日には開かない (渡さなければ起きない)
             }
             return { memberState, levels, fullyClearedThrough, openIdx, frontierLevel };
         };
@@ -1402,7 +1416,7 @@
                     const w = wins.find(x => t >= x.open && t < x.clear) || null;
                     if (w && !(w.level === startLevel && !bossAliveNow(r.bossNumber))) return { t };
                     // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) だけ。B5 の予約はそこに置ける (assign が Lv4 に解決する: Codex指摘 f19bba2)
-                    if (!w && Number(r.bossNumber) === 5 && last && last.cleared && t >= last.clear) return { t };
+                    if (!w && Number(r.bossNumber) === 5 && last && last.cleared && t >= nextLevelOpenIdx(last.clear)) return { t };   // 🧱 次のブロックの頭から
                 }
                 return { reason: 'no_boss_at_time' };
             };
@@ -1427,7 +1441,7 @@
                 if (!w) {
                     // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) しかいない
                     const last = wins.length ? wins[wins.length - 1] : null;
-                    if (Number(r.bossNumber) === 5 && last && last.cleared) { out.level = 4; return out; }   // 拘束にはしない
+                    if (Number(r.bossNumber) === 5 && last && last.cleared && (!levelBlockStarts || T >= nextLevelOpenIdx(last.clear))) { out.level = 4; return out; }   // 拘束にはしない (🧱 踏破したブロックの残りは Lv4 でない)
                     out.level = null; out.unresolvedReason = 'no_boss_at_time';
                     out.unresolvedDetail = last ? { level: last.level, killedLabel: last.cleared ? hourLabelOf(last.clear) : null } : null;
                     return out;
@@ -1579,7 +1593,8 @@
         // probe 固定だと、温存パスが採用されたとき別パスの決定点を分岐候補にしてしまう
         const probeTrace = traceOut ? [] : null;
         const probe = runPass({ ...(passOpts || {}), decisionPolicy: policy, trace: probeTrace });
-        const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness);
+        const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness)
+            && !(levelBlockStarts && probe.openIdx > LAST_IDX);   // 🧱 Lv3 を最後のブロックで踏破したら Lv4 は開かない
         let chosen = probe;
         let chosenTrace = probeTrace;
         let reservePassUsed = false;
