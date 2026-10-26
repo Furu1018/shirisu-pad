@@ -14783,7 +14783,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const iRead = au.indexOf('await window.supabaseLoadReservations('), iSame = au.indexOf('if (!_obSame(epoch, sid)) return;'), iCtx = au.indexOf('const ctx2 = _obCtx(snap2);'), iCalc = au.indexOf('computeOptimalPlan(');
         assert.ok(iRead > 0 && iSame > iRead && iCtx > iSame && iCalc > iCtx, '読み直した駒で盤面を作り直してから組んでいない');
         assert.ok(/plan\.obPinsFp = _obPinsFp\(/.test(au), '組んだときの駒の指紋を残していない');
-        assert.ok(/const cons = rv && rv\.toSolverConstraints \? JSON\.stringify\(rv\.toSolverConstraints\(rows \|\| \[\]\)\) : '';/.test(html) && /plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);/.test(au), '指紋がソルバーに渡す拘束 (全ブロック・レベル) を含んでいない');
+        assert.ok(/const cons = rv && rv\.toSolverConstraints \? JSON\.stringify\(rv\.toSolverConstraints\(rows \|\| \[\]\)\) : '';/.test(html) && /return window\.blockBuildDomain\.pinsFingerprint\(pins, blocks, idx\) \+ '#' \+ cons;/.test(html) && /plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);/.test(au), '指紋がソルバーに渡す拘束 (全ブロック・レベル) を含んでいない');
     });
     test('★ 描画: 名前・ボス名は escapeHtml / onclick に名前を埋めない (data 属性の鍵と id だけ) / 色はトークン', () => {
         const r = fn('function renderOpsBuild()', 'const _obHours');
