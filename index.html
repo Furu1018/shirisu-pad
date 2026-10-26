@@ -22545,7 +22545,11 @@
         // ★ レベルはブロックの頭でしか変わらない (blockBuildDomain.overview + ソルバーの levelStartsAtBlock)。
         // ★ 前のブロックで組んだ凸は「模擬どおり削れた」と仮定して次のブロックの盤面に進める (projectBoard)。自動で組むのはそのブロックの始まりの盤面から。
         // 手で置いた駒は DB (plan_reservations の 📌 / time_mode 'block') に残る (別の運営・別の端末でも見える)。自動で組んだ結果はこの端末だけ (決定するまで)
-        const _ob = { idx: null, plans: new Map(), stale: new Set(), pins: null, pinsSeason: null, pinsErr: null, pinsTriedAt: 0, sel: null, busy: false, seq: 0, delegated: false };
+        const _ob = { idx: null, plans: new Map(), stale: new Set(), pins: null, pinsSeason: null, pinsErr: null, pinsTriedAt: 0, sel: null, busy: false, seq: 0, epoch: 0, delegated: false };
+        // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
+        const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
+        // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
+        const _obPinsFp = (pins, blocks, idx) => pins.filter(r => window.blockBuildDomain.pinBlockIdx(r, blocks) === idx).map(r => `${r.id}:${r.status}:${r.boss_number}:${r.loadout_slot}`).sort().join(',');
         const _obHpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
         function _obFirstIdx(season, blocks) {
             const rb = window.raidBlocksDomain;
@@ -22570,20 +22574,25 @@
             const first = _obFirstIdx(snap.season, blocks);
             const rv = window.reservationsDomain;
             const pins = bb.blockPins(_ob.pins || [], rv && rv.isFixed ? rv.isFixed : null);   // 📌 手で置いた駒 + 承認済みのブロックの約束 (外せない)
+            // 自動で組んだあとにそのブロックの駒が変わっていたら (別の端末・取り直し)、その結果と後ろのブロックの結果は古い → 捨てて要組み直し (Codex 監査)
+            for (const k of [..._ob.plans.keys()].sort((a, b) => a - b)) {
+                if (!_ob.plans.has(k)) continue;
+                if ((_ob.plans.get(k).obPinsFp ?? '') !== _obPinsFp(pins, blocks, k)) { _obAfterChange(k); _ob.stale.add(k); }
+            }
             const planOf = (idx, level, cur) => _ob.plans.get(idx) || bb.pinsPlan(pins, blocks[idx], level, cur.bosses, cur.players);
             const ov = bb.overview({ board: { season: snap.season, bosses: snap.bosses, players: snap.players }, blocks, first, planOf, hpOf: _obHpOf });
             const weakOf = new Map((snap.bosses || []).map(b => [Number(b.boss_number), b.weakness]));
+            // 置いた = 実行される凸 (rows の pieces) + 駒 (📌・約束は DB でカードと残り凸を押さえる)。実行されない自動の凸 (skipped) は数えない (Codex 監査)
             const placed = new Map(), pinMap = new Map();
-            ov.forEach(o => { if (o.past || !o.startBoard) return; const p = planOf(o.idx, o.level, o.startBoard); if (!p) return;
-                pcd.attacksIn(p, blocks[o.idx]).forEach(a => { const k = `${a.memberId}:${weakOf.get(Number(a.bossNumber))}:${Number(a.loadoutSlot) || 1}`; if (!placed.has(k)) placed.set(k, o.idx); }); });
-            pins.forEach(r => { const k = `${r.player_id}:${weakOf.get(Number(r.boss_number))}:${Number(r.loadout_slot) || 1}`; pinMap.set(k, { blockIdx: bb.pinBlockIdx(r, blocks), id: Number(r.id) }); });
+            ov.forEach(o => { if (o.past) return; o.rows.forEach(r => r.pieces.forEach(a => { const k = `${a.memberId}:${weakOf.get(Number(a.bossNumber))}:${Number(a.loadoutSlot) || 1}`; if (!placed.has(k)) placed.set(k, o.idx); })); });
+            pins.forEach(r => { const k = `${r.player_id}:${weakOf.get(Number(r.boss_number))}:${Number(r.loadout_slot) || 1}`; const bi = bb.pinBlockIdx(r, blocks); pinMap.set(k, { blockIdx: bi, id: Number(r.id) }); if (!placed.has(k) && bi >= 0) placed.set(k, bi); });
             let idx = Number.isInteger(_ob.idx) ? _ob.idx : first;
             if (idx < first || idx >= blocks.length) idx = first;
             const bossOrder = (window.mockIntakeDomain && window.mockIntakeDomain.attrOrderOfBosses) ? window.mockIntakeDomain.attrOrderOfBosses(snap.bosses) : null;
             const cur = ov[idx];
             // 後ろのブロックに置いた凸 (人ごと) — このブロックの残り凸から引く (前のブロックの分は始まりの盤面に入っている)
             const laterUse = new Map();
-            ov.forEach(x => { if (x.past || x.idx <= idx) return; [...x.rows.flatMap(r => r.pieces), ...(x.skipped || [])].forEach(a => laterUse.set(String(a.memberId), (laterUse.get(String(a.memberId)) || 0) + 1)); });
+            ov.forEach(x => { if (x.past || x.idx <= idx) return; [...x.rows.flatMap(r => r.pieces), ...(x.skipped || []).filter(a => a.reservationId != null)].forEach(a => laterUse.set(String(a.memberId), (laterUse.get(String(a.memberId)) || 0) + 1)); });
             const tray = cur && cur.startBoard ? bb.trayPieces({ board: cur.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse }) : [];
             return { blocks, first, ov, idx, tray, pins, planOf, placed, pinMap, bossOrder };
         }
@@ -22594,7 +22603,7 @@
             if (!snap) return;   // 取り直しの最中 — 完了が描く
             if (!snap.season) { host.innerHTML = '<p class="ob-note">アクティブシーズンがありません。</p>'; return; }
             if (_ob.pinsSeason !== snap.season.id) {
-                _ob.pinsSeason = snap.season.id; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.sel = null; _ob.idx = null;
+                _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.sel = null; _ob.idx = null;
                 _obLoadPins(snap.season.id);
             } else if ((_ob.pinsErr || _ob.pins == null) && Date.now() - _ob.pinsTriedAt > 15000) {
                 _obLoadPins(snap.season.id);   // 読めなかった → 15 秒おきに取り直す (一度の通信の失敗で手で置けないままにしない: レビュー)
@@ -22715,12 +22724,14 @@
             const chk = bb.canDrop({ piece, row, level: o.level, usedHere });
             if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
             const live = (snap.players || []).find(p => String(p.id) === String(piece.memberId));
+            const epoch = _ob.epoch, sid = snap.season.id;
             _ob.busy = true;
             try {
                 // ★ 置けるかは押した時点の DB で見る (別の運営・別の端末が置いたかもしれない)。正は DB (SQL 45/47 の残凸・同じカード)
                 let rows = null;
                 try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
                 if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39・45・54) が未適用のため手で置けません'); return; }
+                if (!_obSame(epoch, sid)) return;   // 待っている間にシーズンが変わった
                 const pin = rv.canPin(rows, { playerId: piece.memberId, bossNumber: row.bossNumber, loadoutSlot: piece.slot, characters: piece.team, doneAttacks: Number(live?.attackCount) || 0 });
                 if (!pin.ok) { showNotification(`置けません: ${pin.label}`); _ob.pins = rows; renderOpsBuild(); return; }
                 const me = getCurrentIdentity();
@@ -22730,9 +22741,10 @@
                     sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
                 });
                 window.supabaseLogActivity?.('ops', `📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に手で置きました`);
+                if (!_obSame(epoch, sid)) return;
                 _ob.sel = null;
                 _obAfterChange(idx);
-                try { const r2 = await window.supabaseLoadReservations(snap.season.id); if (Array.isArray(r2)) { _ob.pins = r2; _ob.pinsErr = null; } } catch (_) { /* 次の描画で取り直す */ }
+                try { const r2 = await window.supabaseLoadReservations(snap.season.id); if (Array.isArray(r2) && _obSame(epoch, sid)) { _ob.pins = r2; _ob.pinsErr = null; } } catch (_) { /* 次の描画で取り直す */ }
                 showNotification(`📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に置きました`);
             } catch (e) {
                 showNotification(`❌ 置けませんでした: ${e?.message || e}`);
@@ -22747,10 +22759,11 @@
             const row = (_ob.pins || []).find(r => Number(r.id) === Number(resId)) || null;
             const snap = opsStore.get();
             const idx = row && snap?.season && bb && rb ? bb.pinBlockIdx(row, rb.blocksOfSeason(snap.season)) : -1;
+            const epoch = _ob.epoch, sid = snap?.season?.id;
             _ob.busy = true;
             try {
                 const ok = await _resvTransition(Number(resId), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 手で置いた駒を外しました' });
-                if (ok) _obAfterChange(idx >= 0 ? idx : 0);
+                if (ok && _obSame(epoch, sid)) _obAfterChange(idx >= 0 ? idx : 0);
             } finally {
                 _ob.busy = false;
                 // ★ _resvTransition は盤面 (opsStore) を invalidate する → 取り直してから描く (取り直さないと画面が止まる: レビュー高)。取り直しの最後で手で置いた駒も読み直し、描く
@@ -22762,16 +22775,23 @@
             if (_ob.busy) return;
             const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
             if (!ctx) return;
-            const { blocks, ov, idx } = ctx;
-            const o = ov[idx], blk = blocks[idx];
-            if (!o?.startBoard) return;
+            const idx = ctx.idx, blk = ctx.blocks[idx];
+            if (!ctx.ov[idx]?.startBoard) return;
+            const epoch = _ob.epoch, sid = snap.season.id;
             _ob.busy = true;
             renderOpsBuild();
             try {
                 let rows = null;
                 try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (_) { rows = null; }
                 if (!Array.isArray(rows)) { showNotification('⚠️ 手で置いた駒を読めないため止めました。もう一度お試しください'); return; }
+                if (!_obSame(epoch, sid)) return;   // 待っている間にシーズンが変わった (Codex 監査)
                 _ob.pins = rows; _ob.pinsErr = null;
+                // ★ 読み直した駒で盤面を作り直してから組む (別の端末が前のブロックに置いた・外した駒を反映: Codex 監査)
+                const snap2 = opsStore.get() || snap;
+                const ctx2 = _obCtx(snap2);
+                if (!ctx2 || !ctx2.ov[idx]?.startBoard) return;
+                const { blocks, ov } = ctx2;
+                const o = ov[idx];
                 // 前のブロックで実行したことにした 📌 は拘束に渡さない (渡すと同じ駒をまた置こうとして「置けなかった」に出る)
                 const executed = new Set(ov.slice(0, idx).flatMap(x => (x.done || []).map(d => d.reservationId)).filter(v => v != null).map(Number));
                 const resv = rows.filter(r => !executed.has(Number(r.id)));
@@ -22781,6 +22801,8 @@
                 plan.seasonId = snap.season.id;
                 plan.blockScope = { idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                 plan.builtAt = new Date().toISOString();
+                plan.obPinsFp = _obPinsFp(window.blockBuildDomain.blockPins(rows, window.reservationsDomain?.isFixed || null), blocks, idx);   // このブロックの駒が変わったら古い
+                if (!_obSame(epoch, sid)) return;
                 _ob.plans.set(idx, plan);
                 _ob.stale.delete(idx);
                 for (const k of [..._ob.plans.keys()]) if (k > idx) { _ob.plans.delete(k); _ob.stale.add(k); }   // 後ろのブロックは前提が変わった
@@ -22804,8 +22826,9 @@
             if (!confirm(`${blk.name} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`)) return;
             _ob.busy = true;
             try {
+                const epoch = _ob.epoch, sid = snap.season.id;
                 for (const r of mine) if (r.status === 'pinned') await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ops', quiet: true });
-                _obAfterChange(ctx.idx);
+                if (_obSame(epoch, sid)) _obAfterChange(ctx.idx);
                 showNotification(`${blk.name} をやり直しました`);
             } finally {
                 _ob.busy = false;

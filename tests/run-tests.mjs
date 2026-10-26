@@ -14754,6 +14754,21 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/const planOf = \(idx, level, cur\) => _ob\.plans\.get\(idx\) \|\| bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\);/.test(cx) && /bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
         assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse \}\)/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
     });
+    test('★ Codex 監査: 実行されない凸は置いた扱いにしない / シーズンが変わったら古い結果を書かない / 読み直した駒で盤面を作り直す', () => {
+        const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
+        assert.ok(/o\.rows\.forEach\(r => r\.pieces\.forEach\(a =>/.test(cx) && !/pcd\.attacksIn\(p, blocks\[o\.idx\]\)\.forEach/.test(cx), '置いた = 実行される凸だけにしていない (skipped を数えている)');
+        assert.ok(/\(x\.skipped \|\| \[\]\)\.filter\(a => a\.reservationId != null\)/.test(cx), 'あとのブロックの実行されない自動の凸で残り凸を減らしている');
+        assert.ok(/_obPinsFp\(pins, blocks, k\)/.test(cx), '駒が変わった自動の結果を捨てていない');
+        assert.ok(/_ob\.pinsSeason = snap\.season\.id; _ob\.epoch\+\+;/.test(html), 'シーズンが変わったときに epoch を進めていない');
+        const pl = fn('async function _obPlace(bossNumber)', 'async function _obUnpin(');
+        const un = fn('async function _obUnpin(resId)', 'async function _obAuto(');
+        const au = fn('async function _obAuto()', 'async function _obReset(');
+        const rs = fn('async function _obReset()', '\n\n');
+        for (const [n, b] of [['置く', pl], ['外す', un], ['自動', au], ['やり直す', rs]]) assert.ok(/const epoch = _ob\.epoch, sid = /.test(b) && /_obSame\(epoch, sid\)/.test(b), `${n}: 待ったあとにシーズンを確かめていない`);
+        const iRead = au.indexOf('await window.supabaseLoadReservations('), iSame = au.indexOf('if (!_obSame(epoch, sid)) return;'), iCtx = au.indexOf('const ctx2 = _obCtx(snap2);'), iCalc = au.indexOf('computeOptimalPlan(');
+        assert.ok(iRead > 0 && iSame > iRead && iCtx > iSame && iCalc > iCtx, '読み直した駒で盤面を作り直してから組んでいない');
+        assert.ok(/plan\.obPinsFp = _obPinsFp\(/.test(au), '組んだときの駒の指紋を残していない');
+    });
     test('★ 描画: 名前・ボス名は escapeHtml / onclick に名前を埋めない (data 属性の鍵と id だけ) / 色はトークン', () => {
         const r = fn('function renderOpsBuild()', 'const _obHours');
         assert.ok(/escapeHtml\(a\.memberName \|\| ''\)/.test(r) && /escapeHtml\(p\.name\)/.test(r) && /escapeHtml\(r\.name\)/.test(r), '名前を escapeHtml していない');
