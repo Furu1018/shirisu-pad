@@ -3580,6 +3580,19 @@
             color: rgba(var(--paper-rgb), 0.6);
         }
         .dc-plan-char img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
+        .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 11.5px; }
+        .mk-tbl th, .mk-tbl td { padding: 4px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        .mk-tbl th { font-size: 10.5px; font-weight: 800; color: var(--t-muted); line-height: 1.3; }
+        .mk-tbl td { font-variant-numeric: tabular-nums; }
+        .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-weight: 900; padding: 2px 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+        .mk-dl { font-size: 10.5px; font-weight: 800; color: var(--t-muted); } .mk-dl.warn { color: var(--warn-deep); }
+        .mk-chip { display: inline-block; margin: 1px 2px 1px 0; padding: 2px 7px; border-radius: 8px; border: 2px solid transparent; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; cursor: pointer; }
+        .mk-chip small { font-size: 9.5px; font-weight: 700; color: var(--t-muted); margin-left: 1px; }
+        .mk-chip.dup, .mk-dup-sample { border-color: var(--bad); }
+        .mk-dup-sample { padding: 0 4px; border: 2px solid var(--bad); border-radius: 6px; }
+        .mk-plus { display: inline-block; margin: 1px 0; width: 26px; height: 24px; border-radius: 8px; border: 1px dashed var(--line); background: transparent; color: var(--t-muted); font: inherit; font-weight: 900; cursor: pointer; }
+        .mk-b5 { display: inline-block; margin: 1px 2px; font-size: 9.5px; font-weight: 800; color: var(--warn-deep); }
         /* 編成①② と 報告済み。
            ★ 模擬パネルのように絶対配置の中央バッジにすると、幅156px では
               想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
@@ -4672,6 +4685,7 @@
                         <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
                     </label>
                     <button type="button" onclick="openOpsAvailModalFromIntake()" title="選んだ人の参加可能時間と凸数を登録する (Discord の報告を写す)" style="flex:none;padding:7px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-family:inherit;font-size:12px;font-weight:900;cursor:pointer;">⏰ 時間を登録</button>
+                    <button type="button" onclick="_opsMockManual()" title="選んだ人の模擬を 属性・ダメージ (+ 任意でキャラ) で手入力する" style="flex:none;padding:7px 12px;border-radius:9px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">✏️ 手で入力</button>
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
                         <div class="btn-nikke-inner">
@@ -4685,7 +4699,8 @@
                     <div id="opsMockIntakeAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
                 </div>
                 <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
-                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">届いていない人 <span style="font-weight:700;">(〆 = 自分が最初に出られるブロックの前。名前を押すとその人として読み取ります。18 時以降に出られる人は ボス 5 の模擬を 2 編成)</span></div>
+                <!-- ▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26): 人 × 属性 (ボス 1〜5 の順)。マスの ＋ で手入力、編成を押すと直す。赤い枠 = 同じ人の別の編成とキャラが被る -->
+                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。空のマスの ＋ で手入力・編成を押すと直す。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
                 <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -6626,7 +6641,7 @@
     <div class="player-select-modal" id="myDmgPreviewModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
-                        <h2 style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
+                        <h2 id="myDmgPreviewTitle" style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
                         <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
                     </div>
                     <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
@@ -6639,7 +6654,7 @@
                     </div>
                     <!-- 認識した編成 5キャラ -->
                     <div>
-                        <div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;margin-bottom:11px;">認識した編成 5キャラ</div>
+                        <div id="myDmgPreviewCharsLabel" style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;margin-bottom:11px;">認識した編成 5キャラ</div>
                         <div id="myDmgPreviewChars" style="display:flex;gap:6px;"></div>
                     </div>
                     <!-- 警告 (属性未判定など) -->
@@ -6655,7 +6670,7 @@
                     <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
                     <div style="display:flex;gap:8px;margin-top:18px;">
                         <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
-                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
+                        <button onclick="handleMyDmgPreviewRetry()" id="myDmgPreviewRetryBtn" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
                     </div>
                     <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
@@ -13774,14 +13789,21 @@
         }
 
         // 解析結果のキャラを保存前に修正 (アイコンピッカーで選び直し)
+        // ダメージを手で入れる (✏️ 手で入力・読めなかったとき)。入力中は描き直さない (焦点が飛ぶ)
+        function _myDmgPreviewSetDamage(v) {
+            const d = _myDmgPreviewData; if (!d) return;
+            const n = Number(String(v || '').replace(/,/g, ''));
+            d.totalDamage = Number.isFinite(n) && n > 0 ? Math.round(n * 1e9) : null;
+        }
         function editMyDmgPreviewChar(i) {
             const d = _myDmgPreviewData;
             if (!d) return;
             const current = d.characters[i] ? (fuzzyResolveCharacter(d.characters[i]) || d.characters[i]) : '';
+            // Q1 (2026-10-26): よく使われるキャラが選びやすいように、その属性の採用数の順で並べる (openIconPicker の attr)
             openIconPicker(current, (name) => {
                 d.characters[i] = name;
                 openMyDmgPreviewModal();   // 再描画 (モーダルは開いたまま)
-            }, `📚 編成の修正 (${i + 1}枠目)`);
+            }, `📚 編成の修正 (${i + 1}枠目)`, { attr: d.selectedAttr || null });
         }
 
         function openMyDmgPreviewModal() {
@@ -13798,6 +13820,11 @@
             if (msg) msg.textContent = '';
             const forEl = document.getElementById('myDmgPreviewFor');   // 📸 運営の取り込み: 誰の模擬として登録するか
             _renderMyDmgPreviewSlot(d);
+            // ✏️ 手で入力 (S1): 見出し・キャラの説明・再撮影の有無を切り替える
+            const titleEl = document.getElementById('myDmgPreviewTitle'), charsLabel = document.getElementById('myDmgPreviewCharsLabel'), retryBtn = document.getElementById('myDmgPreviewRetryBtn');
+            if (titleEl) titleEl.innerHTML = d.manual ? '✏️ 模擬を手で入力' : `${spIcon('camera', 17)} 解析結果`;
+            if (charsLabel) charsLabel.textContent = d.manual ? '編成 5 キャラ (任意 — 入れると被りが分かります。よく使われる順に並びます)' : '認識した編成 5キャラ';
+            if (retryBtn) retryBtn.style.display = d.manual ? 'none' : '';
             if (forEl) { forEl.style.display = d.forPlayer ? '' : 'none'; forEl.textContent = d.forPlayer ? `👑 運営の取り込み: ${d.forPlayer.name} さんの模擬として登録します` : ''; }
 
             // 属性 + ダメージ サマリ
@@ -13815,8 +13842,10 @@
                 </div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">ダメージ</div>
-                    <div style="font-size:23px;font-weight:900;color:${dmgB ? 'var(--t-ink)' : 'var(--t-muted)'};font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB || '—'}${dmgB ? '<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span>' : ''}</div>
+                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">ダメージ${d.manual || dmgB == null ? ' (B)' : ''}</div>
+                    ${d.manual || dmgB == null
+                        ? `<input id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0.01" min="0" value="${dmgB || ''}" placeholder="例 28.4" oninput="_myDmgPreviewSetDamage(this.value)" style="width:120px;font-size:20px;font-weight:900;text-align:right;padding:6px 8px;border-radius:9px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-variant-numeric:tabular-nums;">`
+                        : `<div style="font-size:23px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB}<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span></div>`}
                 </div>`;
 
             // 5 キャラ (タップで保存前に修正できる)
@@ -18353,14 +18382,56 @@
             const b5Pt = PT_ATTRS.find(x => x.key === b5Weak)?.name || '';
             const rows = dom.missingRows({ players, blocks, b5Weakness: b5Weak });
             if (cnt) cnt.textContent = dom.summary(rows, players.length);
-            if (!rows.length) { body.innerHTML = '<p style="color:var(--ok);font-size:12px;margin:0;font-weight:800;">全員の模擬が 5 属性そろっています 🎉</p>'; return; }
-            body.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + rows.map(r => `
-                <button type="button" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として登録する (スクショを選ぶ)"
-                        style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--s1);color:var(--t-ink);font-size:11.5px;font-weight:800;cursor:pointer;">
-                    <span>${escapeHtml(r.name)}</span>
-                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : r.missing.length ? 'あと ' + escapeHtml(r.missingJp.join('・')) : ''}${r.b5Short && r.missing.length < 5 ? `${r.missing.length ? ' · ' : ''}ボス5 (${escapeHtml(b5Pt)}PT) の編成${r.b5Short === 2 ? '①②' : '②'}` : ''}</span>
-                    <span style="color:${r.deadline ? 'var(--warn-deep)' : 'var(--t-muted)'};font-weight:800;">${r.deadline ? '〆 ' + escapeHtml(r.deadline.name) + 'の前' : (r.noSlots ? '時間 未登録' : 'いつでも')}</span>
-                </button>`).join('') + '</div>';
+            // ▶︎ 模擬ダメージ表 (S1): 人 × 属性 (ボス 1〜5 の順)。純ロジックは mockIntakeDomain.tableRows
+            const tbl = dom.tableRows({ players, blocks, bosses: snap.bosses || [], b5Weakness: b5Weak });
+            const bossOf = (a) => (snap.bosses || []).find(b => String(b.weakness || '').toLowerCase() === a) || null;
+            const C = _MK_ATTR_CSS;
+            const head = tbl.attrs.map(a => { const b = bossOf(a); const pt = PT_ATTRS.find(x => x.key === a)?.name || a;
+                return `<th style="background:${C[a].bg};color:${C[a].deep};">${b ? `B${Number(b.boss_number)} ${escapeHtml(b.name || b.boss_code || '')}<br>` : ''}<span style="font-weight:900;">${escapeHtml(pt)}PT</span></th>`; }).join('');
+            const body2 = tbl.rows.map(r => {
+                const dl = r.deadline ? `〆 ${escapeHtml(r.deadline.name)}の前` : (r.noSlots ? '時間 未登録' : 'いつでも');
+                const cells = tbl.attrs.map(a => {
+                    const list = r.cells[a] || [];
+                    const chips = list.map(c => `<button type="button" class="mk-chip${c.dup ? ' dup' : ''}" onclick="_opsMockManual(${Number(r.id)}, '${a}', ${Number(c.slot)})" title="${c.dup ? '同じ人の別の編成とキャラが被っています (1 日に両方は使えません)。' : ''}押すと直す${c.team.length ? ' — ' + escapeHtml(c.team.join('・')) : ' (キャラ未登録)'}">${c.dmgB > 0 ? c.dmgB.toFixed(1) : '—'}<small>B 編成${SLOT_JP[c.slot] || c.slot}${c.team.length ? '' : ' ?'}</small></button>`).join('');
+                    const b5n = (a === b5Weak && r.b5Short > 0 && list.length) ? `<span class="mk-b5">2 編成目も</span>` : '';
+                    const plus = list.length < MY_TEAM_SLOTS.length ? `<button type="button" class="mk-plus" onclick="_opsMockManual(${Number(r.id)}, '${a}')" title="${escapeHtml(r.name)} の ${escapeHtml(PT_ATTRS.find(x => x.key === a)?.name || a)}PT を手で入力">＋</button>` : '';
+                    return `<td style="background:${C[a].bg};">${chips}${b5n}${plus}</td>`;
+                }).join('');
+                return `<tr><td><button type="button" class="mk-name" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として読み取る (スクショを選ぶ)">${escapeHtml(r.name)}</button></td><td class="mk-dl${r.deadline ? ' warn' : ''}">${dl}</td>${cells}</tr>`;
+            }).join('');
+            body.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe><table class="mk-tbl"><thead><tr><th>名前</th><th>〆</th>${head}</tr></thead><tbody>${body2}</tbody></table></div>`;
+        }
+        // 属性の薄い地と濃い文字 (トークン名は静的に書く: 「定義されていない var(--…)」の見張りのため)
+        const _MK_ATTR_CSS = {
+            fire: { bg: 'var(--attr-fire-bg)', deep: 'var(--attr-fire-deep)' }, water: { bg: 'var(--attr-water-bg)', deep: 'var(--attr-water-deep)' },
+            electric: { bg: 'var(--attr-electric-bg)', deep: 'var(--attr-electric-deep)' }, iron: { bg: 'var(--attr-iron-bg)', deep: 'var(--attr-iron-deep)' },
+            wind: { bg: 'var(--attr-wind-bg)', deep: 'var(--attr-wind-deep)' },
+        };
+        // ▶︎ 手で入力 (S1・Q1「画像が無い場合は運営が選択」): 名前・属性・ダメージ (+ 任意でキャラ)。読み取りと同じプレビューを、画像なしで開く。
+        //   slot を渡せば その編成を直す (ダメージ・キャラを入れた状態で開く)。渡さなければ新しい枠 (既定は mockIntakeDomain.defaultSlot)
+        function _opsMockManual(playerId, attr, slot) {
+            const statusEl = document.getElementById('opsMockIntakeStatus');
+            const fail = (text) => { if (statusEl) { statusEl.textContent = `❌ ${text}`; statusEl.style.color = 'var(--bad)'; } };
+            if (!_opsMode) { fail('運営モードで使います'); return; }
+            const pid = playerId != null ? Number(playerId) : Number(_mockIntake.picked);
+            const target = _mockIntake.players.find(p => Number(p.id) === pid) || null;
+            if (!target) { fail('先に「誰の模擬か」を選んでください'); return; }
+            _mockIntake.picked = Number(target.id);
+            const sel = document.getElementById('opsMockIntakePlayer'); if (sel) sel.value = String(Number(target.id));
+            const a = attr && PT_ATTRS.some(x => x.key === attr) ? attr : null;
+            const existing = (a && target.loadoutsByAttr && Array.isArray(target.loadoutsByAttr[a])) ? target.loadoutsByAttr[a] : [];
+            const cur = slot != null ? existing.find(l => Number(l.slot) === Number(slot)) || null : null;
+            const team = cur && Array.isArray(cur.team) ? cur.team.filter(Boolean).map(String) : [];
+            _myDmgPreviewData = {
+                files: [], manual: true,
+                totalDamage: cur && Number(cur.dmgB) > 0 ? Math.round(Number(cur.dmgB) * 1e9) : null,
+                bossName: null, characters: Array.from({ length: 5 }, (_, i) => team[i] || ''),
+                ptAttr: a, selectedAttr: a,
+                forPlayer: { id: Number(target.id), name: target.name },
+                ...(cur ? { slot: Number(cur.slot), slotTouched: true } : {}),
+            };
+            if (statusEl) { statusEl.textContent = ''; statusEl.style.color = 'var(--t-muted)'; }
+            openMyDmgPreviewModal();
         }
         async function handleOpsMockIntakeUpload(event) {
             const files = Array.from(event.target.files || []);

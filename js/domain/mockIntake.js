@@ -123,5 +123,56 @@
         return best;
     }
 
-    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf, defaultSlot, SLOTS };
+    // ===== ▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26 ふるりの構想「提出してもらったユーザー名と属性とダメージ入力 / 一覧表 / 被りは赤枠」) =====
+    /** 属性の並び = ボス 1〜5 の弱点の順 (シーズンごとに変わる)。ボスが欠けていれば残りを既定の順で足す */
+    function attrOrderOfBosses(bosses) {
+        const out = [];
+        (Array.isArray(bosses) ? bosses : []).slice().sort((a, b) => (Number(a && a.boss_number) || 0) - (Number(b && b.boss_number) || 0))
+            .forEach(b => { const w = String(b && b.weakness || '').toLowerCase(); if (ATTR_KEYS.includes(w) && !out.includes(w)) out.push(w); });
+        ATTR_KEYS.forEach(a => { if (!out.includes(a)) out.push(a); });
+        return out;
+    }
+    /** 〆 = その人が最初に出られるブロック (missingRows と同じ決め方) */
+    function deadlineOf(p, blocks) {
+        const rb = root.raidBlocksDomain;
+        const bl = Array.isArray(blocks) ? blocks : [];
+        const slots = Array.isArray(p && p.availableSlots) ? p.availableSlots : [];
+        if (!rb || !bl.length || !slots.length || (p && p.flexTime)) return null;
+        const idxs = rb.blocksOfSlots(bl, slots);
+        return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || '') } : null;
+    }
+    /**
+     * 人 × 属性 の表。マス = その人のその属性の編成 (slot / dmgB / team / dup)。
+     * dup = 同じ人の別の編成 (属性を問わず) と同じキャラが 1 人でもいる (同じキャラは 1 日 1 回 → 両方は使えない)。キャラの無い編成は判定しない。
+     * 並びは missingRows と同じ (〆 の早い順 → 足りない属性が多い順 → 名前)。書庫と「今回は難しい」は除く。
+     * @param {{ players?: Array<Object>, blocks?: Array<Object>, bosses?: Array<Object>, b5Weakness?: string|null }} a
+     * @returns {{ attrs: string[], rows: Array<{ id, name, deadline, noSlots, submitted, missing: string[], b5Short: number, cells: Object<string, Array<{slot, dmgB, team, dup}>> }> }}
+     */
+    function tableRows({ players, blocks, bosses, b5Weakness = null } = {}) {
+        const attrs = attrOrderOfBosses(bosses);
+        const rows = [];
+        for (const p of (Array.isArray(players) ? players : [])) {
+            if (!p || p.archived || p.unavailableThisSeason) continue;
+            const lo = p.loadoutsByAttr && typeof p.loadoutsByAttr === 'object' ? p.loadoutsByAttr : {};
+            const all = [];
+            attrs.forEach(a => (Array.isArray(lo[a]) ? lo[a] : []).forEach(l => {
+                if (!l) return;
+                const dmgB = Number(l.dmgB) || 0, team = Array.isArray(l.team) ? l.team.filter(Boolean).map(String) : [];
+                if (!(dmgB > 0) && !team.length) return;
+                all.push({ attr: a, slot: Number(l.slot) || 1, dmgB, team, dup: false });
+            }));
+            for (const x of all) for (const y of all) if (x !== y && x.team.length && y.team.length && x.team.some(c => y.team.includes(c))) { x.dup = true; y.dup = true; }
+            const cells = {};
+            attrs.forEach(a => { cells[a] = all.filter(x => x.attr === a).sort((x, y) => x.slot - y.slot).map(({ slot, dmgB, team, dup }) => ({ slot, dmgB, team, dup })); });
+            const missing = attrs.filter(a => !cells[a].some(c => c.dmgB > 0));
+            const b5 = b5SecondOf(p, b5Weakness);
+            const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
+            rows.push({ id: p.id, name: p.name, deadline: deadlineOf(p, blocks), noSlots: !p.flexTime && slots.length === 0, submitted: attrs.length - missing.length, missing, b5Short: b5 ? b5.short : 0, cells });
+        }
+        const key = (r) => (r.deadline ? r.deadline.idx : Number.MAX_SAFE_INTEGER);
+        rows.sort((a, b) => (key(a) - key(b)) || (b.missing.length - a.missing.length) || String(a.name).localeCompare(String(b.name), 'ja'));
+        return { attrs, rows };
+    }
+
+    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf, defaultSlot, SLOTS, attrOrderOfBosses, deadlineOf, tableRows };
 })(typeof window !== 'undefined' ? window : globalThis);

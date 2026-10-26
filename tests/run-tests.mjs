@@ -13337,7 +13337,7 @@ console.log('\ngrowthDomain:');
         assert.equal((html.match(/secondB5Lv4Only: true,/g) || []).length, 2, 'ソルバーの呼び出し口 2 か所 (算出 / 承認の影響) で渡していない');
         assert.equal((html.match(/excludeTimeUnknown: true,[^\n]*\n\s*secondB5Lv4Only: true,/g) || []).length, 2, '段階 2b と同じ呼び出し口に並べていない');
         const intake = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /r\.b5Short && r\.missing\.length < 5 \?/.test(intake), '届いていない人に ボス 5 の 2 編成目が無い (未提出の人には付けない・2026-10-26)');
+        assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /a === b5Weak && r\.b5Short > 0 && list\.length/.test(intake), '模擬ダメージ表に ボス 5 の 2 編成目の印が無い (出した人のマスにだけ・2026-10-26)');
         assert.ok(/window\.mockIntakeDomain\.b5SecondOf\(p, _mbB5W\)/.test(html) && /\$\{mock\}\$\{excl\}\$\{b5\(r\)\}/.test(html), '👥 メンバー状況に ボス 5 の 2 編成目が無い');
         // 運営の取り込みは保存先 (編成① / ②) を選べる。本人の提出は従来どおり編成① (同じ編成なら自動で寄る)
         const save = html.match(/async function handleMyDmgPreviewSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -14416,7 +14416,7 @@ console.log('\n🧪 模擬を 8〜9 割に / 未提出の札:');
         assert.ok(/\.delete\(\)\.in\('player_id', pick\.none\)/.test(fn) && /\.delete\(\)\.eq\('player_id', pid\)\.in\('attribute', \['fire', 'electric', 'wind'\]\)/.test(fn));
         const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
         assert.ok(/if \(seedTotal > 0 && confirm\('模擬を「8〜9 割の人から届いた」状態にしますか？/.test(h) && /await window\.supabaseThinTestMocks\(r\.id\);/.test(h), '8〜9 割を選べない');
-        assert.ok(/\$\{r\.b5Short && r\.missing\.length < 5 \? /.test(html), '未提出の人にもボス 5 の注記が付く');
+        assert.ok(/a === b5Weak && r\.b5Short > 0 && list\.length/.test(html) && !/r\.missing\.length === 5 \? '未提出'/.test(html), '未提出の人にもボス 5 の注記が付く (表では出した人のマスにだけ)');
     });
 }
 
@@ -14433,6 +14433,65 @@ console.log('\n🧪 シーズン作成のシートでテスト: 月キーは自�
         assert.ok(/if \(!isTestPre && !\/\^\\d\{4\}/.test(h), 'テストの月キーまで YYYY-MM で検査している (作れない)');
         assert.ok(/id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged\(\)"/.test(html) && /mk\.disabled = on;/.test(fn), '印を付けても月キー欄が押せる');
         assert.ok(/if \(tchk\) tchk\.checked = false;\s*\n\s*_opsSeasonIsTestChanged\(\);/.test(html), '開いたときに前の印が残る');
+    });
+}
+
+console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
+{
+    const _fs9 = await import('node:fs');
+    const html = _fs9.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    const d = globalThis.mockIntakeDomain;
+    test('★ attrOrderOfBosses: ボス 1〜5 の弱点の順 (欠けは既定の順で補う) / deadlineOf は missingRows と同じ', () => {
+        const B = [{ boss_number: 3, weakness: 'fire' }, { boss_number: 1, weakness: 'iron' }, { boss_number: 2, weakness: 'electric' }, { boss_number: 5, weakness: 'water' }, { boss_number: 4, weakness: 'wind' }];
+        assert.deepEqual(d.attrOrderOfBosses(B), ['iron', 'electric', 'fire', 'wind', 'water']);
+        assert.deepEqual(d.attrOrderOfBosses([{ boss_number: 1, weakness: 'WIND' }, { boss_number: 2, weakness: 'x' }]), ['wind', 'fire', 'water', 'electric', 'iron'], '欠けたボスの属性を既定の順で補っていない');
+        assert.deepEqual(d.attrOrderOfBosses(null), d.ATTR_KEYS);
+        const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
+        assert.deepEqual(d.deadlineOf({ availableSlots: ['h18', 'h21'] }, blocks), { idx: 3, name: '夕方' }); assert.equal(d.deadlineOf({ availableSlots: [] }, blocks), null); assert.equal(d.deadlineOf({ availableSlots: ['h05'], flexTime: true }, blocks), null);
+    });
+    test('★ tableRows: 人 × 属性 (ボス順) のマス / 被り = 同じ人の別の編成 (属性を問わず) と同じキャラ (キャラの無い編成は判定しない) / 書庫・今回は難しい は除く / 並びは 〆 → 足りない数 → 名前', () => {
+        const B = [{ boss_number: 1, weakness: 'iron' }, { boss_number: 2, weakness: 'electric' }, { boss_number: 3, weakness: 'fire' }, { boss_number: 4, weakness: 'wind' }, { boss_number: 5, weakness: 'water' }];
+        const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
+        const P = (id, name, slots, lo, extra = {}) => ({ id, name, availableSlots: slots, loadoutsByAttr: lo, ...extra });
+        const players = [
+            P(1, 'あ', ['h21'], { fire: [{ slot: 1, dmgB: 28.4, team: ['紅蓮', 'ラピ', 'アニス', 'クラウン', 'リター'] }], water: [{ slot: 1, dmgB: 24.6, team: ['ベル', 'マスト', 'ナガ', 'ティア', 'リター'] }, { slot: 2, dmgB: 19, team: ['A', 'B', 'C', 'D', 'E'] }], iron: [{ slot: 1, dmgB: 22.8, team: [] }] }),
+            P(2, 'い', ['h05'], { electric: [{ slot: 1, dmgB: 0, team: [] }] }),
+            P(3, 'う', [], {}),
+            P(4, '書庫', ['h05'], { fire: [{ slot: 1, dmgB: 30, team: ['X'] }] }, { archived: true }),
+            P(5, '難', ['h05'], { fire: [{ slot: 1, dmgB: 30, team: ['X'] }] }, { unavailableThisSeason: true }),
+        ];
+        const t = d.tableRows({ players, blocks, bosses: B, b5Weakness: 'water' });
+        assert.deepEqual(t.attrs, ['iron', 'electric', 'fire', 'wind', 'water']);
+        assert.deepEqual(t.rows.map(r => r.name), ['い', 'あ', 'う'], '並び (〆 朝 → 夜 → いつでも) が違う / 書庫・難しい を除いていない');
+        const a = t.rows.find(r => r.name === 'あ');
+        assert.deepEqual(a.cells.fire, [{ slot: 1, dmgB: 28.4, team: ['紅蓮', 'ラピ', 'アニス', 'クラウン', 'リター'], dup: true }], '属性をまたぐ被り (リター) を見ていない');
+        assert.deepEqual(a.cells.water.map(c => [c.slot, c.dup]), [[1, true], [2, false]], '同じ属性の 2 つ目 (別キャラ) を被りにしている');
+        assert.deepEqual(a.cells.iron, [{ slot: 1, dmgB: 22.8, team: [], dup: false }], 'キャラの無い編成を被りにしている');
+        assert.deepEqual([a.submitted, a.missing, a.b5Short, a.deadline], [3, ['electric', 'wind'], 0, { idx: 4, name: '夜' }]);
+        const i = t.rows.find(r => r.name === 'い');
+        assert.deepEqual([i.cells.electric, i.missing.length, i.deadline], [[], 5, { idx: 0, name: '朝' }], 'ダメージ 0・キャラ無しの行を模擬に数えている');
+        const u = t.rows.find(r => r.name === 'う'); assert.deepEqual([u.noSlots, u.deadline, u.submitted], [true, null, 0]);
+        assert.deepEqual(d.tableRows({}), { attrs: d.ATTR_KEYS, rows: [] });
+    });
+    test('★ 配線: 📸 のカードが表 (tableRows・ボス順の見出し・属性の薄い地・＋ と編成の押下 → _opsMockManual・名前 → 読み取り) / ✏️ 手で入力 / プレビューは手入力のときダメージの欄・見出し・再撮影なし / キャラ選びは属性の採用数の順', () => {
+        const r = html.slice(html.indexOf('async function renderOpsMockIntake'), html.indexOf('async function handleOpsMockIntakeUpload'));
+        assert.ok(/const tbl = dom\.tableRows\(\{ players, blocks, bosses: snap\.bosses \|\| \[\], b5Weakness: b5Weak \}\);/.test(r), '表の行をドメインで作っていない');
+        assert.ok(/<table class="mk-tbl">/.test(r) && /data-no-swipe/.test(r), '表が無い / 横スクロールの箱に data-no-swipe が無い');
+        assert.ok(/onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}', \$\{Number\(c\.slot\)\}\)"/.test(r) && /onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}'\)"/.test(r), '編成を押して直す / ＋ で手入力 が無い');
+        assert.ok(/class="mk-chip\$\{c\.dup \? ' dup' : ''\}"/.test(r), '被りの赤い枠が無い');
+        assert.ok(/onclick="_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)"/.test(r), '名前を押して読み取る が無い');
+        assert.ok(/list\.length < MY_TEAM_SLOTS\.length \? `<button type="button" class="mk-plus"/.test(r), '3 編成そろったマスにも ＋ が出る');
+        assert.ok(/onclick="_opsMockManual\(\)" title="選んだ人の模擬を 属性・ダメージ/.test(html), '✏️ 手で入力 のボタンが無い');
+        const m = html.slice(html.indexOf('function _opsMockManual(playerId, attr, slot)'), html.indexOf('async function handleOpsMockIntakeUpload'));
+        assert.ok(/files: \[\], manual: true,/.test(m) && /forPlayer: \{ id: Number\(target\.id\), name: target\.name \},/.test(m) && /\.\.\.\(cur \? \{ slot: Number\(cur\.slot\), slotTouched: true \} : \{\}\),/.test(m) && /openMyDmgPreviewModal\(\);/.test(m), '手入力がプレビュー (読み取りと同じ保存の経路) を使っていない');
+        assert.ok(/if \(!target\) \{ fail\('先に「誰の模擬か」を選んでください'\); return; \}/.test(m), '誰のか決まらずに開ける');
+        const pv = html.slice(html.indexOf('function openMyDmgPreviewModal()'), html.indexOf('async function handleMyDmgPreviewSave()'));
+        assert.ok(/id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0\.01" min="0"[^>]*oninput="_myDmgPreviewSetDamage\(this\.value\)"/.test(pv), '手入力のダメージの欄が無い');
+        assert.ok(/titleEl\.innerHTML = d\.manual \? '✏️ 模擬を手で入力'/.test(pv) && /retryBtn\.style\.display = d\.manual \? 'none' : ''/.test(pv), '手入力の見出し / 再撮影の非表示');
+        assert.ok(/d\.totalDamage = Number\.isFinite\(n\) && n > 0 \? Math\.round\(n \* 1e9\) : null;/.test(html), 'ダメージの欄が totalDamage (生の値) に書いていない');
+        assert.ok(/\}, `📚 編成の修正 \(\$\{i \+ 1\}枠目\)`, \{ attr: d\.selectedAttr \|\| null \}\);/.test(html), 'キャラ選びが属性の採用数の順になっていない (Q1)');
+        assert.ok(/const _MK_ATTR_CSS = \{/.test(html) && /fire: \{ bg: 'var\(--attr-fire-bg\)', deep: 'var\(--attr-fire-deep\)' \}/.test(html), '属性の色がトークンでない');
+        assert.ok(/\.mk-chip\.dup, \.mk-dup-sample \{ border-color: var\(--bad\); \}/.test(html), '被りの枠の色がトークンでない');
     });
 }
 
