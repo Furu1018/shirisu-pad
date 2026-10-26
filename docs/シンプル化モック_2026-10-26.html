@@ -9,11 +9,12 @@
 <style>
 :root { --bg: #f3f2f7; --card: #ffffff; --s1: #f6f5fa; --line: #e3e1ea; --ink: #16151c; --body: #3f3e4a; --muted: #6f6e7c;
   --ops: #6c42f0; --ops-bg: #efeafd; --ok: #1f8f4e; --ok-bg: #e6f6ec; --bad: #d12f3a; --bad-bg: #fde9ea; --warn: #b56a00; --warn-bg: #fff3dc;
-  --fire: #e2493a; --water: #2d7ad6; --electric: #9a3fd6; --iron: #e08a1e; --wind: #2aa36a; }
+  --fire: #e2493a; --water: #2d7ad6; --electric: #9a3fd6; --iron: #e08a1e; --wind: #2aa36a;
+  --fire-bg: #fbe6e3; --water-bg: #e2eefb; --electric-bg: #f1e5fb; --iron-bg: #fdeedb; --wind-bg: #e1f5ea; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141319; --card: #1f1e27; --s1: #26252f; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
-  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; } }
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; --fire-bg: #3a2320; --water-bg: #1e2a3e; --electric-bg: #2d2238; --iron-bg: #3a2c16; --wind-bg: #1c3127; } }
 :root[data-theme="dark"] { --bg: #141319; --card: #1f1e27; --s1: #26252f; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
-  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; }
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --bad: #ff6b74; --bad-bg: #44202a; --warn: #f0b24a; --warn-bg: #3d2f12; --fire-bg: #3a2320; --water-bg: #1e2a3e; --electric-bg: #2d2238; --iron-bg: #3a2c16; --wind-bg: #1c3127; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 14px; line-height: 1.5; padding: 12px 16px 60px; }
 h1 { font-size: 17px; font-weight: 900; margin: 4px 0 2px; }
@@ -36,7 +37,7 @@ th { font-size: 11px; color: var(--muted); font-weight: 800; }
 .wrap { overflow-x: auto; }
 .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: #fff; }
 .a-fire { background: var(--fire); } .a-water { background: var(--water); } .a-electric { background: var(--electric); } .a-iron { background: var(--iron); } .a-wind { background: var(--wind); }
-.cell { border-radius: 8px; padding: 4px 6px; background: var(--s1); min-width: 74px; display: inline-block; font-variant-numeric: tabular-nums; }
+.cell { border-radius: 8px; padding: 4px 6px; background: var(--card); min-width: 74px; display: inline-block; font-variant-numeric: tabular-nums; }
 .cell.dup { outline: 2px solid var(--bad); outline-offset: -2px; }
 .cell.used { opacity: .35; text-decoration: line-through; }
 .cell small { color: var(--muted); font-weight: 700; }
@@ -44,10 +45,14 @@ th { font-size: 11px; color: var(--muted); font-weight: 800; }
 .piece.dup { border-color: var(--bad); }
 .piece.used { opacity: .35; cursor: default; }
 .piece.sel { outline: 2px solid var(--ops); }
+/* 属性の色を薄く敷く (表の列・ピース・ボスの行) */
+.bg-fire { background: var(--fire-bg); } .bg-water { background: var(--water-bg); } .bg-electric { background: var(--electric-bg); } .bg-iron { background: var(--iron-bg); } .bg-wind { background: var(--wind-bg); }
+th.bg-fire, th.bg-water, th.bg-electric, th.bg-iron, th.bg-wind { color: var(--ink); border-radius: 8px 8px 0 0; }
 .tray { display: flex; flex-wrap: wrap; gap: 6px; }
 .grid { width: 100%; }
 .grid th.blk { text-align: center; min-width: 96px; }
 .grid td.slot { min-height: 44px; height: 44px; border: 1px dashed var(--line); border-radius: 8px; padding: 3px; }
+.grid td.boss { border-radius: 10px; }
 .grid td.slot.can { background: var(--ops-bg); border-color: var(--ops); }
 .grid td.slot.no { opacity: .45; }
 .grid td.slot .piece { cursor: pointer; margin: 1px; font-size: 11px; padding: 3px 7px; }
@@ -89,7 +94,7 @@ th { font-size: 11px; color: var(--muted); font-weight: 800; }
   </div>
   <div class="card">
     <h2>みんなの模擬 <span id="cnt" class="note"></span></h2>
-    <p class="note">赤い枠 = 同じ人の 2 つの編成に同じキャラ (1 日に両方は使えない)。薄い = ②で使った</p>
+    <p class="note">列はボス 1〜5 の順 (シーズンごとに変わる)・色は属性。赤い枠 = 同じ人の 2 つの編成に同じキャラ (1 日に両方は使えない)。薄い = ②で使った</p>
     <div class="wrap"><table id="mockTbl"></table></div>
   </div>
 </section>
@@ -141,6 +146,9 @@ const ATTR = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄�
 const BLOCKS = [['朝', '5〜8'], ['午前', '9〜12'], ['午後', '13〜16'], ['夕方', '17〜20'], ['夜', '21〜翌0'], ['深夜', '翌1〜4']];
 const BOSSES = [ { n: 1, name: 'オベリスク', weak: 'iron', tier: 'lord' }, { n: 2, name: 'クリスタルアーマー', weak: 'electric', tier: 'lord' }, { n: 3, name: 'アルトアイゼン', weak: 'fire', tier: 'tyrant' }, { n: 4, name: 'リビルドビッグアームズ', weak: 'wind', tier: 'lord' }, { n: 5, name: 'ブラックスミス', weak: 'water', tier: 'tyrant' } ];
 const HP = { 1: { lord: 99.86, tyrant: 150.84 }, 2: { lord: 149.78, tyrant: 226.26 }, 3: { lord: 292.45, tyrant: 349.23 } };
+// 属性の並びはボス 1〜5 の弱点の順 (シーズンごとに変わる)
+const ATTR_ORDER = BOSSES.map(b => b.weak);
+const bossOf = (attr) => BOSSES.find(b => b.weak === attr);
 // 架空の 12 人: 出られるブロック (添字) と模擬 (属性 → [{dmg, team}])
 const C = (s) => s.split(' ');
 const M = [
@@ -201,13 +209,15 @@ function auto() { // 見本の貪欲: 残り HP の多い行から、置ける�
 function render() {
   // ① 表
   const tbl = document.getElementById('mockTbl');
-  tbl.innerHTML = `<tr><th>名前</th><th>出られる</th>${Object.values(ATTR).map(a => `<th>${a}PT</th>`).join('')}</tr>` + M.map((row, mi) => `<tr><td><b>${row[0]}</b></td><td class="note" style="white-space:nowrap">${row[1].map(b => BLOCKS[b][0]).join('・')}</td>${Object.keys(ATTR).map(a => { const ps = pieces.filter(p => p.m === mi && p.attr === a); return `<td>${ps.length ? ps.map(p => `<span class="cell ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''}">${p.dmg.toFixed(1)}<small>B 編成${'①②③'[p.slot - 1]}</small></span>`).join(' ') : '<span class="note">—</span>'}</td>`; }).join('')}</tr>`).join('');
+  tbl.innerHTML = `<tr><th>名前</th><th>出られる</th>${ATTR_ORDER.map(a => { const b = bossOf(a); return `<th class="bg-${a}">B${b.n} ${b.name}<br><span class="pill a-${a}">${ATTR[a]}PT</span></th>`; }).join('')}</tr>` + M.map((row, mi) => `<tr><td><b>${row[0]}</b></td><td class="note" style="white-space:nowrap">${row[1].map(b => BLOCKS[b][0]).join('・')}</td>${ATTR_ORDER.map(a => { const ps = pieces.filter(p => p.m === mi && p.attr === a); return `<td class="bg-${a}">${ps.length ? ps.map(p => `<span class="cell ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''}">${p.dmg.toFixed(1)}<small>B 編成${'①②③'[p.slot - 1]}</small></span>`).join(' ') : '<span class="note">—</span>'}</td>`; }).join('')}</tr>`).join('');
   const okN = M.filter((row, mi) => new Set(pieces.filter(p => p.m === mi).map(p => p.attr)).size >= 3).length;
   document.getElementById('cnt').textContent = `そろった人 (3 属性以上) ${okN} / ${M.length}`;
   // ② ピース
   const tray = document.getElementById('tray');
   const free = pieces.filter(p => !isUsed(p));
-  tray.innerHTML = pieces.map(p => `<span class="piece a ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''} ${sel === p.id ? 'sel' : ''}" draggable="${!isUsed(p)}" data-id="${p.id}"><span class="pill a-${p.attr}">${ATTR[p.attr]}</span>${p.name} ${p.dmg.toFixed(1)}B</span>`).join('');
+  // ピースもボス 1〜5 の順 (同じ属性の中はダメージの大きい順)
+  const ordered = pieces.slice().sort((a, b) => (ATTR_ORDER.indexOf(a.attr) - ATTR_ORDER.indexOf(b.attr)) || (b.dmg - a.dmg));
+  tray.innerHTML = ordered.map(p => `<span class="piece a bg-${p.attr} ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''} ${sel === p.id ? 'sel' : ''}" draggable="${!isUsed(p)}" data-id="${p.id}"><span class="pill a-${p.attr}">B${bossOf(p.attr).n} ${ATTR[p.attr]}</span>${p.name} ${p.dmg.toFixed(1)}B</span>`).join('');
   document.getElementById('trayCnt').textContent = `残り ${free.length}`;
   // ② 表
   const g = document.getElementById('grid'); const rs = rows(); let html = `<tr><th class="boss">ボス</th>${BLOCKS.map(b => `<th class="blk">${b[0]}<br><span class="note">${b[1]}時</span></th>`).join('')}</tr>`; let lastLv = 0;
@@ -231,6 +241,7 @@ function renderTT() {
 // 操作
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); ['t1', 't2', 't3'].forEach(t => document.getElementById(t).classList.toggle('hidden', t !== b.dataset.t)); });
 document.getElementById('inName').innerHTML = M.map((r, i) => `<option value="${i}">${r[0]}</option>`).join('');
+document.getElementById('inAttr').innerHTML = ATTR_ORDER.map(a => `<option value="${a}">B${bossOf(a).n} ${ATTR[a]}PT</option>`).join('');
 document.getElementById('btnAdd').onclick = () => { const mi = Number(document.getElementById('inName').value), attr = document.getElementById('inAttr').value, dmg = Number(document.getElementById('inDmg').value); if (!(dmg > 0)) { toast('ダメージを入れてください'); return; } const n = pieces.filter(p => p.m === mi && p.attr === attr).length; if (n >= 3) { toast('1 属性は 3 編成まで'); return; } pieces.push({ id: pieces.length, m: mi, name: M[mi][0], attr, slot: n + 1, dmg, team: [], dup: [] }); document.getElementById('inDmg').value = ''; render(); toast(`${M[mi][0]} の ${ATTR[attr]}PT ${dmg}B を登録 (キャラ無し = 被り判定なし)`); };
 document.getElementById('btnAuto').onclick = auto;
 document.getElementById('btnClear').onclick = () => { placed = []; sel = null; render(); };
