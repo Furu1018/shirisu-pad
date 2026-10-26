@@ -40,6 +40,7 @@ import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオン�
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
 import '../js/domain/raidReview.js';   // globalThis.raidReviewDomain (レイドの振り返り: 属性別の進捗 / 得意・不得意 / 誰が)
 import '../js/domain/aiVision.js';     // globalThis.aiVisionDomain (画像認識の失敗を日本語で説明する)
+import '../js/domain/blockBuild.js';   // globalThis.blockBuildDomain (凸プランを組む: ブロックの様子・手で置く駒・ピース — シンプル化 S2)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -14567,6 +14568,115 @@ console.log('\n🧱 レベルはブロックの頭でしか変わらない (leve
         assert.deepEqual([off.done.length, off.level, off.bosses[0].remaining_hp_raw], [2, 2, 95e9], '前提: 従来は踏破した同じブロックで次のレベルも実行');
         assert.deepEqual([on.done.length, on.level, on.bosses[0].remaining_hp_raw, on.cleared], [1, 2, 100e9, [1]], '踏破したブロックの残りの凸を実行している');
         assert.equal(on.players.find(p => p.id === 2).attackCount, 0, '実行しなかった人の凸を数えている');
+    });
+}
+
+console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
+{
+    const bb = globalThis.blockBuildDomain, rbd = globalThis.raidBlocksDomain;
+    const blocks = rbd.blocksOfSeason(null);   // 朝 5-8 / 午前 9-12 / 午後 13-16 / 夕方 17-20 / 夜 21-0 / 深夜 1-4
+    const H = (a, b) => { const o = []; for (let h = a; h <= b; h++) o.push(`h${String(h % 24).padStart(2, '0')}`); return o; };
+    const hpOf = (lv, tier) => ({ 1: { lord: 100, tyrant: 150 }, 2: { lord: 200, tyrant: 300 }, 3: { lord: 400, tyrant: 500 } }[lv] || {})[tier] || 0;
+    const W = ['iron', 'electric', 'fire', 'wind', 'water'];
+    const mkBoard = (rem) => ({ season: { id: 1, current_level: 1, hard_date: '2026-10-31' },
+        bosses: W.map((w, i) => ({ boss_number: i + 1, name: 'B' + (i + 1), weakness: w, tier: 'lord', remaining_hp_raw: rem * 1e9, total_hp_raw: 100e9 })),
+        players: [
+            { id: 1, name: '朝だけ', attackCount: 0, attacks: [], availableSlots: H(5, 8), loadoutsByAttr: { iron: [{ slot: 1, dmgB: 30, team: ['a', 'b'] }], fire: [{ slot: 1, dmgB: 25, team: ['b', 'c'] }] } },
+            { id: 2, name: '朝昼', attackCount: 0, attacks: [], availableSlots: [...H(5, 8), ...H(13, 16)], loadoutsByAttr: { electric: [{ slot: 1, dmgB: 40, team: ['x'] }] } },
+            { id: 3, name: '夜', attackCount: 1, attacks: [{ boss_number: 1, characters: ['q'] }], availableSlots: H(21, 23), loadoutsByAttr: { water: [{ slot: 1, dmgB: 50, team: ['q'] }] } },
+            { id: 4, name: '未登録', attackCount: 0, attacks: [], availableSlots: [], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 99, team: [] }] } },
+            { id: 5, name: '凸数つき', attackCount: 0, attacks: [], availableSlots: [...H(5, 8), ...H(17, 20)], blockCounts: { '17-20': 2 }, loadoutsByAttr: { wind: [{ slot: 1, dmgB: 20, team: [] }] } },
+        ] });
+    test('★ trayPieces: そのブロックに出られる人だけ / 🔒 = そこしか出られない人が先 / ほかのブロック名 / 時間未登録は出さない / 凸数を言った人はそのブロックだけ / 残り凸 / 被り', () => {
+        const pcs = bb.trayPieces({ board: mkBoard(100), blocks, idx: 0, bossOrder: W });
+        assert.deepEqual(pcs.map(p => [p.name, p.attr, p.rigid, p.others]), [['朝だけ', 'iron', true, []], ['朝だけ', 'fire', true, []], ['朝昼', 'electric', false, ['午後']]], '朝の人・🔒・並びが違う / 凸数を言った人 (夕方だけ) が朝に出ている / 未登録が出ている');
+        assert.deepEqual(pcs.filter(p => p.name === '朝だけ').map(p => p.dup), [true, true], '同じ人の編成の被り (b) を見ていない');
+        const eve = bb.trayPieces({ board: mkBoard(100), blocks, idx: 3, bossOrder: W });
+        assert.deepEqual(eve.map(p => [p.name, p.rigid]), [['凸数つき', true]], '凸数を夕方だけ言った人を 🔒 にしていない');
+        const night = bb.trayPieces({ board: mkBoard(100), blocks, idx: 4 });
+        assert.deepEqual(night.map(p => [p.name, p.remaining]), [['夜', 2]]);
+        const placed = new Map([['1:iron:1', 0]]);
+        const after = bb.trayPieces({ board: mkBoard(100), blocks, idx: 0, bossOrder: W, placed, pins: new Map([['1:iron:1', { blockIdx: 0, id: 77 }]]) });
+        assert.deepEqual(after.filter(p => p.name === '朝だけ').map(p => [p.attr, p.placedIdx, p.pinId, p.blocked]), [['iron', 0, 77, null], ['fire', null, null, 'dup']], '置いた編成と被る編成を止めていない');
+    });
+    test('★ canDrop: 置いてある / 被り / 属性 / 撃破済み / 3 凸 — 置けるときは ok', () => {
+        const row = { name: 'B1', weakness: 'iron', done: false };
+        const pc0 = { name: 'A', attr: 'iron', remaining: 1, placedIdx: null, blocked: null };
+        assert.equal(bb.canDrop({ piece: pc0, row, level: 1 }).ok, true);
+        assert.match(bb.canDrop({ piece: { ...pc0, placedIdx: 0 }, row }).label, /もう置いて/);
+        assert.match(bb.canDrop({ piece: { ...pc0, blocked: 'dup' }, row }).label, /被ります/);
+        assert.match(bb.canDrop({ piece: { ...pc0, attr: 'fire' }, row }).label, /効きません/);
+        assert.match(bb.canDrop({ piece: pc0, row: { ...row, done: true }, level: 1 }).label, /撃破済み.*次のブロック/);
+        assert.match(bb.canDrop({ piece: pc0, row, usedHere: 1 }).label, /使い切って/);
+        assert.match(bb.canDrop({}).label, /先にピース/);
+    });
+    test('★ overview: 手で置いた駒 (pinsPlan) で残りが減る / 5 体撃破したら次のブロックが次のレベル (同じブロックの残りは使わない) / 撃破しなければ残りを持ち越す', () => {
+        const board = mkBoard(30);
+        const pins = [ // 朝に 5 体ぶん 30B ずつ
+            ...W.map((w, i) => ({ id: 10 + i, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, boss_number: i + 1, player_id: i + 1, loadout_slot: 1, expected_damage_b: 30, characters_snapshot: ['k' + i] })),
+        ];
+        const planOf = (idx, level, cur) => (idx === 0 ? bb.pinsPlan(bb.blockPins(pins), blocks[0], level, cur.bosses, cur.players) : null);
+        const ov = bb.overview({ board, blocks, planOf, hpOf });
+        assert.deepEqual([ov[0].level, ov[0].allDone, ov[0].attacks, ov[0].people], [1, true, 5, 5]);
+        assert.deepEqual(ov[0].rows.map(r => [r.bossNumber, r.startB, r.gotB, r.done]), W.map((_, i) => [i + 1, 30, 30, true]));
+        assert.deepEqual([ov[1].level, ov[1].rows[0].startB], [2, 200], '朝で撃破したのに午前が Lv2 (HP 満タン) になっていない');
+        const half = bb.overview({ board, blocks, planOf: (idx, level, cur) => (idx === 0 ? bb.pinsPlan(pins.slice(0, 2), blocks[0], level, cur.bosses, cur.players) : null), hpOf });
+        assert.deepEqual([half[0].allDone, half[1].level, half[1].rows.map(r => r.startB)], [false, 1, [0, 0, 30, 30, 30]], '撃破しなかったときに残りを持ち越していない');
+        assert.equal(half[1].rows[0].done, true, '倒れたボスの行が撃破済みになっていない');
+        const later = bb.overview({ board, blocks, first: 2, planOf: () => null, hpOf });
+        assert.deepEqual(later.map(o => o.past), [true, true, false, false, false, false]);
+        assert.equal(later[2].level, 1);
+    });
+    test('★ overview: Lv4 はボス 5 だけ (無限) / pinsPlan はそのブロックの駒だけ・時刻はブロックの頭・レベル', () => {
+        const b4 = { ...mkBoard(0), season: { id: 1, current_level: 4 } };
+        const ov = bb.overview({ board: b4, blocks, planOf: () => null, hpOf });
+        assert.deepEqual(ov[0].rows.map(r => [r.bossNumber, r.infinite]), [[5, true]]);
+        const pins = [{ id: 1, status: 'pinned', time_mode: 'block', block_from: 9, block_to: 12, boss_number: 2, player_id: 2, loadout_slot: 1, expected_damage_b: 40, characters_snapshot: ['x'] },
+            { id: 2, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, boss_number: 1, player_id: 1, loadout_slot: 1, expected_damage_b: 30, characters_snapshot: [] }];
+        const pp = bb.pinsPlan(pins, blocks[1], 2, mkBoard(1).bosses, mkBoard(1).players);
+        assert.deepEqual(pp.levels.map(l => [l.level, l.bosses.map(b => [b.bossNumber, b.attacks.map(a => [a.memberName, a.dmgB, a.hourIdx, a.reservationId, a.pinned])])]), [[2, [[2, [['朝昼', 40, 4, 1, true]]]]]]);
+        assert.deepEqual(bb.pinsPlan([], blocks[0], 1, [], []).levels, []);
+        assert.equal(bb.pinBlockIdx(pins[0], blocks), 1); assert.equal(bb.pinBlockIdx({ time_mode: 'fixed' }, blocks), -1);
+        assert.deepEqual(bb.blockPins([{ status: 'pinned', time_mode: 'block' }, { status: 'approved', time_mode: 'block' }, { status: 'pinned', time_mode: 'fixed' }]).length, 1);
+    });
+}
+
+console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2):');
+{
+    const _fsA = await import('node:fs');
+    const html = _fsA.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    const fn = (name, end) => html.slice(html.indexOf(name), end ? html.indexOf(end, html.indexOf(name) + 10) : html.indexOf('\n        }\n', html.indexOf(name)) + 10);
+    test('★ 配線: 読み込み・置き場・描くきっかけ・レベルの規則をソルバーの 2 か所に', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/blockBuild.js"></script>'), 'blockBuild.js を読み込んでいない');
+        assert.ok(/<div id="opsBuild" class="ob" data-ops-only>/.test(html) && /<details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 \(詳しく\)<\/summary>/.test(html), '置き場 / 従来の畳み');
+        assert.ok(/renderOpsMockIntake\(\);[^\n]*\n\s*renderOpsBuild\(\);/.test(html) && /renderOpsMockIntake\(\);\s*\n\s*if \(typeof renderOpsBuild === 'function'\) renderOpsBuild\(\);/.test(html), '盤面を描くときに凸プランを組むを描いていない');
+        assert.equal((html.match(/levelStartsAtBlock: _opsLevelBlockStarts\((season|snap\.season)\),/g) || []).length, 2, 'レベルはブロックの頭の規則を算出と承認の影響の両方に渡していない');
+    });
+    test('★ 配線: 置く = 判定 (canDrop) → 押した時点の DB で canPin → ブロックの 📌 を作る → 後ろの自動の結果を捨てる / 外す = released / 自動 = そのブロックの始まりの盤面・前で実行した 📌 は渡さない', () => {
+        const pl = fn('async function _obPlace(bossNumber)', 'async function _obUnpin(');
+        const i1 = pl.indexOf('bb.canDrop('), i2 = pl.indexOf('await window.supabaseLoadReservations('), i3 = pl.indexOf('rv.canPin(rows,'), i4 = pl.indexOf('await window.supabaseCreateReservation(');
+        assert.ok(i1 > 0 && i2 > i1 && i3 > i2 && i4 > i3, '置く前の判定の順が違う (DB を読まずに置いている など)');
+        assert.ok(/block: \{ from: blk\.from, to: blk\.to \},/.test(pl) && /status: 'pinned'/.test(pl) && /raidLevel: null/.test(pl), 'ブロックの 📌 (レベル無し) を作っていない');
+        assert.ok(/_obAfterChange\(idx\);/.test(pl), '置いたあとに後ろの自動の結果を捨てていない');
+        assert.ok(/if \(_ob\.busy\) return;/.test(pl) && /_ob\.busy = true;/.test(pl) && /finally \{\s*\n\s*_ob\.busy = false;/.test(pl), '二重押しの止め');
+        const un = fn('async function _obUnpin(resId)', 'async function _obAuto(');
+        assert.ok(/_resvTransition\(Number\(resId\), 'released', \{ expectFrom: 'pinned'/.test(un), '外すのが released でない');
+        const au = fn('async function _obAuto()', 'async function _obReset(');
+        assert.ok(/computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan: null, reservations: resv \}, o\.startBoard\)/.test(au), 'そのブロックの始まりの盤面で組んでいない');
+        assert.ok(/const executed = new Set\(ov\.slice\(0, idx\)\.flatMap\(x => \(x\.done \|\| \[\]\)\.map\(d => d\.reservationId\)\)/.test(au) && /rows\.filter\(r => !executed\.has\(Number\(r\.id\)\)\)/.test(au), '前のブロックで実行した 📌 を拘束に渡している');
+        assert.ok(/for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]\) if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); \}/.test(au), '組んだあとに後ろのブロックを要組み直しにしていない');
+        const ac = fn('function _obAfterChange(idx)');
+        assert.ok(/if \(k >= idx\) \{ _ob\.plans\.delete\(k\); if \(k > idx\) _ob\.stale\.add\(k\); \}/.test(ac));
+        const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
+        assert.ok(/const planOf = \(idx, level, cur\) => _ob\.plans\.get\(idx\) \|\| bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\);/.test(cx) && /bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
+        assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap \}\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
+    });
+    test('★ 描画: 名前・ボス名は escapeHtml / onclick に名前を埋めない (data 属性の鍵と id だけ) / 色はトークン', () => {
+        const r = fn('function renderOpsBuild()', 'const _obHours');
+        assert.ok(/escapeHtml\(a\.memberName \|\| ''\)/.test(r) && /escapeHtml\(p\.name\)/.test(r) && /escapeHtml\(r\.name\)/.test(r), '名前を escapeHtml していない');
+        assert.ok(!/onclick="[^"]*\$\{[^}]*name/.test(r), 'onclick に名前を埋めている');
+        assert.ok(/data-ob-piece="\$\{escapeHtml\(p\.key\)\}"/.test(r) && /data-ob-unpin="\$\{Number\(a\.reservationId\)\}"/.test(r) && /data-ob-boss="\$\{r\.bossNumber\}"/.test(r) && /data-ob-blk="\$\{i\}"/.test(r));
+        assert.ok(!/#[0-9a-fA-F]{3,6}\b/.test(r), '色を直に書いている');
     });
 }
 

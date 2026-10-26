@@ -106,6 +106,7 @@
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
     <script defer src="./js/domain/publishedPlans.js"></script>
+    <script defer src="./js/domain/blockBuild.js"></script>       <!-- ▶︎ 凸プランを組む: ブロックの様子・手で置く駒・ピース (シンプル化 S2・2026-10-26) -->
     <script defer src="./js/domain/planChain.js"></script>        <!-- 🧱 残りのブロックを一気に組む: 前のブロックを模擬どおり削れたことにして盤面を進める (段階 8・2026-10-23) -->   <!-- 🧱 配信をブロックごとの最新で読む (段階 7・2026-10-23) -->
     <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
     <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
@@ -3580,6 +3581,44 @@
             color: rgba(var(--paper-rgb), 0.6);
         }
         .dc-plan-char img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* ▶︎ 凸プランを組む (S2・2026-10-26): ブロックの大きなボタン × 6 → 盤 (幅 = ダメージ) + 出られる人のピース */
+        .ob { display: flex; flex-direction: column; gap: 10px; }
+        .ob-note { margin: 0; font-size: 11px; color: var(--t-muted); line-height: 1.6; }
+        .ob-stale { color: var(--warn-deep); }
+        .obb-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+        @media (max-width: 760px) { .obb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        .obb { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 9px 10px 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+        .obb.on { border-color: var(--ops); box-shadow: 0 0 0 3px var(--ops-bg); }
+        .obb.past { opacity: .5; cursor: default; }
+        .obb .nm { font-size: 14px; font-weight: 900; } .obb .hr { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .obb .lv { font-size: 11px; font-weight: 900; color: var(--ops); } .obb .lv.done { color: var(--ok); } .obb .lv.idle { color: var(--t-muted); }
+        .obb .ct { font-size: 10.5px; font-weight: 800; color: var(--t-body); }
+        .obb .minis { display: flex; gap: 3px; margin-top: auto; } .obb .minis i { flex: 1; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; display: block; } .obb .minis i b { display: block; height: 100%; }
+        .ob-panel { display: flex; flex-direction: column; gap: 8px; }
+        .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--t-ink); }
+        .ob-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+        .ob-auto { padding: 8px 13px; border-radius: 10px; border: none; background: linear-gradient(var(--grad-ops-a), var(--grad-ops-b)); color: var(--on-fill); font: inherit; font-size: 12.5px; font-weight: 900; cursor: pointer; }
+        .ob-reset { padding: 8px 12px; border-radius: 10px; border: none; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+        .ob-auto:disabled, .ob-reset:disabled { opacity: .5; cursor: progress; }
+        .ob-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 10px; align-items: start; }
+        @media (max-width: 900px) { .ob-wrap { grid-template-columns: minmax(0, 1fr); } }
+        .ob-board { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+        .obr { border: 1.5px dashed var(--line); border-radius: 12px; padding: 7px 9px; cursor: pointer; min-width: 0; }
+        .obr.can { border-color: var(--ops); background: var(--ops-bg); } .obr.no { opacity: .45; } .obr.done { border-style: solid; border-color: var(--ok); }
+        .obr-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--t-ink); }
+        .obr-h .hp { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; } .obr.done .hp { color: var(--ok); }
+        .obr-pt { padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; }
+        .obr-bar { display: flex; height: 28px; margin-top: 5px; border-radius: 8px; background: var(--track); overflow: hidden; }
+        .obpc { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; white-space: nowrap; overflow: hidden; border-right: 2px solid var(--card); flex: none; }
+        .obpc.pin { cursor: pointer; } .obpc.over { opacity: .6; }
+        .ob-tray { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 10.5px; }
+        .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
+        .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
+        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.off { opacity: .4; cursor: default; } .obt.dup { border-color: var(--bad); }
+        .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 900; } .obt small { font-size: 9.5px; color: var(--t-muted); }
+        .obt .rigid { font-size: 10px; font-weight: 900; color: var(--bad-deep); } .obt .flex, .obt .where { font-size: 10px; color: var(--t-muted); }
+        .ob-legacy { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; } .ob-legacy > summary { cursor: pointer; font-size: 12px; font-weight: 800; color: var(--t-muted); padding: 4px 0; }
         /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
         .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 11.5px; }
         .mk-tbl th, .mk-tbl td { padding: 4px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -4739,11 +4778,15 @@
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
-            <!-- 最適凸プラン (パズル盤 ①・2026-09-11: 条件を選んで → 算出。判定は js/domain/planBoard.js) -->
+            <!-- ▶︎ 凸プランを組む (シンプル化 S2・2026-10-26): ブロックの大きなボタン → 出られる人の模擬を手で置く → 残りを自動で組む (renderOpsBuild)。
+                 従来の条件パネル・算出・配信は下の「従来の算出・配信」に畳んで残す (消さない) -->
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">最適凸プラン算出</div>
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">凸プランを組む</div>
                 </div>
+                <div id="opsBuild" class="ob" data-ops-only><p class="ob-note">運営ONで読み込みます…</p></div>
+                <details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 (詳しく)</summary>
+                <!-- 最適凸プラン (パズル盤 ①・2026-09-11: 条件を選んで → 算出。判定は js/domain/planBoard.js) — 2026-10-26 から「凸プランを組む」の下に畳んで残す -->
                 <!-- 最終配信の状況 (L5 運営ガード・2026-09-07)。運営3人が別々に組み直していた第44回は、
                      いま誰の配信が生きているのかが画面から分からなかった。配信が無いまま時間が経つのも警告する -->
                 <!-- 🧱 段階 6 ③ 1 ブロックの手順 (引き継ぎ用・_renderOpsBlockSteps が描く): HP → 結果の取り込み → 組む → 配信 → 締凸検索 -->
@@ -4784,6 +4827,7 @@
                     <button id="opsPlanChainBtn" onclick="handleOpsChainPlan()" title="いまのブロックから最後のブロックまで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信する (予想。ずれたら組み直す)" style="padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;">🧱 残りのブロックを一気に組む</button>
                     <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:8px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11.5px;font-weight:800;cursor:pointer;">📸 共有画像</button>
                 </div>
+                </details>
             </div>
 
             <!-- 運営アクション (戦闘中) -->
@@ -17877,6 +17921,7 @@
             renderOpsReservations();               // 🔒 凸の予約 (同上)
             renderOpsGrowth();                     // 🧬 育成データの取り込み (同上)
             renderOpsMockIntake();                 // 📸 模擬の取り込み (③-e・同上)
+            renderOpsBuild();                      // ▶︎ 凸プランを組む (シンプル化 S2)
             _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
@@ -17911,6 +17956,7 @@
             if (typeof _syncOpsUnpublishBtn === 'function') await _syncOpsUnpublishBtn();   // 最後に ✅ 凸報告の確認を描く
             if (seq !== _opsBoardReloadSeq || !_opsMode) return;
             if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
+            if (typeof renderOpsBuild === 'function') renderOpsBuild();   // ▶︎ 凸プランを組む (盤面から描く)
         }
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
         async function renderOpsAttackCheck(force = false) {
@@ -19084,6 +19130,7 @@
                 availableAtSlots: blk ? blk.slots : undefined, availableAtLabel: blk ? blk.label : undefined,
                 timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
                 reservations: rv.toSolverConstraints(rows),
+                levelStartsAtBlock: _opsLevelBlockStarts(snap.season),   // 画面の算出と同じ (レベルはブロックの頭でしか変わらない)
             });
             // 候補は「承認済みとして」解く (approved にしないと拘束にならない)。
             // 候補の ID を渡すと、置けなかったときに最初の警告として返り、承認を止められる
@@ -22459,6 +22506,8 @@
                 excludeTimeUnknown: true,   // 🧱 段階 2b: 時間未登録の人は「いつでも」にしない (⏳隙間型の撤廃とそろえる)
                 secondB5Lv4Only: true,      // 🧱 段階 5: ボス 5 の弱点の 2 編成目は Lv4 (HP 無限) だけで使う (ベンチ tests/bench-blockflow/boss5-two-teams.mjs)
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
+                // 🧱 レベルはブロックの頭でしか変わらない (2026-10-26 ふるり「朝で Lv1 が終わったら Lv2 は次のブロックから」)
+                levelStartsAtBlock: _opsLevelBlockStarts(season),
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)。
                 // 🧱 ブロックのときは **ブロックの始まりより前には置かない** (max(起点, ブロックの頭))。「次」のブロックを先に組むとき、
                 //   今から置くと ブロックより前の凸が配信の範囲 (scopePlan) から消える (Codex指摘 2026-10-18)
@@ -22476,6 +22525,271 @@
                 //   渡すと「変えないと明確に損」でない限り前回どおりの割当になる
                 previousPlan: options.previousPlan || null,
             });
+        }
+
+        // 🧱 レベルはブロックの頭でしか変わらない (2026-10-26): ソルバーに渡すブロックの頭 (HOUR_ORDER の添字)
+        function _opsLevelBlockStarts(season) {
+            const rb = window.raidBlocksDomain;
+            if (!rb) return undefined;
+            const bl = rb.blocksOfSeason(season);
+            return Array.isArray(bl) && bl.length ? bl.map(b => b.fromIdx) : undefined;
+        }
+
+        // ===== ▶︎ 凸プランを組む (シンプル化 S2・2026-10-26 ふるりの構想・設計案 docs/シンプル化_設計案_2026-10-26.md §6) =====
+        // 「朝 5〜8時」などの大きなボタン → 押したブロックに 出られる人の模擬 を手で置く (📌 ブロックの仮置き = 予約の代わり) → 残りを自動で組む。
+        // ★ レベルはブロックの頭でしか変わらない (blockBuildDomain.overview + ソルバーの levelStartsAtBlock)。
+        // ★ 前のブロックで組んだ凸は「模擬どおり削れた」と仮定して次のブロックの盤面に進める (projectBoard)。自動で組むのはそのブロックの始まりの盤面から。
+        // 手で置いた駒は DB (plan_reservations の 📌 / time_mode 'block') に残る (別の運営・別の端末でも見える)。自動で組んだ結果はこの端末だけ (決定するまで)
+        const _ob = { idx: null, plans: new Map(), stale: new Set(), pins: null, pinsSeason: null, pinsErr: null, sel: null, busy: false, seq: 0, delegated: false };
+        const _obHpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
+        function _obFirstIdx(season, blocks) {
+            const rb = window.raidBlocksDomain;
+            const i = rb ? rb.blockIndexOfSlot(blocks, _planNowSlot(season)) : 0;   // レイド日より前は h05 = 朝
+            return i >= 0 ? i : 0;
+        }
+        async function _obLoadPins(seasonId) {
+            const seq = ++_ob.seq;
+            let rows = null, err = null;
+            try { rows = await window.supabaseLoadReservations(seasonId); } catch (e) { err = e?.message || String(e); }
+            if (seq !== _ob.seq || _ob.pinsSeason !== seasonId) return;   // 追い越された / シーズンが変わった
+            _ob.pins = Array.isArray(rows) ? rows : [];
+            _ob.pinsErr = Array.isArray(rows) ? null : (err || '凸の予約 (supabase/39・45・54) が未適用のため、手で置けません');
+            renderOpsBuild();
+        }
+        // いまの盤面から、ブロックごとの様子・ピース・置いた所をまとめて作る (描画・置く・自動の 3 つが同じものを見る)
+        function _obCtx(snap) {
+            const rb = window.raidBlocksDomain, bb = window.blockBuildDomain, pcd = window.planChainDomain;
+            if (!rb || !bb || !pcd || !snap?.season) return null;
+            const blocks = rb.blocksOfSeason(snap.season);
+            const first = _obFirstIdx(snap.season, blocks);
+            const pins = bb.blockPins(_ob.pins || []);
+            const planOf = (idx, level, cur) => _ob.plans.get(idx) || bb.pinsPlan(pins, blocks[idx], level, cur.bosses, cur.players);
+            const ov = bb.overview({ board: { season: snap.season, bosses: snap.bosses, players: snap.players }, blocks, first, planOf, hpOf: _obHpOf });
+            const weakOf = new Map((snap.bosses || []).map(b => [Number(b.boss_number), b.weakness]));
+            const placed = new Map(), pinMap = new Map();
+            ov.forEach(o => { if (o.past || !o.startBoard) return; const p = planOf(o.idx, o.level, o.startBoard); if (!p) return;
+                pcd.attacksIn(p, blocks[o.idx]).forEach(a => { const k = `${a.memberId}:${weakOf.get(Number(a.bossNumber))}:${Number(a.loadoutSlot) || 1}`; if (!placed.has(k)) placed.set(k, o.idx); }); });
+            pins.forEach(r => { const k = `${r.player_id}:${weakOf.get(Number(r.boss_number))}:${Number(r.loadout_slot) || 1}`; pinMap.set(k, { blockIdx: bb.pinBlockIdx(r, blocks), id: Number(r.id) }); });
+            let idx = Number.isInteger(_ob.idx) ? _ob.idx : first;
+            if (idx < first || idx >= blocks.length) idx = first;
+            const bossOrder = (window.mockIntakeDomain && window.mockIntakeDomain.attrOrderOfBosses) ? window.mockIntakeDomain.attrOrderOfBosses(snap.bosses) : null;
+            const cur = ov[idx];
+            const tray = cur && cur.startBoard ? bb.trayPieces({ board: cur.startBoard, blocks, idx, bossOrder, placed, pins: pinMap }) : [];
+            return { blocks, first, ov, idx, tray, pins, planOf, placed, pinMap, bossOrder };
+        }
+        function renderOpsBuild() {
+            const host = document.getElementById('opsBuild');
+            if (!host || !_opsMode) return;
+            const snap = opsStore.get();
+            if (!snap) return;   // 取り直しの最中 — 完了が描く
+            if (!snap.season) { host.innerHTML = '<p class="ob-note">アクティブシーズンがありません。</p>'; return; }
+            if (_ob.pinsSeason !== snap.season.id) {
+                _ob.pinsSeason = snap.season.id; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.sel = null; _ob.idx = null;
+                _obLoadPins(snap.season.id);
+            }
+            const ctx = _obCtx(snap);
+            if (!ctx) { host.innerHTML = '<p class="ob-note" style="color:var(--bad);">凸プランを組む機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
+            _ob.idx = ctx.idx;
+            const { blocks, ov, idx, tray } = ctx;
+            const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+            // ① ブロックの大きなボタン
+            const btns = blocks.map((b, i) => {
+                const o = ov[i];
+                if (o.past) return `<button type="button" class="obb past" disabled title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">済み</span></button>`;
+                const built = _ob.plans.has(i);
+                const lvTxt = o.level >= 4 ? 'Lv4 (ボス 5・∞)' : (o.allDone ? `Lv${o.level} 撃破 ✓` : (o.attacks ? `Lv${o.level} を組み中` : `Lv${o.level} から`));
+                const minis = o.rows.map(r => `<i title="B${r.bossNumber} ${escapeHtml(r.name)} ${r.infinite ? '∞' : 'あと ' + r.remB.toFixed(1) + 'B'}"><b style="width:${r.infinite ? (r.gotB > 0 ? 100 : 0) : Math.min(100, r.startB > 0 ? r.gotB / r.startB * 100 : 100)}%;background:${(_BB_FILL[r.weakness] || [])[0] || 'var(--ops)'};"></b></i>`).join('');
+                return `<button type="button" class="obb${i === idx ? ' on' : ''}" data-ob-blk="${i}" aria-pressed="${i === idx}"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span>`
+                    + `<span class="lv${o.allDone ? ' done' : (o.attacks ? '' : ' idle')}">${lvTxt}</span><span class="ct">${o.attacks ? `${o.attacks} 凸・${o.people} 人${built ? ' · 自動済み' : ''}` : 'まだ空'}${_ob.stale.has(i) ? ' · <b class="ob-stale">要組み直し</b>' : ''}</span><span class="minis">${minis}</span></button>`;
+            }).join('');
+            // ② 選んだブロックの盤
+            const o = ov[idx], blk = blocks[idx];
+            const sel = tray.find(p => p.key === _ob.sel) || null;
+            const usedOf = (mid) => o.rows.reduce((t, r) => t + r.pieces.filter(a => String(a.memberId) === String(mid)).length, 0);
+            const rows = o.rows.map(r => {
+                const can = sel ? window.blockBuildDomain.canDrop({ piece: sel, row: r, level: o.level, usedHere: usedOf(sel.memberId) }).ok : null;
+                let acc = 0;
+                const pieces = r.pieces.map(a => {
+                    const w = r.infinite ? 12 : Math.max(4, Math.min(100 - Math.min(acc, 100), r.startB > 0 ? (Number(a.dmgB) || 0) / r.startB * 100 : 100));
+                    acc += w;
+                    const [fill, ink] = _BB_FILL[r.weakness] || ['var(--ops)', 'var(--on-fill)'];
+                    const nm = escapeHtml(a.memberName || '');
+                    const pin = a.pinned && a.reservationId != null;
+                    return `<span class="obpc${pin ? ' pin' : ''}${acc > 100.5 ? ' over' : ''}" style="width:${w}%;background:${fill};color:${ink};"${pin ? ` data-ob-unpin="${Number(a.reservationId)}" title="${nm} ${(Number(a.dmgB) || 0).toFixed(1)}B — 手で置いた駒 (押すと外す)"` : ` title="${nm} ${(Number(a.dmgB) || 0).toFixed(1)}B — 自動で置いた"`}>${pin ? '📌 ' : ''}${nm} ${(Number(a.dmgB) || 0).toFixed(1)}</span>`;
+                }).join('');
+                const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B` : (r.done ? `撃破 ✓${r.gotB - r.startB > 0.05 ? ` 余り ${(r.gotB - r.startB).toFixed(1)}B` : ''}` : `あと ${r.remB.toFixed(1)}B / ${r.startB.toFixed(1)}B`);
+                return `<div class="obr${can === true ? ' can' : (can === false ? ' no' : '')}${r.done ? ' done' : ''}" data-ob-boss="${r.bossNumber}"><div class="obr-h"><span class="obr-pt" style="background:${(_BB_FILL[r.weakness] || [])[0] || 'var(--s2)'};color:${(_BB_FILL[r.weakness] || [])[1] || 'var(--t-ink)'};">${escapeHtml(pt(r.weakness))}PT</span><b>B${r.bossNumber} ${escapeHtml(r.name)}</b><span class="hp">${hp}</span></div><div class="obr-bar">${pieces}</div></div>`;
+            }).join('');
+            const note = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
+                : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`);
+            // ③ ピース (このブロックに出られる人の模擬だけ)
+            const people = new Set(tray.map(p => String(p.memberId))).size;
+            const free = tray.filter(p => p.placedIdx == null && !p.blocked && p.remaining > 0).length;
+            const trayHtml = tray.length ? tray.map(p => {
+                const [fill, ink] = _BB_FILL[p.attr] || ['var(--s2)', 'var(--t-ink)'];
+                const bn = (opsStore.get()?.bosses || []).find(b => b.weakness === p.attr);
+                const used = p.placedIdx != null, off = used || !!p.blocked || p.remaining <= 0;
+                const where = used ? (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.name || '')}に置いた`) : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '3 凸済み' : ''));
+                const flex = p.rigid ? '<span class="rigid">🔒 この時間だけ</span>' : `<span class="flex">ほか: ${escapeHtml(p.others.join('・'))}</span>`;
+                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${off ? ' off' : ''}${p.dup ? ' dup' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}">`
+                    + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${where ? `<span class="where">${where}</span>` : flex}</button>`;
+            }).join('') : '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>';
+            const err = _ob.pinsErr ? `<p class="ob-note" style="color:var(--bad);">${escapeHtml(_ob.pinsErr)}</p>` : (_ob.pins == null ? '<p class="ob-note">手で置いた駒を読み込んでいます…</p>' : '');
+            host.innerHTML = `<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>
+                <div class="ob-panel">
+                    <div class="ob-head"><b>${escapeHtml(blk.name)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
+                        <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button><button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button></span></div>
+                    <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${err}
+                    <div class="ob-wrap"><div class="ob-board">${rows}</div>
+                        <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
+                            <p class="ob-note">🔒 = この時間帯しか出られない人 (先に置く)。ピースを押してからボスの行を押す (PC はドラッグ)。置いた 📌 を押すと外せます</p>
+                            <div class="ob-tray-list">${trayHtml}</div></div></div>
+                </div>`;
+            _obDelegate(host);
+        }
+        // ブロックの時間の言い方: 「5〜8時」「21〜翌0時」「翌1〜4時」(5 時始まりのレイド日)
+        const _obHours = (b) => (Number(b.from) <= 4 ? `翌${b.from}〜${b.to}時` : `${b.from}〜${Number(b.to) <= 4 ? '翌' + b.to : b.to}時`);
+        function _obDelegate(host) {
+            if (_ob.delegated) return;
+            _ob.delegated = true;
+            host.addEventListener('click', (e) => {
+                const blkBtn = e.target.closest('[data-ob-blk]');
+                if (blkBtn) { _ob.idx = Number(blkBtn.dataset.obBlk); _ob.sel = null; renderOpsBuild(); return; }
+                const un = e.target.closest('[data-ob-unpin]');
+                if (un) { _obUnpin(Number(un.dataset.obUnpin)); return; }
+                const pc = e.target.closest('[data-ob-piece]');
+                if (pc) { _obSelect(pc.dataset.obPiece); return; }
+                const row = e.target.closest('[data-ob-boss]');
+                if (row) { if (!_ob.sel) { showNotification('先に右 (下) のピースを押してください'); return; } _obPlace(Number(row.dataset.obBoss)); }
+            });
+            host.addEventListener('dragstart', (e) => { const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
+            host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
+            host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
+        }
+        function _obSelect(key) {
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            const p = ctx ? ctx.tray.find(x => x.key === key) : null;
+            if (!p) return;
+            if (p.placedIdx != null) { showNotification(p.pinId != null ? '置いてあります (盤の 📌 を押すと外せます)' : '自動で置いた駒です (このブロックをやり直すと外れます)'); return; }
+            if (p.blocked === 'dup') { showNotification('別の編成とキャラが被るので使えません (同じキャラは 1 日 1 回)'); return; }
+            if (p.remaining <= 0) { showNotification(`${p.name} は 3 凸を使い切っています`); return; }
+            _ob.sel = _ob.sel === key ? null : key;
+            renderOpsBuild();
+            if (_ob.sel) showNotification('置くボスの行を押してください (明るい行)');
+        }
+        // 置いたら / 外したら: そのブロックから後ろの「自動で組んだ結果」は前提が変わったので捨てる (後ろは要組み直し)
+        function _obAfterChange(idx) {
+            for (const k of [..._ob.plans.keys()]) if (k >= idx) { _ob.plans.delete(k); if (k > idx) _ob.stale.add(k); }
+            _ob.stale.delete(idx);
+        }
+        async function _obPlace(bossNumber) {
+            if (_ob.busy) return;
+            const rv = window.reservationsDomain, bb = window.blockBuildDomain;
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx || !rv || !bb) return;
+            if (_ob.pins == null || _ob.pinsErr) { showNotification(_ob.pinsErr || '手で置いた駒を読み込んでいます。少し待ってください'); return; }
+            const { blocks, ov, idx } = ctx;
+            const o = ov[idx], blk = blocks[idx];
+            const piece = ctx.tray.find(p => p.key === _ob.sel) || null;
+            const row = o.rows.find(r => r.bossNumber === Number(bossNumber)) || null;
+            const usedHere = o.rows.reduce((t, r) => t + r.pieces.filter(a => String(a.memberId) === String(piece?.memberId)).length, 0);
+            const chk = bb.canDrop({ piece, row, level: o.level, usedHere });
+            if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
+            const live = (snap.players || []).find(p => String(p.id) === String(piece.memberId));
+            _ob.busy = true;
+            try {
+                // ★ 置けるかは押した時点の DB で見る (別の運営・別の端末が置いたかもしれない)。正は DB (SQL 45/47 の残凸・同じカード)
+                let rows = null;
+                try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
+                if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39・45・54) が未適用のため手で置けません'); return; }
+                const pin = rv.canPin(rows, { playerId: piece.memberId, bossNumber: row.bossNumber, loadoutSlot: piece.slot, characters: piece.team, doneAttacks: Number(live?.attackCount) || 0 });
+                if (!pin.ok) { showNotification(`置けません: ${pin.label}`); _ob.pins = rows; renderOpsBuild(); return; }
+                const me = getCurrentIdentity();
+                await window.supabaseCreateReservation({
+                    seasonId: snap.season.id, playerId: piece.memberId, raidLevel: null, bossNumber: row.bossNumber, block: { from: blk.from, to: blk.to },
+                    loadoutSlot: piece.slot, characters: piece.team, expectedDamageB: piece.dmgB,
+                    sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
+                });
+                window.supabaseLogActivity?.('ops', `📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に手で置きました`);
+                _ob.sel = null;
+                _obAfterChange(idx);
+                try { _ob.pins = await window.supabaseLoadReservations(snap.season.id) || _ob.pins; } catch (_) { /* 次の描画で取り直す */ }
+                showNotification(`📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に置きました`);
+            } catch (e) {
+                showNotification(`❌ 置けませんでした: ${e?.message || e}`);
+            } finally {
+                _ob.busy = false;
+                renderOpsBuild();
+            }
+        }
+        async function _obUnpin(resId) {
+            if (_ob.busy) return;
+            const bb = window.blockBuildDomain, rb = window.raidBlocksDomain;
+            const row = (_ob.pins || []).find(r => Number(r.id) === Number(resId)) || null;
+            const snap = opsStore.get();
+            const idx = row && snap?.season && bb && rb ? bb.pinBlockIdx(row, rb.blocksOfSeason(snap.season)) : -1;
+            _ob.busy = true;
+            try {
+                const ok = await _resvTransition(Number(resId), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 手で置いた駒を外しました' });
+                if (ok) { _obAfterChange(idx >= 0 ? idx : 0); try { _ob.pins = await window.supabaseLoadReservations(snap.season.id) || _ob.pins; } catch (_) { /* 次で */ } }
+            } finally {
+                _ob.busy = false;
+                renderOpsBuild();
+            }
+        }
+        // 🧮 残りを自動で組む: そのブロックの始まりの盤面 (前のブロックを実行したことにした盤面) から、そのブロックに出られる人で組む。手で置いた駒 (📌) は動かさない
+        async function _obAuto() {
+            if (_ob.busy) return;
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx) return;
+            const { blocks, ov, idx } = ctx;
+            const o = ov[idx], blk = blocks[idx];
+            if (!o?.startBoard) return;
+            _ob.busy = true;
+            renderOpsBuild();
+            try {
+                let rows = null;
+                try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (_) { rows = null; }
+                if (!Array.isArray(rows)) { showNotification('⚠️ 手で置いた駒を読めないため止めました。もう一度お試しください'); return; }
+                _ob.pins = rows;
+                // 前のブロックで実行したことにした 📌 は拘束に渡さない (渡すと同じ駒をまた置こうとして「置けなかった」に出る)
+                const executed = new Set(ov.slice(0, idx).flatMap(x => (x.done || []).map(d => d.reservationId)).filter(v => v != null).map(Number));
+                const resv = rows.filter(r => !executed.has(Number(r.id)));
+                await _yieldToPaint();
+                const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: resv }, o.startBoard);
+                if (!plan) { showNotification(`❌ ${blk.name} を組めませんでした`); return; }
+                plan.seasonId = snap.season.id;
+                plan.blockScope = { idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
+                plan.builtAt = new Date().toISOString();
+                _ob.plans.set(idx, plan);
+                _ob.stale.delete(idx);
+                for (const k of [..._ob.plans.keys()]) if (k > idx) { _ob.plans.delete(k); _ob.stale.add(k); }   // 後ろのブロックは前提が変わった
+                const n = window.planChainDomain.attacksIn(plan, blk).length;
+                const unmet = (plan.unmetReservations || []).filter(u => u.reason !== 'out_of_scope').length;
+                showNotification(`🧮 ${blk.name} を組みました (${n} 凸)${unmet ? ` — ⚠ 手で置いた駒のうち ${unmet} 件は置けませんでした` : ''}`);
+            } finally {
+                _ob.busy = false;
+                renderOpsBuild();
+            }
+        }
+        // このブロックをやり直す: 手で置いた駒 (📌) を外し、自動で組んだ結果も捨てる
+        async function _obReset() {
+            if (_ob.busy) return;
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx) return;
+            const blk = ctx.blocks[ctx.idx];
+            const mine = ctx.pins.filter(r => window.blockBuildDomain.pinBlockIdx(r, ctx.blocks) === ctx.idx);
+            if (!confirm(`${blk.name} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`)) return;
+            _ob.busy = true;
+            try {
+                for (const r of mine) await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ops', quiet: true });
+                _obAfterChange(ctx.idx);
+                try { _ob.pins = await window.supabaseLoadReservations(snap.season.id) || _ob.pins; } catch (_) { /* 次で */ }
+                showNotification(`${blk.name} をやり直しました`);
+            } finally {
+                _ob.busy = false;
+                renderOpsBuild();
+            }
         }
 
         // 🔗 前回を尊重 / 🆕 ゼロから (端末ごとに記憶)。既定は尊重 = 振り回さない側。
