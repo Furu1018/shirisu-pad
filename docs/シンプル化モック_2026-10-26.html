@@ -99,22 +99,46 @@ th.bg-fire, th.bg-water, th.bg-electric, th.bg-iron, th.bg-wind { color: var(--i
   </div>
 </section>
 
+<style>
+.blkbtns { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+@media (max-width: 760px) { .blkbtns { grid-template-columns: repeat(3, 1fr); } }
+.bb { border: 2px solid var(--line); background: var(--card); border-radius: 14px; padding: 10px 10px 8px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); display: flex; flex-direction: column; gap: 6px; min-height: 112px; }
+.bb.on { border-color: var(--ops); box-shadow: 0 0 0 3px var(--ops-bg); }
+.bb .nm { font-weight: 900; font-size: 14px; } .bb .hr { font-size: 11px; color: var(--muted); font-weight: 700; }
+.bb .lv { font-size: 11px; font-weight: 900; color: var(--ops); } .bb .lv.done { color: var(--ok); } .bb .lv.idle { color: var(--muted); }
+.bb .minis { display: flex; gap: 3px; margin-top: auto; } .bb .minis i { flex: 1; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; display: block; } .bb .minis i b { display: block; height: 100%; }
+.brow { border: 1px dashed var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
+.brow.can { border-color: var(--ops); background: var(--ops-bg); } .brow.no { opacity: .45; } .brow.done { border-style: solid; border-color: var(--ok); }
+.bhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; } .bhead .hp { margin-left: auto; font-size: 11.5px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; } .brow.done .hp { color: var(--ok); }
+.bar2 { display: flex; height: 30px; border-radius: 8px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; border-right: 2px solid var(--card); cursor: pointer; }
+.seg.over { opacity: .6; }
+.piece .flex { font-size: 9.5px; font-weight: 700; color: var(--muted); } .piece .rigid { font-size: 9.5px; font-weight: 900; color: var(--bad); }
+.tt .row-done { text-decoration: line-through; opacity: .6; }
+.tt button.ck { font: inherit; font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 999px; border: 1.5px solid var(--ok); background: var(--ok-bg); color: var(--ok); cursor: pointer; margin-left: 6px; }
+</style>
+
 <section id="t2" class="hidden">
+  <div class="card">
+    <h2>どのブロックを組む？</h2>
+    <p class="note">ボタンの中はいまの様子 (このブロックで挑む Lv・置いた凸・ボスごとの残り)。<b>レベルはブロックの頭でしか変わりません</b> (朝で Lv1 が終われば、Lv2 は午前から)</p>
+    <div class="blkbtns" id="blkbtns"></div>
+  </div>
   <div class="two">
     <div>
       <div class="card">
         <div class="row" style="justify-content:space-between">
-          <h2 style="margin:0">ボス × ブロック</h2>
-          <div class="row"><button class="btn ops" id="btnAuto">🧮 自動で組む (残り)</button><button class="btn" id="btnClear">やり直す</button></div>
+          <h2 id="bbTitle" style="margin:0"></h2>
+          <div class="row"><button class="btn ops" id="btnAuto">🧮 残りを自動で組む</button><button class="btn" id="btnClear">このブロックをやり直す</button></div>
         </div>
-        <p class="note">ピースを置けるのは「その人が出られるブロック」×「ピースの属性が弱点のボス」だけ (明るいマス)。行の HP が 0 で撃破 ✓・5 体そろうと次の Lv の行が出る。置いた駒を押すと戻る</p>
-        <div class="wrap"><table class="grid" id="grid"></table></div>
+        <p class="note" id="bbNote"></p>
+        <div id="board"></div>
       </div>
     </div>
     <div class="side">
       <div class="card">
-        <h2>模擬のピース <span class="note" id="trayCnt"></span></h2>
-        <p class="note">赤 = 被りあり (片方を置くと相方も薄くなる)</p>
+        <h2>この時間帯に出られる人の模擬 <span class="note" id="trayCnt"></span></h2>
+        <p class="note">🔒 = この時間帯しか出られない人 (先に置く)。ほかの時間帯にも出られる人は、その時間帯を薄い字で。ピースを押してボスの行を押す (PC はドラッグ)。<span style="color:var(--bad);font-weight:800">赤</span> = 被りあり</p>
         <div class="tray" id="tray"></div>
       </div>
     </div>
@@ -125,18 +149,17 @@ th.bg-fire, th.bg-water, th.bg-electric, th.bg-iron, th.bg-wind { color: var(--i
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <h2 style="margin:0">凸プラン決定</h2>
-      <button class="btn ok" id="btnDecide">✅ 決定してみんなに出す</button>
+      <button class="btn ok" id="btnDecide">✅ 組めたところまで決定してみんなに出す</button>
     </div>
-    <p class="note" id="decideNote">②で置いた駒がそのまま 1 日ぶんの配信になる。決定し直せば上書き (変わった人に通知)</p>
+    <p class="note" id="decideNote">組めたブロックまでがそのまま配信になる。先のブロックは埋まり次第、決定し直す (変わった人に通知)</p>
   </div>
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <h2 style="margin:0">みんなの時間割 (メンバーの画面)</h2>
       <label class="note">あなた = <select id="viewer"></select></label>
     </div>
-    <p class="note">配信カードのタブ・📅 きょうの凸・🧱 盤 はこれ 1 つに。自分の凸は強調。下に ✅ 確認しました</p>
+    <p class="note">これ 1 つに統一。自分の凸は強調。凸したら「✓ 凸しました」を押すだけ (数字も編成も入れない)。ダメージのずれは運営が BlaBlaLINK の画像で 30 分〜1 時間おきに照合</p>
     <div id="tt"></div>
-    <button class="btn primary" style="width:100%">✅ 確認しました</button>
   </div>
 </section>
 <div class="toast" id="toast"></div>
@@ -146,114 +169,124 @@ const ATTR = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄�
 const BLOCKS = [['朝', '5〜8'], ['午前', '9〜12'], ['午後', '13〜16'], ['夕方', '17〜20'], ['夜', '21〜翌0'], ['深夜', '翌1〜4']];
 const BOSSES = [ { n: 1, name: 'オベリスク', weak: 'iron', tier: 'lord' }, { n: 2, name: 'クリスタルアーマー', weak: 'electric', tier: 'lord' }, { n: 3, name: 'アルトアイゼン', weak: 'fire', tier: 'tyrant' }, { n: 4, name: 'リビルドビッグアームズ', weak: 'wind', tier: 'lord' }, { n: 5, name: 'ブラックスミス', weak: 'water', tier: 'tyrant' } ];
 const HP = { 1: { lord: 99.86, tyrant: 150.84 }, 2: { lord: 149.78, tyrant: 226.26 }, 3: { lord: 292.45, tyrant: 349.23 } };
-// 属性の並びはボス 1〜5 の弱点の順 (シーズンごとに変わる)
 const ATTR_ORDER = BOSSES.map(b => b.weak);
 const bossOf = (attr) => BOSSES.find(b => b.weak === attr);
-// 架空の 12 人: 出られるブロック (添字) と模擬 (属性 → [{dmg, team}])
+const ATTR_COLOR = { fire: 'var(--fire)', water: 'var(--water)', electric: 'var(--electric)', iron: 'var(--iron)', wind: 'var(--wind)' };
 const C = (s) => s.split(' ');
+// 架空の 12 人: 出られるブロック (添字) と模擬 (属性 → [[dmg, team]])
 const M = [
   ['あかり', [0, 1], { fire: [[28.4, C('紅蓮 ラピ アニス クラウン リター')]], water: [[24.6, C('ベル マスト ナガ ティア リター')]], iron: [[22.8, C('ラプンツェル サクラ ドロシー クラウン アリス')]] }],
   ['いぶき', [3, 4], { water: [[31.2, C('ベル アニス クラウン ラピ ドロシー')], [19.0, C('マスト ナガ ティア モダニア リター')]], electric: [[26.1, C('モダニア アニス ベル クラウン リター')]], wind: [[27.3, C('ソダ ブリッド エクシア アリス クラウン')]] }],
   ['うた', [1, 2, 3], { fire: [[33.0, C('紅蓮 クラウン アニス リター ラピ')]], electric: [[20.5, C('モダニア ベル ティア ナガ マスト')]], iron: [[25.5, C('ラプンツェル サクラ ドロシー アリス ブリッド')]], wind: [[21.8, C('ソダ エクシア ブリッド クラウン ラピ')]] }],
   ['えま', [4, 5], { water: [[29.9, C('ベル マスト ナガ クラウン アニス')]], fire: [[22.0, C('紅蓮 ラピ クラウン アニス リター')]], wind: [[30.2, C('ソダ エクシア ブリッド アリス ドロシー')]] }],
-  ['おと', [0, 1, 2], { electric: [[35.1, C('モダニア アニス クラウン ベル リター')]], iron: [[24.0, C('ラプンツェル サクラ ドロシー アリス ティア')]], water: [[18.4, C('ベル マスト ナガ ティア モダニア')]] }],
+  ['おと', [0], { electric: [[35.1, C('モダニア アニス クラウン ベル リター')]], iron: [[24.0, C('ラプンツェル サクラ ドロシー アリス ティア')]], water: [[18.4, C('ベル マスト ナガ ティア モダニア')]] }],
   ['かな', [3, 4, 5], { fire: [[27.7, C('紅蓮 ラピ アニス クラウン リター')]], water: [[26.3, C('ベル マスト ナガ ティア ドロシー')], [15.2, C('アニス クラウン モダニア リター ラピ')]], electric: [[23.3, C('モダニア ベル ティア ナガ マスト')]] }],
   ['きり', [2, 3], { iron: [[30.8, C('ラプンツェル サクラ ドロシー クラウン アニス')]], wind: [[24.4, C('ソダ エクシア ブリッド アリス リター')]], fire: [[19.9, C('紅蓮 ラピ ティア ナガ マスト')]] }],
   ['くる', [0, 4, 5], { water: [[22.1, C('ベル マスト ナガ ティア リター')]], electric: [[28.0, C('モダニア アニス クラウン ベル ドロシー')]], wind: [[20.0, C('ソダ エクシア ブリッド アリス サクラ')]] }],
-  ['けい', [1, 2], { fire: [[25.0, C('紅蓮 ラピ アニス クラウン リター')]], iron: [[27.1, C('ラプンツェル サクラ ドロシー アリス ブリッド')]], electric: [[21.6, C('モダニア ベル ティア ナガ マスト')]] }],
+  ['けい', [1], { fire: [[25.0, C('紅蓮 ラピ アニス クラウン リター')]], iron: [[27.1, C('ラプンツェル サクラ ドロシー アリス ブリッド')]], electric: [[21.6, C('モダニア ベル ティア ナガ マスト')]] }],
   ['こと', [3, 4], { wind: [[32.5, C('ソダ エクシア ブリッド クラウン アニス')]], water: [[23.8, C('ベル マスト ナガ ティア リター')]], iron: [[18.7, C('ラプンツェル サクラ ドロシー モダニア ラピ')]] }],
   ['さく', [4, 5], { water: [[27.4, C('ベル マスト ナガ クラウン アニス')], [21.0, C('ティア モダニア リター ラピ ドロシー')]], fire: [[24.2, C('紅蓮 ラピ ティア ナガ マスト')]] }],
   ['しの', [0, 1, 2, 3], {} ],
 ];
-// ピース = { id, m, name, attr, slot, dmg, team, dup: [id...], placed: null|{lv, boss, blk} }
-let pieces = [], placed = [], decided = null, sel = null;
+let pieces = [], placed = [], decided = null, sel = null, blk = 0, doneMarks = new Set();
 function build() {
-  pieces = []; placed = []; decided = null; sel = null;
+  pieces = []; placed = []; decided = null; sel = null; doneMarks = new Set();
   M.forEach((row, mi) => { const [name, , mocks] = row; Object.entries(mocks).forEach(([attr, list]) => list.forEach((l, si) => pieces.push({ id: pieces.length, m: mi, name, attr, slot: si + 1, dmg: l[0], team: l[1], dup: [] }))); });
   for (const a of pieces) for (const b of pieces) if (a.m === b.m && a.id < b.id && a.team.some(c => b.team.includes(c))) { a.dup.push(b.id); b.dup.push(a.id); }
 }
 const isUsed = (p) => placed.some(x => x.id === p.id) || p.dup.some(d => placed.some(x => x.id === d));
-function rows() { // 表示する Lv の行 (Lv1 → 5 体撃破で Lv2 …)
-  const out = []; let lv = 1;
-  while (lv <= 3) {
-    const r = BOSSES.map(b => { const hp = HP[lv][b.tier]; const got = placed.filter(x => x.lv === lv && x.boss === b.n).reduce((s, x) => s + x.dmg, 0); return { lv, b, hp, got, rem: Math.max(0, hp - got), done: got >= hp }; });
-    out.push(...r); if (!r.every(x => x.done)) break; lv++;
+// ★ レベルはブロックの頭でしか変わらない: ブロックごとに「挑む Lv」と ボスごとの 残り HP を順に求める
+function sim() {
+  const out = []; let lv = 1, carry = null;
+  for (let bi = 0; bi < BLOCKS.length; bi++) {
+    const got = (n) => placed.filter(x => x.blk === bi && x.boss === n).reduce((s, x) => s + x.dmg, 0);
+    if (lv > 3) { out.push({ lv: 4, rows: [{ b: BOSSES[4], start: Infinity, got: got(5), rem: Infinity, done: false }], allDone: false }); continue; }
+    const rows = BOSSES.map(b => { const start = carry ? carry[b.n] : HP[lv][b.tier]; const g = got(b.n); return { b, start, got: g, rem: Math.max(0, start - g), done: g >= start }; });
+    const allDone = rows.every(r => r.done);
+    out.push({ lv, rows, allDone });
+    if (allDone) { lv++; carry = null; } else { carry = {}; rows.forEach(r => carry[r.b.n] = r.rem); }
   }
-  if (lv > 3) out.push({ lv: 4, b: BOSSES[4], hp: Infinity, got: placed.filter(x => x.lv === 4).reduce((s, x) => s + x.dmg, 0), rem: Infinity, done: false });
   return out;
 }
 const fmt = (v) => v === Infinity ? '∞' : v.toFixed(1) + 'B';
-function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2200); }
-function canDrop(p, r, blk) {
+function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2400); }
+function canDrop(p, bi, bossN) {
+  const s = sim()[bi]; const r = s.rows.find(x => x.b.n === bossN);
   if (!p || isUsed(p)) return '使えません';
-  if (r.done) return `Lv${r.lv} の ${r.b.name} は撃破済み`;
+  if (!r) return `${BLOCKS[bi][0]} は Lv${s.lv} (ボス 5 だけ) です`;
+  if (!M[p.m][1].includes(bi)) return `${p.name} は ${BLOCKS[bi][0]} に出られません`;
+  if (r.done) return `${r.b.name} は ${BLOCKS[bi][0]} で撃破済み (Lv${s.lv + 1} は次のブロックから)`;
   if (p.attr !== r.b.weak) return `${ATTR[p.attr]}PT は ${r.b.name} (弱点 ${ATTR[r.b.weak]}) には効きません`;
-  if (!M[p.m][1].includes(blk)) return `${p.name} は ${BLOCKS[blk][0]} に出られません`;
   if (placed.filter(x => x.m === p.m).length >= 3) return `${p.name} は 3 凸を使い切っています`;
   return '';
 }
-function place(p, r, blk) { const why = canDrop(p, r, blk); if (why) { toast('置けません: ' + why); return; } placed.push({ ...p, lv: r.lv, boss: r.b.n, blk }); sel = null; render(); const rr = rows().find(x => x.lv === r.lv && x.b.n === r.b.n); if (rr && rr.done) toast(`${r.b.name} Lv${r.lv} 撃破 ✓`); }
-function unplace(id) { placed = placed.filter(x => x.id !== id); // 後ろの Lv に置いたものが宙に浮いたら戻す
-  for (;;) { const rs = rows(); const bad = placed.filter(x => !rs.some(r => r.lv === x.lv && r.b.n === x.boss)); if (!bad.length) break; placed = placed.filter(x => !bad.includes(x)); } render(); }
-function auto() { // 見本の貪欲: 残り HP の多い行から、置ける一番大きいピースを一番早いブロックへ
-  for (let guard = 0; guard < 200; guard++) {
-    const rs = rows().filter(r => !r.done && r.lv <= 3).sort((a, b) => b.rem - a.rem); if (!rs.length) break;
+function place(p, bi, bossN) { const why = canDrop(p, bi, bossN); if (why) { toast('置けません: ' + why); return; } placed.push({ ...p, blk: bi, boss: bossN }); sel = null; render(); const s = sim()[bi]; const r = s.rows.find(x => x.b.n === bossN); if (r && r.done) toast(s.allDone ? `Lv${s.lv} を ${BLOCKS[bi][0]} で撃破 ✓ → Lv${s.lv + 1} は ${BLOCKS[bi + 1] ? BLOCKS[bi + 1][0] : '—'} から` : `${r.b.name} 撃破 ✓ (余り ${fmt(r.got - r.start)})`); }
+function unplace(id) { placed = placed.filter(x => x.id !== id); render(); }
+function auto() { // このブロックの残りだけ (見本の貪欲: 残り HP の多い行から、この時間帯しか出られない人 → 大きいピース)
+  for (let guard = 0; guard < 100; guard++) {
+    const s = sim()[blk]; const rs = s.rows.filter(r => !r.done && r.start !== Infinity).sort((a, b) => b.rem - a.rem); if (!rs.length) break;
     let did = false;
-    for (const r of rs) { const cands = pieces.filter(p => !isUsed(p) && p.attr === r.b.weak).sort((a, b) => b.dmg - a.dmg);
-      for (const p of cands) { const blk = M[p.m][1].find(b => !canDrop(p, r, b)); if (blk != null) { placed.push({ ...p, lv: r.lv, boss: r.b.n, blk }); did = true; break; } }
-      if (did) break; }
+    for (const r of rs) { const cands = pieces.filter(p => !isUsed(p) && p.attr === r.b.weak && M[p.m][1].includes(blk) && !canDrop(p, blk, r.b.n)).sort((a, b) => (M[a.m][1].length - M[b.m][1].length) || (b.dmg - a.dmg)); if (cands.length) { placed.push({ ...cands[0], blk, boss: r.b.n }); did = true; break; } }
     if (!did) break;
   }
-  render(); toast('残りを自動で置きました (見本の計算)');
+  render(); toast(`${BLOCKS[blk][0]} の残りを自動で置きました (見本の計算)`);
 }
 function render() {
-  // ① 表
+  const S = sim();
+  // ① 表 (省略なし: 使ったものは薄く)
   const tbl = document.getElementById('mockTbl');
   tbl.innerHTML = `<tr><th>名前</th><th>出られる</th>${ATTR_ORDER.map(a => { const b = bossOf(a); return `<th class="bg-${a}">B${b.n} ${b.name}<br><span class="pill a-${a}">${ATTR[a]}PT</span></th>`; }).join('')}</tr>` + M.map((row, mi) => `<tr><td><b>${row[0]}</b></td><td class="note" style="white-space:nowrap">${row[1].map(b => BLOCKS[b][0]).join('・')}</td>${ATTR_ORDER.map(a => { const ps = pieces.filter(p => p.m === mi && p.attr === a); return `<td class="bg-${a}">${ps.length ? ps.map(p => `<span class="cell ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''}">${p.dmg.toFixed(1)}<small>B 編成${'①②③'[p.slot - 1]}</small></span>`).join(' ') : '<span class="note">—</span>'}</td>`; }).join('')}</tr>`).join('');
   const okN = M.filter((row, mi) => new Set(pieces.filter(p => p.m === mi).map(p => p.attr)).size >= 3).length;
   document.getElementById('cnt').textContent = `そろった人 (3 属性以上) ${okN} / ${M.length}`;
-  // ② ピース
-  const tray = document.getElementById('tray');
-  const free = pieces.filter(p => !isUsed(p));
-  // ピースもボス 1〜5 の順 (同じ属性の中はダメージの大きい順)
-  const ordered = pieces.slice().sort((a, b) => (ATTR_ORDER.indexOf(a.attr) - ATTR_ORDER.indexOf(b.attr)) || (b.dmg - a.dmg));
-  tray.innerHTML = ordered.map(p => `<span class="piece a bg-${p.attr} ${p.dup.length ? 'dup' : ''} ${isUsed(p) ? 'used' : ''} ${sel === p.id ? 'sel' : ''}" draggable="${!isUsed(p)}" data-id="${p.id}"><span class="pill a-${p.attr}">B${bossOf(p.attr).n} ${ATTR[p.attr]}</span>${p.name} ${p.dmg.toFixed(1)}B</span>`).join('');
-  document.getElementById('trayCnt').textContent = `残り ${free.length}`;
-  // ② 表
-  const g = document.getElementById('grid'); const rs = rows(); let html = `<tr><th class="boss">ボス</th>${BLOCKS.map(b => `<th class="blk">${b[0]}<br><span class="note">${b[1]}時</span></th>`).join('')}</tr>`; let lastLv = 0;
-  for (const r of rs) {
-    if (r.lv !== lastLv) { html += `<tr class="lvh"><td colspan="7">Lv${r.lv}${r.lv === 4 ? ' (ボス 5 だけ・HP 無限)' : ''}</td></tr>`; lastLv = r.lv; }
-    const pct = r.hp === Infinity ? 0 : Math.min(100, r.got / r.hp * 100);
-    html += `<tr class="${r.done ? 'done' : ''}"><td class="boss bg-${r.b.weak}"><div class="name">B${r.b.n} ${r.b.name}</div><div class="hp"><span class="pill a-${r.b.weak}">${ATTR[r.b.weak]}PT</span> ${r.done ? '撃破 ✓ 余り ' + fmt(r.got - r.hp) : 'あと ' + fmt(r.rem)}</div><div class="bar"><i style="width:${pct}%"></i></div></td>`;
-    html += BLOCKS.map((b, bi) => { const p = sel != null ? pieces[sel] : null; const cls = p ? (canDrop(p, r, bi) ? 'no' : 'can') : ''; const here = placed.filter(x => x.lv === r.lv && x.boss === r.b.n && x.blk === bi); return `<td class="slot ${cls}" data-lv="${r.lv}" data-boss="${r.b.n}" data-blk="${bi}">${here.map(x => `<span class="piece bg-${x.attr}" data-un="${x.id}" title="押すと戻す"><span class="pill a-${x.attr}">${ATTR[x.attr]}</span>${x.name} ${x.dmg.toFixed(1)}</span>`).join('')}</td>`; }).join('');
-    html += '</tr>';
-  }
-  g.innerHTML = html;
-  // ③ 時間割
-  renderTT();
+  // ② ブロックのボタン
+  document.getElementById('blkbtns').innerHTML = BLOCKS.map((b, bi) => { const s = S[bi]; const n = placed.filter(x => x.blk === bi).length; const ppl = new Set(placed.filter(x => x.blk === bi).map(x => x.m)).size;
+    const lvTxt = s.lv === 4 ? 'Lv4 (ボス 5・∞)' : (s.allDone ? `Lv${s.lv} 撃破 ✓` : (n ? `Lv${s.lv} を組み中` : `Lv${s.lv} から`));
+    const minis = s.rows.map(r => `<i title="B${r.b.n} ${r.b.name} あと ${fmt(r.rem)}"><b style="width:${r.start === Infinity ? 0 : Math.min(100, r.got / r.start * 100)}%;background:${ATTR_COLOR[r.b.weak]}"></b></i>`).join('');
+    return `<button class="bb ${bi === blk ? 'on' : ''}" data-blk="${bi}"><span class="nm">${b[0]}</span><span class="hr">${b[1]}時</span><span class="lv ${s.allDone ? 'done' : (n ? '' : 'idle')}">${lvTxt}</span><span class="hr">${n ? `${n} 凸・${ppl} 人` : 'まだ空'}</span><span class="minis">${minis}</span></button>`; }).join('');
+  // ② 盤 (選んだブロック)
+  const s = S[blk];
+  document.getElementById('bbTitle').textContent = `${BLOCKS[blk][0]} ${BLOCKS[blk][1]}時 を組む — Lv${s.lv}`;
+  document.getElementById('bbNote').textContent = s.lv === 4 ? 'Lv3 まで踏破済み。ボス 5 だけ (HP 無限) に好きなだけ置く' : (s.allDone ? `Lv${s.lv} の 5 体を撃破 ✓。このブロックの残りの人は使わず、Lv${s.lv + 1} は次のブロックから` : `幅 = ダメージ。置くほど残りが減る。5 体とも撃破すると次のブロックが Lv${s.lv + 1} になる`);
+  const p = sel != null ? pieces[sel] : null;
+  document.getElementById('board').innerHTML = s.rows.map(r => { const here = placed.filter(x => x.blk === blk && x.boss === r.b.n); const cls = p ? (canDrop(p, blk, r.b.n) ? 'no' : 'can') : '';
+    let acc = 0; const segs = here.map(x => { const w = r.start === Infinity ? 12 : Math.max(4, Math.min(100 - acc, x.dmg / r.start * 100)); const over = acc >= 100; acc += w; return `<span class="seg ${over ? 'over' : ''}" data-un="${x.id}" style="width:${w}%;background:${ATTR_COLOR[x.attr]}" title="${x.name} ${x.dmg.toFixed(1)}B (押すと戻す)">${x.name} ${x.dmg.toFixed(1)}</span>`; }).join('');
+    const hp = r.start === Infinity ? `置いた ${fmt(r.got)}` : (r.done ? `撃破 ✓ 余り ${fmt(r.got - r.start)}` : `あと ${fmt(r.rem)} / ${fmt(r.start)}`);
+    return `<div class="brow ${cls} ${r.done ? 'done' : ''}" data-boss="${r.b.n}"><div class="bhead"><span class="pill a-${r.b.weak}">${ATTR[r.b.weak]}PT</span><b>B${r.b.n} ${r.b.name}</b><span class="hp">${hp}</span></div><div class="bar2">${segs}</div></div>`; }).join('');
+  // ② ピース: この時間帯に出られる人だけ。🔒 (この時間帯だけ) を先に
+  const avail = pieces.filter(q => M[q.m][1].includes(blk));
+  avail.sort((a, b) => (M[a.m][1].length - M[b.m][1].length) || (ATTR_ORDER.indexOf(a.attr) - ATTR_ORDER.indexOf(b.attr)) || (b.dmg - a.dmg));
+  document.getElementById('tray').innerHTML = avail.map(q => { const others = M[q.m][1].filter(b => b !== blk).map(b => BLOCKS[b][0]); const flex = others.length ? `<span class="flex">ほか: ${others.join('・')}</span>` : `<span class="rigid">🔒 この時間だけ</span>`;
+    return `<span class="piece a bg-${q.attr} ${q.dup.length ? 'dup' : ''} ${isUsed(q) ? 'used' : ''} ${sel === q.id ? 'sel' : ''}" draggable="${!isUsed(q)}" data-id="${q.id}"><span class="pill a-${q.attr}">B${bossOf(q.attr).n}</span>${q.name} ${q.dmg.toFixed(1)}B ${flex}</span>`; }).join('') || '<span class="note">この時間帯に出られる人の模擬はありません</span>';
+  document.getElementById('trayCnt').textContent = `${new Set(avail.map(q => q.m)).size} 人・残り ${avail.filter(q => !isUsed(q)).length}`;
+  renderTT(S);
 }
-function renderTT() {
+function renderTT(S) {
+  S = S || sim();
   const vsel = document.getElementById('viewer'); if (!vsel.options.length) { vsel.innerHTML = M.map((r, i) => `<option value="${i}">${r[0]}</option>`).join(''); vsel.value = '2'; }
-  const me = Number(vsel.value); const src = decided; const el = document.getElementById('tt');
-  if (!src) { el.innerHTML = '<p class="note">まだ決定していません (②で置いて「決定」を押す)</p>'; return; }
-  el.innerHTML = BLOCKS.map((b, bi) => { const here = src.filter(x => x.blk === bi).sort((a, c) => a.lv - c.lv || a.boss - c.boss); return `<div class="tt"><div class="h">${b[0]} ${b[1]}時 ${here.some(x => x.m === me) ? '<span class="mine">あなたの凸</span>' : ''}</div>${here.length ? here.map(x => `<div class="l">Lv${x.lv} B${x.boss} ${BOSSES[x.boss - 1].name} — ${x.m === me ? `<span class="mine">${x.name}</span>` : x.name} ${ATTR[x.attr]}PT 編成${'①②③'[x.slot - 1]} ${x.dmg.toFixed(1)}B</div>`).join('') : '<div class="l note">この時間の凸はありません</div>'}</div>`; }).join('');
+  const me = Number(vsel.value); const el = document.getElementById('tt');
+  if (!decided) { el.innerHTML = '<p class="note">まだ決定していません (②で組んで「決定」を押す)</p>'; return; }
+  el.innerHTML = BLOCKS.map((b, bi) => { const here = decided.placed.filter(x => x.blk === bi).sort((a, c) => a.boss - c.boss); const lv = decided.lv[bi];
+    if (bi > decided.upTo) return `<div class="tt"><div class="h">${b[0]} ${b[1]}時</div><div class="l note">まだ決まっていません (運営が組んだら更新されます)</div></div>`;
+    return `<div class="tt"><div class="h">${b[0]} ${b[1]}時 <span class="note">Lv${lv}</span> ${here.some(x => x.m === me) ? '<span class="mine">あなたの凸</span>' : ''}</div>${here.length ? here.map(x => { const k = x.id; const dn = doneMarks.has(k); return `<div class="l ${dn ? 'row-done' : ''}">B${x.boss} ${BOSSES[x.boss - 1].name} — ${x.m === me ? `<span class="mine">${x.name}</span>` : x.name} ${ATTR[x.attr]}PT 編成${'①②③'[x.slot - 1]} ${x.dmg.toFixed(1)}B${x.m === me ? `<button class="ck" data-ck="${k}">${dn ? '✓ 済み' : '✓ 凸しました'}</button>` : (dn ? ' ✓' : '')}</div>`; }).join('') : '<div class="l note">この時間の凸はありません</div>'}</div>`; }).join('');
 }
 // 操作
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); ['t1', 't2', 't3'].forEach(t => document.getElementById(t).classList.toggle('hidden', t !== b.dataset.t)); });
 document.getElementById('inName').innerHTML = M.map((r, i) => `<option value="${i}">${r[0]}</option>`).join('');
 document.getElementById('inAttr').innerHTML = ATTR_ORDER.map(a => `<option value="${a}">B${bossOf(a).n} ${ATTR[a]}PT</option>`).join('');
 document.getElementById('btnAdd').onclick = () => { const mi = Number(document.getElementById('inName').value), attr = document.getElementById('inAttr').value, dmg = Number(document.getElementById('inDmg').value); if (!(dmg > 0)) { toast('ダメージを入れてください'); return; } const n = pieces.filter(p => p.m === mi && p.attr === attr).length; if (n >= 3) { toast('1 属性は 3 編成まで'); return; } pieces.push({ id: pieces.length, m: mi, name: M[mi][0], attr, slot: n + 1, dmg, team: [], dup: [] }); document.getElementById('inDmg').value = ''; render(); toast(`${M[mi][0]} の ${ATTR[attr]}PT ${dmg}B を登録 (キャラ無し = 被り判定なし)`); };
+document.getElementById('blkbtns').addEventListener('click', e => { const b = e.target.closest('.bb'); if (!b) return; blk = Number(b.dataset.blk); sel = null; render(); });
 document.getElementById('btnAuto').onclick = auto;
-document.getElementById('btnClear').onclick = () => { placed = []; sel = null; render(); };
-document.getElementById('btnDecide').onclick = () => { if (!placed.length) { toast('まだ何も置いていません'); return; } decided = placed.map(x => ({ ...x })); document.getElementById('decideNote').textContent = `✅ ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} に決定 (${placed.length} 凸・${new Set(placed.map(x => x.m)).size} 人)。変わった人には通知が届く (見本)`; renderTT(); toast('決定しました → 下の時間割がメンバーに出ます'); };
-document.getElementById('viewer').onchange = renderTT;
-const tray = document.getElementById('tray'), grid = document.getElementById('grid');
-tray.addEventListener('click', e => { const el = e.target.closest('.piece'); if (!el) return; const p = pieces[Number(el.dataset.id)]; if (isUsed(p)) { toast(p.dup.some(d => placed.some(x => x.id === d)) ? '被りの相方を置いたので使えません' : '置いてあります'); return; } sel = sel === p.id ? null : p.id; render(); if (sel != null) toast('置くマスを押してください (明るいマス)'); });
+document.getElementById('btnClear').onclick = () => { placed = placed.filter(x => x.blk !== blk); sel = null; render(); };
+document.getElementById('btnDecide').onclick = () => { if (!placed.length) { toast('まだ何も置いていません'); return; } const S = sim(); const upTo = Math.max(...placed.map(x => x.blk)); decided = { placed: placed.map(x => ({ ...x })), lv: S.map(s => s.lv), upTo }; document.getElementById('decideNote').textContent = `✅ ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} に ${BLOCKS[0][0]}〜${BLOCKS[upTo][0]} を決定 (${placed.length} 凸・${new Set(placed.map(x => x.m)).size} 人)。先は組んだら決定し直す`; renderTT(S); toast(`${BLOCKS[0][0]}〜${BLOCKS[upTo][0]} を決定しました → 下の時間割がメンバーに出ます`); };
+document.getElementById('viewer').onchange = () => renderTT();
+document.getElementById('tt').addEventListener('click', e => { const b = e.target.closest('[data-ck]'); if (!b) return; const k = Number(b.dataset.ck); if (doneMarks.has(k)) doneMarks.delete(k); else doneMarks.add(k); renderTT(); toast(doneMarks.has(k) ? '✓ 凸しました — 運営に伝わります (数字は入れません)' : '取り消しました'); });
+const tray = document.getElementById('tray'), board = document.getElementById('board');
+tray.addEventListener('click', e => { const el = e.target.closest('.piece'); if (!el) return; const q = pieces[Number(el.dataset.id)]; if (isUsed(q)) { toast(q.dup.some(d => placed.some(x => x.id === d)) ? '被りの相方を置いたので使えません' : '置いてあります'); return; } sel = sel === q.id ? null : q.id; render(); if (sel != null) toast('置くボスの行を押してください (明るい行)'); });
 tray.addEventListener('dragstart', e => { const el = e.target.closest('.piece'); if (!el) return; sel = Number(el.dataset.id); e.dataTransfer.setData('text/plain', el.dataset.id); render(); });
 tray.addEventListener('dragend', () => { sel = null; render(); });
-grid.addEventListener('dragover', e => { const td = e.target.closest('td.slot'); if (td) e.preventDefault(); });
-grid.addEventListener('drop', e => { const td = e.target.closest('td.slot'); if (!td) return; e.preventDefault(); const id = Number(e.dataTransfer.getData('text/plain')); const r = rows().find(x => x.lv === Number(td.dataset.lv) && x.b.n === Number(td.dataset.boss)); place(pieces[id], r, Number(td.dataset.blk)); });
-grid.addEventListener('click', e => { const un = e.target.closest('[data-un]'); if (un) { unplace(Number(un.dataset.un)); return; } const td = e.target.closest('td.slot'); if (!td) return; if (sel == null) { toast('先に右 (下) のピースを押してください'); return; } const r = rows().find(x => x.lv === Number(td.dataset.lv) && x.b.n === Number(td.dataset.boss)); place(pieces[sel], r, Number(td.dataset.blk)); });
+board.addEventListener('dragover', e => { if (e.target.closest('.brow')) e.preventDefault(); });
+board.addEventListener('drop', e => { const row = e.target.closest('.brow'); if (!row) return; e.preventDefault(); place(pieces[Number(e.dataTransfer.getData('text/plain'))], blk, Number(row.dataset.boss)); });
+board.addEventListener('click', e => { const un = e.target.closest('[data-un]'); if (un) { unplace(Number(un.dataset.un)); return; } const row = e.target.closest('.brow'); if (!row) return; if (sel == null) { toast('先に右 (下) のピースを押してください'); return; } place(pieces[sel], blk, Number(row.dataset.boss)); });
 build(); render();
 </script>
 </body>
