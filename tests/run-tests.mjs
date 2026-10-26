@@ -14547,6 +14547,12 @@ console.log('\n🧱 レベルはブロックの頭でしか変わらない (leve
         const resv = (slot) => [{ reservationId: 9, memberId: 'P1', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: slot, team: [], expectedB: 0 }];
         const gap = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h19') });
         assert.ok(!gap.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9))), '踏破したブロックの残り (19 時) の B5 予約を Lv4 にしている');
+        assert.deepEqual(gap.unmetReservations.map(u => u.reason), ['no_boss_at_time'], '隙間の時刻の理由が「その時刻にボスがいない」でない (Lv4 に読み替えて before_open になっている)');
+        const win = (w) => [{ reservationId: 9, memberId: 'P1', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: null, window: w, team: [], expectedB: 0 }];
+        const wg = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: win({ fromIdx: 13, toIdx: 15 }) });
+        assert.deepEqual(wg.unmetReservations.map(u => u.reason), ['no_boss_at_time'], '踏破したブロックの窓の B5 予約を Lv4 に読み替えている');
+        const wn = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: win({ fromIdx: 13, toIdx: 19 }) });
+        assert.ok(wn.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx >= 16))), '窓が次のブロックにかかるなら Lv4 に置く');
         const ok = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h22') });
         assert.ok(ok.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx === 17))), '次のブロック (22 時) の B5 予約を Lv4 に置いていない');
     });
