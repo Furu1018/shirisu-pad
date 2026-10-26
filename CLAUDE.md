@@ -1339,6 +1339,16 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   (ダメージは `<input>` → `_myDmgPreviewSetDamage` が `totalDamage` = B × 1e9・見出し「✏️ 模擬を手で入力」・再撮影なし・slot を渡せばその編成を直す `slotTouched: true`)。保存は従来の `handleMyDmgPreviewSave` (キャラは任意 = null 可)。
   Q1「使用頻度の高いキャラが選びやすく」= `editMyDmgPreviewChar` が `openIconPicker` に属性を渡す → 既存の「ユニオンの採用数の順」(`_charUsageFor`)。色は `_MK_ATTR_CSS` (トークン名は静的に書く — 「定義されていない var(--…)」の見張り)。
   名前を押す = 従来どおり読み取り (`_opsMockIntakePickFromList`)。次は S2 (配分表の手動) → S3 (自動) → S4 (決定・時間割) → S5 (予約などを隠す)
+  ★ **🧱 レベルはブロックの頭でしか変わらない (ソルバー `input.levelStartsAtBlock`・2026-10-26 ふるり「朝ブロックでレベル1が完了したらその朝ブロックではレベル2は行わず次のブロックから」)**:
+  ブロックの始まりの hourIdx の配列 (`_opsLevelBlockStarts(season)`) を渡したときだけ効く (渡さなければ従来と 1 バイトも違わない: `tests/solver-fingerprint.mjs` 120 盤面)。
+  撃破したブロックの残りは次のレベルを開けない (次のレベルは次のブロックの頭から・撃破したレベルの窓も次のブロックの頭まで伸ばす)。最後のブロックで撃破すれば次のレベル (Lv4) は無し。
+  渡しているのは算出 (`computeOptimalPlan`) と承認の影響 (`_reservationImpact`) の **2 か所だけ** (テストで本数を固定)。盤面の見通しは `planChainDomain.projectBoard` の `levelLockInBlock`。
+  ★ **▶︎ 凸プランを組む (シンプル化 S2・戦況タブ 🧱 組む のカード `#opsBuild`・純ロジック `js/domain/blockBuild.js`)**: 6 ブロックの大きなボタン (名前・何時〜何時 `_obHours`・Lv・凸数・ボスの HP の帯)
+  → 押したブロックの盤面 (ボスの行 = 始まりの HP・削った量・残り・置いた凸) + 下にそのブロックに出られる人の模擬のピース (🔒 = この時間だけ出られる / ほか: 出られる別のブロック)。
+  ピースを選んでボスの行を押す = **ブロックの 📌 (plan_reservations: status 'pinned'・time_mode 'block'・raid_level null)** を作る (判定 `canDrop` → DB を読み直して `canPin` → 作成)。
+  「🧮 残りを自動で組む」= そのブロックの始まりの盤面で、そのブロックの時刻だけ・📌 を拘束にして `computeOptimalPlan` (前のブロックで実行した 📌 は渡さない)。後ろのブロックは「要組み直し」。
+  自動の結果は端末のメモリだけ (`_ob.plans`)・**駒と拘束の指紋 (`_obPinsFp`) が変われば捨てる** (別の端末が置いた・外した・約束の中身が変わった)。シーズンが変わったら `_ob.epoch` を進め、待っている間の古い結果は書かない。
+  📌 はメンバーに見えない (予約の画面に出さない)。従来の算出・配信は `<details id="opsPlanLegacy">` に畳んだ (S4 の「決定」ができるまで配信はこちら)。
   ★ **③-f 凸報告の確認** (2026-10-18): 戦況タブ「✅ 凸報告の確認」(`opsSecAttackCheck`・当日と終了・幅 12・当日は開く)。盤面の凸 (`players[].attacks`) を
   配信プラン (`_opsPublishedPlan.plan`・`_syncOpsUnpublishBtn` の取り直しの最後に描く = 別クエリを増やさない) と突き合わせ、印 = 計画にない / 予定よりかなり低い (70% 未満) /
   予定の時刻とずれ (3 時間以上)。予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。✓ → `supabaseSetAttackConfirmed` → `attacks.confirmed_at / confirmed_by`
