@@ -22,9 +22,13 @@
         const from = Number(pin.block_from), to = Number(pin.block_to);
         return (Array.isArray(blocks) ? blocks : []).findIndex(b => Number(b.from) === from && Number(b.to) === to);
     }
-    /** 手で置いた駒 (いまの予約の行のうち 📌 で、ブロックの仮置き) */
-    function blockPins(rows) {
-        return (Array.isArray(rows) ? rows : []).filter(r => r && r.status === 'pinned' && r.time_mode === 'block');
+    /**
+     * ブロックに置かれている駒 (いまの予約の行のうちブロックのもの): 📌 手で置いた駒 (status 'pinned') と、
+     * 拘束になる約束 (isFixed = 承認済みの 🔒 予約・9b で運営が登録した予約。外せない) — どちらもそのブロックの凸として数える (レビュー: 約束を数えないと 4 凸目を置けた)
+     */
+    function blockPins(rows, isFixed) {
+        const fixed = typeof isFixed === 'function' ? isFixed : () => false;
+        return (Array.isArray(rows) ? rows : []).filter(r => r && r.time_mode === 'block' && (r.status === 'pinned' || fixed(r)));
     }
 
     /**
@@ -48,7 +52,7 @@
                 memberId: r.player_id, memberName: nameOf.get(String(r.player_id)) || r.player_name || null,
                 dmgB: Number(r.expected_damage_b) || 0, team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : [],
                 loadoutSlot: Number(r.loadout_slot) || 1, hourIdx: Number(block.fromIdx), hourLabel: null,
-                pinned: true, reservationId: Number(r.id),
+                pinned: r.status === 'pinned', fromReservation: r.status !== 'pinned', reservationId: Number(r.id),
             });
         }
         const infinite = Number(level) >= 4;
@@ -72,10 +76,19 @@
         const out = [];
         let cur = board ? { season: board.season, bosses: board.bosses, players: board.players } : null;
         (Array.isArray(blocks) ? blocks : []).forEach((blk, idx) => {
-            if (idx < first || !cur) { out.push({ idx, past: idx < first, level: null, rows: [], allDone: false, attacks: 0, people: 0, startBoard: null, done: [] }); return; }
+            if (idx < first || !cur) { out.push({ idx, past: idx < first, level: null, rows: [], allDone: false, attacks: 0, people: 0, startBoard: null, done: [], skipped: [] }); return; }
             const level = Number(cur.season && cur.season.current_level) || 1;
             const plan = typeof planOf === 'function' ? planOf(idx, level, cur) : null;
-            const atk = plan ? attacksAt(plan, blk, level) : [];
+            const proj = (plan && pc()) ? pc().projectBoard(cur, plan, blk, { hpOf, levelLockInBlock: true }) : null;
+            // ★ 数えるのは実行したことになる凸だけ (projectBoard が 3 凸済み・キャラ被り・踏破のあと・Lv4 のボス 5 以外 を飛ばす)。飛ばした駒は skipped に分けて見せる (レビュー)
+            const pool = new Map();
+            for (const d of (proj ? proj.done : [])) { const k = `${d.memberId}|${d.bossNumber}|${d.loadoutSlot}`; pool.set(k, (pool.get(k) || 0) + 1); }
+            const all = plan && pc() ? pc().attacksIn(plan, blk) : [];
+            const atk = [], skipped = [];
+            for (const a of all) {
+                const k = `${a.memberId}|${a.bossNumber}|${Number(a.loadoutSlot) || 1}`;
+                if ((pool.get(k) || 0) > 0) { pool.set(k, pool.get(k) - 1); atk.push(a); } else skipped.push(a);
+            }
             const rows = (Array.isArray(cur.bosses) ? cur.bosses : []).slice().sort((x, y) => Number(x.boss_number) - Number(y.boss_number))
                 .filter(b => level <= 3 || Number(b.boss_number) === 5)
                 .map(b => {
@@ -88,9 +101,8 @@
                         startB, gotB, remB: infinite ? 0 : Math.max(0, startB - gotB), done: !infinite && gotB >= startB - EPS, pieces };
                 });
             const allDone = level <= 3 && rows.length > 0 && rows.every(r => r.done);
-            const proj = (plan && pc()) ? pc().projectBoard(cur, plan, blk, { hpOf, levelLockInBlock: true }) : null;
             out.push({ idx, past: false, level, rows, allDone, attacks: atk.length, people: new Set(atk.map(a => String(a.memberId))).size,
-                startBoard: cur, done: proj ? proj.done : [] });
+                startBoard: cur, done: proj ? proj.done : [], skipped });
             if (proj) cur = { season: proj.season, bosses: proj.bosses, players: proj.players };
         });
         return out;
@@ -120,7 +132,14 @@
      * @returns {Array<{ key, memberId, name, attr, slot, dmgB, team, rigid:boolean, others:string[], remaining:number, dup:boolean,
      *   placedIdx:number|null, pinId:number|null, blocked:string|null }>}  並び: 🔒 → 出られるブロックの少ない順 → ボスの順 → ダメージの大きい順
      */
-    function trayPieces({ board, blocks, idx, bossOrder = null, placed = null, pins = null } = {}) {
+    /** ISO の時刻 → レイド日の時間帯の添字 (5 時 = 0・JST)。読めなければ null */
+    function hourIdxOfIso(iso) {
+        const t = Date.parse(typeof iso === 'string' ? iso : '');
+        if (!Number.isFinite(t)) return null;
+        const h = new Date(t + 9 * 3600000).getUTCHours();
+        return (h - 5 + 24) % 24;
+    }
+    function trayPieces({ board, blocks, idx, bossOrder = null, placed = null, pins = null, laterUse = null } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const blk = bl[idx];
         if (!blk) return [];
@@ -132,7 +151,17 @@
             if (!p || p.unavailableThisSeason || p.archived) continue;
             const avail = availableBlocks(p, bl);
             if (!avail.includes(idx)) continue;
-            const remaining = Math.max(0, 3 - (Number(p.attackCount) || 0));
+            // 残り凸 = 1 日の残り (始まりの盤面 = 前のブロックの凸は済んだこと) − 後ろのブロックに置いた数。凸数を言った人は、このブロックの凸数 − このブロックで済んだ数 まで (レビュー)
+            const later = laterUse instanceof Map ? (Number(laterUse.get(String(p.id))) || 0) : 0;
+            let remaining = Math.max(0, 3 - (Number(p.attackCount) || 0) - later);
+            const counts = p.blockCounts && typeof p.blockCounts === 'object' && !Array.isArray(p.blockCounts) ? p.blockCounts : null;
+            const ck = rb() && rb().countKey ? rb().countKey(blk) : `${blk.from}-${blk.to}`;
+            if (counts && Object.keys(counts).length && Number(counts[ck]) > 0) {
+                const doneHere = (Array.isArray(p.attacks) ? p.attacks : []).filter(a => { const h = hourIdxOfIso(a && a.reported_at); return h != null && h >= blk.fromIdx && h <= blk.toIdx; }).length;
+                remaining = Math.min(remaining, Math.max(0, Number(counts[ck]) - doneHere));
+            }
+            // きょう使ったキャラ (実際の凸 + 前のブロックで済んだことにした凸) を含む編成は使えない (同じキャラは 1 日 1 回: レビュー高)
+            const usedChars = new Set((Array.isArray(p.attacks) ? p.attacks : []).flatMap(a => Array.isArray(a && a.characters) ? a.characters : []).map(String));
             const lo = p.loadoutsByAttr && typeof p.loadoutsByAttr === 'object' ? p.loadoutsByAttr : {};
             const mine = [];
             for (const attr of Object.keys(lo)) for (const l of (Array.isArray(lo[attr]) ? lo[attr] : [])) {
@@ -147,6 +176,7 @@
             // 置いた編成と被る編成は使えない (同じキャラは 1 日 1 回)
             for (const x of mine) {
                 if (x.placedIdx != null) continue;
+                if (x.team.some(c => usedChars.has(c))) { x.blocked = 'used'; continue; }
                 const mate = mine.find(y => y !== x && y.placedIdx != null && x.team.length && y.team.length && x.team.some(c => y.team.includes(c)));
                 if (mate) x.blocked = 'dup';
             }
@@ -168,11 +198,12 @@
         if (!row) return { ok: false, label: 'ボスがありません' };
         if (piece.placedIdx != null) return { ok: false, label: 'このピースはもう置いてあります (置いた駒を押すと外せます)' };
         if (piece.blocked === 'dup') return { ok: false, label: `${piece.name} の別の編成とキャラが被ります (同じキャラは 1 日 1 回)` };
+        if (piece.blocked === 'used') return { ok: false, label: `${piece.name} のこの編成のキャラは、きょうもう使っています (同じキャラは 1 日 1 回)` };
         if (row.weakness !== piece.attr) return { ok: false, label: `${ATTR_JP[piece.attr] || piece.attr}PT は ${row.name} (弱点 ${ATTR_JP[row.weakness] || row.weakness}) には効きません` };
         if (row.done) return { ok: false, label: `${row.name} は Lv${level} で撃破済みです (次のレベルは次のブロックから)` };
-        if (Number(piece.remaining) - Number(usedHere || 0) <= 0) return { ok: false, label: `${piece.name} は 3 凸を使い切っています` };
+        if (Number(piece.remaining) - Number(usedHere || 0) <= 0) return { ok: false, label: `${piece.name} はこのブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)` };
         return { ok: true };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, attacksAt, overview, availableBlocks, trayPieces, canDrop, EPS };
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, attacksAt, overview, availableBlocks, trayPieces, canDrop, hourIdxOfIso, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);

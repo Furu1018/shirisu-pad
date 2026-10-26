@@ -206,6 +206,7 @@
         const levelBlockStarts = (timeAware && Array.isArray(input.levelStartsAtBlock) && input.levelStartsAtBlock.length)
             ? [...new Set(input.levelStartsAtBlock.filter(i => Number.isInteger(i) && i >= 0 && i <= LAST_IDX))].sort((a, b) => a - b)
             : null;
+        const blockOfIdx = (idx) => { let k = -1; for (const s of (levelBlockStarts || [])) { if (s <= idx) k++; else break; } return k; };
         const nextLevelOpenIdx = (clearIdx) => {
             if (!levelBlockStarts) return clearIdx;
             const n = levelBlockStarts.find(s => s > clearIdx);
@@ -526,7 +527,8 @@
             const overkill = Math.max(0, dmg - rem);
             // 火力が弱い人ほど低いレベル (levelPos: Lv1=0 / Lv2=0.5 / Lv3=1) に寄せる
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
-            const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
+            // 🧱 レベルはブロックの頭でしか変わらない (levelStartsAtBlock): 同じブロックの中なら遅れても次のレベルの開放は変わらない → ブロックの数で数える (1 ブロック = 4 時間ぶん)
+            const timePenalty = timeAware ? (levelBlockStarts ? (blockOfIdx(hourIdx) - blockOfIdx(openIdx)) * 4 : (hourIdx - openIdx)) : 0;
             // ⚠ 括弧必須: ?: は + より優先度が低いため、括弧が無いと
             // 「isFlex ? FLEX : (0 + mismatch分)」と解釈され、mismatch は常に flex=true で
             // 来るので MISMATCH_PENALTY が一度も加算されなくなる (Opus/Codex 監査で確認)。
@@ -843,14 +845,17 @@
                     let moved = 0;
                     for (let guard = 0; guard < 60; guard++) {
                         const clearIdx = levelClearIdxNow();
-                        if (clearIdx == null || clearIdx <= openIdx) break;
+                        // 🧱 レベルはブロックの頭でしか変わらない: 次のレベルが開くのは次のブロックの頭。それより前に終わる人は、踏破したブロックの中でも取り残される
+                        const nextOpen = levelBlockStarts && clearIdx != null ? nextLevelOpenIdx(clearIdx) : clearIdx;
+                        if (clearIdx == null || (!levelBlockStarts && clearIdx <= openIdx)) break;
                         const stranded = new Set(memberState.filter(m => (m.remainingAttacks - (m.reservedLater || 0)) > 0
                             && m.hourIdxs !== null && !m.flexTime && Object.keys(m.avail).length > 0
-                            && lastHourOf(m) != null && lastHourOf(m) < clearIdx && lastHourOf(m) >= openIdx));
+                            && lastHourOf(m) != null && lastHourOf(m) < nextOpen && lastHourOf(m) >= openIdx));
                         if (stranded.size === 0) break;
                         let replaced = false;
                         for (const t of targets) {
-                            const late = t.attacks.filter(a => !a.flex && a.hourIdx === clearIdx && !stickyPlaced.has(a));
+                            // 取り残される人自身の凸は置き換えない (入れ替えても誰も次のレベルへ回らない・渡さなければ起きない: その人の最後の時刻 < 踏破の時刻)
+                            const late = t.attacks.filter(a => !a.flex && a.hourIdx === clearIdx && !stickyPlaced.has(a) && !stranded.has(memberState.find(x => x.id === a.memberId)));
                             for (const atk of late) {
                                 const m0 = memberState.find(x => x.id === atk.memberId);
                                 const meta = loMeta.get(atk);
@@ -858,7 +863,7 @@
                                 if (!m0 || !undoPick(t, atk)) continue;
                                 const picked = [];
                                 while (t.rem > 0.0001) {
-                                    const list = listCandidatesFor(t).filter(c => stranded.has(c.pick) && !c.pickFlex && c.pickHour < clearIdx);
+                                    const list = listCandidatesFor(t).filter(c => stranded.has(c.pick) && !c.pickFlex && c.pickHour < nextOpen);
                                     if (list.length === 0) break;
                                     applyPick(t, list[0]);
                                     picked.push(t.attacks[t.attacks.length - 1]);
@@ -1395,7 +1400,8 @@
             const windowsOf = (pass) => (pass.levels || []).filter(lv => !lv.infinite).map(lv => ({
                 level: Number(lv.level),
                 open: timeAware ? (lv.openHourIdx ?? nowIdx) : nowIdx,
-                clear: (timeAware && lv.levelCleared && lv.clearHourIdx != null) ? lv.clearHourIdx : (LAST_IDX + 1),
+                // 🧱 レベルはブロックの頭でしか変わらない: 踏破したブロックの残りの時刻もこのレベル (次のレベルは次のブロックの頭から)。渡さなければ踏破の時刻 (従来どおり)
+                clear: (timeAware && lv.levelCleared && lv.clearHourIdx != null) ? nextLevelOpenIdx(lv.clearHourIdx) : (LAST_IDX + 1),
                 cleared: !!lv.levelCleared,
             }));
             // 🧱 段階 3: ブロックの予約 (r.window) は、窓の中で「そのボスがいるレベルが開いている」最も早い時刻に具体的な時刻を決める。
@@ -1416,7 +1422,7 @@
                     const w = wins.find(x => t >= x.open && t < x.clear) || null;
                     if (w && !(w.level === startLevel && !bossAliveNow(r.bossNumber))) return { t };
                     // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) だけ。B5 の予約はそこに置ける (assign が Lv4 に解決する: Codex指摘 f19bba2)
-                    if (!w && Number(r.bossNumber) === 5 && last && last.cleared && t >= nextLevelOpenIdx(last.clear)) return { t };   // 🧱 次のブロックの頭から
+                    if (!w && Number(r.bossNumber) === 5 && last && last.cleared && t >= last.clear) return { t };   // 🧱 last.clear は windowsOf で次のブロックの頭にそろえてある
                 }
                 return { reason: 'no_boss_at_time' };
             };
@@ -1441,7 +1447,7 @@
                 if (!w) {
                     // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) しかいない
                     const last = wins.length ? wins[wins.length - 1] : null;
-                    if (Number(r.bossNumber) === 5 && last && last.cleared && (!levelBlockStarts || T >= nextLevelOpenIdx(last.clear))) { out.level = 4; return out; }   // 拘束にはしない (🧱 踏破したブロックの残りは Lv4 でない)
+                    if (Number(r.bossNumber) === 5 && last && last.cleared && T >= last.clear) { out.level = 4; return out; }   // 拘束にはしない (🧱 last.clear は次のブロックの頭 = 踏破したブロックの残りは Lv4 でない)
                     out.level = null; out.unresolvedReason = 'no_boss_at_time';
                     out.unresolvedDetail = last ? { level: last.level, killedLabel: last.cleared ? hourLabelOf(last.clear) : null } : null;
                     return out;
@@ -1650,6 +1656,7 @@
                     trace: reserveTrace,
                 });
                 if (attempt.fullyClearedThrough < 3) { reserved = null; break; }   // 温存で踏破が崩れた
+                if (levelBlockStarts && attempt.openIdx > LAST_IDX) { reserved = null; break; }   // 🧱 温存で Lv3 の踏破が最後のブロックにずれた = Lv4 は開かない
                 if (attempt.openIdx <= T3) { reserved = attempt; reservedTrace = reserveTrace; break; }   // 前提どおり → 採用候補
                 T3 = attempt.openIdx;   // 実際の開放が遅い → 前提を更新して引き直し
             }

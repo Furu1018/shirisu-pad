@@ -14544,18 +14544,33 @@ console.log('\n🧱 レベルはブロックの頭でしか変わらない (leve
         const nt = { ...makeInput(bs(10), ps, { currentSlot: 'h05' }) };
         assert.equal(JSON.stringify(compute({ ...nt, levelStartsAtBlock: STARTS })), JSON.stringify(compute(nt)), 'timeAware でないのに効いている');
     });
-    test('★ ソルバー: B5 のブロックの予約は、踏破したブロックの残り (隙間) では Lv4 にならない — 次のブロックの頭からなら Lv4', () => {
+    test('★ ソルバー: 踏破したブロックの残りの時刻はまだそのレベル — そこの B5 の予約 / 窓は Lv3 に置く (Lv4 にも「ボスがいない」にもしない)・次のブロックにかかる窓は Lv4', () => {
         const resv = (slot) => [{ reservationId: 9, memberId: 'P1', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: slot, team: [], expectedB: 0 }];
+        const at = (p) => p.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.filter(a => a.reservationId === 9).map(a => [l.level, !!l.infinite])));
         const gap = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h19') });
-        assert.ok(!gap.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9))), '踏破したブロックの残り (19 時) の B5 予約を Lv4 にしている');
-        assert.deepEqual(gap.unmetReservations.map(u => u.reason), ['no_boss_at_time'], '隙間の時刻の理由が「その時刻にボスがいない」でない (Lv4 に読み替えて before_open になっている)');
+        assert.deepEqual([at(gap), gap.unmetReservations], [[[3, false]], []], '踏破したブロックの残り (19 時) の B5 予約を Lv3 に置いていない');
         const win = (w) => [{ reservationId: 9, memberId: 'P1', level: null, bossNumber: 5, loadoutSlot: 1, flex: false, timeSlot: null, window: w, team: [], expectedB: 0 }];
         const wg = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: win({ fromIdx: 13, toIdx: 15 }) });
-        assert.deepEqual(wg.unmetReservations.map(u => u.reason), ['no_boss_at_time'], '踏破したブロックの窓の B5 予約を Lv4 に読み替えている');
-        const wn = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: win({ fromIdx: 13, toIdx: 19 }) });
-        assert.ok(wn.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx >= 16))), '窓が次のブロックにかかるなら Lv4 に置く');
+        assert.deepEqual([at(wg), wg.unmetReservations], [[[3, false]], []], '踏破したブロックの窓の B5 予約を Lv3 に置いていない');
         const ok = compute({ ...inp({ lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS, reservations: resv('h22') });
         assert.ok(ok.levels.some(l => l.infinite && l.bosses.some(b => b.attacks.some(a => a.reservationId === 9 && a.hourIdx === 17))), '次のブロック (22 時) の B5 予約を Lv4 に置いていない');
+    });
+    test('★ ソルバー (レビュー高): ブロックの頭で踏破できるブロックでも、手で置いた駒 (窓の予約) は置ける (以前は Lv1 の窓が空になって no_boss_at_time)', () => {
+        const B60 = W5.map((w, i) => boss(i + 1, w, { remainingB: 60, totalB: 60 }));
+        const E = Array.from({ length: 12 }, (_, k) => player('E' + k, Object.fromEntries(W5.map(w => [w, 40])), { availableSlots: ['h05', 'h06', 'h07', 'h08'] }));
+        const pin = [{ reservationId: 1, memberId: 'E0', level: null, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: null, window: { fromIdx: 0, toIdx: 3 }, team: [], expectedB: 0 }];
+        const p = compute({ ...timeInput(B60, E, { currentSlot: 'h05', onlyAvailableNow: true }), availableAtSlots: ['h05', 'h06', 'h07', 'h08'], timeStrict: true, levelStartsAtBlock: STARTS, reservations: pin });
+        assert.deepEqual(p.unmetReservations, [], '手で置いた駒が置けなかったことになっている');
+        assert.ok(p.levels.some(l => l.level === 1 && l.bosses.some(b => b.attacks.some(a => a.reservationId === 1))), 'Lv1 に置いていない');
+    });
+    test('★ ソルバー (レビュー中): 踏破したブロックの残りの時間にしか出られない人も「取り残される人」— 置き換えに使う (渡さなければ従来どおり)', () => {
+        const H2 = (a, b) => { const o = []; for (let h = a; h <= b; h++) o.push(`h${String(h).padStart(2, '0')}`); return o; };
+        const B30 = W5.map((w, i) => boss(i + 1, w, { remainingB: 30, totalB: 30 }));
+        const mix = [...Array.from({ length: 5 }, (_, k) => player('E' + k, Object.fromEntries(W5.map(w => [w, 30])), { availableSlots: H2(5, 12) })),
+            ...Array.from({ length: 2 }, (_, k) => player('L' + k, Object.fromEntries(W5.map(w => [w, 30])), { availableSlots: H2(7, 8) }))];
+        const run = (flag) => compute({ ...timeInput(B30, mix, { currentSlot: 'h05' }), timeStrict: true, ...(flag ? { levelStartsAtBlock: STARTS } : {}) });
+        const L = (p) => p.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.filter(a => String(a.memberName).startsWith('L')))).length;
+        assert.ok(L(run(true)) >= 1, '朝の残り (7〜8 時) にしか出られない人を使っていない');
     });
     test('★ projectBoard levelLockInBlock: このブロックで踏破したら同じブロックの残りの凸は実行しない (次のレベルは次のブロックから)・渡さなければ従来どおり', () => {
         const pc = globalThis.planChainDomain;
@@ -14607,7 +14622,8 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
         assert.match(bb.canDrop({ piece: { ...pc0, blocked: 'dup' }, row }).label, /被ります/);
         assert.match(bb.canDrop({ piece: { ...pc0, attr: 'fire' }, row }).label, /効きません/);
         assert.match(bb.canDrop({ piece: pc0, row: { ...row, done: true }, level: 1 }).label, /撃破済み.*次のブロック/);
-        assert.match(bb.canDrop({ piece: pc0, row, usedHere: 1 }).label, /使い切って/);
+        assert.match(bb.canDrop({ piece: pc0, row, usedHere: 1 }).label, /置ける凸がありません/);
+        assert.match(bb.canDrop({ piece: { ...pc0, blocked: 'used' }, row }).label, /きょうもう使って/);
         assert.match(bb.canDrop({}).label, /先にピース/);
     });
     test('★ overview: 手で置いた駒 (pinsPlan) で残りが減る / 5 体撃破したら次のブロックが次のレベル (同じブロックの残りは使わない) / 撃破しなければ残りを持ち越す', () => {
@@ -14626,6 +14642,32 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
         const later = bb.overview({ board, blocks, first: 2, planOf: () => null, hpOf });
         assert.deepEqual(later.map(o => o.past), [true, true, false, false, false, false]);
         assert.equal(later[2].level, 1);
+    });
+    test('★ (レビュー) trayPieces: きょう使ったキャラの編成は使えない / 後ろのブロックに置いた分を残り凸から引く / 凸数を言ったブロックは 凸数 − そのブロックで済んだ数', () => {
+        const b = mkBoard(100);
+        b.players[0].attackCount = 1; b.players[0].attacks = [{ boss_number: 9, characters: ['b'], reported_at: '2026-10-30T21:10:00Z' }];   // 朝 6 時 JST に b を使った
+        const pcs = bb.trayPieces({ board: b, blocks, idx: 0, bossOrder: W });
+        assert.deepEqual(pcs.filter(p => p.name === '朝だけ').map(p => [p.attr, p.blocked, p.remaining]), [['iron', 'used', 2], ['fire', 'used', 2]], 'きょう使ったキャラの編成を止めていない');
+        const later = bb.trayPieces({ board: mkBoard(100), blocks, idx: 0, bossOrder: W, laterUse: new Map([['2', 2]]) });
+        assert.equal(later.find(p => p.name === '朝昼').remaining, 1, '後ろのブロックに置いた分を引いていない');
+        const c = mkBoard(100); c.players[4].attacks = [{ boss_number: 4, characters: [], reported_at: '2026-10-31T09:30:00Z' }]; c.players[4].attackCount = 1;   // 夕方 18:30 JST に 1 凸済み
+        assert.equal(bb.trayPieces({ board: c, blocks, idx: 3, bossOrder: W }).find(p => p.name === '凸数つき').remaining, 1, '夕方 2 − 夕方で済んだ 1 = 1 になっていない');
+        assert.equal(bb.hourIdxOfIso('2026-10-30T20:00:00Z'), 0); assert.equal(bb.hourIdxOfIso('x'), null);
+    });
+    test('★ (レビュー) overview: 実行されない駒 (3 凸済み・キャラ被り・踏破のあと・Lv4 のボス 5 以外) は数えず skipped に分ける / 約束 (承認済みのブロックの予約) も駒として数える', () => {
+        const board = mkBoard(30);
+        board.players[0].attackCount = 3;   // 朝だけ は 3 凸済み
+        const pins = [{ id: 1, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, boss_number: 1, player_id: 1, loadout_slot: 1, expected_damage_b: 30, characters_snapshot: ['a'] },
+            { id: 2, status: 'approved', time_mode: 'block', block_from: 5, block_to: 8, boss_number: 2, player_id: 2, loadout_slot: 1, expected_damage_b: 40, characters_snapshot: ['x'] }];
+        const isFixed = (r) => r.status === 'approved';
+        assert.equal(bb.blockPins(pins).length, 1); assert.equal(bb.blockPins(pins, isFixed).length, 2);
+        const ov = bb.overview({ board, blocks, planOf: (idx, level, cur) => (idx === 0 ? bb.pinsPlan(bb.blockPins(pins, isFixed), blocks[0], level, cur.bosses, cur.players) : null), hpOf });
+        assert.deepEqual([ov[0].attacks, ov[0].skipped.map(a => a.reservationId), ov[0].rows[0].gotB, ov[0].rows[1].gotB], [1, [1], 0, 40], '3 凸済みの人の駒を数えている / 約束を数えていない');
+        assert.deepEqual(ov[0].rows[1].pieces.map(a => [a.pinned, a.fromReservation]), [[false, true]], '約束を 📌 (外せる駒) にしている');
+        const b4 = { ...mkBoard(0), season: { id: 1, current_level: 4 } };
+        const p4 = [{ id: 3, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, boss_number: 3, player_id: 2, loadout_slot: 1, expected_damage_b: 40, characters_snapshot: [] }];
+        const o4 = bb.overview({ board: b4, blocks, planOf: (idx, level, cur) => (idx === 0 ? bb.pinsPlan(p4, blocks[0], level, cur.bosses, cur.players) : null), hpOf });
+        assert.deepEqual([o4[0].attacks, o4[0].people, o4[0].skipped.map(a => a.reservationId)], [0, 0, [3]], 'Lv4 のボス 5 以外の駒を数えている / 外せるように skipped に出していない');
     });
     test('★ overview: Lv4 はボス 5 だけ (無限) / pinsPlan はそのブロックの駒だけ・時刻はブロックの頭・レベル', () => {
         const b4 = { ...mkBoard(0), season: { id: 1, current_level: 4 } };
@@ -14649,7 +14691,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
     test('★ 配線: 読み込み・置き場・描くきっかけ・レベルの規則をソルバーの 2 か所に', () => {
         assert.ok(html.includes('<script defer src="./js/domain/blockBuild.js"></script>'), 'blockBuild.js を読み込んでいない');
         assert.ok(/<div id="opsBuild" class="ob" data-ops-only>/.test(html) && /<details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 \(詳しく\)<\/summary>/.test(html), '置き場 / 従来の畳み');
-        assert.ok(/renderOpsMockIntake\(\);[^\n]*\n\s*renderOpsBuild\(\);/.test(html) && /renderOpsMockIntake\(\);\s*\n\s*if \(typeof renderOpsBuild === 'function'\) renderOpsBuild\(\);/.test(html), '盤面を描くときに凸プランを組むを描いていない');
+        assert.ok(/renderOpsMockIntake\(\);[^\n]*\n\s*renderOpsBuild\(\);/.test(html) && /renderOpsMockIntake\(\);\s*\n\s*if \(typeof renderOpsBuild === 'function'\) \{[^\n]*\n\s*renderOpsBuild\(\);\s*\n\s*if \(snap\.season\?\.id && _ob\.pinsSeason === snap\.season\.id\) _obLoadPins\(snap\.season\.id\);/.test(html), '盤面を描くときに凸プランを組むを描いていない');
         assert.equal((html.match(/levelStartsAtBlock: _opsLevelBlockStarts\((season|snap\.season)\),/g) || []).length, 2, 'レベルはブロックの頭の規則を算出と承認の影響の両方に渡していない');
     });
     test('★ 配線: 置く = 判定 (canDrop) → 押した時点の DB で canPin → ブロックの 📌 を作る → 後ろの自動の結果を捨てる / 外す = released / 自動 = そのブロックの始まりの盤面・前で実行した 📌 は渡さない', () => {
@@ -14665,11 +14707,17 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan: null, reservations: resv \}, o\.startBoard\)/.test(au), 'そのブロックの始まりの盤面で組んでいない');
         assert.ok(/const executed = new Set\(ov\.slice\(0, idx\)\.flatMap\(x => \(x\.done \|\| \[\]\)\.map\(d => d\.reservationId\)\)/.test(au) && /rows\.filter\(r => !executed\.has\(Number\(r\.id\)\)\)/.test(au), '前のブロックで実行した 📌 を拘束に渡している');
         assert.ok(/for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]\) if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); \}/.test(au), '組んだあとに後ろのブロックを要組み直しにしていない');
+        // レビュー対応: 外す・やり直すの後は盤面を取り直す / 読めなかった駒は 15 秒おきに取り直す / 置けなかった数はこのブロックの駒だけ / やり直しで約束は外さない
+        assert.ok(/finally \{\s*\n\s*_ob\.busy = false;\s*\n\s*\/\/[^\n]*\n\s*await _opsReloadBoardCards\(\);/.test(un), '外したあとに盤面を取り直していない (画面が止まる)');
+        const rs = fn('async function _obReset()', '\n\n');
+        assert.ok(/await _opsReloadBoardCards\(\);/.test(rs) && /r\.status === 'pinned' && window\.blockBuildDomain\.pinBlockIdx\(r, ctx\.blocks\) === ctx\.idx/.test(rs), 'やり直しの後の取り直し / 約束を外さない');
+        assert.ok(/const unmet = \(plan\.unmetReservations \|\| \[\]\)\.filter\(u => mineIds\.has\(Number\(u\.reservationId\)\)\)\.length;/.test(au), '置けなかった数にほかのブロックの予約を数えている');
+        assert.ok(/else if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) \{\s*\n\s*_obLoadPins\(snap\.season\.id\);/.test(html), '読めなかった駒を取り直していない');
         const ac = fn('function _obAfterChange(idx)');
         assert.ok(/if \(k >= idx\) \{ _ob\.plans\.delete\(k\); if \(k > idx\) _ob\.stale\.add\(k\); \}/.test(ac));
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
         assert.ok(/const planOf = \(idx, level, cur\) => _ob\.plans\.get\(idx\) \|\| bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\);/.test(cx) && /bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
-        assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap \}\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
+        assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse \}\)/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
     });
     test('★ 描画: 名前・ボス名は escapeHtml / onclick に名前を埋めない (data 属性の鍵と id だけ) / 色はトークン', () => {
         const r = fn('function renderOpsBuild()', 'const _obHours');

@@ -90,7 +90,7 @@
             const row = { boss_number: a.bossNumber, level: a.level, damage_raw: Math.round(dealtB * 1e9), characters: team, reported_at: isoAt(season.hard_date, a.hourIdx), predicted: true, loadout_slot: Number(a.loadoutSlot) || 1 };
             p.attacks.push(row);
             p.attackCount = count + 1;
-            done.push({ memberId: a.memberId, memberName: a.memberName || null, bossNumber: a.bossNumber, level: a.level, hourIdx: a.hourIdx, dmgB, dealtB,
+            done.push({ memberId: a.memberId, memberName: a.memberName || null, bossNumber: a.bossNumber, level: a.level, hourIdx: a.hourIdx, dmgB, dealtB, loadoutSlot: Number(a.loadoutSlot) || 1,
                 reservationId: a.reservationId ?? null });   // 予約の凸を実行したことにしたら、次のブロックではその予約を拘束に渡さない (画面側)
         }
         season.current_level = level;
