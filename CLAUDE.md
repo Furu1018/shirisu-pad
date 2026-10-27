@@ -1349,6 +1349,25 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   「🧮 残りを自動で組む」= そのブロックの始まりの盤面で、そのブロックの時刻だけ・📌 を拘束にして `computeOptimalPlan` (前のブロックで実行した 📌 は渡さない)。後ろのブロックは「要組み直し」。
   自動の結果は端末のメモリだけ (`_ob.plans`)・**駒と拘束の指紋 (`_obPinsFp`) が変われば捨てる** (別の端末が置いた・外した・約束の中身が変わった)。シーズンが変わったら `_ob.epoch` を進め、待っている間の古い結果は書かない。
   📌 はメンバーに見えない (予約の画面に出さない)。従来の算出・配信は `<details id="opsPlanLegacy">` に畳んだ (S4 の「決定」ができるまで配信はこちら)。
+  ★ **✅ 決定 → 時間割 → ✓ 凸しました (シンプル化 S4・2026-10-27・設計案 `docs/シンプル化_設計案_2026-10-26.md` §7・§8・監査 `docs/AUDIT-2026-10-23.md` の M)**:
+  🧱 組む の「✅ ○○ を決定してメンバーに配信」(`_obDecide`) = いまのブロックから組めたブロックまで (`decidePlanDomain.rangeToDecide`) のうち **組み直したブロックだけ** (`_obFreshOf`・読み戻したまま触っていないブロックは前の決定のまま写す) を
+  `decidePlanDomain.build` で 1 行の配信にする (`published_plans`・`plan.decided = { upTo, at, blocks: [{ key, idx, name, label, from, to, level, kept, attacks, fp }] }`・`PLAN_SCHEMA` 4・blockScope は無い)。
+  決定し直しても**済んだ凸は残す** (✓ の plan_key / 数字の報告は 人|レベル|ボス の数で過ぎたブロックから消し込む・Lv4 は Lv3 の鍵でも = `doneInPrev` / `looseKeysOf`)。押した時点の DB で 駒・決定・盤面 (世代の照合) を読み直し、
+  別の運営の決定なら止める (読み戻しはブロックごと・この端末の組みかけは残す)。確認のあとに 決定の id (押したときの `basis0`) と 駒の指紋 をもう一度照合する。
+  通知は人ごとに 1 通 (`notices`: 決まりました / 変わりました (✅ の有無で文を分ける) / 外れました・変わらない人には送らない・行にレベル)。鍵は `decide|人|p<決定の id>|sig`・確保できない人は「送れなかった」に数え、相手 0 人は数えない。
+  ✅ は「通知の対象でない、前の決定を ✅ した人」全員に引き継ぐ。最初の決定では、決めたブロックに従来の配信で割当があったのに決定に居ない人にも「外れました」。
+  ★ **決定から読み戻したブロックの照合は「そのブロックの駒」だけ** (`_obBlockFp`・decided.blocks[].fp) — 後ろのブロックに 📌 を置いただけで決定済みを要組み直しにしない (振り回さない)。組んだ (自動の) ブロックは従来どおり拘束全部 (`_obPinsFp`)。
+  指紋は ✓ / 報告で実行済みになった駒を実行前とみなす (`_obFpRows`: released + 'fulfilled' → pinned / fulfilled → approved)。駒が読めていない間は照合も読み戻しもしない (読めなくても前の駒を捨てない)。決定は 30 秒おきと ↻ で取り直し、別の運営の決定はバーで知らせる。
+  ★ 済んだ凸は**投影の前に**組んだ結果から外す (`_obDoneKeys` + `_obStripDone` — ✓ はダメージ 0・キャラの無い編成ではキャラ被りで飛ばせず二重に数えていた)。
+  ★ **Lv3 を倒した盤面 (DB は current_level 3 + 5 体とも 0) は Lv4 として読む** (`planChainDomain.liveBoard`・overview と projectBoard の始まり。ソルバーも始まりのレベルがもう踏破済みなら levelStartsAtBlock でも次のレベルはいまから・渡さなければ指紋 120 盤面不変)。
+  **メンバー**: 最新の行が決定 (`currentDecided` → `_myPubState.decidedCurrent`) なら 📅 きょうの凸 が 1 枚の時間割 (`_renderMyDecided` / `decidePlanDomain.timetable`・ブロックごとに Lv・全員の凸・自分の行・✓)。決まっていないブロックは「まだ決まっていません」。
+  決定の行は**決めたブロックにだけ効く** (`publishedPlansDomain.appliesTo`・`reservationsDomain.inBlockTime` も decided.blocks の窓)。後に従来の配信があれば決定の印を外して従来の表示。「前回から変わったか」は 1 つ前の決定と通知と同じ中身で比べる。
+  **✓ 凸しました** = `supabaseMarkAttackDone` → RPC `mark_attack_done` (**`56_attack_done_tap.sql`**: attacks にダメージ 0・予定の編成・`planned_damage_raw`・`plan_key` (二重押しを止める一意索引)・`source` 'tap' / 'ops_tap'・採番と 3 凸の上限は report_attack と同じ・
+  HP は動かさない (運営が 🎯 で合わせる)・駒は 📌 → released / 約束 → fulfilled)。56 未適用は「56 を実行してください」で止まる。練習の偽サーバにも同じ RPC。
+  運営は時間割で代わりに ✓ を付けられる (盤面が読めてから・押した時点のその人の凸で確かめる・確認ダイアログ・役割 ops / master だけ)。取り消しは ✓ の行を消すだけ (駒は戻らないと先に言う)。名乗り直しの直後の古い時間割では押させない。
+  ✓ の行は 分析 (凸がすべて ✓ の回は返さない)・凸報告の確認 (予定より低い / 時刻のずれ を付けない・決定の行は sinceMs なし・割当の時刻はブロックの終わり `_atkCheckDecidedPlan`)・ダメージの編集 から外す。凸数の上限とピースの残り凸は plan_key のブロックで数える (押した時刻ではない)。
+  **決定のあるシーズンでは従来の配信・一気に組むを出さない** (`_seasonHasDecision` → `_DECIDED_LEGACY_MSG`)。ヒーローの当日はレイド日 (翌 0〜4 時も)・決定のときは「✓ 凸しました を押して」。純ロジックは `js/domain/decidePlan.js`。
+  ★ 練習の運営編はまだ従来の算出・配信で組む (S2 で畳んだ「従来の算出・配信 (詳しく)」を案内がまず開かせる橋渡し `legacy()`)。新しい流れの練習・予約の画面を隠すのは S5
   ★ **③-f 凸報告の確認** (2026-10-18): 戦況タブ「✅ 凸報告の確認」(`opsSecAttackCheck`・当日と終了・幅 12・当日は開く)。盤面の凸 (`players[].attacks`) を
   配信プラン (`_opsPublishedPlan.plan`・`_syncOpsUnpublishBtn` の取り直しの最後に描く = 別クエリを増やさない) と突き合わせ、印 = 計画にない / 予定よりかなり低い (70% 未満) /
   予定の時刻とずれ (3 時間以上)。予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。✓ → `supabaseSetAttackConfirmed` → `attacks.confirmed_at / confirmed_by`

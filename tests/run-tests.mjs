@@ -15103,6 +15103,10 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // S4 レビュー [31] 従来の画面の消し込み / [24] 前回から変わったか (決定はブロック単位)
         assert.ok(html.includes('if (!decRow && rt != null && Number.isFinite(pubAt) && rt <= pubAt) return;'), '決定の行でも配信前の凸を消し込まない');
         assert.ok(/const prevDec = dpx\.latestDecided\(pubRows\.filter\(/.test(html) && /myChange = sig\(a0\) === sig\(b0\) \? \{ changed: false \}/.test(html), '決定の「前回から変わったか」を時刻で比べている');
+        assert.ok(/const dd = window\.planDiffDomain, dpx = window\.decidePlanDomain;\s*\n\s*if \(decRow && dpx\) \{\s*\n\s*\/\/ ✅ 決定/.test(html) && /\} else if \(dd && pub\.season_id && window\.publishedPlansDomain\) \{/.test(html), '決定の行で、ブロック単位の比べ方に入らない (S4 レビュー [24])');
+        // S4 レビュー [17]: 凸数の上限は ✓ の行 (plan_key あり) を鍵のブロックで数える (押した時刻ではない)
+        const caps = fn('function _playersWithBlockCaps(players, season) {');
+        assert.ok(/const m = \/\^\(\\d\+\)-\\d\+\\\|\/\.exec\(typeof a\?\.plan_key === 'string' \? a\.plan_key : ''\);\s*\n\s*if \(m\) return Number\(m\[1\]\) % 24;/.test(caps), '凸数の上限で ✓ の行を押した時刻で数えている');
         // S4 レビュー [18] ✓ の行のダメージを編集させない
         assert.ok(html.includes("${tapOnly ? '' : `<button onclick=\"handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})\"") && html.includes("${tapOnly ? '' : `<button onclick=\"handleMyAttackEdit(${a.id}, ${a.damage_raw})\""), '✓ の行に編集が出る');
         // S4 レビュー [22] 決定のあるシーズンでは従来の配信を出さない・最初の決定で従来の配信から外れた人にも
