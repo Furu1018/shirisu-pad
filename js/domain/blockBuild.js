@@ -85,7 +85,8 @@
      */
     function overview({ board, blocks, first = 0, planOf, hpOf } = {}) {
         const out = [];
-        let cur = board ? { season: board.season, bosses: board.bosses, players: board.players } : null;
+        // Lv3 を倒した盤面は Lv4 (ボス 5 だけ・HP 無限) として読む (S4 レビュー [1]: そのままだと全ブロックが「Lv3 撃破済み」で何も置けない)
+        let cur = board ? ((pc() && pc().liveBoard) ? pc().liveBoard({ season: board.season, bosses: board.bosses, players: board.players }) : { season: board.season, bosses: board.bosses, players: board.players }) : null;
         (Array.isArray(blocks) ? blocks : []).forEach((blk, idx) => {
             if (idx < first || !cur) { out.push({ idx, past: idx < first, level: null, rows: [], allDone: false, attacks: 0, people: 0, startBoard: null, done: [], skipped: [] }); return; }
             const level = Number(cur.season && cur.season.current_level) || 1;
@@ -150,6 +151,17 @@
         const h = new Date(t + 9 * 3600000).getUTCHours();
         return (h - 5 + 24) % 24;
     }
+    /**
+     * 済んだ凸がこのブロックのものか。✓ 凸しました の行 (plan_key あり) は鍵の先頭 'from-to' で決める — reported_at は ✓ を押した時刻で、
+     * 遅れて押した ✓・運営があとで付けた ✓ が次のブロックの凸数を食う (S4 レビュー [11][17])。それ以外は報告の時刻
+     */
+    function inBlockOf(a, blk) {
+        if (!a || !blk) return false;
+        const pk = typeof a.plan_key === 'string' ? a.plan_key : '';
+        if (pk) return pk.split('|')[0] === `${Number(blk.from)}-${Number(blk.to)}`;
+        const h = hourIdxOfIso(a.reported_at);
+        return h != null && h >= blk.fromIdx && h <= blk.toIdx;
+    }
     function trayPieces({ board, blocks, idx, bossOrder = null, placed = null, pins = null, laterUse = null } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const blk = bl[idx];
@@ -168,7 +180,7 @@
             const counts = p.blockCounts && typeof p.blockCounts === 'object' && !Array.isArray(p.blockCounts) ? p.blockCounts : null;
             const ck = rb() && rb().countKey ? rb().countKey(blk) : `${blk.from}-${blk.to}`;
             if (counts && Object.keys(counts).length && Number(counts[ck]) > 0) {
-                const doneHere = (Array.isArray(p.attacks) ? p.attacks : []).filter(a => { const h = hourIdxOfIso(a && a.reported_at); return h != null && h >= blk.fromIdx && h <= blk.toIdx; }).length;
+                const doneHere = (Array.isArray(p.attacks) ? p.attacks : []).filter(a => inBlockOf(a, blk)).length;
                 remaining = Math.min(remaining, Math.max(0, Number(counts[ck]) - doneHere));
             }
             // きょう使ったキャラ (実際の凸 + 前のブロックで済んだことにした凸) を含む編成は使えない (同じキャラは 1 日 1 回: レビュー高)
@@ -216,5 +228,5 @@
         return { ok: true };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, trayPieces, canDrop, hourIdxOfIso, EPS };
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);

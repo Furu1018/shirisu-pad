@@ -896,6 +896,11 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'avail', 'resv', 'compute', 'pin', 'publish'], '運営編・前日は 催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 → 配信 (🗣 9f)');
     assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締め凸検索');
     assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
+    // シンプル化 S2 で条件パネル・算出・配信は「従来の算出・配信 (詳しく)」(<details id="opsPlanLegacy">) に畳まれた。練習の運営編はまだ従来の画面で組むので、
+    //   組む・📌・配信の 5 課題は、組むのタブのあとにまず畳みを開かせる (無いと案内の枠が出せず止まる — 2026-10-27 に main で止まっていた。S5 で作り直すまでの橋渡し)
+    assert.equal((GUIDE.match(/if \(opsTab\('build'\)\) return stray\(c, \[\]\) \|\| opsTab\('build'\);\s*\n\s*if \(legacy\(\)\) return stray\(c, \[\]\) \|\| legacy\(\);/g) || []).length, 5, '組む・📌・配信の課題で従来の畳みを開かせていない (練習の運営編が止まる)');
+    assert.match(GUIDE, /var d = document\.getElementById\('opsPlanLegacy'\);\s*\n\s*if \(!d \|\| d\.open\) return null;/, '畳みが開いていれば案内しない、になっていない');
+    assert.ok(HTML.includes('<details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 (詳しく)</summary>'), '畳みの名前が変わった (案内の文とずれる)');
     for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
     for (const sc of Object.keys(P.steps)) for (const s of P.steps[sc]) assert.ok(s.title && typeof s.done === 'function' && typeof s.guide === 'function', `${sc}/${s.key} の形が違う`);
     const ids = Object.keys(P.scenarios).sort();

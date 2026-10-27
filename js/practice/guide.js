@@ -55,6 +55,7 @@
         pushSend: ['#pushPreviewSendBtn'],
         planWhoBlock: ['[onclick="setOpsPlanWho(\'block\')"]'],
         planCompute: ['[onclick="computeAndRenderOptimalPlan()"]'],
+        planLegacy: ['#opsPlanLegacy > summary'],   // シンプル化 S2 で畳んだ「従来の算出・配信 (詳しく)」
         planTimetable: ['[onclick="setOpsPlanViewMode(\'timetable\')"]'],
         planPiece: ['#opsOptimalPlan .plan-piece[data-piece]:not(.placed):not(.dim)'],
         planCell: ['#opsOptimalPlan [data-boss][data-h]'],   // どのマスを指すかは placeableCell() が本物の判定で決める
@@ -107,6 +108,13 @@
         var btn = document.querySelector('#opsSubTabs [data-ops-tab="' + want + '"]');
         var label = btn ? (btn.textContent || '').replace(/\d+$/, '').trim() : want;
         return { text: '運営タブの上の「' + label + '」を押します。カードはいつも同じタブにあります。', target: btn };
+    };
+    // シンプル化 S2 (2026-10-27) で、条件パネル・算出・配信は「従来の算出・配信 (詳しく)」に畳まれた。練習の運営編はまだ従来の画面で組むので、まず開かせる
+    //   (S5 で新しい「凸プランを組む」= ブロックのボタン・ピース・決定 の練習に作り直すまでの橋渡し)
+    var legacy = function () {
+        var d = document.getElementById('opsPlanLegacy');
+        if (!d || d.open) return null;
+        return { text: '練習は従来の画面で組みます。「従来の算出・配信 (詳しく)」を開きます。', real: '本番の新しい組み方 (ブロックのボタン → ピースを置く → 残りを自動で組む → 決定) の練習は、次の作り直しで足します。', target: pick('planLegacy') };
     };
     /** その課題に関係のないシートが開いていたら、まず閉じてもらう */
     var stray = function (c, allowed) {
@@ -386,6 +394,7 @@
                     if (typeof _opsLastPlan !== 'undefined' && _opsLastPlan && _opsLastPlan.blockScope && _opsLastPlan.blockScope.name === '朝') { try { store.set('ops-eve:computed', '1'); } catch (_) { /* noop */ } }
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    if (legacy()) return stray(c, []) || legacy();
                     if (typeof _opsPlanWho !== 'undefined' && _opsPlanWho !== 'block') return stray(c, []) || { text: '対象を「🧱 ブロックの人」にします。前日に組むのは当日の最初のブロック「朝」です (既定で選ばれています)。', target: pick('planWhoBlock') };
                     return stray(c, []) || { text: '「🧮 この条件で算出」を押します。朝に出られる人の模擬で、本物のソルバーが組みます (本人が入れた凸数より多くは置きません)。', target: pick('planCompute') };
                 } },
@@ -395,6 +404,7 @@
                     if (c.modalId === 'planSwapModal') return { text: 'この人はもう 3 凸ぶんの割当があります。ここでは「外す凸は算出に任せる」を押します。', target: pick('swapAuto') };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    if (legacy()) return stray(c, []) || legacy();
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
                     if (typeof _opsPlanViewMode !== 'undefined' && _opsPlanViewMode !== 'timetable') return stray(c, []) || { text: '「🗓 時間割」に切り替えます。📌 の仮置きは時間割で置きます。', target: pick('planTimetable') };
                     var pp = placeablePiece();
@@ -407,6 +417,7 @@
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    if (legacy()) return stray(c, []) || legacy();
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します (承認した予約が入ります)。', target: pick('planCompute') };
                     return stray(c, []) || { text: '「📤 朝のぶんを配信」を押します。確認が出たら OK。押すまでメンバーには見えません。', real: '配信すると、朝に割当のある人のホームに割当が出て、「あなたの凸」の通知が届きます (同じブロックを配信し直したときは、割当が変わった人だけ)。後ろのブロックはまだ約束していないので、当日に組み直しても誰も振り回しません。', target: pick('planPublish') };
                 } },
@@ -452,6 +463,7 @@
                     if (typeof _opsLastPlan !== 'undefined' && _opsLastPlan && _opsLastPlan.blockScope && _opsLastPlan.blockScope.name === '夕方') { try { store.set('ops-day:computed', '1'); } catch (_) { /* noop */ } }
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    if (legacy()) return stray(c, []) || legacy();
                     if (typeof _opsPlanWho !== 'undefined' && _opsPlanWho !== 'block') return stray(c, []) || { text: '対象を「🧱 ブロックの人」にします。ブロックは既定で「いま」の夕方です。', target: pick('planWhoBlock') };
                     return stray(c, []) || { text: '「🧮 この条件で算出」を押します。夕方に出られる人の残り凸で、いまの残HPから組みます (前に配信した割当は尊重されます)。', target: pick('planCompute') };
                 } },
@@ -460,6 +472,7 @@
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
+                    if (legacy()) return stray(c, []) || legacy();
                     if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
                     return stray(c, []) || { text: '「📤 夕方のぶんを配信」を押します。確認が出たら OK。', real: '夕方に割当のある人のホームに割当が出ます 、割当のある人に「あなたの凸」の通知が届きます。配信したら Discord の運営スレに「夕方 配信した」と 1 行残すと、交代した運営が迷いません。', target: pick('planPublish') };
                 } },

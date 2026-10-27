@@ -14521,6 +14521,16 @@ console.log('\n🧱 レベルはブロックの頭でしか変わらない (leve
     const inp = (o = {}) => ({ ...timeInput(bs(o.rem ?? 10), ps, { currentSlot: o.slot ?? 'h05', currentLevel: o.lv ?? 1 }), timeStrict: true });
     const STARTS = [0, 4, 8, 12, 16, 20];
     const lvs = (p) => p.levels.map(l => [l.level, !!l.infinite, l.openHourIdx, Math.min(...l.bosses.flatMap(b => b.attacks.map(a => a.hourIdx)))]);
+    test('★ ソルバー (S4 レビュー [1]): Lv3 を倒した盤面 (current_level 3 + 5 体とも 0) では、levelStartsAtBlock を渡しても Lv4 はいまのブロックから (次のブロックまで待たせない)', () => {
+        const on = compute({ ...inp({ rem: 0, lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS });
+        const lv4 = on.levels.find(l => l.infinite);
+        assert.ok(lv4 && lv4.bosses[0].attacks.length > 0, 'Lv4 の凸が無い');
+        assert.equal(Math.min(...lv4.bosses[0].attacks.map(a => a.hourIdx)), 12, 'Lv4 がいまのブロック (17 時 = idx 12) から始まらない');
+        // 算出の中で踏破したとき (始まりは生きている) は従来どおり次のブロックの頭から
+        const mid = compute({ ...inp({ rem: 10, lv: 3, slot: 'h17' }), levelStartsAtBlock: STARTS });
+        const lv4m = mid.levels.find(l => l.infinite);
+        if (lv4m && lv4m.bosses[0].attacks.length) assert.ok(Math.min(...lv4m.bosses[0].attacks.map(a => a.hourIdx)) >= 16, '算出の中で踏破したのに同じブロックで Lv4 を置いた');
+    });
     test('★ ソルバー: 朝 (5〜8 時) の中で Lv1 を踏破したら Lv2 は午前 (9 時 = idx 4) から・Lv3 は午後 (13 時 = idx 8) から。朝の残りに次のレベルの凸を置かない', () => {
         const off = compute(inp()), on = compute({ ...inp(), levelStartsAtBlock: STARTS });
         assert.deepEqual(lvs(off).map(x => x[2]), [0, 0, 0], '前提: 渡さなければ踏破した時刻から次のレベル');
@@ -14793,7 +14803,7 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         const first = dp.build({ blocks, ov: [ov[0]], newIdxs: [0], bosses });
         const n0 = dp.notices({ prevPlan: null, nextPlan: first, blocks, ptName: pt });
         assert.deepEqual(n0.notices.map(n => [n.memberId, n.changed, n.title]), [[1, false, '🧱 あなたの凸が決まりました'], [2, false, '🧱 あなたの凸が決まりました'], [3, false, '🧱 あなたの凸が決まりました']]);
-        assert.equal(n0.notices[0].lines[0], `${blocks[0].label} B1 火PT 編成①`);
+        assert.equal(n0.notices[0].lines[0], `${blocks[0].label} Lv1 B1 火PT 編成①`, '通知の行にレベルが無い (レベルだけ変わった人に本文が同じ「変わりました」になる: S4 レビュー [2])');
         // 午前を足す: 1 は増えただけ (決まりました)・2 と 3 は変わらない (送らない)
         const both = dp.build({ blocks, ov, newIdxs: [0, 1], bosses });
         const n1 = dp.notices({ prevPlan: first, nextPlan: both, blocks, ackedIds: new Set([1]) });
@@ -14849,15 +14859,67 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         assert.ok(!('fp' in dp.build({ blocks, ov, newIdxs: [0], bosses }).decided.blocks[0]), 'fpOf が無いのに fp を入れた');
         assert.ok(!('fp' in dp.build({ blocks, ov, newIdxs: [0], bosses, fpOf: () => ({ x: 1 }) }).decided.blocks[0]), '文字でない fp を入れた');
         // 時間割のレベル: 配信の行は anon で書ける → 文字・範囲外は null
-        const bad = { levels: [], decided: { blocks: [null, { key: '5-8', level: '<img src=x onerror=alert(1)>' }, { key: '9-12', level: '3' }, { key: '13-16', level: 9 }] } };
+        const bad = { levels: [], decided: { blocks: [{ key: '5-8', level: '<img src=x onerror=alert(1)>' }, { key: '9-12', level: '3' }, { key: '13-16', level: 9 }] } };
         const t = dp.timetable({ blocks, plan: bad, nowIdx: 0 });
         assert.deepEqual(t.slice(0, 3).map(r => [r.decided, r.level]), [[true, null], [true, 3], [true, null]]);
-        assert.deepEqual([...dp.decidedBlocks(bad).keys()], ['5-8', '9-12', '13-16'], '壊れた行 (null) で落ちた / 読めた行を落とした');
+        assert.deepEqual([...dp.decidedBlocks(bad).keys()], ['5-8', '9-12', '13-16']);
+        // 壊れた行 (blocks に null・levels が配列でない) は決定として読まない (画面が落ちる: S4 レビュー [7][13])
+        for (const broken of [{ levels: [], decided: { blocks: [null, { key: '5-8' }] } }, { levels: {}, decided: { blocks: [] } }, { levels: [], decided: { blocks: [5] } }]) {
+            assert.equal(dp.isDecided(broken), false, JSON.stringify(broken));
+            assert.equal(dp.latestDecided([{ id: 9, plan: broken }]), null);
+            assert.equal(dp.decidedBlocks(broken).size, 0);
+        }
+        // flat / attacksIn は null のレベル・ボスで落ちない
+        const holes = { levels: [null, { level: 1, bosses: [null, { bossNumber: 1, attacks: [null, { memberId: 1, hourIdx: 0, dmgB: 3 }] }] }], decided: { blocks: [{ key: '5-8' }] } };
+        assert.deepEqual(dp.flat(holes).map(a => a.memberId), [1]);
+        assert.deepEqual(globalThis.planChainDomain.attacksIn(holes, blocks[0]).map(a => a.memberId), [1]);
         // 並び順: 同じ人が同じブロック・同じボスに 2 凸 (編成①・②)。並びが逆でも「変わらない」
         const two = (order) => dp.build({ blocks, ov: [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, name: 'ボス1', weakness: 'fire', pieces: order.map(sl => piece(1, 10 + sl, 1, { loadoutSlot: sl, team: ['t' + sl] })) }] }], newIdxs: [0], bosses });
         const nt = dp.notices({ prevPlan: two([1, 2]), nextPlan: two([2, 1]), blocks });
         assert.deepEqual(nt.notices, [], '並び順だけで「変わりました」');
         assert.deepEqual(nt.unchanged, [1]);
+    });
+    test('★ S4 レビュー [10]: Lv4 (ボス 5) の凸は、数字の報告の Lv3 の鍵 (DB の level が 3) でも消し込む — Lv4 の鍵が先', () => {
+        assert.deepEqual(dp.looseKeysOf({ memberId: 7, level: 4, bossNumber: 5 }), ['7|4|5', '7|3|5']);
+        assert.deepEqual(dp.looseKeysOf({ memberId: 7, level: 3, bossNumber: 5 }), ['7|3|5']);
+        assert.deepEqual(dp.looseKeysOf({ memberId: 7, level: 4, bossNumber: 1 }), ['7|4|1']);
+        const ov4 = [{ idx: 0, past: false, level: 4, rows: [{ bossNumber: 5, name: 'ボス5', weakness: 'electric', infinite: true, pieces: [piece(7, 30, 1)] }] }];
+        const prev4 = dp.build({ blocks, ov: ov4, newIdxs: [0], bosses });
+        const kept = dp.doneInPrev(blocks, dp.decidedBlocks(prev4), prev4, { keys: [], loose: { '7|3|5': 1 } });
+        assert.equal((kept.get('5-8') || []).length, 1, 'Lv4 の凸を Lv3 の報告で消し込んでいない');
+    });
+}
+
+console.log('\n🧱 Lv4 の盤面 (S4 レビュー [1]):');
+{
+    const pc = globalThis.planChainDomain, bb = globalThis.blockBuildDomain, rbx = globalThis.raidBlocksDomain;
+    const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+    const W = ['iron', 'electric', 'fire', 'wind', 'water'];
+    const deadBoard = (lv = 3, remRaw = 0) => ({ season: { current_level: lv, hard_date: '2026-10-31' }, bosses: W.map((w, i) => ({ boss_number: i + 1, weakness: w, tier: 'lord', name: `B${i + 1}`, total_hp_raw: 50e9, remaining_hp_raw: remRaw })),
+        players: [{ id: 1, name: 'あ', attackCount: 0, attacks: [] }, { id: 2, name: 'い', attackCount: 0, attacks: [] }] });
+    test('★ liveBoard: Lv3 を倒した盤面 (current_level 3 + 5 体とも 0) を Lv4 (ボス 5 だけ・HP 無限) として読む / ほかはそのまま', () => {
+        const lv4 = pc.liveBoard(deadBoard());
+        assert.equal(lv4.season.current_level, 4);
+        assert.deepEqual(lv4.bosses.map(b => b.remaining_hp_raw), [0, 0, 0, 0, 1e15]);
+        const alive = deadBoard(3, 1e9); assert.equal(pc.liveBoard(alive), alive, '生きているボスがいるのに Lv4 にした');
+        const lv2 = deadBoard(2); assert.equal(pc.liveBoard(lv2), lv2, 'Lv1・2 は DB が上げる (ここでは触らない)');
+        const four = { ...deadBoard(), bosses: deadBoard().bosses.slice(0, 4) }; assert.equal(pc.liveBoard(four), four, '5 体そろっていないのに Lv4 にした');
+    });
+    test('★ projectBoard / overview: Lv4 の盤面ではボス 5 の凸を実行する (前は全部「実行されない」になり、決定し直すと Lv4 の割当が消えた)', () => {
+        const plan = { levels: [{ level: 4, infinite: true, bosses: [{ bossNumber: 5, attacks: [{ memberId: 1, hourIdx: 13, dmgB: 30, team: ['x'], loadoutSlot: 1 }, { memberId: 2, hourIdx: 14, dmgB: 20, team: ['y'], loadoutSlot: 1 }] }] }] };
+        const proj = pc.projectBoard(deadBoard(), plan, blocks[3], { levelLockInBlock: true });
+        assert.deepEqual(proj.done.map(d => [d.memberId, d.bossNumber]), [[1, 5], [2, 5]], 'Lv4 の凸を実行していない');
+        assert.equal(proj.level, 4);
+        const ov = bb.overview({ board: deadBoard(), blocks, first: 3, planOf: (i) => (i === 3 ? plan : null), hpOf: () => 0 });
+        assert.equal(ov[3].level, 4);
+        assert.deepEqual(ov[3].rows.map(r => [r.bossNumber, r.infinite, r.pieces.length]), [[5, true, 2]], 'Lv4 のボス 5 の行と置いた凸が出ない');
+        assert.deepEqual(ov[3].skipped, []);
+        assert.equal(ov[4].level, 4, '次のブロックも Lv4');
+    });
+    test('★ blockBuild.inBlockOf: ✓ の行 (plan_key あり) は鍵のブロックで決める (押した時刻ではない)・それ以外は報告の時刻 (S4 レビュー [11][17])', () => {
+        assert.equal(bb.inBlockOf({ plan_key: '5-8|L1|B3|7|S1', reported_at: '2026-10-31T08:30:00Z' }, blocks[0]), true, '朝の ✓ を夕方に押したら朝にならない');
+        assert.equal(bb.inBlockOf({ plan_key: '5-8|L1|B3|7|S1', reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), false, '夕方に押した朝の ✓ を夕方に数えた');
+        assert.equal(bb.inBlockOf({ reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), true, '数字の報告は報告の時刻 (17:30 JST = 夕方)');
     });
 }
 
@@ -14869,7 +14931,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
     test('★ 配線: 読み込み・置き場・描くきっかけ・レベルの規則をソルバーの 2 か所に', () => {
         assert.ok(html.includes('<script defer src="./js/domain/blockBuild.js"></script>'), 'blockBuild.js を読み込んでいない');
         assert.ok(/<div id="opsBuild" class="ob" data-ops-only>/.test(html) && /<details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 \(詳しく\)<\/summary>/.test(html), '置き場 / 従来の畳み');
-        assert.ok(/renderOpsMockIntake\(\);[^\n]*\n\s*renderOpsBuild\(\);/.test(html) && /renderOpsMockIntake\(\);\s*\n\s*if \(typeof renderOpsBuild === 'function'\) \{[^\n]*\n\s*renderOpsBuild\(\);\s*\n\s*if \(snap\.season\?\.id && _ob\.pinsSeason === snap\.season\.id\) _obLoadPins\(snap\.season\.id\);/.test(html), '盤面を描くときに凸プランを組むを描いていない');
+        assert.ok(/renderOpsMockIntake\(\);[^\n]*\n\s*renderOpsBuild\(\);/.test(html) && /renderOpsMockIntake\(\);\s*\n\s*if \(typeof renderOpsBuild === 'function'\) \{[^\n]*\n\s*renderOpsBuild\(\);\s*\n\s*if \(snap\.season\?\.id && _ob\.pinsSeason === snap\.season\.id\) \{ _obLoadPins\(snap\.season\.id\); _obLoadDecided\(snap\.season\.id\); \}/.test(html), '盤面を描くときに凸プランを組むを描いていない / ↻ で決定を取り直していない (S4 レビュー [27])');
         assert.equal((html.match(/levelStartsAtBlock: _opsLevelBlockStarts\((season|snap\.season)\),/g) || []).length, 2, 'レベルはブロックの頭の規則を算出と承認の影響の両方に渡していない');
     });
     test('★ 配線: 置く = 判定 (canDrop) → 押した時点の DB で canPin → ブロックの 📌 を作る → 後ろの自動の結果を捨てる / 外す = released / 自動 = そのブロックの始まりの盤面・前で実行した 📌 は渡さない', () => {
@@ -14890,11 +14952,11 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const rs = fn('async function _obReset()', '\n\n');
         assert.ok(/await _opsReloadBoardCards\(\);/.test(rs) && /r\.status === 'pinned' && window\.blockBuildDomain\.pinBlockIdx\(r, ctx\.blocks\) === ctx\.idx/.test(rs), 'やり直しの後の取り直し / 約束を外さない');
         assert.ok(/const unmet = \(plan\.unmetReservations \|\| \[\]\)\.filter\(u => mineIds\.has\(Number\(u\.reservationId\)\)\)\.length;/.test(au), '置けなかった数にほかのブロックの予約を数えている');
-        assert.ok(/if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) _obLoadPins\(snap\.season\.id\);/.test(html) && /if \(\(_ob\.decErr \|\| _ob\.dec == null\) && Date\.now\(\) - _ob\.decTriedAt > 15000\) _obLoadDecided\(snap\.season\.id\);/.test(html), '読めなかった駒・決定を取り直していない');
+        assert.ok(/if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) _obLoadPins\(snap\.season\.id\);/.test(html) && /if \(!_ob\.busy && Date\.now\(\) - _ob\.decTriedAt > \(\(_ob\.decErr \|\| _ob\.dec == null\) \? 15000 : 30000\)\) _obLoadDecided\(snap\.season\.id\);/.test(html), '読めなかった駒・決定を取り直していない / 決定を 30 秒おきに取り直していない (S4 レビュー [27])');
         const ac = fn('function _obAfterChange(idx)');
         assert.ok(/if \(k >= idx\) \{ _ob\.plans\.delete\(k\); if \(k > idx\) _ob\.stale\.add\(k\); \}/.test(ac));
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
-        assert.ok(/const planOf = \(idx, level, cur\) => _ob\.plans\.get\(idx\) \|\| bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\);/.test(cx) && /bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
+        assert.ok(/const planOf = \(idx, level, cur\) => \{ const p = _ob\.plans\.get\(idx\); return p \? _obStripDone\(p, blocks\[idx\], doneKeys\) : bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\); \};/.test(cx) &&/bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
         assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse \}\)/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
     });
     test('★ Codex 監査: 実行されない凸は置いた扱いにしない / シーズンが変わったら古い結果を書かない / 読み直した駒で盤面を作り直す', () => {
@@ -14916,8 +14978,8 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
     test('★ 決定 (S4) の配線: 押した時点の DB で 駒と決定を読み直す → 別の運営の決定なら止める → 組めた範囲 → 確認 → もう一度照合 → 版 4 で 1 行 → 通知 (decide|)', () => {
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         const order = ['await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans()])', 'if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0))',
-            'const ctx = _obCtx(', 'dp.rangeToDecide(', 'dp.build(', 'if (!confirm(msg)) return;', 'pubs2 = await window.supabaseGetPublishedPlans()',
-            'Number(latest2?.id || 0) !== Number(_ob.dec?.basisId || 0)', 'window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan))', 'await _obNotifyDecide('];
+            'const ctx = _obCtx(', 'dp.rangeToDecide(', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', 'if (!confirm(msg)) return;', '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
+            'Number(latest2?.id || 0) !== basis0', 'fpSig(rows2) !== sig0', 'window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan))', 'await _obNotifyDecide('];
         let at = -1;
         for (const k of order) { const i = d.indexOf(k); assert.ok(i > at, `決定の順が違う / 無い: ${k}`); at = i; }
         assert.ok(/_gateAllows\('publish'\)/.test(d) && /if \(_ob\.busy\) return;/.test(d) && /_obSame\(epoch, sid\)/.test(d), 'ゲート・二重押し・シーズン');
@@ -14929,7 +14991,8 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/supabaseCarryOverPlanAcks\(seasonId, keep, pub\.id, prev\.id\)/.test(n), '変わらない人の ✅ を引き継いでいない');
         assert.ok(html.includes('<script defer src="./js/domain/decidePlan.js"></script>'), 'decidePlan.js を読み込んでいない');
         const seed = fn('function _obSeedDecided(', 'function _obCtx(');
-        assert.ok(/if \(\[\.\.\._ob\.plans\.values\(\)\]\.some\(p => p\.fromDecided == null\)\) return;/.test(seed), '組みかけを決定の読み戻しで上書きしている');
+        // 組みかけ (決定していない) のあるブロックは読み戻しで上書きしない — ブロックごと (S4 レビュー [6])
+        assert.ok(/const mine = _ob\.plans\.get\(i\);\s*\n\s*if \(mine && mine\.fromDecided == null\) continue;/.test(seed), '組みかけを決定の読み戻しで上書きしている');
     });
     test('★ メンバーの時間割 (S4): 最新の行が決定なら 1 枚 (絞らない) / ✓ = mark_attack_done (planKey・予定の編成・予定のダメージ・駒) / 56 未適用は案内 / 運営は代わりに', () => {
         assert.ok(/decRow = window\.decidePlanDomain \? window\.decidePlanDomain\.currentDecided\(pubRows\) : null;\s*\n\s*if \(decRow\) \{ pub = decRow; pubList = \[\]; pubSel = null; \}/.test(html) && /let pub = null, pubList = \[\], pubRows = \[\], pubSel = null, decRow = null;/.test(html), '決定の行を選んでいない');
@@ -14954,8 +15017,8 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // 1: 押した時点の盤面 (世代の照合つき) で、済んだ凸と指紋を build に渡す
         assert.ok(/const gen = opsStore\.generation\(\);\s*\n\s*let got = null;\s*\n\s*try \{ got = await opsStore\.load\(\); \} catch \(_\) \{ got = null; \}\s*\n\s*if \(got && opsStore\.isCurrentGeneration\(gen \+ 1\)\) snap2 = got;/.test(d), '決定の前に盤面を読み直していない (直前の ✓ を知らずに決める)');
         assert.ok(/if \(!snap2 \|\| Number\(snap2\.season\?\.id\) !== Number\(sid\)\) \{/.test(d) && /const ctx = _obCtx\(snap2\);/.test(d), '読み直せなかったときに止めていない / 古い盤面で組んでいる');
-        assert.ok(/done: _obDoneOf\(snap2\), fpOf: \(i\) => _ob\.plans\.get\(i\)\?\.obPinsFp \?\? _obPinsFp\(rows, blocks, i\) \}\);/.test(d) && /bosses: snap2\.bosses/.test(d), '済んだ凸 / 指紋を build に渡していない');
-        const dn = fn('function _obDoneOf(snap)', 'function _obDropDone(');
+        assert.ok(/newIdxs: fresh, prevPlan: prev \? prev\.plan : null, bosses: snap2\.bosses,/.test(d) && /done: _obDoneOf\(snap2\), fpOf: \(i\) => _obBlockFp\(rows, blocks, i\) \}\);/.test(d), '済んだ凸 / 指紋を build に渡していない / 読み戻したまま触っていないブロックも作り直す (S4 レビュー [2])');
+        const dn = fn('function _obDoneOf(snap)', 'function _obDoneKeys(');
         assert.ok(/if \(a\.plan_key\) keys\.add\(String\(a\.plan_key\)\);/.test(dn) && /const k = `\$\{p\.id\}\|\$\{Number\(a\.level\) \|\| 1\}\|\$\{Number\(a\.boss_number\)\}`;/.test(dn), '済んだ凸の鍵が doneInPrev と違う');
         // 2: _BB_FILL は own プロパティで (定義の 1 か所以外に直の参照が無い)
         assert.ok(/const _bbFill = \(w\) => \(typeof w === 'string' && Object\.prototype\.hasOwnProperty\.call\(_BB_FILL, w\)\) \? _BB_FILL\[w\] : null;/.test(html), '_bbFill が無い');
@@ -14964,11 +15027,24 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(r.includes("${r.decided && Number(r.level) > 0 ? `<span class=\"mt-lv\">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}") && !/\$\{r\.level/.test(r), '見出しのレベルを数にしていない (XSS)');
         // 3: 読み戻しは決定したときの指紋
         const seed = fn('function _obSeedDecided(', '// 済んだ凸 (S4)');
-        assert.ok(/obPinsFp: typeof e\.fp === 'string' \? e\.fp : _obPinsFp\(_ob\.pins, blocks, i\)/.test(seed) && /if \(!e \|\| typeof e !== 'object'\) continue;/.test(seed), '読み戻しの指紋が読み戻した時点の駒 / 壊れた行で落ちる');
+        assert.ok(/obBlockFp: typeof e\.fp === 'string' \? e\.fp : _obBlockFp\(_ob\.pins, blocks, i\)/.test(seed) && /if \(!e \|\| typeof e !== 'object'\) continue;/.test(seed), '読み戻しの指紋が読み戻した時点の駒 / 壊れた行で落ちる');
+        // S4 レビュー [6]: 読み戻しはブロックごと (組みかけのあるブロックだけ残す)・[4] 駒が読めていない間は読み戻さない
+        assert.ok(/if \(mine && mine\.fromDecided == null\) continue;/.test(seed) && !/\[\.\.\._ob\.plans\.values\(\)\]\.some\(p => p\.fromDecided == null\)\) return;/.test(seed), '読み戻しがブロックごとでない (組みかけが 1 つあると全部読み戻さない)');
+        assert.ok(/if \(!row \|\| !dp \|\| _ob\.pins == null \|\| _ob\.pinsErr \|\| _ob\.seededFrom === Number\(row\.id\)\) return;/.test(seed), '駒が読めていない間も読み戻す');
         // 4: 指紋は実行済みの駒を実行前とみなす / 盤の「実行されない駒」から済んだ凸を外す
         assert.ok(/\(r\.status === 'released' && r\.release_reason === 'fulfilled'\) \? \{ \.\.\.r, status: 'pinned' \}/.test(html) && /\(r\.status === 'fulfilled' \? \{ \.\.\.r, status: 'approved' \} : r\)/.test(html), '指紋が ✓ で外れた駒を見て、全部を要組み直しにする');
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
-        assert.ok(/const doneInfo = _obDoneOf\(snap\);\s*\n\s*ov\.forEach\(o => \{ if \(!o\.past && Array\.isArray\(o\.skipped\) && o\.skipped\.length\) o\.skipped = _obDropDone\(o\.skipped, blocks\[o\.idx\], doneInfo\); \}\);/.test(cx), '済んだ凸を「実行されない駒」に出している');
+        // S4 レビュー [5][9]: 済んだ凸は投影の前に組んだ結果から外す (_obStripDone・鍵は _obDoneKeys = plan_key + 数字の報告を決定の凸に過ぎたブロックから消し込んだもの)
+        assert.ok(/const doneKeys = _obDoneKeys\(snap, blocks\);\s*\n\s*const planOf = \(idx, level, cur\) => \{ const p = _ob\.plans\.get\(idx\); return p \? _obStripDone\(p, blocks\[idx\], doneKeys\) : bb\.pinsPlan\(/.test(cx) && !/_obDropDone/.test(html), '済んだ凸を投影の前に外していない');
+        // S4 レビュー [3][4]: 照合は 読み戻したブロック = そのブロックの駒 / 組んだブロック = 拘束全部・駒が読めていない間は照合しない
+        assert.ok(/if \(!_ob\.pinsErr\) for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]/.test(cx) && /const stale = p\.fromDecided != null \? \(p\.obBlockFp \?\? ''\) !== _obBlockFp\(_ob\.pins, blocks, k\) : \(p\.obPinsFp \?\? ''\) !== _obPinsFp\(_ob\.pins, blocks, k\);/.test(cx), '照合の分け方 / 読めないときの照合');
+        const lp = fn('async function _obLoadPins(seasonId)', '// ✅ 決定 (シンプル化 S4): 最新の決定の行を読む');
+        assert.ok(/if \(Array\.isArray\(rows\)\) _ob\.pins = rows;/.test(lp) && !/_ob\.pins = Array\.isArray\(rows\) \? rows : \[\];/.test(lp), '読めなかったときに駒を [] にしている (S4 レビュー [4])');
+        // S4 レビュー [8]: 確認のあとに駒も照合 / [27] 前提は押したときの値 / [25] 相手 0 人は数えない
+        assert.ok(/if \(!Array\.isArray\(rows2\) \|\| fpSig\(rows2\) !== sig0\) \{/.test(d) && /Number\(latest2\?\.id \|\| 0\) !== basis0/.test(d) && /const basis0 = Number\(_ob\.dec\?\.basisId \|\| 0\);/.test(d), '確認のあとの照合');
+        const nd = fn('async function _obNotifyDecide(', '// ブロックの時間の言い方');
+        assert.ok(/if \(!res\?\.skipped\) sent\+\+;/.test(nd), '相手 0 人を「通知しました」に数えている');
+        assert.ok(/if \(_ob\.busy\) return;   \/\/ 決定している最中は前提/.test(html), '決定している最中に取り直しで前提を変える');
         // 6: 代わりの ✓ も、数字で報告済みの人の行を消し込む (全員ぶん)
         assert.ok(/for \(const r of rows\) _myLooseAdd\(loose, identity\.id, r\);\s*\n\s*if \(othersRows\) for \(const r of othersRows\) if \(String\(r\.player_id\) !== String\(identity\.id\)\) _myLooseAdd\(loose, r\.player_id, r\);\s*\n\s*for \(const r of tt\) for \(const e of r\.entries\) \{/.test(r), '数字で報告済みの他の人の行を消し込んでいない');
         // 7: 取り消しで駒が戻らないことを先に言う

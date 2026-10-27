@@ -31,13 +31,14 @@
     function attacksIn(plan, block) {
         const out = [];
         for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
+            if (!lv || typeof lv !== 'object') continue;   // 配信の行は anon で書ける — 壊れた要素で落ちない (S4 レビュー)
             if (lv.infinite) {
-                for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
+                for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) if (b && typeof b === 'object') for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
                     if (a && Number.isInteger(a.hourIdx) && a.hourIdx >= block.fromIdx && a.hourIdx <= block.toIdx) out.push({ ...a, level: 4, bossNumber: Number(b.bossNumber), infinite: true });
                 }
                 continue;
             }
-            for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
+            for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) if (b && typeof b === 'object') for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
                 if (a && Number.isInteger(a.hourIdx) && a.hourIdx >= block.fromIdx && a.hourIdx <= block.toIdx) out.push({ ...a, level: Number(lv.level), bossNumber: Number(b.bossNumber) });
             }
         }
@@ -52,8 +53,23 @@
      *   levelLockInBlock = レベルはブロックの頭でしか変わらない (2026-10-26)。このブロックで踏破したら残りの凸は実行しない (次のレベルは次のブロックから)
      * @returns {{ season, bosses, players, done: Object[], level: number, cleared: number[] }}  done = 実行したことにした凸 / cleared = このブロックで踏破したレベル
      */
-    function projectBoard(board, plan, block, o = {}) {
+    /**
+     * Lv3 を踏破した盤面 (= Lv4・ボス 5 だけ HP 無限) を Lv4 として読む (S4 レビュー [1])。DB は Lv1・2 を踏破すると current_level を上げるが、
+     * Lv3 の踏破は current_level 3 + 5 体とも残り 0 のまま (画面の isLv4LiveBoard と同じ読み方: 5 体そろって残り 0.01% 以下)。ほかの盤面はそのまま返す
+     */
+    function liveBoard(board) {
+        if (!board || !board.season || Number(board.season.current_level) !== 3) return board;
+        const bosses = Array.isArray(board.bosses) ? board.bosses : [];
+        const nums = new Set(bosses.map(b => Number(b && b.boss_number)));
+        if (![1, 2, 3, 4, 5].every(n => nums.has(n))) return board;
+        const dead = bosses.every(b => { const total = Number(b.total_hp_raw) || 0, rem = Number(b.remaining_hp_raw) || 0; return total > 0 ? (rem / total) * 100 <= 0.01 : rem <= 0; });
+        if (!dead) return board;
+        return { ...board, season: { ...board.season, current_level: 4 },
+            bosses: bosses.map(b => { const inf = Number(b.boss_number) === 5; return { ...b, total_hp_raw: (inf ? 1e6 : 0) * 1e9, remaining_hp_raw: (inf ? 1e6 : 0) * 1e9 }; }) };
+    }
+    function projectBoard(board0, plan, block, o = {}) {
         const hpOf = typeof o.hpOf === 'function' ? o.hpOf : () => 0;
+        const board = liveBoard(board0);   // Lv3 を倒した盤面は Lv4 (ボス 5 だけ) として進める
         const season = { ...(board && board.season || {}) };
         let level = Number(season.current_level) || 1;
         const bosses = (board && Array.isArray(board.bosses) ? board.bosses : []).map(b => ({ ...b }));
@@ -127,5 +143,5 @@
         }));
         return 's' + (season.id ?? '') + '|lv' + (Number(season.current_level) || 0) + '|' + hash32(stableJson({ bosses, players }));
     }
-    root.planChainDomain = { HOUR_BASE, hourOfIdx, isoAt, attacksIn, projectBoard, summarize, boardSignature };
+    root.planChainDomain = { HOUR_BASE, hourOfIdx, isoAt, attacksIn, liveBoard, projectBoard, summarize, boardSignature };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -12,7 +12,9 @@
     const pc = () => root.planChainDomain;
     const SLOT_JP = { 1: '①', 2: '②', 3: '③' };
     const keyOf = (b) => `${Number(b.from)}-${Number(b.to)}`;
-    const isDecided = (plan) => !!(plan && plan.decided && Array.isArray(plan.decided.blocks));
+    // 配信の行は anon で書ける — blocks に null などが混ざった行は決定として読まない (画面が落ちる: S4 レビュー [7][13])
+    const isDecided = (plan) => !!(plan && plan.decided && Array.isArray(plan.decided.blocks) && plan.decided.blocks.every(b => b && typeof b === 'object')
+        && (plan.levels == null || Array.isArray(plan.levels)));
 
     /** 配信の行 (id 降順でも昇順でもよい) のうち、決定の行の最新。無ければ null */
     function latestDecided(rows) {
@@ -40,6 +42,13 @@
     /**
      * 前の決定の凸のうち済んだもの (ブロックの鍵 → 凸の配列)。✓ (planKey) を先に・数字の報告は ブロックの順に 人|レベル|ボス の数で消し込む
      */
+    /** 数字の報告の鍵 (人|レベル|ボス)。Lv4 (ボス 5) は Lv3 の鍵も (DB の level が 3 のため) — 先に Lv4 */
+    function looseKeysOf(a) {
+        const lv = Number(a.level) || 1, bn = Number(a.bossNumber);
+        const ks = [`${a.memberId}|${lv}|${bn}`];
+        if (lv >= 4 && bn === 5) ks.push(`${a.memberId}|3|5`);
+        return ks;
+    }
     function doneInPrev(bl, prevBlocks, prevPlan, done) {
         const out = new Map();
         if (!prevPlan || !pc() || !done) return out;
@@ -54,8 +63,10 @@
         }
         for (const b of perBlock) for (const x of b.atks) {
             if (x.done) continue;
-            const lk = `${x.a.memberId}|${Number(x.a.level) || 1}|${Number(x.a.bossNumber)}`;
-            if ((Number(loose.get(lk)) || 0) > 0) { loose.set(lk, Number(loose.get(lk)) - 1); x.done = true; }
+            // Lv4 (ボス 5) の凸の数字の報告は DB の level が 3 (Lv4 の間も current_level は 3: S4 レビュー [10]) → Lv4 の鍵が無ければ Lv3 の鍵でも消し込む
+            for (const lk of looseKeysOf(x.a)) {
+                if ((Number(loose.get(lk)) || 0) > 0) { loose.set(lk, Number(loose.get(lk)) - 1); x.done = true; break; }
+            }
         }
         for (const b of perBlock) out.set(b.key, b.atks.filter(x => x.done).map(x => x.a));
         return out;
@@ -149,7 +160,9 @@
     function flat(plan) {
         const out = [];
         for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
+            if (!lv || typeof lv !== 'object') continue;
             for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
+                if (!b || typeof b !== 'object') continue;
                 for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
                     if (!a || a.memberId == null) continue;
                     out.push({ ...a, level: lv.infinite ? 4 : Number(lv.level), bossNumber: Number(b.bossNumber), bossName: b.name || null, weakness: b.weakness || null });
@@ -216,7 +229,7 @@
         const acked = ackedIds instanceof Set ? ackedIds : null;
         const has = (set, id) => set.has(Number(id)) || set.has(String(id));
         const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
-        const lineOf = (r) => `${r.blockLabel} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`;
+        const lineOf = (r) => `${r.blockLabel} Lv${Number(r.level) >= 4 ? 4 : Number(r.level) || 1} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`;
         const tailOf = (changed, id) => !changed || !acked ? 'ホームの時間割で確認してください'
             : has(acked, id) ? '✅ 確認したあとにプランが変わりました。ホームの時間割で新しい凸を確認してください'
             : 'まだ確認していませんが、プランが変わりました。ホームの時間割で新しい凸を確認してください';
@@ -246,5 +259,5 @@
         return { notices: out, unchanged };
     }
 
-    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, doneInPrev, build, rangeToDecide, planKey, flat, timetable, rowsOf, notices, SLOT_JP };
+    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, rowsOf, notices, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

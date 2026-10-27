@@ -1102,7 +1102,11 @@
             });
                 if (levelCleared) fullyClearedThrough = L;
                 else break;  // このレベルを越えられないので以降は計画しない
-                openIdx = nextLevelOpenIdx(levelClearIdx);   // 次レベルはこのレベルのクリア想定時刻から (🧱 渡されていれば次のブロックの頭から)
+                // 🧱 始まりのレベルが算出の前にもう踏破されていた (Lv3 を倒した盤面 = DB は current_level 3 + 5 体とも 0 のまま) なら、次のレベルはいまから開いている。
+                //   「このブロックで踏破した」として次のブロックの頭まで待たせない (Lv1・2 は DB が current_level を上げるので同じ読み方にそろえる: S4 レビュー [1])。
+                //   levelStartsAtBlock を渡さなければ nextLevelOpenIdx はクリアの時刻 = openIdx を返すので、出力は変わらない
+                const clearedBefore = L === startLevel && levelBosses.every(b => !(b.attacks || []).length);
+                openIdx = clearedBefore ? openIdx : nextLevelOpenIdx(levelClearIdx);   // 次レベルはこのレベルのクリア想定時刻から (🧱 渡されていれば次のブロックの頭から)
                 if (openIdx > LAST_IDX) break;   // 🧱 最後のブロックで踏破した = 次のレベルはこの日には開かない (渡さなければ起きない)
             }
             return { memberState, levels, fullyClearedThrough, openIdx, frontierLevel };

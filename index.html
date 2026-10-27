@@ -18145,7 +18145,7 @@
             if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
             if (typeof renderOpsBuild === 'function') {   // ▶︎ 凸プランを組む: 手で置いた駒も取り直す (別の運営・別の端末で置いた / 外した駒: レビュー)。読み終わると描き直す
                 renderOpsBuild();
-                if (snap.season?.id && _ob.pinsSeason === snap.season.id) _obLoadPins(snap.season.id);
+                if (snap.season?.id && _ob.pinsSeason === snap.season.id) { _obLoadPins(snap.season.id); _obLoadDecided(snap.season.id); }   // 決定も取り直す (S4 レビュー [27])
             }
         }
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
@@ -22650,10 +22650,15 @@
             if (!Array.isArray(blocks) || blocks.length === 0) return players;
             return players.map(p => {
                 if (!p || !p.blockCounts) return p;
+                // ✓ 凸しました の行 (plan_key あり) は鍵の先頭 'from-to' の from 時 (reported_at は ✓ を押した時刻 = 遅れて押すと次のブロックの凸数を食う: S4 レビュー [17])
                 const doneHours = (Array.isArray(p.attacks) ? p.attacks : [])
-                    .map(a => (ac ? ac.hourIdxOfMs(a && a.reported_at) : null))
-                    .filter(i => Number.isInteger(i))
-                    .map(i => (i + 5) % 24);
+                    .map(a => {
+                        const m = /^(\d+)-\d+\|/.exec(typeof a?.plan_key === 'string' ? a.plan_key : '');
+                        if (m) return Number(m[1]) % 24;
+                        const i = ac ? ac.hourIdxOfMs(a && a.reported_at) : null;
+                        return Number.isInteger(i) ? (i + 5) % 24 : null;
+                    })
+                    .filter(h => Number.isInteger(h));
                 const caps = rb.capsOf(p.blockCounts, blocks, doneHours);
                 return caps.length > 0 ? { ...p, blockCaps: caps } : p;
             });
@@ -22748,6 +22753,11 @@
             const cons = rv && rv.toSolverConstraints ? JSON.stringify(rv.toSolverConstraints(rows)) : '';
             return window.blockBuildDomain.pinsFingerprint(pins, blocks, idx) + '#' + cons;
         };
+        // そのブロックの駒だけの指紋 (決定から読み戻したブロックの照合用・decided.blocks[].fp)。後ろのブロックの 📌・約束が変わっても、決定済みのブロックは組み直させない (S4 レビュー [3]・振り回さない)
+        const _obBlockFp = (rows0, blocks, idx) => {
+            const rv = window.reservationsDomain;
+            return window.blockBuildDomain.pinsFingerprint(window.blockBuildDomain.blockPins(_obFpRows(rows0), rv && rv.isFixed ? rv.isFixed : null), blocks, idx);
+        };
         const _obHpOf = (level, tier) => (window.HARD_LEVEL_HP_B && window.HARD_LEVEL_HP_B[level] && window.HARD_LEVEL_HP_B[level][tier]) || 0;
         function _obFirstIdx(season, blocks) {
             const rb = window.raidBlocksDomain;
@@ -22760,7 +22770,8 @@
             let rows = null, err = null;
             try { rows = await window.supabaseLoadReservations(seasonId); } catch (e) { err = e?.message || String(e); }
             if (seq !== _ob.seq || _ob.pinsSeason !== seasonId) return;   // 追い越された / シーズンが変わった
-            _ob.pins = Array.isArray(rows) ? rows : [];
+            // 読めなかったら前の駒を残す ([] にすると、決定・組んだ結果の指紋がずれて全部「要組み直し」になり、読み戻しもされない: S4 レビュー [4])
+            if (Array.isArray(rows)) _ob.pins = rows;
             _ob.pinsErr = Array.isArray(rows) ? null : (err || '凸の予約 (supabase/39・45・54) が未適用のため、手で置けません');
             renderOpsBuild();
         }
@@ -22771,8 +22782,11 @@
             let rows = null, err = null;
             try { rows = await window.supabaseGetPublishedPlans(); } catch (e) { err = e?.message || String(e); }
             if (seq !== _ob.decSeq || _ob.pinsSeason !== seasonId) return;
+            if (_ob.busy) return;   // 決定している最中は前提 (basisId) を変えない — 決定が自分で照合する
             if (!Array.isArray(rows)) { _ob.decErr = err || '配信を読めませんでした'; renderOpsBuild(); return; }
             const row = window.decidePlanDomain.latestDecided(rows.filter(r => Number(r.season_id) === Number(seasonId)));
+            // 前に読んだ決定と違う = 別の運営 (か別の端末) が決定した → 決定のバーで知らせる (S4 レビュー [27])
+            if (_ob.dec && Number(_ob.dec.basisId || 0) !== Number(row ? row.id : 0) && row) _ob.decNote = `${row.published_by_name || '別の運営'} が決定しました (${_obTimeOf(row.published_at)})。読み戻しています`;
             _ob.dec = { row, basisId: row ? Number(row.id) : 0 };
             _ob.decErr = null;
             renderOpsBuild();
@@ -22781,16 +22795,18 @@
         //   この端末で組んだ (決定していない) 結果があれば上書きしない
         function _obSeedDecided(snap, blocks, first) {
             const row = _ob.dec?.row, dp = window.decidePlanDomain;
-            if (!row || !dp || _ob.pins == null || _ob.seededFrom === Number(row.id)) return;
-            if ([..._ob.plans.values()].some(p => p.fromDecided == null)) return;   // 決定していない組みかけがある → 残す
-            _ob.plans.clear(); _ob.stale.clear();
+            if (!row || !dp || _ob.pins == null || _ob.pinsErr || _ob.seededFrom === Number(row.id)) return;   // 駒が読めていない間は読み戻さない (S4 レビュー [4])
+            // 前の決定から読み戻した結果は捨てる (新しい決定から読み直す)。この端末の組みかけ (決定していない) は残す
+            for (const [k, p] of [..._ob.plans]) if (p.fromDecided != null && Number(p.fromDecided) !== Number(row.id)) { _ob.plans.delete(k); _ob.stale.delete(k); }
             for (const e of row.plan.decided.blocks) {
                 if (!e || typeof e !== 'object') continue;
                 const i = blocks.findIndex(b => dp.keyOf(b) === String(e.key));
                 if (i < first || i < 0) continue;
-                // ★ 指紋は決定したときのもの (decided.blocks[].fp)。読み戻した時点の駒で作ると、決定のあとに置かれた / 外された駒を見落とす (S4 引き継ぎ 3)。
-                //   古い決定の行 (fp 無し) だけ、いまの駒で
-                _ob.plans.set(i, { ...row.plan, fromDecided: Number(row.id), obPinsFp: typeof e.fp === 'string' ? e.fp : _obPinsFp(_ob.pins, blocks, i) });
+                const mine = _ob.plans.get(i);
+                if (mine && mine.fromDecided == null) continue;   // ★ ブロックごと: この端末の組みかけがあるブロックだけ残し、ほかは決定から読み戻す (S4 レビュー [6])
+                // ★ 指紋は決定したときの「そのブロックの駒」(decided.blocks[].fp・S4 引き継ぎ 3 / レビュー [3])。古い決定の行 (fp 無し) だけ、いまの駒で
+                _ob.plans.set(i, { ...row.plan, fromDecided: Number(row.id), obBlockFp: typeof e.fp === 'string' ? e.fp : _obBlockFp(_ob.pins, blocks, i) });
+                _ob.stale.delete(i);
             }
             _ob.seededFrom = Number(row.id);
         }
@@ -22803,17 +22819,37 @@
             }
             return { keys, loose };
         }
-        // 済んだ凸を外す (info.loose は消し込むたびに減る = ブロックの順に呼ぶ)
-        function _obDropDone(list, blk, info) {
+        // 済んだ凸の planKey の集まり: ✓ の行の plan_key + 数字の報告 (人|レベル|ボスの数) を決定の凸に過ぎたブロックから順に消し込んだもの (decidePlanDomain.doneInPrev と同じ順)
+        function _obDoneKeys(snap, blocks) {
+            const dp = window.decidePlanDomain, info = _obDoneOf(snap);
+            const out = new Set(info.keys);
+            const row = _ob.dec?.row;
+            if (dp && row && info.loose.size) {
+                for (const [key, list] of dp.doneInPrev(blocks, dp.decidedBlocks(row.plan), row.plan, info)) for (const a of list) out.add(dp.planKey({ ...a, block: key }));
+            }
+            return out;
+        }
+        // 組んだ結果から、そのブロックの済んだ凸を外した写し (S4 レビュー [5]: 投影の前に外す。✓ はダメージ 0・キャラの無い編成だとキャラ被りで飛ばせず、済んだ凸をもう一度実行したことになる)
+        function _obStripDone(plan, blk, done) {
             const dp = window.decidePlanDomain;
-            if (!dp || !blk) return list;
+            if (!plan || !blk || !dp || !(done instanceof Set) || !done.size) return plan;
             const key = dp.keyOf(blk);
-            return list.filter(a => {
-                if (info.keys.has(dp.planKey({ ...a, block: key }))) return false;
-                const lk = `${a.memberId}|${Number(a.level) || 1}|${Number(a.bossNumber)}`;
-                if ((info.loose.get(lk) || 0) > 0) { info.loose.set(lk, info.loose.get(lk) - 1); return false; }
-                return true;
+            let changed = false;
+            const levels = (Array.isArray(plan.levels) ? plan.levels : []).map(lv => {
+                if (!lv || typeof lv !== 'object') return lv;
+                const level = lv.infinite ? 4 : Number(lv.level);
+                return { ...lv, bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).map(b => {
+                    if (!b || typeof b !== 'object' || !Array.isArray(b.attacks)) return b;
+                    const attacks = b.attacks.filter(a => {
+                        if (!a || !Number.isInteger(a.hourIdx) || a.hourIdx < blk.fromIdx || a.hourIdx > blk.toIdx) return true;
+                        if (!done.has(dp.planKey({ ...a, level, bossNumber: Number(b.bossNumber), block: key }))) return true;
+                        changed = true;
+                        return false;
+                    });
+                    return { ...b, attacks };
+                }) };
             });
+            return changed ? { ...plan, levels } : plan;
         }
         // いまの盤面から、ブロックごとの様子・ピース・置いた所をまとめて作る (描画・置く・自動の 3 つが同じものを見る)
         function _obCtx(snap) {
@@ -22825,15 +22861,18 @@
             const pins = bb.blockPins(_ob.pins || [], rv && rv.isFixed ? rv.isFixed : null);   // 📌 手で置いた駒 + 承認済みのブロックの約束 (外せない)
             _obSeedDecided(snap, blocks, first);
             // 自動で組んだあとにそのブロックの駒が変わっていたら (別の端末・取り直し)、その結果と後ろのブロックの結果は古い → 捨てて要組み直し (Codex 監査)
-            for (const k of [..._ob.plans.keys()].sort((a, b) => a - b)) {
+            //   ★ 決定から読み戻したブロックは「そのブロックの駒」だけで照合する (後ろのブロックに 📌 を置いただけで、決定済みのブロックまで要組み直しにしない: S4 レビュー [3])。
+            //   ★ 駒が読めていない間 (pinsErr) は照合しない (読めなかっただけで全部を捨てない: S4 レビュー [4])
+            if (!_ob.pinsErr) for (const k of [..._ob.plans.keys()].sort((a, b) => a - b)) {
                 if (!_ob.plans.has(k)) continue;
-                if ((_ob.plans.get(k).obPinsFp ?? '') !== _obPinsFp(_ob.pins, blocks, k)) { _obAfterChange(k); _ob.stale.add(k); }
+                const p = _ob.plans.get(k);
+                const stale = p.fromDecided != null ? (p.obBlockFp ?? '') !== _obBlockFp(_ob.pins, blocks, k) : (p.obPinsFp ?? '') !== _obPinsFp(_ob.pins, blocks, k);
+                if (stale) { _obAfterChange(k); _ob.stale.add(k); }
             }
-            const planOf = (idx, level, cur) => _ob.plans.get(idx) || bb.pinsPlan(pins, blocks[idx], level, cur.bosses, cur.players);
+            // ✓ / 数字の報告で済んだ凸は、組んだ結果から投影の前に外す (始まりの盤面にもう入っている = 二重に数えない・「実行されない駒」にも出さない: S4 レビュー [5][9])
+            const doneKeys = _obDoneKeys(snap, blocks);
+            const planOf = (idx, level, cur) => { const p = _ob.plans.get(idx); return p ? _obStripDone(p, blocks[idx], doneKeys) : bb.pinsPlan(pins, blocks[idx], level, cur.bosses, cur.players); };
             const ov = bb.overview({ board: { season: snap.season, bosses: snap.bosses, players: snap.players }, blocks, first, planOf, hpOf: _obHpOf });
-            // ✓ / 数字の報告で済んだ凸は「実行されない駒」に出さない (済んでキャラ・凸数が使われたので飛ばされるだけ: S4 引き継ぎ 4)
-            const doneInfo = _obDoneOf(snap);
-            ov.forEach(o => { if (!o.past && Array.isArray(o.skipped) && o.skipped.length) o.skipped = _obDropDone(o.skipped, blocks[o.idx], doneInfo); });
             const weakOf = new Map((snap.bosses || []).map(b => [Number(b.boss_number), b.weakness]));
             // 置いた = 実行される凸 (rows の pieces) + 駒 (📌・約束は DB でカードと残り凸を押さえる)。実行されない自動の凸 (skipped) は数えない (Codex 監査)
             const placed = new Map(), pinMap = new Map();
@@ -22862,7 +22901,8 @@
                 _obLoadDecided(snap.season.id);
             } else {
                 if ((_ob.pinsErr || _ob.pins == null) && Date.now() - _ob.pinsTriedAt > 15000) _obLoadPins(snap.season.id);   // 読めなかった → 15 秒おきに取り直す (一度の通信の失敗で手で置けないままにしない: レビュー)
-                if ((_ob.decErr || _ob.dec == null) && Date.now() - _ob.decTriedAt > 15000) _obLoadDecided(snap.season.id);
+                // 決定は 30 秒おきにも取り直す (別の運営の決定を知る: S4 レビュー [27])。読めなかったときは 15 秒おき
+                if (!_ob.busy && Date.now() - _ob.decTriedAt > ((_ob.decErr || _ob.dec == null) ? 15000 : 30000)) _obLoadDecided(snap.season.id);
             }
             const ctx = _obCtx(snap);
             if (!ctx) { host.innerHTML = '<p class="ob-note" style="color:var(--bad);">凸プランを組む機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
@@ -22921,16 +22961,20 @@
             // ④ 決定: いまのブロックから、組めたブロックが続くところまで
             const range = window.decidePlanDomain.rangeToDecide({ first: ctx.first, count: blocks.length, built: (i) => _ob.plans.has(i) && !_ob.stale.has(i) });
             const decRow = _ob.dec?.row || null;
-            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b.name || b.label).filter(Boolean) : [];
+            // 決めるのは組み直したブロックだけ (決定から読み戻したまま触っていないブロックは前の決定のまま写す: S4 レビュー [2])
+            const fresh = _obFreshOf(range, decRow);
+            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b && (b.name || b.label)).filter(Boolean) : [];
             const decState = _ob.decErr ? `<span style="color:var(--bad);">決定を読めませんでした (${escapeHtml(_ob.decErr)})</span>`
                 : (_ob.dec == null ? '決定を読み込んでいます…'
                 : (decRow ? `決定済み: <b>${escapeHtml(decNames.join('・') || 'なし')}</b>${decRow.published_by_name ? ` (${escapeHtml(decRow.published_by_name)}` : ' ('}${decRow.published_at ? ` ${escapeHtml(_obTimeOf(decRow.published_at))}` : ''})` : 'まだ決定していません'));
-            const decideBtn = range.length
-                ? `<button type="button" class="ob-decide-btn" onclick="_obDecide()"${_ob.busy || _ob.dec == null ? ' disabled' : ''}>✅ ${escapeHtml(blocks[range[0]].name)}${range.length > 1 ? '〜' + escapeHtml(blocks[range[range.length - 1]].name) : ''} を決定してメンバーに配信</button>`
+            const decideBtn = fresh.length
+                ? `<button type="button" class="ob-decide-btn" onclick="_obDecide()"${_ob.busy || _ob.dec == null ? ' disabled' : ''}>✅ ${fresh.map(i => escapeHtml(blocks[i].name)).join('・')} を決定してメンバーに配信</button>`
                 : `<button type="button" class="ob-decide-btn" disabled>✅ 決定</button>`;
-            const decideHint = range.length ? '決定すると、メンバーのホームの時間割に出て、割当のある人に通知が届きます'
-                : `いまのブロック (${escapeHtml(blocks[ctx.first]?.name || '')}) を「残りを自動で組む」で組むと決定できます`;
-            const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div><p class="ob-note">${decideHint}</p></div>`;
+            const decideHint = fresh.length ? '決定すると、メンバーのホームの時間割に出て、割当のある人に通知が届きます'
+                : (range.length ? '決定のあと組み直したブロックはありません (組み直すと決定し直せます)'
+                : `いまのブロック (${escapeHtml(blocks[ctx.first]?.name || '')}) を「残りを自動で組む」で組むと決定できます`);
+            const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
+            const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${decNote}<p class="ob-note">${decideHint}</p></div>`;
             host.innerHTML = `<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${decideHtml}
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.name)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
@@ -22942,6 +22986,11 @@
                             <div class="ob-tray-list">${trayHtml}</div></div></div>
                 </div>`;
             _obDelegate(host);
+        }
+        // 範囲のうち、今回決めるブロック = 決定から読み戻したまま (前の決定と同じ) でないもの
+        function _obFreshOf(range, prevRow) {
+            const prevId = Number(prevRow?.id || 0);
+            return (Array.isArray(range) ? range : []).filter(i => { const p = _ob.plans.get(i); return !(p && p.fromDecided != null && prevId && Number(p.fromDecided) === prevId); });
         }
         const _obTimeOf = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
         // ✅ 決定 (シンプル化 S4): いまのブロックから組めたブロックまでを 1 つの配信 (published_plans の 1 行・plan.decided) にする。
@@ -22965,11 +23014,15 @@
                 const latest = dp.latestDecided(pubs.filter(r => Number(r.season_id) === Number(sid)));
                 if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0)) {
                     _ob.dec = { row: latest, basisId: latest ? Number(latest.id) : 0 };
-                    alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせました。必要なら組み直してから、もう一度決定してください。');
-                    _ob.seededFrom = null;
-                    for (const [k, p] of [..._ob.plans]) if (p.fromDecided != null) _ob.plans.delete(k);   // 古い決定から読み戻した結果は捨てる (この端末の組みかけは残す)
+                    _ob.seededFrom = null;   // 次の描画でブロックごとに読み戻す (この端末の組みかけのあるブロックは残す)
+                    const keepMine = [..._ob.plans].filter(([, p]) => p.fromDecided == null).map(([k]) => k).sort((a, b) => a - b);
+                    const names = window.raidBlocksDomain ? keepMine.map(i => window.raidBlocksDomain.blocksOfSeason(snap.season)[i]?.name).filter(Boolean) : [];
+                    alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。'
+                        + (names.length ? `\nただし、あなたが組みかけていた ${names.join('・')} はそのまま残しています (このまま決定すると、相手の決定のそのブロックを置き換えます)。` : '')
+                        + '\n\n確かめてから、もう一度決定してください。');
                     return;
                 }
+                const basis0 = Number(_ob.dec?.basisId || 0);   // この前提で組む (待っている間に取り直しで変わっても、照合はこの値で: S4 レビュー [27])
                 // ★ 盤面 (済んだ凸) も押した時点のものに: 直前の ✓ / 報告を知らずに決めると、その凸が決定から消えて「外れました」が飛ぶ (S4 引き継ぎ 1)。
                 //   読み直しの間に別の読み直しが走ったら古い写し → 1 回だけやり直し、それでも動いていれば止める (9b と同じ)
                 let snap2 = null;
@@ -22987,30 +23040,45 @@
                 const range = dp.rangeToDecide({ first, count: blocks.length, built: (i) => _ob.plans.has(i) && !_ob.stale.has(i) });
                 if (!range.length) { showNotification(`いまのブロック (${blocks[first]?.name || ''}) を組んでから決定してください (駒が変わって組み直しが要るかもしれません)`); return; }
                 const prev = _ob.dec?.row || null;
-                // done = 済んだ凸 (組み直したブロックでも前の決定の済んだ凸を残す)・fpOf = 組んだときの駒の指紋 (読み戻しで使う)
-                const plan = dp.build({ blocks, ov, newIdxs: range, prevPlan: prev ? prev.plan : null, bosses: snap2.bosses, at: new Date().toISOString(),
-                    done: _obDoneOf(snap2), fpOf: (i) => _ob.plans.get(i)?.obPinsFp ?? _obPinsFp(rows, blocks, i) });
+                // ★ 決めるのは組み直したブロックだけ。決定から読み戻したまま触っていないブロックは前の決定のまま写す (いまの盤面で作り直すとレベルの付け替え・外れが黙って起きる: S4 レビュー [2])
+                const fresh = _obFreshOf(range, prev);
+                if (!fresh.length) { showNotification('決定のあと組み直したブロックがありません (組み直すと決定し直せます)'); return; }
+                // 確認のあとに駒が変わっていないかを見る印 (組んだ結果の照合と同じ: 読み戻したブロックはそのブロックの駒・組んだブロックは拘束全部: S4 レビュー [8])
+                const fpSig = (rs) => range.map(i => { const p = _ob.plans.get(i); return (p && p.fromDecided != null) ? _obBlockFp(rs, blocks, i) : _obPinsFp(rs, blocks, i); }).join('\n');
+                const sig0 = fpSig(rows);
+                // done = 済んだ凸 (組み直したブロックでも前の決定の済んだ凸を残す)・fpOf = 決定したときのそのブロックの駒の指紋 (読み戻しの照合に使う)
+                const plan = dp.build({ blocks, ov, newIdxs: fresh, prevPlan: prev ? prev.plan : null, bosses: snap2.bosses, at: new Date().toISOString(),
+                    done: _obDoneOf(snap2), fpOf: (i) => _obBlockFp(rows, blocks, i) });
                 plan.seasonId = sid;
-                const keptLater = plan.decided.blocks.filter(b => b.kept && b.idx > range[range.length - 1]);
+                const kept = plan.decided.blocks.filter(b => b.kept && b.idx >= first);
+                const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
-                const msg = `${range.map(i => blocks[i].name).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
-                    + (keptLater.length ? `\n\n${keptLater.map(b => b.name).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
+                const msg = `${fresh.map(i => blocks[i].name).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
+                    + (replaced.length ? `\n\n${replaced.map(i => blocks[i].name).join('・')} は前の決定 (${prev.published_by_name || '運営'} ${_obTimeOf(prev.published_at)}) を、いま組んだ結果で置き換えます。` : '')
+                    + (kept.length ? `\n\n${kept.map(b => b.name).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
                     + '\n\n割当のある人のホームの時間割に出て、変わった人に通知が届きます。';
                 if (!confirm(msg)) return;
                 if (!_obSame(epoch, sid)) return;
-                // 2. 確認の間に別の運営が決定していないか、もう一度
-                let pubs2 = null;
-                try { pubs2 = await window.supabaseGetPublishedPlans(); } catch (_) { pubs2 = null; }
+                // 2. 確認の間に別の運営が決定していないか・駒が変わっていないか、もう一度
+                let pubs2 = null, rows2 = null;
+                try { [pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)]); } catch (_) { /* 下で止める */ }
                 if (!_obSame(epoch, sid)) return;
                 const latest2 = Array.isArray(pubs2) ? dp.latestDecided(pubs2.filter(r => Number(r.season_id) === Number(sid))) : undefined;
-                if (latest2 === undefined || Number(latest2?.id || 0) !== Number(_ob.dec?.basisId || 0)) { alert('⚠️ 確認している間に別の運営が決定したか、配信を読めませんでした。もう一度お試しください'); _ob.dec = null; _ob.decTriedAt = 0; return; }
+                if (latest2 === undefined || Number(latest2?.id || 0) !== basis0) { alert('⚠️ 確認している間に別の運営が決定したか、配信を読めませんでした。もう一度お試しください'); _ob.dec = null; _ob.decTriedAt = 0; return; }
+                if (!Array.isArray(rows2) || fpSig(rows2) !== sig0) {
+                    if (Array.isArray(rows2)) { _ob.pins = rows2; _ob.pinsErr = null; }
+                    alert('⚠️ 確認している間に駒 (📌・予約) が変わったか、読めませんでした。組み直しが要るか確かめてから、もう一度決定してください');
+                    return;
+                }
                 const me = getCurrentIdentity();
                 const pub = await window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan));
                 if (!pub?.id) throw new Error('配信の行を作れませんでした');
                 window.supabaseLogActivity?.('ops', `✅ ${range.map(i => blocks[i].name).join('・')} を決定しました (${n} 凸)`);
                 if (_obSame(epoch, sid)) {
                     _ob.dec = { row: { id: pub.id, season_id: sid, plan, published_at: pub.published_at || new Date().toISOString(), published_by_name: me?.name || null }, basisId: Number(pub.id) };
-                    for (const i of range) { const p = _ob.plans.get(i); if (p) p.fromDecided = Number(pub.id); }
+                    // 決めた・写したブロックは、この決定から読み戻したものとして扱う (照合はそのブロックの駒: 決定したときの指紋)
+                    for (const i of range) { const p = _ob.plans.get(i); if (p) { p.fromDecided = Number(pub.id); p.obBlockFp = _obBlockFp(rows, blocks, i); } }
+                    _ob.decNote = null;
                     _ob.seededFrom = Number(pub.id);
                 }
                 showNotification(`✅ ${range.map(i => blocks[i].name).join('・')} を決定しました`);
@@ -23052,10 +23120,10 @@
                 if (st === 'done') continue;                   // この決定の通知はもう送ってある
                 if (st !== 'claimed') { failed++; continue; }  // 確保できない (誰かが送信中 / 一時的なエラー) → 黙って捨てず、送れなかった数に入れる (S4 引き継ぎ 9)
                 try {
-                    await window.sendPushNotification({ title: n.title, body: n.body, url: './?tab=mypage&focus=plan', playerIds: [n.memberId], ignoreAvailability: !!n.changed },
+                    const res = await window.sendPushNotification({ title: n.title, body: n.body, url: './?tab=mypage&focus=plan', playerIds: [n.memberId], ignoreAvailability: !!n.changed },
                         { senderPlayerId: me?.id || null });
                     await window.supabaseMarkRaidNoticeSent?.(seasonId, 'decide', ref);
-                    sent++;
+                    if (!res?.skipped) sent++;   // 相手 0 人 (テスト回の方針で外れた) は「通知しました」に数えない (S4 レビュー [25]・ブロックの配信の通知と同じ)
                 } catch (e) {
                     failed++;
                     console.warn('[decide] 通知に失敗:', e?.message || e);
