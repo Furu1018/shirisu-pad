@@ -2642,12 +2642,13 @@ window.supabaseRestoreAllData = async function (dump, onProgress) {
     const inDump = ([name]) => Array.isArray(dump.tables[name]);
 
     // 0) ★ 予約の履歴 (plan_reservation_events・39) は append-only のトリガーで消せない (シーズンを消したときの CASCADE でも)。
-    //    1 行でもあると、ほかの表を消したあとの削除の途中で必ず止まり、凸・配信などが空のまま残る — 何も消す前に止める
-    //    (2026-10-27 の検証で見つかった 39 からの既存の不具合。画面から復元できるようにするのは別の作業)
+    //    1 行でもあると、ほかの表を消したあとの削除の途中で必ず止まり、凸・配信などが空のまま残る。空の DB へ戻しても、予約の投入で作成の履歴が積まれてダンプの履歴とぶつかる。
+    //    → 39 の表がある DB では、件数によらず何も消す前に止める (件数で決めると、数えてから消すまでの間に別の端末の予約操作で履歴が増え、消してから止まる: Codex 監査 3 回目)。
+    //    (2026-10-27 の検証で見つかった 39 からの既存の不具合。画面から復元できるようにするのは別の作業 = 確認・削除・投入を 1 つのサーバ側トランザクションに)
     {
-        const { count, error } = await supabase.from('plan_reservation_events').select('id', { count: 'exact', head: true });
+        const { error } = await supabase.from('plan_reservation_events').select('id', { head: true });
         if (error && !_isMissingTableErr(error, 'plan_reservation_events')) throw new Error(`復元の前の確認に失敗しました (何も消していません): ${error.message}`);
-        if (!error && (count || 0) > 0) {
+        if (!error) {
             throw new Error('予約の履歴 (plan_reservation_events) は消せない作りのため、いまは画面から復元できません。何も消していません。\n'
                 + '復元が必要なときは SQL Editor での作業になります (開発側に相談してください)');
         }

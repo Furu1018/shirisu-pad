@@ -668,16 +668,23 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
 });
 // ★ 2026-10-07: 通知の宛先は js/domain/notifyPolicy.js が決め、送る関数 (sendPushNotification) が必ず通す。
 //   本物の関数を偽のサーバ相手に動かして、**実際に誰へ送ったか** (Edge Function に渡した playerIds) を見る
-test('本物のクライアント: 復元 — 予約の履歴 (append-only) があると、何も消す前に止める (39 からの既存の不具合で、消してから止まっていた)', async () => {
-    const T = DB();
-    if (!T.plan_reservation_events.length) {   // 履歴が無ければ 1 件作る (予約を作ると履歴が積まれる)
+test('本物のクライアント: 復元 — 予約の履歴の表 (39・append-only) がある DB では、件数によらず何も消す前に止める (39 からの既存の不具合で、消してから止まっていた)', async () => {
+    const dump = { tables: { players: [], seasons: [], attacks: [], published_plans: [], plan_acks: [], plan_reservations: [], plan_reservation_events: [], member_devices: [] } };
+    const counts = () => Object.fromEntries(Object.entries(DB()).map(([k, v]) => [k, v.length]));
+    // 履歴が 0 行でも止める (数えてから消すまでの間に履歴が増える競合を残さない: Codex 監査 3 回目)
+    const saved = DB().plan_reservation_events.splice(0);
+    try {
+        const before = counts();
+        await assert.rejects(() => W.supabaseRestoreAllData(dump), /予約の履歴 \(plan_reservation_events\) は消せない作りのため、いまは画面から復元できません。何も消していません/);
+        assert.deepEqual(counts(), before, '履歴 0 行のときに何かを消した');
+    } finally { DB().plan_reservation_events.push(...saved); }
+    if (!DB().plan_reservation_events.length) {   // 履歴が無ければ 1 件作る (予約を作ると履歴が積まれる)
         await W.supabaseCreateReservation({ seasonId: IDS.season, playerId: IDS.me, bossNumber: 1, loadoutSlot: 1, timeMode: 'fixed', timeSlot: 'h21', requestedBy: ME_NAME });
     }
-    assert.ok(T.plan_reservation_events.length > 0);
-    const before = Object.fromEntries(Object.entries(T).map(([k, v]) => [k, v.length]));
-    const dump = { tables: { players: [], seasons: [], attacks: [], published_plans: [], plan_acks: [], plan_reservations: [], plan_reservation_events: [], member_devices: [] } };
-    await assert.rejects(() => W.supabaseRestoreAllData(dump), /予約の履歴 \(plan_reservation_events\) は消せない作りのため、いまは画面から復元できません。何も消していません/);
-    assert.deepEqual(Object.fromEntries(Object.entries(DB()).map(([k, v]) => [k, v.length])), before, '止める前に何かを消した');
+    assert.ok(DB().plan_reservation_events.length > 0);
+    const before = counts();
+    await assert.rejects(() => W.supabaseRestoreAllData(dump), /何も消していません/);
+    assert.deepEqual(counts(), before, '止める前に何かを消した');
 });
 test('本物のクライアント: 撃破の通知の宛先 — ブロックごとに効いている配信を全部見る (1 日ぶんの朝の担当 + 夜のぶんの担当 / 夜の行に入っている朝の予想は見ない) 🧱 段階 7', async () => {
     const S = IDS.season, A = IDS.firstMember + 1, B = IDS.firstMember + 2, C = IDS.firstMember + 3, D = IDS.firstMember + 4;

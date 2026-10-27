@@ -15040,8 +15040,9 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // 従来の配信が決定とぶつかったら決定の案内 / 復元は予約の履歴があれば何も消す前に止める
         assert.ok(/if \(\/「決定」で配信しています\/\.test\(String\(e\?\.message \|\| ''\)\)\) alert\(_DECIDED_LEGACY_MSG\);/.test(html), '従来の配信がトリガーで拒まれたときに決定の案内を出さない');
         const rs = (cl.match(/window\.supabaseRestoreAllData = async function[\s\S]*?\n\};/) || [''])[0];
-        assert.ok(rs.indexOf("from('plan_reservation_events').select('id', { count: 'exact', head: true })") > 0
-            && rs.indexOf("from('plan_reservation_events').select('id', { count: 'exact', head: true })") < rs.indexOf('const targets = _RESTORE_TABLES.filter(inDump);'), '復元が予約の履歴を確かめる前に消し始める');
+        assert.ok(rs.indexOf("from('plan_reservation_events').select('id', { head: true })") > 0
+            && rs.indexOf("from('plan_reservation_events').select('id', { head: true })") < rs.indexOf('const targets = _RESTORE_TABLES.filter(inDump);'), '復元が予約の履歴を確かめる前に消し始める');
+        assert.ok(/\n\s*if \(!error\) \{\s*\n\s*throw new Error\('予約の履歴 \(plan_reservation_events\) は消せない作りのため/.test(rs) && !/count/.test(rs.slice(0, rs.indexOf('const targets'))), '復元の安全策を件数で決めている (数えてから消すまでの間に履歴が増える)');
         const c99 = _fsA.readFileSync('supabase/99_check_applied.sql', 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/to_regprocedure\('public\.restore_insert_published_plans\(jsonb\)'\) IS NOT NULL/.test(c99) && /tgname = 'trg_published_plans_no_legacy_after_decision'\s*\n\s*AND tgrelid = to_regclass\('public\.published_plans'\) AND tgenabled IN \('O', 'A'\)/.test(c99)
             && /tgname = 'trg_published_plans_no_rewrite'\s*\n\s*AND tgrelid = to_regclass\('public\.published_plans'\) AND tgenabled IN \('O', 'A'\)/.test(c99), '99: published_plans の有効なトリガーを見ていない');
