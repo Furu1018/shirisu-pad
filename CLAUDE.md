@@ -678,6 +678,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   未再実行だと復元後の配信・締め凸依頼・監査ログの INSERT が採番衝突で失敗し得る)。
   バックアップ対象 (`_BACKUP_TABLES`) と復元順 (`_RESTORE_TABLES`) は **supabase/ の全テーブルと一致**させる —
   `tests/run-tests.mjs` の「バックアップ整合」が突き合わせる (新テーブルを作ったら両方に追加)。
+  ★★ **いまの復元は、予約の履歴 (`plan_reservation_events`・39 の append-only トリガー) が 1 行でもあると使えない** (2026-10-27 の検証で発覚・39 = 2026-09-07 からの既存の不具合):
+  削除を子 → 親の順に 1 表ずつ送るので、ほかの 18 表を消したあとに履歴の削除 (シーズンの CASCADE でも) で必ず止まり、凸・配信などが空のまま残っていた。
+  また空の DB へ戻すと、予約の投入で作成の履歴トリガーが id 1.. を作り、ダンプの履歴と衝突する。**いまは何も消す前に止める安全策だけ**入れてある
+  (`supabaseRestoreAllData` の 0)。直すなら「印を立てた RPC で 削除 (1 トランザクション) と 予約・履歴の投入 を行い、append-only と作成の履歴トリガーは印があれば通す」(未着手・ROADMAP)。
   テスト終了 (🧪 ✕ 終了) は `33_nikke_test_origin.sql` でテスト中の自動学習にタグを付け、
   確認モーダル (`supabasePreviewTestSeasonEnd` → `js/domain/testSeason.js` で分類) で運営が選んだ行だけ削除する。
   **未指定なら何も消さない** (旧「スナップショット差分を全削除」はテスト中の正規登録を巻き込んだため廃止)。
@@ -1355,8 +1359,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   決定し直しても**済んだ凸は残す** (✓ の plan_key / 数字の報告は 人|レベル|ボス の数で過ぎたブロックから消し込む・Lv4 は Lv3 の鍵でも = `doneInPrev` / `looseKeysOf`)。押した時点の DB で 駒・決定・盤面 (世代の照合) を読み直し、
   別の運営の決定なら止める (読み戻しはブロックごと・この端末の組みかけは残す)。確認のあとに 決定の id (押したときの `basis0`) と 駒の指紋 をもう一度照合する。
   ★ **入れるのは RPC `publish_decided_plan`** (`supabasePublishDecidedPlan`・56): シーズンごとの advisory lock (`'publish:' || season_id`) の下で「いまの最新の決定 = basis0」を照合してから insert。違えば CONFLICT「別の運営が先に決定しました」(通知の前に止める)・56 未適用は NO_RPC で止める
-  (クライアントだけの照合では、2 人が同時に押すと両方入って両方が通知していた: Codex 監査 A)。決定の行の形は DB の `published_plan_decided_ok` = `isDecided` (ブロック 1 つ以上・鍵 'from-to'・levels は配列か null) — 食い違うと以後の決定が CONFLICT で止まり続ける。
-  トリガー `trg_published_plans_no_legacy_after_decision` が**決定より後 (id が大きい) の従来の配信**を同じ鍵で拒む (画面の `_seasonHasDecision` だけでは古い端末・同時押しを止められない: Codex 監査 B)。id で前後を見るのはバックアップの復元が id 順とは限らないため。
+  (クライアントだけの照合では、2 人が同時に押すと両方入って両方が通知していた: Codex 監査 A)。決定の行の形は DB の `published_plan_decided_ok` = `isDecided` (ブロック 1 つ以上・鍵は 'from-to' の**文字列**・levels は配列か null) — 食い違うと以後の決定が CONFLICT で止まり続ける。
+  入れた決定がシーズンでいちばん大きい id でなければ止める (採番が遅れていると画面に出ないのに通知だけ飛ぶ — 復元のあとの `restore_fix_sequences` 抜け)。
+  トリガー `trg_published_plans_no_legacy_after_decision`: ① **決定の行は RPC の中からだけ** (RPC がトランザクションの中だけの印 `pad.published_plans_via` = 'decide' を立てる・素の insert は照合とロックを迂回するので拒む: Codex 再監査 B) /
+  ② **決定より後 (id が大きい) の従来の配信**を同じ鍵で拒む (画面の `_seasonHasDecision` だけでは古い端末・同時押しを止められない: Codex 監査 B。id で前後を見るのは読む側が id 最大を最新とするため) / ③ 復元 (印 'restore') は形だけ見て通す。
+  `trg_published_plans_no_rewrite` が配信の中身 (id・シーズン・plan) の UPDATE を拒む (書き換えるのは凍結 frozen_at / frozen_by だけ)。復元は RPC `restore_insert_published_plans` (`supabaseRestoreAllData` が published_plans だけこれで戻す・56 未適用 = PGRST202 なら素の insert)。
+  ★ SQL 56 は **PGlite (WASM の Postgres) で 01〜56 を流して動かして確かめた** (2026-10-27・スクラッチの test-56.mjs: 照合・形・素の insert・書き換え・復元の口・採番の遅れ・✓ の守れなくなる予約・99。リポジトリには入れていない = npm の依存を増やさない)。
   通知は人ごとに 1 通 (`notices`: 決まりました / 変わりました (✅ の有無で文を分ける) / 外れました・変わらない人には送らない・行にレベル)。鍵は `decide|人|p<決定の id>|sig`・確保できない人は「送れなかった」に数え、相手 0 人は数えない。
   ✅ は「通知の対象でない、前の決定を ✅ した人」全員に引き継ぐ。最初の決定では、決めたブロックに従来の配信で割当があったのに決定に居ない人にも「外れました」。
   ★ **決定から読み戻したブロックの照合は「そのブロックの駒」だけ** (`_obBlockFp`・decided.blocks[].fp) — 後ろのブロックに 📌 を置いただけで決定済みを要組み直しにしない (振り回さない)。組んだ (自動の) ブロックは従来どおり拘束全部 (`_obPinsFp`)。

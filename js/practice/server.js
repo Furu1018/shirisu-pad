@@ -208,10 +208,11 @@ export function createPracticeClient(opts = {}) {
     // ---- 行の書き込み (1 文ぶん)。失敗したら呼び出し側の tx が全体を巻き戻す ----
     // 56 published_plan_decided_ok の写し (= js/domain/decidePlan.js の isDecided と同じ形)。hasDecidedKey は SQL の plan ? 'decided'
     const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
-    const hasDecidedKey = (p) => isObj(p) && Object.prototype.hasOwnProperty.call(p, 'decided');
+    //   jsonb の ? はオブジェクトなら鍵・配列なら文字列の要素・文字列ならその値を見る
+    const hasDecidedKey = (p) => Array.isArray(p) ? p.some(x => x === 'decided') : isObj(p) ? Object.prototype.hasOwnProperty.call(p, 'decided') : p === 'decided';
     const decidedOk = (p) => isObj(p) && isObj(p.decided) && Array.isArray(p.decided.blocks) && p.decided.blocks.length > 0
         && (!Object.prototype.hasOwnProperty.call(p, 'levels') || p.levels === null || Array.isArray(p.levels))
-        && p.decided.blocks.every(b => isObj(b) && /^[0-9]{1,2}-[0-9]{1,2}$/.test(b.key == null ? '' : String(b.key)));
+        && p.decided.blocks.every(b => isObj(b) && typeof b.key === 'string' && /^[0-9]{1,2}-[0-9]{1,2}$/.test(b.key));   // b ->> 'key' は文字列以外を '5-8' にしない
     function insertRow(table, values, ctx = {}) {
         if (!SCHEMA[table]) throw new PgError('PGRST205', `Could not find the table 'public.${table}' in the schema cache`);
         const row = withDefaults(table, values);
@@ -219,10 +220,13 @@ export function createPracticeClient(opts = {}) {
             if (row[c] == null) throw new PgError('23502', `null value in column "${c}" of relation "${table}" violates not-null constraint`);
         }
         if (table === 'plan_reservations') resvBefore('insert', row, null, { rpc: !!ctx.rpc, setCols: Object.keys(row) });
-        // 56 trg_published_plans_no_legacy_after_decision: 決定の行は形を確かめる / 決定より後 (id が大きい) に従来の配信を入れさせない
+        // 56 trg_published_plans_no_legacy_after_decision: 決定の行は形を確かめ、publish_decided_plan からだけ (ctx.via) / 決定より後 (id が大きい) に従来の配信を入れさせない
+        //   (本番の復元の口 restore_insert_published_plans は練習では使わない)
         if (table === 'published_plans') {
-            if (hasDecidedKey(row.plan)) { if (!decidedOk(row.plan)) throw check('決定の中身がありません'); }
-            else if (T.published_plans.some(r => eqv(r.season_id, row.season_id) && hasDecidedKey(r.plan) && Number(r.id) < Number(row.id))) {
+            if (hasDecidedKey(row.plan)) {
+                if (!decidedOk(row.plan)) throw check('決定の中身がありません');
+                if (ctx.via !== 'decide') throw check('決定は publish_decided_plan で配信してください (直接は入れられません)');
+            } else if (T.published_plans.some(r => eqv(r.season_id, row.season_id) && hasDecidedKey(r.plan) && Number(r.id) < Number(row.id))) {
                 throw check('このシーズンは「決定」で配信しています (従来の配信は使えません)');
             }
         }
@@ -240,6 +244,10 @@ export function createPracticeClient(opts = {}) {
         for (const [k, v] of Object.entries(patch || {})) if (v !== undefined) NEW[k] = clone(v);
         if (sc.touch && !(patch && sc.touch in patch)) NEW[sc.touch] = nowIso();
         if (table === 'plan_reservations') resvBefore('update', NEW, row, { rpc: !!ctx.rpc, setCols: Object.keys(patch || {}) });
+        // 56 trg_published_plans_no_rewrite: 配信の中身 (id・シーズン・plan) は書き換えさせない (凍結 frozen_at / frozen_by だけ)
+        if (table === 'published_plans' && (!eqv(NEW.id, row.id) || !eqv(NEW.season_id, row.season_id) || JSON.stringify(NEW.plan) !== JSON.stringify(row.plan))) {
+            throw check('配信の中身は書き換えられません (凍結と解除だけ)');
+        }
         assertUnique(table, NEW, row);
         Object.assign(row, NEW);
         return row;
@@ -513,7 +521,8 @@ export function createPracticeClient(opts = {}) {
         // 56: ✓ 凸しました = ダメージ 0 の行 (HP は動かさない)。同じ凸 (plan_key) は 1 行だけ。駒は 📌 → released / 約束 → fulfilled
         mark_attack_done(a) {
             const seasonId = a.p_season_id, playerId = a.p_player_id, resId = a.p_reservation_id ?? null;
-            if (!['tap', 'ops_tap'].includes(a.p_source ?? 'tap')) throw check('✓ の種類が不正です');
+            const source = a.p_source === undefined ? 'tap' : a.p_source;   // SQL の DEFAULT 'tap' は省いたときだけ (明示の null は拒む)
+            if (!['tap', 'ops_tap'].includes(source)) throw check('✓ の種類が不正です');
             if (!a.p_plan_key) throw check('どの凸の ✓ か分かりません');
             if (!(Number(a.p_boss_number) >= 1 && Number(a.p_boss_number) <= 5)) throw check('ボスの番号が不正です');
             const dup = T.attacks.find(x => eqv(x.season_id, seasonId) && eqv(x.player_id, playerId) && x.attack_date === a.p_attack_date && x.plan_key === a.p_plan_key);
@@ -535,7 +544,7 @@ export function createPracticeClient(opts = {}) {
             }
             const attack = insertRow('attacks', { season_id: seasonId, player_id: playerId, attack_date: a.p_attack_date, boss_number: a.p_boss_number,
                 boss_code: a.p_boss_code ?? null, damage_raw: 0, attack_number: num, level: a.p_level ?? 1, characters: a.p_characters ?? [],
-                reservation_id: to === 'fulfilled' ? resId : null, source: a.p_source ?? 'tap', planned_damage_raw: Math.max(0, Number(a.p_planned_damage_raw) || 0), plan_key: a.p_plan_key });
+                reservation_id: to === 'fulfilled' ? resId : null, source, planned_damage_raw: Math.max(0, Number(a.p_planned_damage_raw) || 0), plan_key: a.p_plan_key });
             if (to) {
                 const from = res.status;
                 updateRow('plan_reservations', res, { status: to, release_reason: 'fulfilled', updated_at: nowIso() }, { rpc: true });
@@ -550,7 +559,11 @@ export function createPracticeClient(opts = {}) {
             const latest = T.published_plans.filter(r => eqv(r.season_id, a.p_season_id) && hasDecidedKey(r.plan)).reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
             if (latest !== (Number(a.p_expected_decision_id) || 0)) throw new PgError('40001', '別の運営が先に決定しました');
             const row = insertRow('published_plans', { season_id: a.p_season_id, plan: p, published_by: a.p_published_by ?? null, published_by_name: a.p_published_by_name ?? null,
-                plan_schema: Math.max(0, Number(a.p_plan_schema) || 0) });
+                plan_schema: Math.max(0, Number(a.p_plan_schema) || 0) }, { via: 'decide' });
+            // 入れた決定がシーズンでいちばん大きい id か (採番が遅れていると画面に出ない)。偽サーバの採番は常に最大なので起きないが、本番と同じ断り
+            if (T.published_plans.some(r => r !== row && eqv(r.season_id, a.p_season_id) && Number(r.id) > Number(row.id))) {
+                throw check('配信の番号が前の配信より小さくなりました (採番の修正 restore_fix_sequences が要ります)');
+            }
             return { id: row.id, published_at: row.published_at };
         },
     };

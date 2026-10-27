@@ -2641,6 +2641,18 @@ window.supabaseRestoreAllData = async function (dump, onProgress) {
     const warnings = [];
     const inDump = ([name]) => Array.isArray(dump.tables[name]);
 
+    // 0) ★ 予約の履歴 (plan_reservation_events・39) は append-only のトリガーで消せない (シーズンを消したときの CASCADE でも)。
+    //    1 行でもあると、ほかの表を消したあとの削除の途中で必ず止まり、凸・配信などが空のまま残る — 何も消す前に止める
+    //    (2026-10-27 の検証で見つかった 39 からの既存の不具合。画面から復元できるようにするのは別の作業)
+    {
+        const { count, error } = await supabase.from('plan_reservation_events').select('id', { count: 'exact', head: true });
+        if (error && !_isMissingTableErr(error, 'plan_reservation_events')) throw new Error(`復元の前の確認に失敗しました (何も消していません): ${error.message}`);
+        if (!error && (count || 0) > 0) {
+            throw new Error('予約の履歴 (plan_reservation_events) は消せない作りのため、いまは画面から復元できません。何も消していません。\n'
+                + '復元が必要なときは SQL Editor での作業になります (開発側に相談してください)');
+        }
+    }
+
     // 1) 削除 (子→親)。dump に含まれるテーブルだけを対象にする
     //    (古いバックアップに無いテーブルまで消さない)
     const targets = _RESTORE_TABLES.filter(inDump);
@@ -2658,7 +2670,15 @@ window.supabaseRestoreAllData = async function (dump, onProgress) {
         const rows = dump.tables[name];
         notify('投入', name);
         for (let i = 0; i < rows.length; i += CHUNK) {
-            const { error } = await supabase.from(name).insert(rows.slice(i, i + CHUNK));
+            const chunk = rows.slice(i, i + CHUNK);
+            // published_plans は 56 のトリガーが決定の行の素の insert を拒むので、復元の口 (RPC) で戻す。56 未適用 (PGRST202) なら従来どおり insert
+            let error = null;
+            if (name === 'published_plans') {
+                ({ error } = await supabase.rpc('restore_insert_published_plans', { p_rows: chunk }));
+                if (error && error.code === 'PGRST202') ({ error } = await supabase.from(name).insert(chunk));
+            } else {
+                ({ error } = await supabase.from(name).insert(chunk));
+            }
             if (error) throw new Error(`${name} の投入に失敗 (${i}行目〜): ${error.message}`);
         }
         inserted += rows.length;

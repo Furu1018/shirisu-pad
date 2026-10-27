@@ -25605,7 +25605,9 @@
                     }
                 }
             } catch (e) {
-                alert(`❌ 配信失敗: ${e?.message || e}\n\n初回は supabase/17_published_plans.sql を SQL Editor で実行してください。`);
+                // 確認している間に別の運営が ✅ 決定した: 56 のトリガーが従来の配信を拒む → 決定の案内だけ (「初回は 17 を…」は的外れ)
+                if (/「決定」で配信しています/.test(String(e?.message || ''))) alert(_DECIDED_LEGACY_MSG);
+                else alert(`❌ 配信失敗: ${e?.message || e}\n\n初回は supabase/17_published_plans.sql を SQL Editor で実行してください。`);
             }
             _syncOpsUnpublishBtn();
         }

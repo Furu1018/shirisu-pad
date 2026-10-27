@@ -273,6 +273,7 @@ test('✓ 凸しました (mark_attack_done): ダメージ 0・HP は動かさ�
     assert.deepEqual([r.data.attack_number, r.data.already], [1, true], '二重押しで 2 行目を作った');
     assert.match((await sb.rpc('mark_attack_done', args({ p_plan_key: '' }))).error.message, /どの凸の ✓ か分かりません/);
     assert.match((await sb.rpc('mark_attack_done', args({ p_source: 'x', p_plan_key: 'k' }))).error.message, /✓ の種類が不正です/);
+    assert.match((await sb.rpc('mark_attack_done', args({ p_source: null, p_plan_key: 'k' }))).error.message, /✓ の種類が不正です/, '明示の null を tap にした (SQL の DEFAULT は省いたときだけ)');
     // 📌 は外す / 約束は実行済み / 合わない駒には触らない
     const pin = (await sb.from('plan_reservations').insert(resvRow({ boss_number: 2, status: 'pinned', pinned_by: '運営' })).select('id').single()).data.id;
     r = await sb.rpc('mark_attack_done', args({ p_boss_number: 2, p_boss_code: 'B2', p_plan_key: 'k2', p_reservation_id: pin, p_source: 'ops_tap' }));
@@ -315,11 +316,27 @@ test('✅ 決定の配信 (publish_decided_plan): 押したときの最新の決
         // 形は前提の照合より先に見る (食い違う前提でも「中身がありません」— トリガーの検査とは別に RPC の入口で止まる)
         assert.match((await sb.rpc('publish_decided_plan', { p_season_id: 2, p_plan: bad, p_expected_decision_id: 999 })).error.message, /決定の中身がありません/);
     }
-    // 復元は id 順とは限らない: 決定より id の小さい従来の行は、決定のあとから入れても通る
+    // jsonb の ? は配列の文字列の要素も見る: ["decided"] は「決定の鍵あり」→ 形が崩れているので入らない (偽サーバも同じ: Codex 再監査 E)
+    assert.match(String((await sb.from('published_plans').insert({ season_id: 2, plan: ['decided'] }).select('id').single()).error?.message), /決定の中身がありません/);
+    // 形の正しい決定でも、素の insert では入らない (前提の照合とロックを迂回させない: Codex 再監査 B)
+    const raw = await sb.from('published_plans').insert({ season_id: 2, plan: dec('5-8') }).select('id').single();
+    assert.match(String(raw.error && raw.error.message), /決定は publish_decided_plan で配信してください/, '決定の行が素の insert で入った');
+    // 「後」は id で見る: 決定より id の小さい従来の行は通る / 大きい行は拒む
     const sb3 = mini();
-    assert.ok((await sb3.from('published_plans').insert({ id: 20, season_id: 3, plan: dec('5-8') }).select('id').single()).data);
-    assert.ok((await sb3.from('published_plans').insert({ id: 10, season_id: 3, plan: { levels: [] } }).select('id').single()).data, '復元で決定より前の従来の行が入らない');
-    assert.match(String((await sb3.from('published_plans').insert({ id: 30, season_id: 3, plan: { levels: [] } }).select('id').single()).error?.message), /このシーズンは「決定」で配信しています/);
+    assert.ok((await sb3.from('published_plans').insert({ id: 100, season_id: 3, plan: { levels: [] } }).select('id').single()).data);
+    const d3 = (await sb3.rpc('publish_decided_plan', { p_season_id: 3, p_plan: dec('5-8'), p_expected_decision_id: null })).data;
+    assert.ok(d3 && d3.id > 100);
+    assert.ok((await sb3.from('published_plans').insert({ id: 50, season_id: 3, plan: { levels: [] } }).select('id').single()).data, '決定より前 (id が小さい) の従来の行が入らない');
+    assert.match(String((await sb3.from('published_plans').insert({ id: d3.id + 10, season_id: 3, plan: { levels: [] } }).select('id').single()).error?.message), /このシーズンは「決定」で配信しています/);
+    // 鍵は文字列だけ (SQL の b ->> 'key' は ["5-8"] を '5-8' にしない)
+    assert.match((await sb3.rpc('publish_decided_plan', { p_season_id: 3, p_plan: { levels: [], decided: { blocks: [{ key: ['5-8'] }] } }, p_expected_decision_id: d3.id })).error.message, /決定の中身がありません/);
+    // 配信の中身 (plan・シーズン・id) は書き換えられない / 凍結と解除は通る (56 trg_published_plans_no_rewrite)
+    for (const patch of [{ plan: { levels: [] } }, { plan: dec('9-12') }, { season_id: 4 }, { id: 999 }]) {
+        const u = await sb3.from('published_plans').update(patch).eq('id', d3.id).select('id');
+        assert.match(String(u.error && u.error.message), /配信の中身は書き換えられません/, `書き換えが通った: ${JSON.stringify(patch)}`);
+    }
+    assert.ok(!(await sb3.from('published_plans').update({ frozen_at: '2026-10-03T10:00:00Z', frozen_by: '運営' }).eq('id', d3.id).select('id')).error, '凍結が通らない');
+    assert.ok(!(await sb3.from('published_plans').update({ frozen_at: null, frozen_by: null }).eq('id', d3.id).select('id')).error, '解除が通らない');
 });
 test('通知 (send-push) は送ったことにして控える / 画像の読み取りと画像の保存は使えないと返す', async () => {
     const got = [];
@@ -651,6 +668,17 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
 });
 // ★ 2026-10-07: 通知の宛先は js/domain/notifyPolicy.js が決め、送る関数 (sendPushNotification) が必ず通す。
 //   本物の関数を偽のサーバ相手に動かして、**実際に誰へ送ったか** (Edge Function に渡した playerIds) を見る
+test('本物のクライアント: 復元 — 予約の履歴 (append-only) があると、何も消す前に止める (39 からの既存の不具合で、消してから止まっていた)', async () => {
+    const T = DB();
+    if (!T.plan_reservation_events.length) {   // 履歴が無ければ 1 件作る (予約を作ると履歴が積まれる)
+        await W.supabaseCreateReservation({ seasonId: IDS.season, playerId: IDS.me, bossNumber: 1, loadoutSlot: 1, timeMode: 'fixed', timeSlot: 'h21', requestedBy: ME_NAME });
+    }
+    assert.ok(T.plan_reservation_events.length > 0);
+    const before = Object.fromEntries(Object.entries(T).map(([k, v]) => [k, v.length]));
+    const dump = { tables: { players: [], seasons: [], attacks: [], published_plans: [], plan_acks: [], plan_reservations: [], plan_reservation_events: [], member_devices: [] } };
+    await assert.rejects(() => W.supabaseRestoreAllData(dump), /予約の履歴 \(plan_reservation_events\) は消せない作りのため、いまは画面から復元できません。何も消していません/);
+    assert.deepEqual(Object.fromEntries(Object.entries(DB()).map(([k, v]) => [k, v.length])), before, '止める前に何かを消した');
+});
 test('本物のクライアント: 撃破の通知の宛先 — ブロックごとに効いている配信を全部見る (1 日ぶんの朝の担当 + 夜のぶんの担当 / 夜の行に入っている朝の予想は見ない) 🧱 段階 7', async () => {
     const S = IDS.season, A = IDS.firstMember + 1, B = IDS.firstMember + 2, C = IDS.firstMember + 3, D = IDS.firstMember + 4;
     const before = DB().published_plans.length;
@@ -811,7 +839,10 @@ test('見張り: 予約の遷移表・断り文が supabase/47 と一致する /
     const said = (sql, re) => [...sql.matchAll(re)].map(m => m[1].replace(/\s*\(.*$/, '').replace(/ — .*$/, ''));
     const msgs = [...said(sql47, /RAISE EXCEPTION '([^']*)'/g), ...said(sql40, /RAISE EXCEPTION '([^']*)'/g), ...said(sql39, /RAISE EXCEPTION '([^']*)'/g), ...said(sql56, /RAISE EXCEPTION '([^']*)'/g)];
     assert.ok(msgs.length >= 12, `断り文を読めていない (${msgs.length})`);
-    for (const head of new Set(msgs)) assert.ok(SERVER.includes(head), `偽のサーバに「${head}」の断り文が無い (SQL と文面がずれた)`);
+    // 練習で使わない口 (復元 restore_insert_published_plans = 下の NOT_IN_PRACTICE) の断り文は写さない
+    const NOT_MIRRORED = ['復元する行が配列ではありません', '復元する行に published_plans の列がありません'];
+    for (const head of NOT_MIRRORED) assert.ok(msgs.includes(head), `写さない断り文「${head}」が SQL に無い (消したならここからも消す)`);
+    for (const head of new Set(msgs)) if (!NOT_MIRRORED.includes(head)) assert.ok(SERVER.includes(head), `偽のサーバに「${head}」の断り文が無い (SQL と文面がずれた)`);
 });
 test('見張り: js/supabase-client.js が使う 表・RPC・問い合わせの口 を、偽のサーバがすべて知っている', () => {
     const tables = new Set([...CLIENT.matchAll(/supabase\s*\.from\('([a-z_]+)'\)|\.from\('([a-z_]+)'\)/g)].map(m => m[1] || m[2]));
@@ -821,7 +852,7 @@ test('見張り: js/supabase-client.js が使う 表・RPC・問い合わせの�
     const rpcs = new Set([...CLIENT.matchAll(/\.rpc\('([a-z_0-9]+)'/g)].map(m => m[1]));
     const implemented = [...SERVER.matchAll(/\n        ([a-z_]+)\(a\) \{/g)].map(m => m[1]);
     // 練習で使えない RPC (運営の シーズン編集・復元)。「見つからない」と返す → クライアントは未適用として扱う
-    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences'];
+    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences', 'restore_insert_published_plans'];
     assert.deepEqual([...rpcs].sort(), [...implemented, ...NOT_IN_PRACTICE].sort(), '本番が使う RPC と、偽のサーバの対応が食い違っている');
     // 問い合わせの口: PostgREST の口のうち本番が使っているもの ⊆ 偽のサーバが持つもの
     const POSTGREST = ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'likeAllOf', 'likeAnyOf', 'ilikeAllOf', 'ilikeAnyOf',

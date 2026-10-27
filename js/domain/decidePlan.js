@@ -13,9 +13,10 @@
     const SLOT_JP = { 1: '①', 2: '②', 3: '③' };
     const keyOf = (b) => `${Number(b.from)}-${Number(b.to)}`;
     // 配信の行は anon で書ける — blocks に null などが混ざった行は決定として読まない (画面が落ちる: S4 レビュー [7][13])
-    //   ブロックが 1 つも無い / 鍵が 'from-to' でない行も決定として読まない (時間割に何も出ないのに「決定あり」として従来の配信を止める: S4 Codex 監査 E)
+    //   ブロックが 1 つも無い / 鍵が 'from-to' の文字列でない行も決定として読まない (時間割に何も出ないのに「決定あり」として従来の配信を止める: S4 Codex 監査 E)。
+    //   DB (supabase/56 の published_plan_decided_ok) と同じ物差し — 食い違うと以後の決定が「別の運営が先に決定しました」で止まり続ける
     const isDecided = (plan) => !!(plan && plan.decided && Array.isArray(plan.decided.blocks) && plan.decided.blocks.length > 0
-        && plan.decided.blocks.every(b => b && typeof b === 'object' && /^\d{1,2}-\d{1,2}$/.test(String(b.key)))
+        && plan.decided.blocks.every(b => b && typeof b === 'object' && typeof b.key === 'string' && /^\d{1,2}-\d{1,2}$/.test(b.key))
         && (plan.levels == null || Array.isArray(plan.levels)));
 
     /** 配信の行 (id 降順でも昇順でもよい) のうち、決定の行の最新。無ければ null */

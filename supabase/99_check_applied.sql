@@ -182,8 +182,12 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM pg_constraint
                 WHERE conname = 'chk_player_damages_slot'
                   AND pg_get_constraintdef(oid) LIKE '%%2%%'
-                  AND pg_get_constraintdef(oid) NOT LIKE '%%3%%'),
-        'player_damages.slot を 1|2 に戻した (31でレベルが levels に入り 1スロット=1編成 になったため)'
+                  AND (pg_get_constraintdef(oid) NOT LIKE '%%3%%'
+                       -- 55 で 1〜3 に広げたあとも true (55 は予約の loadout_slot も 1〜3 にするので、30 の 1〜3 とはそちらで見分ける)
+                       OR EXISTS (SELECT 1 FROM pg_constraint c55
+                                  WHERE c55.conrelid = to_regclass('public.plan_reservations') AND c55.contype = 'c'
+                                    AND pg_get_constraintdef(c55.oid) LIKE '%loadout_slot%' AND pg_get_constraintdef(c55.oid) LIKE '%3%'))),
+        'player_damages.slot を 1|2 に戻した (31でレベルが levels に入り 1スロット=1編成 になったため。55 で 1〜3 に広げたあとも true)'
 
     UNION ALL SELECT '33_nikke_test_origin',
         EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'created_by_test_season_id'),
@@ -363,7 +367,12 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attacks' AND column_name = 'plan_key')
         AND to_regprocedure('public.mark_attack_done(bigint,bigint,date,integer,text,integer,jsonb,bigint,text,text,bigint,text)') IS NOT NULL
         AND to_regprocedure('public.publish_decided_plan(bigint,jsonb,bigint,text,integer,bigint)') IS NOT NULL
-        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_published_plans_no_legacy_after_decision'),
+        AND to_regprocedure('public.restore_insert_published_plans(jsonb)') IS NOT NULL
+        -- トリガーは published_plans に付いていて、ふだんのセッションで動くこと (O = 有効 / A = いつも。D = 無効・R = レプリカのときだけ)
+        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_published_plans_no_legacy_after_decision'
+                       AND tgrelid = to_regclass('public.published_plans') AND tgenabled IN ('O', 'A'))
+        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_published_plans_no_rewrite'
+                       AND tgrelid = to_regclass('public.published_plans') AND tgenabled IN ('O', 'A')),
         '✓ 凸しました (attacks.source / planned_damage_raw / plan_key・RPC mark_attack_done = ダメージ 0・HP を動かさない) と ✅ 決定の配信 (publish_decided_plan・決定のあとの従来の配信を拒むトリガー)。未適用だと ✓ と決定が止まる'
 
     UNION ALL SELECT '(storage bucket)',

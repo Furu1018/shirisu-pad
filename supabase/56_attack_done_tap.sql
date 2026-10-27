@@ -10,7 +10,9 @@
 --   attacks.planned_damage_raw ✓ の行の「予定のダメージ」(damage_raw は 0 のまま。分析のダメージの集計からは source のある行を外す)
 --   attacks.plan_key           どの予定の凸か (ブロック|レベル|ボス|人|編成)。同じ凸に二重に ✓ を付けない (一意索引)
 --   publish_decided_plan       ✅ 決定の配信 (シーズンごとに直列化・押したときの決定がまだ最新か確かめる・形は published_plan_decided_ok)
---   trg_published_plans_no_legacy_after_decision  決定のあるシーズンに従来の配信を入れさせない
+--   trg_published_plans_no_legacy_after_decision  決定の行は publish_decided_plan (と復元) からだけ / 決定より後に従来の配信を入れさせない
+--   restore_insert_published_plans  バックアップの復元で published_plans を戻す口 (決定の行は素の insert では入らないため)
+--   trg_published_plans_no_rewrite  配信の中身 (id・シーズン・plan) を書き換えさせない (書き換えるのは凍結 frozen_at / frozen_by だけ)
 -- ============================================================================
 
 SET lock_timeout = '3s';
@@ -189,27 +191,45 @@ BEGIN
     IF COALESCE(v_latest, 0) <> COALESCE(p_expected_decision_id, 0) THEN
         RAISE EXCEPTION '別の運営が先に決定しました' USING ERRCODE = 'serialization_failure';
     END IF;
+    -- 決定の行はこの RPC (照合とロックの下) からだけ入れる: トリガーがこのトランザクションの中だけの印を確かめる (素の insert で照合を迂回させない: Codex 再監査 B)
+    PERFORM set_config('pad.published_plans_via', 'decide', true);
     INSERT INTO published_plans (season_id, plan, published_by, published_by_name, plan_schema)
     VALUES (p_season_id, p_plan, p_published_by, p_published_by_name, GREATEST(0, COALESCE(p_plan_schema, 0)))
     RETURNING * INTO v_row;
+    PERFORM set_config('pad.published_plans_via', '', true);
+    -- 読む側は id のいちばん大きい行を最新とする。採番が遅れている (復元のあとに restore_fix_sequences が走らなかった等) と、
+    --   この決定は画面に出ないのに通知だけが飛ぶ — 入れずに止める (例外でこの insert ごと取り消す)
+    IF EXISTS (SELECT 1 FROM published_plans WHERE season_id = p_season_id AND id > v_row.id) THEN
+        RAISE EXCEPTION '配信の番号が前の配信より小さくなりました (採番の修正 restore_fix_sequences が要ります)' USING ERRCODE = 'check_violation';
+    END IF;
     RETURN jsonb_build_object('id', v_row.id, 'published_at', v_row.published_at);
 END;
 $$ LANGUAGE plpgsql;
 
 GRANT EXECUTE ON FUNCTION publish_decided_plan(BIGINT, JSONB, BIGINT, TEXT, INT, BIGINT) TO anon, authenticated;
 
--- 決定のあるシーズンには、従来の配信 (plan.decided の無い行) を決定より後に入れさせない (S4 Codex 監査 B・D)。
---   混ざると従来の行が最新になり、メンバーの時間割と ✓ が従来の表示に戻り、決定から外れた人に通知も届かない。
---   publish_decided_plan と同じ鍵で直列化する (「決定なし」を確かめた直後に別の端末が決定する、を通さない)。
---   「後」は id で見る (読む側は id の大きいほうを新しいとする)。ふだんの配信は採番が最大なので「決定が 1 つでもあれば拒む」と同じ。
---   バックアップの復元は行を id 順とは限らない順に入れる — 決定より前の従来の行 (id が小さい) は通す。
---   決定の行 (decided の鍵がある行) は形 (published_plan_decided_ok) だけ確かめて通す
+-- published_plans の insert の見張り (S4 Codex 監査 B・D / 再監査 B):
+--   ① 決定の行 (decided の鍵がある行) は形 (published_plan_decided_ok) を確かめ、publish_decided_plan (照合とロックの下) か復元からだけ通す。
+--      素の insert (古い端末・REST を直接) は前提の照合を迂回し、ロックも取らずに採番されるので拒む
+--   ② 従来の配信 (decided の鍵が無い行) は、同じシーズンで id がそれより小さい決定の行があれば拒む (決定より後に従来の配信を入れさせない)。
+--      混ざると従来の行が最新になり、メンバーの時間割と ✓ が従来の表示に戻り、決定から外れた人に通知も届かない。
+--      publish_decided_plan と同じ鍵で直列化する。決定の行は必ずその鍵の下で採番されるので、ロックを取ったあとに見えない決定の行は「この行より後」に採番される。
+--      「後」を id で見るのは、読む側が id の大きいほうを新しいとするため (ふだんの配信は採番が最大なので「決定が 1 つでもあれば拒む」と同じ)
+--   ③ 復元 (restore_insert_published_plans) はバックアップの中身をそのまま戻す — 形だけ確かめ、②は見ない (行の順はダンプの順で id 順とは限らない)
 CREATE OR REPLACE FUNCTION published_plans_no_legacy_after_decision() RETURNS trigger AS $$
+DECLARE
+    v_via TEXT := COALESCE(current_setting('pad.published_plans_via', true), '');
 BEGIN
     IF NEW.plan ? 'decided' THEN
         IF NOT published_plan_decided_ok(NEW.plan) THEN
             RAISE EXCEPTION '決定の中身がありません' USING ERRCODE = 'check_violation';
         END IF;
+        IF v_via NOT IN ('decide', 'restore') THEN
+            RAISE EXCEPTION '決定は publish_decided_plan で配信してください (直接は入れられません)' USING ERRCODE = 'check_violation';
+        END IF;
+        RETURN NEW;
+    END IF;
+    IF v_via = 'restore' THEN
         RETURN NEW;
     END IF;
     PERFORM pg_advisory_xact_lock(hashtextextended('publish:' || NEW.season_id, 0));
@@ -219,6 +239,52 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 配信の中身 (id・シーズン・plan) は書き換えさせない。クライアントが published_plans を UPDATE するのは凍結 (frozen_at / frozen_by) だけ。
+--   書き換えで決定を作る・決定の鍵を外す・シーズンを付け替えると、照合とロック・上の ①② を迂回できる (2026-10-27 Claude の検証)
+CREATE OR REPLACE FUNCTION published_plans_no_rewrite() RETURNS trigger AS $$
+BEGIN
+    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.season_id IS DISTINCT FROM OLD.season_id OR NEW.plan IS DISTINCT FROM OLD.plan THEN
+        RAISE EXCEPTION '配信の中身は書き換えられません (凍結と解除だけ)' USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_published_plans_no_rewrite ON published_plans;
+CREATE TRIGGER trg_published_plans_no_rewrite
+    BEFORE UPDATE OF id, season_id, plan ON published_plans
+    FOR EACH ROW EXECUTE FUNCTION published_plans_no_rewrite();
+
+-- バックアップの復元で published_plans を戻す (supabase-client.js の supabaseRestoreAllData)。決定の行は素の insert では入らないので、
+--   このトランザクションの中だけ「復元」の印を立てて入れる。入れる列は行が持っている列だけ (無い列は表の既定値 = PostgREST の insert と同じ)
+CREATE OR REPLACE FUNCTION restore_insert_published_plans(p_rows JSONB) RETURNS INT AS $$
+DECLARE
+    v_cols TEXT;
+    v_n INT := 0;
+BEGIN
+    IF jsonb_typeof(p_rows) IS DISTINCT FROM 'array' THEN
+        RAISE EXCEPTION '復元する行が配列ではありません' USING ERRCODE = 'check_violation';
+    END IF;
+    IF jsonb_array_length(p_rows) = 0 THEN
+        RETURN 0;
+    END IF;
+    SELECT string_agg(quote_ident(c.column_name), ', ' ORDER BY c.ordinal_position) INTO v_cols
+      FROM information_schema.columns c
+     WHERE c.table_schema = 'public' AND c.table_name = 'published_plans'
+       AND EXISTS (SELECT 1 FROM jsonb_array_elements(p_rows) AS r(v) WHERE jsonb_typeof(v) = 'object' AND v ? c.column_name);
+    IF v_cols IS NULL THEN
+        RAISE EXCEPTION '復元する行に published_plans の列がありません' USING ERRCODE = 'check_violation';
+    END IF;
+    PERFORM set_config('pad.published_plans_via', 'restore', true);
+    EXECUTE format('INSERT INTO published_plans (%s) SELECT %s FROM jsonb_populate_recordset(NULL::published_plans, $1)', v_cols, v_cols) USING p_rows;
+    GET DIAGNOSTICS v_n = ROW_COUNT;
+    PERFORM set_config('pad.published_plans_via', '', true);
+    RETURN v_n;
+END;
+$$ LANGUAGE plpgsql;
+
+GRANT EXECUTE ON FUNCTION restore_insert_published_plans(JSONB) TO anon, authenticated;
 
 DROP TRIGGER IF EXISTS trg_published_plans_no_legacy_after_decision ON published_plans;
 CREATE TRIGGER trg_published_plans_no_legacy_after_decision

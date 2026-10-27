@@ -14866,7 +14866,7 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         // 壊れた行 (blocks に null・levels が配列でない) は決定として読まない (画面が落ちる: S4 レビュー [7][13])
         // ブロックが 1 つも無い / 鍵が 'from-to' でない行も決定として読まない (S4 Codex 監査 E)
         for (const broken of [{ levels: [], decided: { blocks: [null, { key: '5-8' }] } }, { levels: {}, decided: { blocks: [{ key: '5-8' }] } }, { levels: [], decided: { blocks: [5] } },
-            { levels: [], decided: { blocks: [] } }, { levels: [], decided: { blocks: [{}] } }, { levels: [], decided: { blocks: [{ key: '<b>x</b>' }] } }]) {
+            { levels: [], decided: { blocks: [] } }, { levels: [], decided: { blocks: [{}] } }, { levels: [], decided: { blocks: [{ key: '<b>x</b>' }] } }, { levels: [], decided: { blocks: [{ key: ['5-8'] }] } }]) {
             assert.equal(dp.isDecided(broken), false, JSON.stringify(broken));
             assert.equal(dp.latestDecided([{ id: 9, plan: broken }]), null);
             assert.equal(dp.decidedBlocks(broken).size, 0);
@@ -15026,6 +15026,28 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
             && /p \? 'levels' AND jsonb_typeof\(p -> 'levels'\) NOT IN \('array', 'null'\)/.test(okFn) && /COALESCE\(b ->> 'key', ''\) !~ '\^\[0-9\]\{1,2\}-\[0-9\]\{1,2\}\$'/.test(okFn), '56: 決定の行の形の検査');
         assert.ok(/IF NOT published_plan_decided_ok\(p_plan\) THEN/.test(s56) && /IF NEW\.plan \? 'decided' THEN\s*\n\s*IF NOT published_plan_decided_ok\(NEW\.plan\) THEN/.test(s56)
             && /WHERE season_id = NEW\.season_id AND plan \? 'decided' AND id < NEW\.id\) THEN/.test(s56), '56: 決定の配信 / トリガーが形を確かめない・前後を id で見ない');
+        // 決定の行は RPC (照合とロックの下) か復元からだけ: トランザクションの中だけの印 (Codex 再監査 B)
+        const trg = (s56.match(/CREATE OR REPLACE FUNCTION published_plans_no_legacy_after_decision\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/) || [''])[0];
+        assert.ok(/v_via TEXT := COALESCE\(current_setting\('pad\.published_plans_via', true\), ''\);/.test(trg) && /IF v_via NOT IN \('decide', 'restore'\) THEN\s*\n\s*RAISE EXCEPTION '決定は publish_decided_plan で配信してください/.test(trg)
+            && /IF v_via = 'restore' THEN\s*\n\s*RETURN NEW;\s*\n\s*END IF;\s*\n\s*PERFORM pg_advisory_xact_lock/.test(trg), '56: トリガーが決定の素の insert を拒まない / 復元の印');
+        assert.ok(/PERFORM set_config\('pad\.published_plans_via', 'decide', true\);\s*\n\s*INSERT INTO published_plans/.test(s56) && /PERFORM set_config\('pad\.published_plans_via', 'restore', true\);\s*\n\s*EXECUTE format\('INSERT INTO published_plans/.test(s56)
+            && (s56.match(/PERFORM set_config\('pad\.published_plans_via', '', true\);/g) || []).length === 2, '56: RPC・復元が印を立てて・下ろしていない');
+        assert.ok(/if \(name === 'published_plans'\) \{\s*\n\s*\(\{ error \} = await supabase\.rpc\('restore_insert_published_plans', \{ p_rows: chunk \}\)\);\s*\n\s*if \(error && error\.code === 'PGRST202'\) \(\{ error \} = await supabase\.from\(name\)\.insert\(chunk\)\);/.test(cl), '復元が published_plans を復元の口で戻していない');
+        // 配信の中身は書き換えさせない (凍結だけ) / 入れた決定が最大の id か (採番の遅れ)
+        assert.ok(/CREATE TRIGGER trg_published_plans_no_rewrite\s*\n\s*BEFORE UPDATE OF id, season_id, plan ON published_plans/.test(s56)
+            && /IF NEW\.id IS DISTINCT FROM OLD\.id OR NEW\.season_id IS DISTINCT FROM OLD\.season_id OR NEW\.plan IS DISTINCT FROM OLD\.plan THEN/.test(s56), '56: 配信の中身の書き換えを拒んでいない');
+        assert.ok(/IF EXISTS \(SELECT 1 FROM published_plans WHERE season_id = p_season_id AND id > v_row\.id\) THEN\s*\n\s*RAISE EXCEPTION '配信の番号が前の配信より小さくなりました/.test(s56), '56: 入れた決定が最新の id か確かめていない');
+        // 従来の配信が決定とぶつかったら決定の案内 / 復元は予約の履歴があれば何も消す前に止める
+        assert.ok(/if \(\/「決定」で配信しています\/\.test\(String\(e\?\.message \|\| ''\)\)\) alert\(_DECIDED_LEGACY_MSG\);/.test(html), '従来の配信がトリガーで拒まれたときに決定の案内を出さない');
+        const rs = (cl.match(/window\.supabaseRestoreAllData = async function[\s\S]*?\n\};/) || [''])[0];
+        assert.ok(rs.indexOf("from('plan_reservation_events').select('id', { count: 'exact', head: true })") > 0
+            && rs.indexOf("from('plan_reservation_events').select('id', { count: 'exact', head: true })") < rs.indexOf('const targets = _RESTORE_TABLES.filter(inDump);'), '復元が予約の履歴を確かめる前に消し始める');
+        const c99 = _fsA.readFileSync('supabase/99_check_applied.sql', 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/to_regprocedure\('public\.restore_insert_published_plans\(jsonb\)'\) IS NOT NULL/.test(c99) && /tgname = 'trg_published_plans_no_legacy_after_decision'\s*\n\s*AND tgrelid = to_regclass\('public\.published_plans'\) AND tgenabled IN \('O', 'A'\)/.test(c99)
+            && /tgname = 'trg_published_plans_no_rewrite'\s*\n\s*AND tgrelid = to_regclass\('public\.published_plans'\) AND tgenabled IN \('O', 'A'\)/.test(c99), '99: published_plans の有効なトリガーを見ていない');
+        // 56 の行は条件をすべて AND で結ぶ (OR / TRUE で 1 つでも素通りさせない)
+        const row56 = c99.slice(c99.indexOf("UNION ALL SELECT '56_attack_done_tap',"), c99.indexOf("'✓ 凸しました (attacks.source"));
+        assert.ok(row56.length > 100 && !/\bOR\b|\bTRUE\b/i.test(row56.replace(/--[^\n]*/g, '')) && (row56.match(/\n {8}AND /g) || []).length === 5, '99: 56 の判定が AND だけで結ばれていない');
         assert.ok(/'reservations_at_risk', to_jsonb\(v_at_risk\)/.test(s56) && /v_over := GREATEST\(0, \(v_active \+ v_done \+ 1\) - 3\);/.test(s56), '56: ✓ で守れなくなる予約を返していない (report_attack と同じ)');
         assert.equal((s56.match(/AND \(p_reservation_id IS NULL OR id <> p_reservation_id\)/g) || []).length, 2, '56: ✓ の凸の予約まで「守れなくなる予約」に数えている');
         assert.ok(/reservationsAtRisk: Array\.isArray\(data\?\.reservations_at_risk\) \? data\.reservations_at_risk : \[\] \};/.test(cl), 'クライアントが守れなくなる予約を返さない');
