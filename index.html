@@ -10066,7 +10066,9 @@
                     level: e.level, characters: e.team || [], plannedDamageRaw: e.dmgB * 1e9, planKey, reservationId: e.reservationId }, { byOps, actorName: me.name || null });
                 _myTappedKeys.set(planKey, { sid: v.seasonId, memberId: e.memberId, at: Date.now() });
                 if (typeof _myTodayAttacksCache !== 'undefined') _myTodayAttacksCache = null;   // ヒーローの「残り N 凸」を数え直す (S4 レビュー [26])
-                showNotification(r.already ? 'この凸はもう ✓ が付いています' : `✓ B${e.bossNumber} 凸しました${byOps ? ` (${e.memberName || ''} さん・運営が代わりに)` : ''}`);
+                const risk = Array.isArray(r.reservationsAtRisk) ? r.reservationsAtRisk.length : 0;   // 凸は拒まず、凸の数を超えて守れなくなる予約を返す (report_attack と同じ: S4 Codex 監査 C)
+                showNotification(r.already ? 'この凸はもう ✓ が付いています'
+                    : `✓ B${e.bossNumber} 凸しました${byOps ? ` (${e.memberName || ''} さん・運営が代わりに)` : ''}${risk ? ` — ⚠ 凸の数を超えるので予約 ${risk} 件が守れなくなりました (運営が 🔒 凸の予約で解除します)` : ''}`);
                 if (typeof seasonStore !== 'undefined') seasonStore.invalidate?.();
                 if (typeof opsStore !== 'undefined') opsStore.invalidate?.();
                 if (typeof _checkRaidEvents === 'function') _checkRaidEvents();
@@ -23128,9 +23130,16 @@
                     return;
                 }
                 const me = getCurrentIdentity();
-                const pub = await window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan));
+                // ★ サーバでも同じ前提 (basis0) を照合して入れる (シーズンごとに直列化 = 2 人が同時に押しても片方だけ: S4 Codex 監査 A・B)
+                let pub = null;
+                try { pub = await window.supabasePublishDecidedPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan), basis0); }
+                catch (e) {
+                    if (e?.code === 'CONFLICT') { alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。確かめてから、もう一度決定してください。'); _ob.dec = null; _ob.decTriedAt = 0; _ob.seededFrom = null; return; }
+                    if (e?.code === 'NO_RPC') { alert(`⚠️ ${e.message}`); return; }
+                    throw e;
+                }
                 if (!pub?.id) throw new Error('配信の行を作れませんでした');
-                window.supabaseLogActivity?.('ops', `✅ ${range.map(i => blocks[i].name).join('・')} を決定しました (${n} 凸)`);
+                window.supabaseLogActivity?.('ops', `✅ ${fresh.map(i => blocks[i].name).join('・')} を決定しました (${n} 凸)`);
                 if (_obSame(epoch, sid)) {
                     _ob.dec = { row: { id: pub.id, season_id: sid, plan, published_at: pub.published_at || new Date().toISOString(), published_by_name: me?.name || null }, basisId: Number(pub.id) };
                     // 決めた・写したブロックは、この決定から読み戻したものとして扱う (照合はそのブロックの駒: 決定したときの指紋)

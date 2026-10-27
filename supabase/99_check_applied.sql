@@ -361,8 +361,10 @@ SELECT * FROM (
         '模擬の編成を 1 属性 3 つまで (player_damages.slot 1〜3・予約の loadout_slot も 1〜3)'
     UNION ALL SELECT '56_attack_done_tap',
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'attacks' AND column_name = 'plan_key')
-        AND to_regprocedure('public.mark_attack_done(bigint,bigint,date,integer,text,integer,jsonb,bigint,text,text,bigint,text)') IS NOT NULL,
-        '✓ 凸しました (attacks.source / planned_damage_raw / plan_key・RPC mark_attack_done = ダメージ 0・HP を動かさない)。未適用だと ✓ ボタンが止まる'
+        AND to_regprocedure('public.mark_attack_done(bigint,bigint,date,integer,text,integer,jsonb,bigint,text,text,bigint,text)') IS NOT NULL
+        AND to_regprocedure('public.publish_decided_plan(bigint,jsonb,bigint,text,integer,bigint)') IS NOT NULL
+        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_published_plans_no_legacy_after_decision'),
+        '✓ 凸しました (attacks.source / planned_damage_raw / plan_key・RPC mark_attack_done = ダメージ 0・HP を動かさない) と ✅ 決定の配信 (publish_decided_plan・決定のあとの従来の配信を拒むトリガー)。未適用だと ✓ と決定が止まる'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),

@@ -8,7 +8,8 @@
 // ★ 本番と揃えるもの (supabase/*.sql を写している。SQL を変えたらここも直すこと):
 //   - 表ごとの主キー・一意制約・既定値 (SCHEMA)
 //   - plan_reservations のトリガー (39 残凸の枠 / 39 状態は RPC 経由のみ・承認後は中身を変えない / 47 📌 と約束の枠)
-//   - RPC: report_attack (40) / reservation_set_status (47) / mark_attack_done (56 ✓ 凸しました)
+//   - RPC: report_attack (40) / reservation_set_status (47) / mark_attack_done (56 ✓ 凸しました) / publish_decided_plan (56 ✅ 決定の配信)
+//   - トリガー: 56 決定のあるシーズンに従来の配信 (plan.decided の無い行) を入れさせない
 //   揃えないもの (承知のうえ): CHECK 制約の大半・外部キーの存在確認・player_damages の levels 畳み直し (31。新しいクライアントは常に揃えて送る)
 // ★ 使える問い合わせの口は BUILDER_METHODS が唯一。js/supabase-client.js がここに無い口を使ったら
 //   tests/run-tests.mjs が落ちる (本番にだけ足して練習が黙って壊れる、を防ぐ)
@@ -205,6 +206,12 @@ export function createPracticeClient(opts = {}) {
     }
 
     // ---- 行の書き込み (1 文ぶん)。失敗したら呼び出し側の tx が全体を巻き戻す ----
+    // 56 published_plan_decided_ok の写し (= js/domain/decidePlan.js の isDecided と同じ形)。hasDecidedKey は SQL の plan ? 'decided'
+    const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+    const hasDecidedKey = (p) => isObj(p) && Object.prototype.hasOwnProperty.call(p, 'decided');
+    const decidedOk = (p) => isObj(p) && isObj(p.decided) && Array.isArray(p.decided.blocks) && p.decided.blocks.length > 0
+        && (!Object.prototype.hasOwnProperty.call(p, 'levels') || p.levels === null || Array.isArray(p.levels))
+        && p.decided.blocks.every(b => isObj(b) && /^[0-9]{1,2}-[0-9]{1,2}$/.test(b.key == null ? '' : String(b.key)));
     function insertRow(table, values, ctx = {}) {
         if (!SCHEMA[table]) throw new PgError('PGRST205', `Could not find the table 'public.${table}' in the schema cache`);
         const row = withDefaults(table, values);
@@ -212,6 +219,13 @@ export function createPracticeClient(opts = {}) {
             if (row[c] == null) throw new PgError('23502', `null value in column "${c}" of relation "${table}" violates not-null constraint`);
         }
         if (table === 'plan_reservations') resvBefore('insert', row, null, { rpc: !!ctx.rpc, setCols: Object.keys(row) });
+        // 56 trg_published_plans_no_legacy_after_decision: 決定の行は形を確かめる / 決定より後 (id が大きい) に従来の配信を入れさせない
+        if (table === 'published_plans') {
+            if (hasDecidedKey(row.plan)) { if (!decidedOk(row.plan)) throw check('決定の中身がありません'); }
+            else if (T.published_plans.some(r => eqv(r.season_id, row.season_id) && hasDecidedKey(r.plan) && Number(r.id) < Number(row.id))) {
+                throw check('このシーズンは「決定」で配信しています (従来の配信は使えません)');
+            }
+        }
         assertUnique(table, row, null);
         T[table].push(row);
         if (table === 'plan_reservations') {   // 39 log_insert
@@ -504,6 +518,10 @@ export function createPracticeClient(opts = {}) {
             if (!(Number(a.p_boss_number) >= 1 && Number(a.p_boss_number) <= 5)) throw check('ボスの番号が不正です');
             const dup = T.attacks.find(x => eqv(x.season_id, seasonId) && eqv(x.player_id, playerId) && x.attack_date === a.p_attack_date && x.plan_key === a.p_plan_key);
             if (dup) return { id: dup.id, attack_number: dup.attack_number, already: true, reservation: null };
+            // 残凸の見張り (report_attack と同じ): 凸は拒まず、守れなくなる予約を返す (56)
+            const others = T.plan_reservations.filter(r => eqv(r.season_id, seasonId) && eqv(r.player_id, playerId) && ACTIVE.includes(r.status) && !(resId != null && eqv(r.id, resId)));
+            const over = Math.max(0, (others.length + doneAttacks(seasonId, playerId) + 1) - 3);
+            const atRisk = over > 0 ? others.slice().sort((x, y) => cmp(y.requested_at, x.requested_at) || (Number(y.id) - Number(x.id))).slice(0, over).map(r => r.id) : [];
             const used = T.attacks.filter(x => eqv(x.season_id, seasonId) && eqv(x.player_id, playerId) && x.attack_date === a.p_attack_date).map(x => Number(x.attack_number));
             const num = [1, 2, 3].find(n => !used.includes(n)) || 0;
             if (!num) throw check('既に3凸済みです');
@@ -523,7 +541,17 @@ export function createPracticeClient(opts = {}) {
                 updateRow('plan_reservations', res, { status: to, release_reason: 'fulfilled', updated_at: nowIso() }, { rpc: true });
                 insertRow('plan_reservation_events', { reservation_id: resId, from_status: from, to_status: to, actor_name: a.p_actor ?? null, reason: '✓ 凸しました により実行済み' });
             }
-            return { id: attack.id, attack_number: attack.attack_number, already: false, reservation: to };
+            return { id: attack.id, attack_number: attack.attack_number, already: false, reservation: to, over_capacity: over, reservations_at_risk: atRisk };
+        },
+        // 56: ✅ 決定の配信。押したときの最新の決定がまだ最新か確かめてから入れる (tx の中 = 本番のロックの写し)
+        publish_decided_plan(a) {
+            const p = a.p_plan;
+            if (!decidedOk(p)) throw check('決定の中身がありません');
+            const latest = T.published_plans.filter(r => eqv(r.season_id, a.p_season_id) && hasDecidedKey(r.plan)).reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
+            if (latest !== (Number(a.p_expected_decision_id) || 0)) throw new PgError('40001', '別の運営が先に決定しました');
+            const row = insertRow('published_plans', { season_id: a.p_season_id, plan: p, published_by: a.p_published_by ?? null, published_by_name: a.p_published_by_name ?? null,
+                plan_schema: Math.max(0, Number(a.p_plan_schema) || 0) });
+            return { id: row.id, published_at: row.published_at };
         },
     };
 

@@ -1354,6 +1354,9 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `decidePlanDomain.build` で 1 行の配信にする (`published_plans`・`plan.decided = { upTo, at, blocks: [{ key, idx, name, label, from, to, level, kept, attacks, fp }] }`・`PLAN_SCHEMA` 4・blockScope は無い)。
   決定し直しても**済んだ凸は残す** (✓ の plan_key / 数字の報告は 人|レベル|ボス の数で過ぎたブロックから消し込む・Lv4 は Lv3 の鍵でも = `doneInPrev` / `looseKeysOf`)。押した時点の DB で 駒・決定・盤面 (世代の照合) を読み直し、
   別の運営の決定なら止める (読み戻しはブロックごと・この端末の組みかけは残す)。確認のあとに 決定の id (押したときの `basis0`) と 駒の指紋 をもう一度照合する。
+  ★ **入れるのは RPC `publish_decided_plan`** (`supabasePublishDecidedPlan`・56): シーズンごとの advisory lock (`'publish:' || season_id`) の下で「いまの最新の決定 = basis0」を照合してから insert。違えば CONFLICT「別の運営が先に決定しました」(通知の前に止める)・56 未適用は NO_RPC で止める
+  (クライアントだけの照合では、2 人が同時に押すと両方入って両方が通知していた: Codex 監査 A)。決定の行の形は DB の `published_plan_decided_ok` = `isDecided` (ブロック 1 つ以上・鍵 'from-to'・levels は配列か null) — 食い違うと以後の決定が CONFLICT で止まり続ける。
+  トリガー `trg_published_plans_no_legacy_after_decision` が**決定より後 (id が大きい) の従来の配信**を同じ鍵で拒む (画面の `_seasonHasDecision` だけでは古い端末・同時押しを止められない: Codex 監査 B)。id で前後を見るのはバックアップの復元が id 順とは限らないため。
   通知は人ごとに 1 通 (`notices`: 決まりました / 変わりました (✅ の有無で文を分ける) / 外れました・変わらない人には送らない・行にレベル)。鍵は `decide|人|p<決定の id>|sig`・確保できない人は「送れなかった」に数え、相手 0 人は数えない。
   ✅ は「通知の対象でない、前の決定を ✅ した人」全員に引き継ぐ。最初の決定では、決めたブロックに従来の配信で割当があったのに決定に居ない人にも「外れました」。
   ★ **決定から読み戻したブロックの照合は「そのブロックの駒」だけ** (`_obBlockFp`・decided.blocks[].fp) — 後ろのブロックに 📌 を置いただけで決定済みを要組み直しにしない (振り回さない)。組んだ (自動の) ブロックは従来どおり拘束全部 (`_obPinsFp`)。
@@ -1364,6 +1367,7 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   決定の行は**決めたブロックにだけ効く** (`publishedPlansDomain.appliesTo`・`reservationsDomain.inBlockTime` も decided.blocks の窓)。後に従来の配信があれば決定の印を外して従来の表示。「前回から変わったか」は 1 つ前の決定と通知と同じ中身で比べる。
   **✓ 凸しました** = `supabaseMarkAttackDone` → RPC `mark_attack_done` (**`56_attack_done_tap.sql`**: attacks にダメージ 0・予定の編成・`planned_damage_raw`・`plan_key` (二重押しを止める一意索引)・`source` 'tap' / 'ops_tap'・採番と 3 凸の上限は report_attack と同じ・
   HP は動かさない (運営が 🎯 で合わせる)・駒は 📌 → released / 約束 → fulfilled)。56 未適用は「56 を実行してください」で止まる。練習の偽サーバにも同じ RPC。
+  ★ 残凸は report_attack (40) と同じく**凸を拒まない** (ゲームの中ではもう起きた事実) — 生きている予約 + 済んだ凸 + この凸 が 3 を超えるぶんの予約を `reservations_at_risk` で返し、✓ の知らせに「予約 N 件が守れなくなりました」(運営が 🔒 凸の予約で解除)。
   運営は時間割で代わりに ✓ を付けられる (盤面が読めてから・押した時点のその人の凸で確かめる・確認ダイアログ・役割 ops / master だけ)。取り消しは ✓ の行を消すだけ (駒は戻らないと先に言う)。名乗り直しの直後の古い時間割では押させない。
   ✓ の行は 分析 (凸がすべて ✓ の回は返さない)・凸報告の確認 (予定より低い / 時刻のずれ を付けない・決定の行は sinceMs なし・割当の時刻はブロックの終わり `_atkCheckDecidedPlan`)・ダメージの編集 から外す。凸数の上限とピースの残り凸は plan_key のブロックで数える (押した時刻ではない)。
   **決定のあるシーズンでは従来の配信・一気に組むを出さない** (`_seasonHasDecision` → `_DECIDED_LEGACY_MSG`)。ヒーローの当日はレイド日 (翌 0〜4 時も)・決定のときは「✓ 凸しました を押して」。純ロジックは `js/domain/decidePlan.js`。

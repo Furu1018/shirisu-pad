@@ -284,6 +284,42 @@ test('✓ 凸しました (mark_attack_done): ダメージ 0・HP は動かさ�
     assert.equal(r.data.reservation, null, 'ボスの違う駒に触った');
     assert.equal(r.data.attack_number, 3);
     assert.match((await sb.rpc('mark_attack_done', args({ p_plan_key: 'k4' }))).error.message, /既に3凸済みです/);
+    // 凸は拒まず、生きている予約 + 済んだ凸 + この凸 が 3 を超えるぶんの予約を返す (report_attack と同じ・S4 Codex 監査 C)
+    const sb2 = mini();
+    const r1 = (await sb2.from('plan_reservations').insert(resvRow({ boss_number: 4 })).select('id').single()).data.id;
+    const r2 = (await sb2.from('plan_reservations').insert(resvRow({ boss_number: 5 })).select('id').single()).data.id;
+    assert.deepEqual((await sb2.rpc('mark_attack_done', args({ p_plan_key: 'a1' }))).data.reservations_at_risk, [], '1 凸目で予約を危ないとした');
+    const over = (await sb2.rpc('mark_attack_done', args({ p_plan_key: 'a2', p_boss_number: 2, p_boss_code: 'B2' }))).data;
+    assert.deepEqual([over.over_capacity, over.reservations_at_risk.length], [1, 1], '予約 2 + 済み 1 + この凸 = 4 なのに守れなくなる予約を返さない');
+    assert.ok([r1, r2].includes(over.reservations_at_risk[0]));
+    assert.deepEqual((await sb2.rpc('mark_attack_done', args({ p_plan_key: 'a3', p_boss_number: 4, p_boss_code: 'B4', p_reservation_id: r1 }))).data.reservations_at_risk.length, 1, 'その凸の予約を数えている');
+});
+test('✅ 決定の配信 (publish_decided_plan): 押したときの最新の決定がまだ最新のときだけ入る / 決定のあるシーズンに従来の配信は入らない (56 の写し・S4 Codex 監査 A・B)', async () => {
+    const sb = mini();
+    const dec = (k) => ({ levels: [], decided: { blocks: [{ key: k }] } });
+    const legacy = await sb.from('published_plans').insert({ season_id: 1, plan: { levels: [] } }).select('id').single();
+    assert.ok(legacy.data && legacy.data.id, '決定の前の従来の配信が入らない');
+    const d1 = await sb.rpc('publish_decided_plan', { p_season_id: 1, p_plan: dec('5-8'), p_published_by: 10, p_published_by_name: 'あ', p_plan_schema: 4, p_expected_decision_id: null });
+    assert.ok(d1.data && d1.data.id, '最初の決定が入らない');
+    const stale = await sb.rpc('publish_decided_plan', { p_season_id: 1, p_plan: dec('9-12'), p_published_by: 11, p_published_by_name: 'い', p_plan_schema: 4, p_expected_decision_id: null });
+    assert.match(stale.error.message, /別の運営が先に決定しました/, '同じ前提の 2 つ目の決定が入った');
+    const d2 = await sb.rpc('publish_decided_plan', { p_season_id: 1, p_plan: dec('9-12'), p_published_by: 11, p_published_by_name: 'い', p_plan_schema: 4, p_expected_decision_id: d1.data.id });
+    assert.ok(d2.data && d2.data.id > d1.data.id);
+    assert.match((await sb.rpc('publish_decided_plan', { p_season_id: 1, p_plan: { levels: [], decided: { blocks: [] } }, p_expected_decision_id: d2.data.id })).error.message, /決定の中身がありません/);
+    const leg2 = await sb.from('published_plans').insert({ season_id: 1, plan: { levels: [] } }).select('id').single();
+    assert.match(String(leg2.error && leg2.error.message), /このシーズンは「決定」で配信しています/, '決定のあとに従来の配信が入った');
+    // 形の崩れた決定は素の insert でも入らない (画面は決定と読まずサーバは数える → 以後の決定が止まり続ける)
+    for (const bad of [{ decided: { blocks: [] } }, { decided: null }, { decided: { blocks: [{ key: 5 }] } }, { decided: { blocks: [{ key: '5-8' }] }, levels: {} }, { decided: { blocks: [[]] } }]) {
+        const r = await sb.from('published_plans').insert({ season_id: 2, plan: bad }).select('id').single();
+        assert.match(String(r.error && r.error.message), /決定の中身がありません/, `形の崩れた決定が入った: ${JSON.stringify(bad)}`);
+        // 形は前提の照合より先に見る (食い違う前提でも「中身がありません」— トリガーの検査とは別に RPC の入口で止まる)
+        assert.match((await sb.rpc('publish_decided_plan', { p_season_id: 2, p_plan: bad, p_expected_decision_id: 999 })).error.message, /決定の中身がありません/);
+    }
+    // 復元は id 順とは限らない: 決定より id の小さい従来の行は、決定のあとから入れても通る
+    const sb3 = mini();
+    assert.ok((await sb3.from('published_plans').insert({ id: 20, season_id: 3, plan: dec('5-8') }).select('id').single()).data);
+    assert.ok((await sb3.from('published_plans').insert({ id: 10, season_id: 3, plan: { levels: [] } }).select('id').single()).data, '復元で決定より前の従来の行が入らない');
+    assert.match(String((await sb3.from('published_plans').insert({ id: 30, season_id: 3, plan: { levels: [] } }).select('id').single()).error?.message), /このシーズンは「決定」で配信しています/);
 });
 test('通知 (send-push) は送ったことにして控える / 画像の読み取りと画像の保存は使えないと返す', async () => {
     const got = [];

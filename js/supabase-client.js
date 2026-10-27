@@ -1461,7 +1461,30 @@ window.supabaseMarkAttackDone = async function ({ seasonId, playerId, attackDate
             `✓ B${bossNumber} Lv${level || 1} 凸しました (${data?.attack_number}凸目${opts.byOps ? '・運営が代わりに' : ''})`,
             { playerId, actorName: opts.actorName || null });
     }
-    return { id: data?.id ?? null, attack_number: data?.attack_number ?? null, already: !!data?.already, reservation: data?.reservation || null };
+    return { id: data?.id ?? null, attack_number: data?.attack_number ?? null, already: !!data?.already, reservation: data?.reservation || null,
+        reservationsAtRisk: Array.isArray(data?.reservations_at_risk) ? data.reservations_at_risk : [] };   // 凸は拒まず、守れなくなる予約を返す (report_attack と同じ)
+};
+
+// ✅ 決定の配信 (シンプル化 S4・supabase/56): シーズンごとに直列化し、押したときの最新の決定 (expectedDecisionId・無ければ 0) がまだ最新か確かめてから 1 行入れる。
+//   違えば code 'CONFLICT' (別の運営が先に決定した)。56 未適用なら code 'NO_RPC' (決定は 56 が要る — 同時押しで両方入るのを防げないため)
+window.supabasePublishDecidedPlan = async function (planObj, publishedBy, publishedByName, seasonId, planSchema, expectedDecisionId) {
+    await _gateGuard('publish');   // 互換ゲート (L2 ⑦)
+    const { data, error } = await supabase.rpc('publish_decided_plan', {
+        p_season_id: seasonId, p_plan: planObj, p_published_by: publishedBy || null, p_published_by_name: publishedByName || null,
+        p_plan_schema: Math.max(0, Math.floor(Number(planSchema) || 0)), p_expected_decision_id: Number(expectedDecisionId) || null,
+    });
+    if (error) {
+        const msg = String(error.message || '');
+        if ((/publish_decided_plan/.test(msg) && /does not exist|schema cache|function/i.test(msg)) || error.code === 'PGRST202') {
+            const e = new Error('決定には supabase/56_attack_done_tap.sql の適用が必要です (SQL Editor で実行してください)');
+            e.code = 'NO_RPC';
+            throw e;
+        }
+        if (error.code === '40001' || /別の運営が先に決定しました/.test(msg)) { const e = new Error('別の運営が先に決定しました'); e.code = 'CONFLICT'; throw e; }
+        throw error;
+    }
+    window.supabaseLogActivity?.('ops', '凸プランを決定', { actorName: publishedByName || null });
+    return { id: data?.id ?? null, published_at: data?.published_at ?? null };
 };
 
 // 凸を1件追加

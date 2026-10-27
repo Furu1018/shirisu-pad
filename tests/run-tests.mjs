@@ -14782,7 +14782,7 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         assert.deepEqual(dp.rangeToDecide({ first: 4, count: 6, built: built([4, 5]) }), [4, 5]);
     });
     test('★ latestDecided / currentDecided: 最新の決定の行 / 最新の行が決定のときだけ', () => {
-        const d = { id: 5, plan: { decided: { blocks: [] } } }, old = { id: 3, plan: { decided: { blocks: [] } } }, blk = { id: 6, plan: { blockScope: { from: 5, to: 8 } } };
+        const d = { id: 5, plan: { decided: { blocks: [{ key: '5-8' }] } } }, old = { id: 3, plan: { decided: { blocks: [{ key: '5-8' }] } } }, blk = { id: 6, plan: { blockScope: { from: 5, to: 8 } } };
         assert.equal(dp.latestDecided([old, blk, d]).id, 5);
         assert.equal(dp.currentDecided([old, d]).id, 5);
         assert.equal(dp.currentDecided([old, blk, d]), null, '後の従来の配信を無視した');
@@ -14864,7 +14864,9 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         assert.deepEqual(t.slice(0, 3).map(r => [r.decided, r.level]), [[true, null], [true, 3], [true, null]]);
         assert.deepEqual([...dp.decidedBlocks(bad).keys()], ['5-8', '9-12', '13-16']);
         // 壊れた行 (blocks に null・levels が配列でない) は決定として読まない (画面が落ちる: S4 レビュー [7][13])
-        for (const broken of [{ levels: [], decided: { blocks: [null, { key: '5-8' }] } }, { levels: {}, decided: { blocks: [] } }, { levels: [], decided: { blocks: [5] } }]) {
+        // ブロックが 1 つも無い / 鍵が 'from-to' でない行も決定として読まない (S4 Codex 監査 E)
+        for (const broken of [{ levels: [], decided: { blocks: [null, { key: '5-8' }] } }, { levels: {}, decided: { blocks: [{ key: '5-8' }] } }, { levels: [], decided: { blocks: [5] } },
+            { levels: [], decided: { blocks: [] } }, { levels: [], decided: { blocks: [{}] } }, { levels: [], decided: { blocks: [{ key: '<b>x</b>' }] } }]) {
             assert.equal(dp.isDecided(broken), false, JSON.stringify(broken));
             assert.equal(dp.latestDecided([{ id: 9, plan: broken }]), null);
             assert.equal(dp.decidedBlocks(broken).size, 0);
@@ -15009,7 +15011,27 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         const order = ['await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans()])', 'if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0))',
             'const ctx = _obCtx(', 'dp.rangeToDecide(', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', 'if (!confirm(msg)) return;', '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
-            'Number(latest2?.id || 0) !== basis0', 'fpSig(rows2) !== sig0', 'window.supabasePublishPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan))', 'await _obNotifyDecide('];
+            'Number(latest2?.id || 0) !== basis0', 'fpSig(rows2) !== sig0', 'window.supabasePublishDecidedPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan), basis0)', 'await _obNotifyDecide('];
+        // S4 Codex 監査 A・B: 決定はサーバでも前提 (basis0) を照合して入れる (シーズンごとに直列化)。食い違い・56 未適用は通知の前に止める
+        assert.ok(/if \(e\?\.code === 'CONFLICT'\) \{ alert\(/.test(d) && /if \(e\?\.code === 'NO_RPC'\) \{ alert\(/.test(d) && !/window\.supabasePublishPlan\(/.test(d), '決定を素の insert で入れている / 食い違いで止めない');
+        const cl = _fsA.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/supabase\.rpc\('publish_decided_plan', \{/.test(cl) && /p_expected_decision_id: Number\(expectedDecisionId\) \|\| null,/.test(cl) && /e\.code = 'CONFLICT'/.test(cl) && /await _gateGuard\('publish'\);\s*\/\/ 互換ゲート \(L2 ⑦\)\s*\n\s*const \{ data, error \} = await supabase\.rpc\('publish_decided_plan'/.test(cl), 'クライアントの決定の配信');
+        const s56 = _fsA.readFileSync('supabase/56_attack_done_tap.sql', 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/CREATE OR REPLACE FUNCTION publish_decided_plan\(/.test(s56) && /PERFORM pg_advisory_xact_lock\(hashtextextended\('publish:' \|\| p_season_id, 0\)\);\s*\n\s*SELECT MAX\(id\) INTO v_latest FROM published_plans WHERE season_id = p_season_id AND plan \? 'decided';/.test(s56)
+            && /IF COALESCE\(v_latest, 0\) <> COALESCE\(p_expected_decision_id, 0\) THEN/.test(s56), '56: 決定の配信をロックの下で照合していない');
+        assert.ok(/CREATE TRIGGER trg_published_plans_no_legacy_after_decision\s*\n\s*BEFORE INSERT ON published_plans/.test(s56) && /PERFORM pg_advisory_xact_lock\(hashtextextended\('publish:' \|\| NEW\.season_id, 0\)\);/.test(s56), '56: 決定のあとの従来の配信を同じ鍵で拒んでいない');
+        // 決定の行の形は isDecided と同じ (DB と画面で「決定か」が食い違うと、以後の決定が止まり続ける)・NULL で素通りしない・復元の順序に依らない (id で前後を見る)
+        const okFn = (s56.match(/CREATE OR REPLACE FUNCTION published_plan_decided_ok\(p JSONB\)[\s\S]*?\$\$ LANGUAGE plpgsql IMMUTABLE;/) || [''])[0];
+        assert.ok(/jsonb_typeof\(p -> 'decided'\) IS DISTINCT FROM 'object'/.test(okFn) && /jsonb_typeof\(p -> 'decided' -> 'blocks'\) IS DISTINCT FROM 'array'/.test(okFn) && /jsonb_array_length\(p -> 'decided' -> 'blocks'\) = 0 THEN\s*\n\s*RETURN false;/.test(okFn)
+            && /p \? 'levels' AND jsonb_typeof\(p -> 'levels'\) NOT IN \('array', 'null'\)/.test(okFn) && /COALESCE\(b ->> 'key', ''\) !~ '\^\[0-9\]\{1,2\}-\[0-9\]\{1,2\}\$'/.test(okFn), '56: 決定の行の形の検査');
+        assert.ok(/IF NOT published_plan_decided_ok\(p_plan\) THEN/.test(s56) && /IF NEW\.plan \? 'decided' THEN\s*\n\s*IF NOT published_plan_decided_ok\(NEW\.plan\) THEN/.test(s56)
+            && /WHERE season_id = NEW\.season_id AND plan \? 'decided' AND id < NEW\.id\) THEN/.test(s56), '56: 決定の配信 / トリガーが形を確かめない・前後を id で見ない');
+        assert.ok(/'reservations_at_risk', to_jsonb\(v_at_risk\)/.test(s56) && /v_over := GREATEST\(0, \(v_active \+ v_done \+ 1\) - 3\);/.test(s56), '56: ✓ で守れなくなる予約を返していない (report_attack と同じ)');
+        assert.equal((s56.match(/AND \(p_reservation_id IS NULL OR id <> p_reservation_id\)/g) || []).length, 2, '56: ✓ の凸の予約まで「守れなくなる予約」に数えている');
+        assert.ok(/reservationsAtRisk: Array\.isArray\(data\?\.reservations_at_risk\) \? data\.reservations_at_risk : \[\] \};/.test(cl), 'クライアントが守れなくなる予約を返さない');
+        const mk2 = fn('async function _myMarkDone(', 'async function _myUndoDone(');
+        assert.ok(/const risk = Array\.isArray\(r\.reservationsAtRisk\) \? r\.reservationsAtRisk\.length : 0;/.test(mk2) && /\$\{risk \? ` — ⚠ 凸の数を超えるので予約 \$\{risk\} 件が守れなくなりました/.test(mk2), '✓ で守れなくなった予約を知らせない');
+        assert.ok(/to_regprocedure\('public\.publish_decided_plan\(bigint,jsonb,bigint,text,integer,bigint\)'\) IS NOT NULL/.test(_fsA.readFileSync('supabase/99_check_applied.sql', 'utf8').replace(/\r\n/g, '\n')), '99 の 56 の判定に決定の配信が無い');
         let at = -1;
         for (const k of order) { const i = d.indexOf(k); assert.ok(i > at, `決定の順が違う / 無い: ${k}`); at = i; }
         assert.ok(/_gateAllows\('publish'\)/.test(d) && /if \(_ob\.busy\) return;/.test(d) && /_obSame\(epoch, sid\)/.test(d), 'ゲート・二重押し・シーズン');
