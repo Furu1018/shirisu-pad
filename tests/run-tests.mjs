@@ -7815,7 +7815,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // 別シーズンの配信を「入っている」と見なさない
         assert.ok(/Number\(pub\.season_id\) === Number\(season\.id\)/.test(fn));
         // 最優先: 当日の「残り凸」より先に判定される
-        assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("season.hard_date === todayStr) {"), '当日の分岐より後になっている');
+        assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("if (season && raidToday(season)) {") && fn.indexOf("if (season && raidToday(season)) {") > 0, '当日の分岐より後になっている');   // 当日 = レイド日 (S4 レビュー [30])
         assert.ok(/onclick: '_opsGotoRepublish\(\)', label: /.test(fn), '押して飛べない');
         assert.ok(/function _opsGotoRepublish\(\) \{ _recomputeAndOfferPublish\(null\)/.test(html));
         // ★ 当日に本人の残り凸があるときは、運営の用事はサブリンク (本人の「戦闘に入る」を隠さない — Codex指摘 2026-09-08)
@@ -9789,7 +9789,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!identity\?\.id\) \{ card\.style\.display = 'none'; renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\); return; \}/.test(pub), '名乗りなしで消していない (きょうの凸 + 登録された模擬)');
         assert.ok(/if \(!pub\?\.plan\) \{\s*\n\s*card\.style\.display = 'none';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信なしでも描いていない');
         assert.ok(/_renderMyPubBody\(\);\s*\n\s*card\.style\.display = '';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信ありで描いていない');
-        assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows,\s*\n\s*pubs: pubList, pubKey: pubSel \? pubSel\.key : null, pubRows, decidedCurrent: !!decRow \};/.test(pub), 'その日の凸の行を使い回していない / ブロックごとの配信を状態に持っていない');
+        assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows,\s*\n\s*pubs: pubList, pubKey: pubSel \? pubSel\.key : null, pubRows, decidedCurrent: !!decRow, rowsAt \};/.test(pub), 'その日の凸の行を使い回していない / ブロックごとの配信を状態に持っていない');
         const fn = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn, 'renderMyTodayBlocks が無い');
         assert.ok(/rbd\.todayRows\(\{ blocks, nowHour, plans, viewerId: identity\.id, attacks: rows \|\| \[\], hourOfIso: _planJstHour \}\)/.test(fn), '判定をドメインに任せていない');
@@ -13274,8 +13274,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /const res = dom\.buildRows\(\{ attacks, plan, nowMs: Date\.now\(\), sinceMs, planId: pub\?\.id \?\? null, skips \}\);/.test(render), '運営OFF / ドメインで決めていない');
         // 段階 4: 配信は同じシーズンの _opsPublishedPlan (別クエリを増やさない) を そのブロックのぶんに絞り、算出の時刻より前の凸は照合しない
         assert.ok(/const pub = \(_opsPublishedPlan && Number\(_opsPublishedPlan\.season_id\) === Number\(snap\.season\.id\)\) \? _opsPublishedPlan : null;/.test(render)
-            && /const plan = \(rawPlan && rawPlan\.blockScope && rb\) \? rb\.scopePlan\(rawPlan, rawPlan\.blockScope\) : rawPlan;/.test(render)
-            && /const sinceMs = rawPlan\?\.conditions\?\.computedAt \|\| pub\?\.published_at \|\| null;/.test(render), '配信プランは同じシーズンの _opsPublishedPlan を そのブロックに絞って使う');
+            && /const plan = isDec \? _atkCheckDecidedPlan\(rawPlan, snap\.season\) : \(\(rawPlan && rawPlan\.blockScope && rb\) \? rb\.scopePlan\(rawPlan, rawPlan\.blockScope\) : rawPlan\);/.test(render)
+            && /const sinceMs = isDec \? null : \(rawPlan\?\.conditions\?\.computedAt \|\| pub\?\.published_at \|\| null\);/.test(render), '配信プランは同じシーズンの _opsPublishedPlan を そのブロックに絞って使う / 決定の行は sinceMs なし・ブロックの終わり (S4 レビュー [21])');
         assert.ok(/const canConfirm = snap\.attackConfirm !== false;/.test(render) && /disabled title="supabase\/52_attacks_confirmed\.sql を SQL Editor で実行すると押せます"/.test(render), '52 未適用で ✓ を止めていない');
         assert.ok(/if \(g !== _atkCheck\.localGen\) \{ _atkCheck\.local\.clear\(\); _atkCheck\.localGen = g; \}/.test(render), '盤面を取り直したら ✓ の上書きを捨てていない');
         assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
@@ -14921,6 +14921,36 @@ console.log('\n🧱 Lv4 の盤面 (S4 レビュー [1]):');
         assert.equal(bb.inBlockOf({ plan_key: '5-8|L1|B3|7|S1', reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), false, '夕方に押した朝の ✓ を夕方に数えた');
         assert.equal(bb.inBlockOf({ reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), true, '数字の報告は報告の時刻 (17:30 JST = 夕方)');
     });
+    test('★ S4 レビュー [23] inBlockTime: 決定の行は決めたブロックの窓と重なる予約だけ「中」(決めていないブロックの 🔒 / 📌 を組み直し中・配信後の予約にしない)', () => {
+        const rv = globalThis.reservationsDomain;
+        const dec = { levels: [], decided: { blocks: [{ key: '5-8', from: 5, to: 8 }, { key: '9-12', from: 9, to: 12 }] } };
+        assert.equal(rv.inBlockTime(dec, { time_mode: 'block', block_from: 21, block_to: 0 }), false, '夜の約束を朝・午前の決定の中にした');
+        assert.equal(rv.inBlockTime(dec, { time_mode: 'block', block_from: 9, block_to: 12 }), true);
+        assert.equal(rv.inBlockTime(dec, { time_mode: 'fixed', time_slot: 'h07' }), true);
+        assert.equal(rv.inBlockTime(dec, { time_mode: 'fixed', time_slot: 'h18' }), false);
+        assert.equal(rv.inBlockTime(dec, { time_mode: 'flex' }), true);
+        assert.equal(rv.pendingRepublish([{ id: 1, status: 'approved', player_id: 7, boss_number: 3, loadout_slot: 1, time_mode: 'block', block_from: 21, block_to: 0, approved_at: 'x' }], dec).count, 0, '決めていないブロックの約束を配信後の予約に数えた');
+    });
+    test('★ S4 レビュー [16] publishedPlans: 決定の行は決めたブロックにだけ効く (1 日ぶんとして全部のブロックに効かせない)', () => {
+        const pd = globalThis.publishedPlansDomain;
+        const dec = { id: 10, plan: { levels: [], decided: { blocks: [{ key: '5-8' }] } } }, eve = { id: 11, plan: { blockScope: { from: 17, to: 20 } } };
+        assert.deepEqual(pd.byBlocks([dec, eve], blocks).map(x => [x.key, x.pub.id]), [['5-8', 10], ['17-20', 11]], '決めていない午前・夜に決定の行が効いた');
+        assert.equal(pd.effectiveFor([dec, eve], '9-12'), null);
+        assert.equal(pd.previousFor([dec, { id: 12, plan: { blockScope: { from: 5, to: 8 } } }], { id: 12, plan: { blockScope: { from: 5, to: 8 } } }, '5-8').id, 10);
+        assert.equal(pd.previousFor([dec, { id: 12, plan: { blockScope: { from: 9, to: 12 } } }], { id: 12, plan: { blockScope: { from: 9, to: 12 } } }, '9-12'), null, '午前の 1 つ前に、朝だけの決定を数えた');
+        const all = { id: 9, plan: { levels: [] } };
+        assert.equal(pd.effectiveFor([all, dec], '9-12').id, 9, '1 日ぶんの行は従来どおりどのブロックにも効く');
+    });
+    test('★ S4 レビュー [19][21] attackCheck: 決定の割当 (blockEnd) と ✓ の行には「予定の時刻とずれ」を付けない', () => {
+        const ac = globalThis.attackCheckDomain;
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 3, blockEnd: true }] }] }] };
+        const rowsOf = (a) => { const out = ac.buildRows({ attacks: [{ id: 1, player_id: 1, boss_number: 1, level: 1, reported_at: '2026-10-30T20:10:00Z', damage_raw: 25e9, ...a }], plan, nowMs: Date.parse('2026-10-31T00:00:00Z') }); return (out.rows || out)[0].flags.map(f => f.key); };
+        assert.ok(!rowsOf({}).includes('time'), '決定の割当に時刻のずれを付けた (5 時の数字の報告・割当は朝の終わり 8 時)');
+        const plan2 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 0 }] }] }] };
+        const flags2 = (a) => { const out = ac.buildRows({ attacks: [{ id: 1, player_id: 1, boss_number: 1, level: 1, reported_at: '2026-10-30T23:20:00Z', ...a }], plan: plan2, nowMs: Date.parse('2026-10-31T00:00:00Z') }); return (out.rows || out)[0].flags.map(f => f.key); };
+        assert.ok(!flags2({ damage_raw: 0, source: 'tap' }).includes('time'), '✓ の行 (押した時刻) に時刻のずれを付けた');
+        assert.ok(flags2({ damage_raw: 30e9 }).includes('time'), '従来の数字の報告は時刻のずれのまま');
+    });
 }
 
 console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2):');
@@ -15051,8 +15081,35 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const u = fn('async function _myUndoDone(', 'async function renderMyPublishedPlan(');
         assert.ok(u.includes('・手で置いた駒 (📌) は戻りません — 必要なら運営が置き直します'), '取り消しで駒が戻らないことを言っていない');
         // 12: 控えは DB で確かめられたら外す・シーズンごと
-        assert.ok(/const _myTappedKeys = new Map\(\);/.test(html) && /if \(String\(sid\) !== String\(st\.seasonId\)\) continue;/.test(r) && /if \(allKeys\.has\(k\)\) _myTappedKeys\.delete\(k\);/.test(r), '控えが消えない / 別のシーズンの控えを使う');
-        assert.ok(/_myTappedKeys\.set\(planKey, v\.seasonId\);/.test(html), '控えにシーズンを付けていない');
+        assert.ok(/const _myTappedKeys = new Map\(\);/.test(html) && /if \(String\(t\.sid\) !== String\(st\.seasonId\)\) continue;/.test(r) && /if \(allKeys\.has\(k\)\) \{ _myTappedKeys\.delete\(k\); continue; \}/.test(r), '控えが消えない / 別のシーズンの控えを使う');
+        // S4 レビュー [14]: 押したあとに読んだ行に無ければ控えを捨てる (自分 = 本人の行の読み込み時刻・他の人 = 盤面の読み込み時刻)
+        assert.ok(/const readAfter = own \? \(Number\(st\.rowsAt\) > t\.at\) : \(!!opsSnap && typeof opsStore !== 'undefined' && !opsStore\.isStale\(Math\.max\(0, Date\.now\(\) - t\.at\)\)\);\s*\n\s*if \(readAfter\) \{ _myTappedKeys\.delete\(k\); continue; \}/.test(r), '押したあとに読んだ行に無い控えが残る');
+        assert.ok(/_myTappedKeys\.set\(planKey, \{ sid: v\.seasonId, memberId: e\.memberId, at: Date\.now\(\) \}\);/.test(html), '控えにシーズン・人・時刻を付けていない');
+        // S4 レビュー [12]: 代わりの ✓ は盤面が読めてから・押した時点のその人の凸で確かめる
+        assert.ok(/if \(canProxy && !opsSnap\) _myProxyBoardLoad\(\);\s*\n\s*const canProxyNow = canProxy && !!opsSnap;/.test(r) && /return canProxyNow && !e\.mine && !e\.done \?/.test(r), '盤面の無いまま代わりの ✓ を出す');
+        const mk = fn('async function _myMarkDone(', 'async function _myUndoDone(');
+        assert.ok(/fresh = await window\.supabaseLoadMyAttacks\(e\.memberId, season\.id, season\.hard_date\)/.test(mk) && /if \(fresh\.some\(x => x\.plan_key === planKey\)\)/.test(mk), '代わりの ✓ で、押した時点のその人の凸を見ていない');
+        // S4 レビュー [15]: 名乗り直しの直後の古い画面では何もしない・代わりに付けるのは運営だけ / [32] 代わりの ✓ は確認してから
+        assert.ok(/if \(String\(v\.identity\?\.id\) !== String\(me\.id\)\) \{ showNotification\('表示を更新しています/.test(mk) && /if \(role !== 'ops' && role !== 'master'\) return; \}/.test(mk), '名乗り直しの直後の古い時間割で押せる / 運営でない人が代わりに付けられる');
+        assert.ok(/if \(byOps && !confirm\(`\$\{e\.memberName \|\| ''\} さんの B\$\{e\.bossNumber\} の凸に、運営が代わりに ✓ を付けます。よろしいですか？`\)\) return;/.test(mk), '代わりの ✓ を確かめずに付ける (S4 レビュー [32])');
+        const ud = fn('async function _myUndoDone(', 'async function renderMyPublishedPlan(');
+        assert.ok(/String\(_myDecidedView\?\.identity\?\.id\) !== String\(me0\.id\)/.test(ud), '取り消しが名乗り直しの直後の古い画面で通る');
+        // S4 レビュー [26]: ✓ / 取り消しのあとヒーローの残り凸を数え直す
+        assert.ok(/_myTodayAttacksCache = null;/.test(mk) && /_myTodayAttacksCache = null;/.test(ud), 'ヒーローの残り凸のキャッシュを捨てていない');
+        // S4 レビュー [28] ダークで白い文字を明るい緑に乗せない / [29] 決定のときのヒーローの文 / [30] レイド当日はレイド日で
+        assert.ok(html.includes('.mt-done { padding: 8px 12px; border-radius: 10px; border: 0; background: var(--ok-solid); color: var(--ok-ink);'), '✓ ボタンの塗りと文字');
+        assert.ok(html.includes("why = _myPubState?.decidedCurrent\n                            ? '決まったあなたの凸は「📅 きょうの凸」の時間割に出ています。凸したら、その行の「✓ 凸しました」を押してください (数字は入れません)。'"), 'ヒーローが決定のときもスクショを Discord へと言う');
+        assert.ok(/if \(season && raidToday\(season\)\) \{\s*\n\s*\/\/ A: 当日/.test(html) && /const raidToday = \(s\) => !!\(s && \(window\.opsStageDomain\?\.raidDayKey \? window\.opsStageDomain\.raidDayKey\(Date\.now\(\)\) === String\(s\.hard_date \|\| ''\)\.slice\(0, 10\)/.test(html), 'ヒーローの当日が暦日 (翌 0〜4 時が外れる)');
+        // S4 レビュー [31] 従来の画面の消し込み / [24] 前回から変わったか (決定はブロック単位)
+        assert.ok(html.includes('if (!decRow && rt != null && Number.isFinite(pubAt) && rt <= pubAt) return;'), '決定の行でも配信前の凸を消し込まない');
+        assert.ok(/const prevDec = dpx\.latestDecided\(pubRows\.filter\(/.test(html) && /myChange = sig\(a0\) === sig\(b0\) \? \{ changed: false \}/.test(html), '決定の「前回から変わったか」を時刻で比べている');
+        // S4 レビュー [18] ✓ の行のダメージを編集させない
+        assert.ok(html.includes("${tapOnly ? '' : `<button onclick=\"handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})\"") && html.includes("${tapOnly ? '' : `<button onclick=\"handleMyAttackEdit(${a.id}, ${a.damage_raw})\""), '✓ の行に編集が出る');
+        // S4 レビュー [22] 決定のあるシーズンでは従来の配信を出さない・最初の決定で従来の配信から外れた人にも
+        assert.ok(/if \(await _seasonHasDecision\(seasonId\)\) \{ alert\(_DECIDED_LEGACY_MSG\); return; \}/.test(fn('async function handleOpsPublishPlan() {', 'async function handleOpsUnpublishPlan(')), '従来の配信が決定と混ざる');
+        assert.ok(/if \(await _seasonHasDecision\(seasonId\)\) \{ alert\(_DECIDED_LEGACY_MSG\); return; \}/.test(fn('async function handleOpsChainPlan() {', 'async function _notifyChainPublish(')), '一気に組むが決定と混ざる');
+        const nd2 = fn('async function _obNotifyDecide(', '// ブロックの時間の言い方');
+        assert.ok(/if \(!prev && window\.publishedPlansDomain && window\.planChainDomain\) \{/.test(nd2) && /title: '🔄 あなたの凸が外れました', body: '組み直しで、あなたの割当は無くなりました。ホームの時間割で確認してください' \}\);/.test(nd2), '最初の決定で従来の配信から外れた人に知らせない');
     });
     test('★ 凸報告の確認: 数字の無い ✓ の行は「予定より低い」にしない', () => {
         const ac = globalThis.attackCheckDomain;

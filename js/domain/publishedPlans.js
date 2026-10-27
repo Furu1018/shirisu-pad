@@ -19,6 +19,22 @@
     const keyOfPlan = (plan) => scopeKey(plan && plan.blockScope);
     /** 配信の行 (pub.plan.blockScope) の鍵 */
     const keyOf = (pub) => keyOfPlan(pub && pub.plan);
+    /**
+     * ✅ 決定の行 (シンプル化 S4・plan.decided) は blockScope を持たないが、効くのは決めたブロック (decided.blocks[].key) だけ。
+     * 'all' として全部のブロックに効かせると、決めていないブロックが「割当はありません」になる (S4 レビュー [16])。決定の行でなければ null
+     */
+    function decidedKeysOf(r) {
+        const d = r && r.plan && r.plan.decided;
+        if (!d || !Array.isArray(d.blocks)) return null;
+        return new Set(d.blocks.filter(b => b && typeof b === 'object' && b.key != null).map(b => String(b.key)));
+    }
+    /** その行がブロックの鍵 key に効くか (鍵が同じ / 1 日ぶん / 決定の行なら決めたブロック) */
+    function appliesTo(r, key) {
+        const dk = decidedKeysOf(r);
+        if (dk) return dk.has(String(key));
+        const k = keyOf(r);
+        return k === key || k === 'all';
+    }
     /** 行のうち id 最大 (無ければ null) */
     function latest(rows) {
         let best = null;
@@ -31,8 +47,7 @@
         let best = null;
         for (const r of (Array.isArray(rows) ? rows : [])) {
             if (!r) continue;
-            const k = keyOf(r);
-            if (k !== key && k !== 'all') continue;
+            if (!appliesTo(r, key)) continue;   // 決定の行は決めたブロックだけ (S4 レビュー [16])
             if (!best || idOf(r) > idOf(best)) best = r;
         }
         return best;
@@ -48,8 +63,7 @@
         let best = null;
         for (const r of (Array.isArray(rows) ? rows : [])) {
             if (!r || idOf(r) >= cur) continue;
-            const k = keyOf(r);
-            if (key !== 'all' && k !== key && k !== 'all') continue;
+            if (key !== 'all' && !appliesTo(r, key)) continue;
             if (!best || idOf(r) > idOf(best)) best = r;
         }
         return best;
@@ -162,5 +176,5 @@
         return out.sort((a, b) => idOf(a.row) - idOf(b.row));
     }
 
-    root.publishedPlansDomain = { keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctEffective, timelessOnly, effectivePlans, mergedPlan, distinctCount, pickDefault, strayRows };
+    root.publishedPlansDomain = { decidedKeysOf, appliesTo, keyOf, keyOfPlan, keyOfBlock, latest, effectiveFor, previousFor, byBlocks, distinctEffective, timelessOnly, effectivePlans, mergedPlan, distinctCount, pickDefault, strayRows };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -31,7 +31,8 @@
                 for (const a of (Array.isArray(b.attacks) ? b.attacks : [])) {
                     if (!a || a.memberId == null) continue;
                     out.push({ memberId: a.memberId, bossNumber: Number(b.bossNumber), hourIdx: Number.isInteger(a.hourIdx) ? a.hourIdx : null,
-                        dmgB: Number(a.dmgB) || 0, level: lv.level == null ? null : Number(lv.level), flex: !!a.flex, loadoutSlot: Number(a.loadoutSlot) || 1 });
+                        dmgB: Number(a.dmgB) || 0, level: lv.level == null ? null : Number(lv.level), flex: !!a.flex, loadoutSlot: Number(a.loadoutSlot) || 1,
+                        blockEnd: !!a.blockEnd });   // ✅ 決定の割当 (S4): 時刻はブロックの終わりに寄せてある (約束はブロックだけ) → 時刻のずれの印は出さない
                 }
             }
         }
@@ -89,7 +90,8 @@
                     // ✓ 凸しました (56・数字の無い行) はダメージを持たないので「予定より低い」にしない
                     const tapOnly = !!a.source && !(Number(a.damage_raw) > 0);
                     if (!tapOnly && matched.dmgB > 0 && damageB < matched.dmgB * lowRatio) flags.push({ key: 'low', text: `予定 ${matched.dmgB.toFixed(1)}B → ${damageB.toFixed(1)}B` });
-                    if (!matched.flex && matched.hourIdx != null && hourIdx != null && Math.abs(matched.hourIdx - hourIdx) >= timeGapH) {
+                    // ✓ 凸しました の行 (押した時刻) と 決定の割当 (ブロックだけを約束) には「予定の時刻とずれ」を付けない (S4 レビュー [19][21])
+                    if (!tapOnly && !matched.blockEnd && !matched.flex && matched.hourIdx != null && hourIdx != null && Math.abs(matched.hourIdx - hourIdx) >= timeGapH) {
                         flags.push({ key: 'time', text: `予定 ${hourLabelOfIdx(matched.hourIdx)} → 報告 ${hourLabelOfIdx(hourIdx)}` });
                     }
                 }

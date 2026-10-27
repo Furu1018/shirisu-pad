@@ -723,6 +723,18 @@
     }
     /** 🧱 ブロックのぶんの配信 (plan.blockScope.slots) の時間の中か。⏳隙間型・時刻の読めない行は中 (raidBlocksDomain.scopeReservations と同じ読み方)。1 日ぶんの配信は全部中 */
     function inBlockTime(plan, r) {
+        // ✅ 決定の行 (シンプル化 S4) は blockScope を持たない → 決めたブロック (decided.blocks) の窓と重なる予約だけ「中」。
+        //   決めていないブロックの 🔒 / 📌 を「運営が組み直し中」「配信後の予約」にしない (S4 レビュー [23])
+        if (plan && plan.decided && Array.isArray(plan.decided.blocks)) {
+            if (!r || r.time_mode === 'flex') return true;
+            const wins = plan.decided.blocks.filter(b => b && typeof b === 'object')
+                .map(b => ({ fromIdx: idxOfHourB(b.from), toIdx: idxOfHourB(b.to) })).filter(w => w.fromIdx != null && w.toIdx != null && w.fromIdx <= w.toIdx);
+            const win = blockWindowOf(r);
+            if (win) return wins.some(w => win.fromIdx <= w.toIdx && win.toIdx >= w.fromIdx);
+            if (!r.time_slot) return true;
+            const i = slotIdxOf(r.time_slot);
+            return i != null && wins.some(w => i >= w.fromIdx && i <= w.toIdx);
+        }
         const slots = (plan && plan.blockScope && Array.isArray(plan.blockScope.slots)) ? plan.blockScope.slots : null;
         if (!slots || !r || r.time_mode === 'flex') return true;
         const win = blockWindowOf(r);

@@ -441,7 +441,10 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
         let { data: atks, error: aErr } = await loadAtks(ATK_BASE + ', source');
         if (aErr && _isMissingColumnErr(aErr, 'source')) ({ data: atks, error: aErr } = await loadAtks(ATK_BASE));
         if (aErr) throw aErr;
+        const atkCount0 = (atks || []).length;
         atks = (atks || []).filter(a => !(a.source && !(Number(a.damage_raw) > 0)));
+        // 凸がすべて ✓ (数字なし) の回は分析の比較に使えない (全員 0 凸・0 ダメージの「今月」になる: S4 レビュー [20]) → 返さない (月次の JSON を置けばそちらを読む)
+        if (atkCount0 > 0 && atks.length === 0) continue;
 
         // 4) Fururi 模擬戦スコア
         const { data: sims, error: simErr } = await supabase
@@ -2761,7 +2764,9 @@ window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
         .eq('season_id', seasonId)
         .eq('attack_date', attackDate)
         .order('reported_at', { ascending: false });
-    let { data, error } = await load(`${base}, reservation_id`);
+    // ✓ 凸しました (56) の行を見分ける source も読む (編集の一覧で「✓ 数字なし」と出し、ダメージの編集で HP を動かさせない: S4 レビュー [18])。56 未適用なら列なしで
+    let { data, error } = await load(`${base}, reservation_id, source`);
+    if (error && /source/.test(String(error.message || ''))) ({ data, error } = await load(`${base}, reservation_id`));
     if (error && /reservation_id/.test(String(error.message || ''))) ({ data, error } = await load(base));
     if (error) throw error;
     return data || [];
