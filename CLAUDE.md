@@ -989,7 +989,7 @@ rgba(var(--paper-rgb), 0.7)   /* その裏返し (濃い地の上に置く半透
 
 **白い帯 + いま居るタブだけ黒い円で持ち上げる**。以前は黒い帯 + 丸アイコン5つ + センターだけ大丸だった
 (モック 6f9d0510・ユーザー決定 A「黒い円で統一」)。
-- タブに**名前を出す** (模擬 / 戦況 / ホーム / 分析 / 設定)。いま居るタブだけ太字、他は薄い
+- タブに**名前を出す** (ホーム / レイド予定表 / 模擬 / 戦況 / 分析 / 設定・S5 で 6 つ)。いま居るタブだけ太字、他は薄い
 - いま居るタブの `.nav-icon-wrap` を `position:absolute; top:-26px` の黒い円にし、
   `border: 5px solid var(--nav-ring)` で**地の色で切って**帯から飛び出して見せる
 - ★ **センターが特別、ではなくなった**。`nav-home` のクラスは互換のため残すが見た目の差は無い
@@ -1377,10 +1377,26 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   **✓ 凸しました** = `supabaseMarkAttackDone` → RPC `mark_attack_done` (**`56_attack_done_tap.sql`**: attacks にダメージ 0・予定の編成・`planned_damage_raw`・`plan_key` (二重押しを止める一意索引)・`source` 'tap' / 'ops_tap'・採番と 3 凸の上限は report_attack と同じ・
   HP は動かさない (運営が 🎯 で合わせる)・駒は 📌 → released / 約束 → fulfilled)。56 未適用は「56 を実行してください」で止まる。練習の偽サーバにも同じ RPC。
   ★ 残凸は report_attack (40) と同じく**凸を拒まない** (ゲームの中ではもう起きた事実) — 生きている予約 + 済んだ凸 + この凸 が 3 を超えるぶんの予約を `reservations_at_risk` で返し、✓ の知らせに「予約 N 件が守れなくなりました」(運営が 🔒 凸の予約で解除)。
-  運営は時間割で代わりに ✓ を付けられる (盤面が読めてから・押した時点のその人の凸で確かめる・確認ダイアログ・役割 ops / master だけ)。取り消しは ✓ の行を消すだけ (駒は戻らないと先に言う)。名乗り直しの直後の古い時間割では押させない。
+  ★ **S5 でメンバーの ✓ は無くした** (下の ★ 📅 レイド予定表)。✓ を付けるのは運営の ⚔️ 戦況 › ✓ 凸の記録 だけ (押した時点のその人の凸で確かめる・役割 ops / master だけ)。取り消しは ✓ の行を消すだけ (駒は戻らないと先に言う)。
   ✓ の行は 分析 (凸がすべて ✓ の回は返さない)・凸報告の確認 (予定より低い / 時刻のずれ を付けない・決定の行は sinceMs なし・割当の時刻はブロックの終わり `_atkCheckDecidedPlan`)・ダメージの編集 から外す。凸数の上限とピースの残り凸は plan_key のブロックで数える (押した時刻ではない)。
-  **決定のあるシーズンでは従来の配信・一気に組むを出さない** (`_seasonHasDecision` → `_DECIDED_LEGACY_MSG`)。ヒーローの当日はレイド日 (翌 0〜4 時も)・決定のときは「✓ 凸しました を押して」。純ロジックは `js/domain/decidePlan.js`。
-  ★ 練習の運営編はまだ従来の算出・配信で組む (S2 で畳んだ「従来の算出・配信 (詳しく)」を案内がまず開かせる橋渡し `legacy()`)。新しい流れの練習・予約の画面を隠すのは S5
+  **決定のあるシーズンでは従来の配信・一気に組むを出さない** (`_seasonHasDecision` → `_DECIDED_LEGACY_MSG`)。ヒーローの当日はレイド日 (翌 0〜4 時も)。純ロジックは `js/domain/decidePlan.js`。
+  ★ **📅 レイド予定表 / ✓ は運営が付ける / 予約を隠す / 練習の作り直し (シンプル化 S5・2026-10-27 ふるり・設計案 §9・監査 `docs/AUDIT-2026-10-23.md` の N)**:
+  ふるりの言葉「中途半端に配置するならいっそのこと不要。メンバーはディスコードで凸を報告して、PAD の入力は運営が行う」「レイド予定表タブを作成し、配信されてなければ『まだ配信されていない』…自分以外のメンバーの模擬の構成やスコアも、自分のブロックで他に誰が凸するかもわかる」。
+  - **📅 レイド予定表タブ** (`data-tab="raid"`・`#tab-raid`・`TAB_REGISTRY` はホームの次・3 つのナビすべて・アイコンは GB の RAID エンブレムを 1 色の塗り (fill currentColor) のシルエットに・member-lite でも出す)。
+    中身は `renderRaidTab(identity)` (読むだけ): ① 状態 (まだ配信されていません / ✅ 決定: 朝・午前 (誰 · いつ) + まだ決まっていないブロック + ✅ 確認しました (ホームの `_myPubState` が同じ決定を持っているときだけ・同じ `handleAckPlan(this)`) / 最新が従来の配信ならホームへ)
+    ② ブロックごとの凸 (`decidePlanDomain.timetable`・全員・自分の行は色付き・✓ = `_raidDoneKeys` = plan_key + 数字の報告を `doneInPrev` で消し込み) ③ みんなの模擬 (`mockIntakeDomain.tableRows` を自分 → 名前の順に並べ直し・`_MK_ATTR_CSS`・キャラは `renderTeamSnippet`・赤い枠 = 被り・ボタンは無い)。
+    材料は運営の盤面と同じ `supabaseLoadOpsDashboardData()` を **opsStore を通さずに**呼ぶ (opsStore の世代は運営のカードのもの・RLS は anon のまま・新しいポリシーは無い)。世代 `_raidSeq` + いまの名乗りで遅れた描画を捨てる。
+    30 秒ごとに取り直す (`_startCoordPolling` の tick 2・開いているときだけ)・名乗り直し・✅ のあと・決定のあと (`_invalidateTabRenderCache('raid')`) に描き直す。決定の通知の行き先は `./?tab=raid`・文は「レイド予定表で確認してください」
+  - **ホームの 📅 きょうの凸** (`_renderMyDecided`) は**自分の凸だけ** (決まったブロックのうち自分の行・✓ 済み の印・まだ決まっていないブロックの名前) + 「📅 レイド予定表を見る」。✓ / 取り消す / 代わりの ✓ / 控え (`_myTappedKeys`) は無くした
+  - **✓ 凸の記録** (`opsSecAttackTap`・⚔️ 戦況・当日に開く・幅 12・結果の取り込みの前): 決定の時間割を全員ぶん・行ごとに「✓」/「取り消す」(`renderOpsAttackTap` / `_opsTapMark` / `_opsTapUndo`)。材料は結果の取り込みと同じ (`_opsPublishedPlan` + opsStore・自分では load しない・押したあとは中央の `_opsReloadBoardCards`)。
+    ✓ は `byOps: true` = source 'ops_tap' で、活動ログは **`attack_tap`** (代理凸 proxy_attack に数えない — 👥 の「代理 登録」がほぼ全員になるため)。`attackCheck` は ops_tap の行を確認済みに数える (⚔️ の数を ✓ のたびに増やさない)。
+    数字で報告済みの凸に重ねるときだけ確認する (代わりに付けますの確認は無い)。当日のヒーローは「残り N 凸 → ✓ 凸の記録を開く」(`opsStage` の action 'tap' → `_opsStageAct('tap')`)。📥 結果の取り込みはタブの中でも畳んで始める (`opsLayout` の `tabOpen: false`・開いた記憶があればそれ)
+  - **予約の画面を隠す** (`_resvUiHidden = () => !_memberInputFull()` → `body.resv-hidden`・`_applyMemberLite` が付ける): `#myReservationsCard` / `#myResvRequestModal` / `#myTeamEditResvSec` / `#opsSecReserve` / `[data-resv-ui]` (📸 の「🔒 この編成で予約する」) を CSS で隠す (コードは残す)。
+    `renderMyReservations` は読みに行かない・`openMyResvRequest` は Discord へ案内・ホームの運営のヒーローは予約を読まない・段階のチェックリストとヒーローは `reservations.hidden` で予約の行と分岐を飛ばす・🧱 組む の数に予約を数えない。従来の画面 (member_input=full) では戻る
+  - **練習モードの作り直し** (`js/practice/guide.js`): メンバー編 = discord → **schedule** (⏩ 運営が「夜」を決定 = `opsDecide(['夜'], { notify: true })` → 📅 レイド予定表で ✅) → report (⏩ 運営が ✓ = `supabaseMarkAttackDone` の ops_tap)。
+    運営編・前日 = **mock** (▶︎ 模擬ダメージ表のコトラの「＋」→ 手で入力 → 保存) → **buildMorning** (朝のピース → ボスの行の見出し (`.obr-h`・真ん中は 📌 で押すと外れる) → 🧮) → **buildMore** (午前 → 🧮) → **decide** (✅ 決定)。
+    運営編・当日 (17 時) = hp → **tap** (✓ 凸の記録の ✓) → **rebuild** (夕方 → 🧮) → **decide** (決定し直す) → finish。開始の盤面 `SETUP['ops-day']` は運営役が朝〜夕方を決定 (`opsDecide(..., { first: 0 })` = 画面の「残りを自動で組む」と同じ渡し方 → overview → build → `supabasePublishDecidedPlan`) し、
+    `advanceWorld` が 17 時までの凸に ✓ (ops_tap) を付けてゲームの HP を減らす (B1 は多めに残す・最後の 1 凸は ✓ を付けずに残す)。予約・催促・従来の配信・結果の取り込み の練習は無くした (テストが見張る)
   ★ **③-f 凸報告の確認** (2026-10-18): 戦況タブ「✅ 凸報告の確認」(`opsSecAttackCheck`・当日と終了・幅 12・当日は開く)。盤面の凸 (`players[].attacks`) を
   配信プラン (`_opsPublishedPlan.plan`・`_syncOpsUnpublishBtn` の取り直しの最後に描く = 別クエリを増やさない) と突き合わせ、印 = 計画にない / 予定よりかなり低い (70% 未満) /
   予定の時刻とずれ (3 時間以上)。予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。✓ → `supabaseSetAttackConfirmed` → `attacks.confirmed_at / confirmed_by`

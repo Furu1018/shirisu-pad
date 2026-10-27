@@ -965,16 +965,14 @@ test('見張り: 案内が指す「押す場所」が、本物の画面 (index.h
 });
 test('見張り: 課題の形 / 「〜したことにする」は自動では起きない / 案内の文が引く画面の言葉が実在する', () => {
     const P = loadGuide();
-    // ★ 2026-10-22 の作り直し (🧱 ブロック制・段階 2.5): メンバーは「出られる時間と凸数」と「いつ・どの PT で」だけ、運営はブロックの頭の手順
-    assert.deepEqual(Array.from(P.steps.member, s => s.key), ['discord', 'wait', 'ack', 'report']);   // (別の実行環境の配列なので写してから比べる) 🗣 9f: 前日は Discord に書くだけ
-    assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'avail', 'resv', 'compute', 'pin', 'publish'], '運営編・前日は 催促 → ⏰ 報告を登録 → 🔒 希望を予約に → 🧱 朝を組む → 📌 → 配信 (🗣 9f)');
-    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締め凸検索');
+    // ★ シンプル化 S5 (2026-10-27) の作り直し: メンバー = Discord で伝える → 📅 レイド予定表 → 凸したら Discord へ /
+    //   運営・前日 = 📸 模擬を登録 → 朝を組む (📌 → 自動) → 午前も組む → 決定 / 運営・当日 = 🎯 HP → ✓ 凸の記録 → 夕方を組み直す → 決定し直す → 締め凸検索
+    assert.deepEqual(Array.from(P.steps.member, s => s.key), ['discord', 'schedule', 'report']);   // (別の実行環境の配列なので写してから比べる)
+    assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['mock', 'buildMorning', 'buildMore', 'decide'], '運営編・前日は 📸 模擬 → 🧱 朝 → 午前 → ✅ 決定 (S5)');
+    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'tap', 'rebuild', 'decide', 'finish'], '運営編・当日は 🎯 HP → ✓ 凸の記録 → 🧱 組み直す → ✅ 決定し直す → 締め凸検索 (S5)');
     assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
-    // シンプル化 S2 で条件パネル・算出・配信は「従来の算出・配信 (詳しく)」(<details id="opsPlanLegacy">) に畳まれた。練習の運営編はまだ従来の画面で組むので、
-    //   組む・📌・配信の 5 課題は、組むのタブのあとにまず畳みを開かせる (無いと案内の枠が出せず止まる — 2026-10-27 に main で止まっていた。S5 で作り直すまでの橋渡し)
-    assert.equal((GUIDE.match(/if \(opsTab\('build'\)\) return stray\(c, \[\]\) \|\| opsTab\('build'\);\s*\n\s*if \(legacy\(\)\) return stray\(c, \[\]\) \|\| legacy\(\);/g) || []).length, 5, '組む・📌・配信の課題で従来の畳みを開かせていない (練習の運営編が止まる)');
-    assert.match(GUIDE, /var d = document\.getElementById\('opsPlanLegacy'\);\s*\n\s*if \(!d \|\| d\.open\) return null;/, '畳みが開いていれば案内しない、になっていない');
-    assert.ok(HTML.includes('<details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 (詳しく)</summary>'), '畳みの名前が変わった (案内の文とずれる)');
+    // S5: 予約・催促・従来の配信・結果の取り込み の練習は無くした (画面から隠した / 畳んだものを指さない)
+    assert.ok(!/legacy\(\)|opsPlanLegacy|openOpsResvCreate|_opsStageAct\(\\?'nudge|opsPlanPublishBtn|opsResult|supabasePublishPlan\(|supabaseAddAttack\(/.test(GUIDE.replace(/\/\/[^\n]*/g, '')), '練習が S5 で隠した画面 (予約・催促・従来の配信・結果の取り込み) を指している');
     for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
     for (const sc of Object.keys(P.steps)) for (const s of P.steps[sc]) assert.ok(s.title && typeof s.done === 'function' && typeof s.guide === 'function', `${sc}/${s.key} の形が違う`);
     const ids = Object.keys(P.scenarios).sort();
@@ -985,30 +983,26 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     for (const id of ids) assert.ok(P.scenarios[id].title && P.scenarios[P.scenarios[id].next], `${id} の名前か「次の編」が無い`);
     // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵・最後の report は手順が要らない)
     const ff = GUIDE.match(/var FF = \{[\s\S]*?\n    \};/)?.[0] || '';
-    assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['discord', 'wait', 'ack'], '手前を済ませる手順が課題と合わない');
+    assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['discord', 'schedule'], '手前を済ませる手順が課題と合わない');
     assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-0': 2 \}, actorName: P\.ops\.name \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
-    assert.match(ff, /wait: async function \(\) \{ await publishNight\(\); \}/);
+    assert.match(ff, /schedule: async function \(c\) \{ await decideNight\(\);/);
     assert.match(ff, /window\.supabaseAckPlan\(/);
     assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/, '途中で失敗しても戻していない');
     assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/);
     assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
-    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 + 17 時までの凸で作り、失敗したら全部戻す
+    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の決定 (朝〜夕方) + 17 時までの ✓ で作り、失敗したら全部戻す
     assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
-    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 17, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (18 時まで) を作っていない');
+    assert.match(GUIDE, /var SETUP = \{[\s\S]*?P\.clock\.set\('eve', 20\);\s*\n\s*try \{ res = await opsDecide\(\['朝', '午前', '午後', '夕方'\], \{ first: 0 \}\); \} finally \{ P\.clock\.put\(clockDay\); \}[\s\S]*?advanceWorld\(context\(\), res\.plan, 17, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (朝〜夕方の決定と 17 時までの ✓) を作っていない');
     assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/);
     assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/);
-    // 運営役の配信は本物のソルバー・本物の配信。🧱 ブロックで組むときは画面と同じ渡し方 (ブロックの人 + ブロックの頭から) と blockScope の焼き込み
+    // 運営役の「組んで決定」は本物のソルバー (🧱 組む の「残りを自動で組む」と同じ渡し方) → blockBuild.overview → decidePlan.build → 本物の決定の配信
     const code = GUIDE.replace(/\/\/[^\n]*/g, '');
-    assert.match(code, /plan = computeOptimalPlan\(opts, snapshot\);/, '運営役の組み直しが本物のソルバーでない');
-    assert.match(code, /opts\.onlyAvailableNow = true; opts\.availableAtSlots = blk\.slots; opts\.availableAtLabel = blk\.label; opts\.blockStartSlot = _hourKey\(blk\.from\);/, 'ブロックで組むときの渡し方が画面と違う');
-    assert.match(code, /if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/, 'ブロックのぶんだけ配信する印が無い');
-    assert.match(HTML, /if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/, '画面の焼き込みと練習の焼き込みがずれた');
-    assert.match(code, /return window\.supabasePublishPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema\);/, '運営役の配信が本物の関数でない');
-    // 運営があなたの凸を登録した (本物の凸の登録・運営の名前で) / ボスは倒し切らない
-    assert.match(code, /opsRegister: async function \(\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ actorName: P\.ops\.name \}\);/, '凸の登録の仮定が本物の関数でない');
-    assert.match(code, /var dmg = Math\.min\([^;]*Number\(boss\.remaining_hp_raw\) - 1\)\);/, '練習の世界でボスを倒し切る');
-    // ★ 本番はブロックの配信で通知をまだ送らない → 練習も送らない (本番とずらさない)
-    assert.ok(!/publishNight[\s\S]{0,400}pushAsOps\(/.test(code), '練習だけ配信の通知を送っている');
+    const autoCall = 'computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: ';
+    assert.ok(code.includes(autoCall + '[] }, o.startBoard);') && HTML.includes(autoCall + 'resv }, o.startBoard);'), '運営役の組み方が画面の「残りを自動で組む」とずれた');
+    assert.match(code, /var plan = dp\.build\(\{ blocks: blocks, ov: ov, newIdxs: want, prevPlan: prev \? prev\.plan : null, bosses: snapshot\.bosses, at: new Date\(\)\.toISOString\(\) \}\);/, '運営役の決定が decidePlan.build でない');
+    assert.match(code, /await window\.supabasePublishDecidedPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema, prev \? prev\.id : 0\);/, '運営役の決定が本物の関数でない');
+    // 運営があなたの凸に ✓ を付けた (本物の ✓ の関数・運営の名前で・ダメージ 0)
+    assert.match(code, /opsTap: async function \(\) \{[\s\S]*?await window\.supabaseMarkAttackDone\(\{[\s\S]*?planKey: window\.decidePlanDomain\.planKey\(a\)[\s\S]*?\}, \{ byOps: true, actorName: P\.ops\.name \}\);/, '✓ の仮定が本物の関数でない');
     // 締凸検索は「探すだけ」: 本物のコピーの関数を呼んでから印を付ける (頼む操作は無い)
     assert.match(code, /var _realCopy = window\.handleOpsFinishPlanCopy;\s*window\.handleOpsFinishPlanCopy = async function \(kind\) \{\s*var r = await _realCopy\(kind\);/, 'コピーを本物の関数で通していない');
     assert.ok(!/supabaseSaveFinishRequests|supabaseRespondFinishRequest|finish_requests'/.test(code), '練習で締め凸を頼んでいる (本番は探すだけ)');
@@ -1034,18 +1028,14 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // 🗣 9c/9f (2026-10-24): メンバーは PAD で予約を出さない → 練習も「申請が来た」を仮定しない。運営発の予約の通知は本物の関数 (handleOpsResvCreateSubmit → _notifyMemberResv) が送る
     assert.ok(!GUIDE.includes('🔒 予約 (承認待ち)') && !GUIDE.includes('memberRequest'), '練習がメンバーの申請を「来たことにする」で送っている (メンバーは PAD で予約を出さない)');
     // 運営編・前日 resv の済んだ形は運営発の予約だけ (📌 → 🔒 確定や本人の申請では済まない・Codex 9c/9f D)。案内は状態を変えない (相手は「誰の予約か」で選ばせる)
-    const resvStep = GUIDE.slice(GUIDE.indexOf("{ key: 'resv',"), GUIDE.indexOf("{ key: 'compute',"));
-    assert.match(resvStep, /e\.to_status === 'approved' && e\.reason === 'ops_registered'/, 'resv の完了判定が遷移の理由 ops_registered を見ていない');
-    assert.match(resvStep, /r\.status === 'approved' && r\.source_type === 'self' && r\.pinned_by && ops\[String\(r\.id\)\]/, 'resv の完了判定が 📌 → 🔒 確定でも真になる');
-    assert.ok(!resvStep.includes('_opsResvCreateSet('), 'resv の案内 (描写) が状態を変えている');
-    assert.match(resvStep, /target: q\('#opsResvCreateBody select'\)/, 'resv の案内が「誰の予約か」を選ばせていない');
-    assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
     // 案内の要所
-    assert.deepEqual(Array.from(P.selectors.availPlusNight), ['#myAvailModal button[onclick="_availStepCount(4, 1)"]'], '夜 (既定の 5 つ目のブロック) の「＋」を指していない');
+    assert.deepEqual(Array.from(P.selectors.tapDone), ['#opsAtkTapBody [data-tap-done]'], '✓ 凸の記録 の「✓」を指していない');
+    assert.deepEqual(Array.from(P.selectors.obRow), ['#opsBuild .obr.can .obr-h'], 'ボスの行の真ん中 (📌 の駒 = 押すと外れる) を指している');
     assert.match(code, /var hit = document\.elementFromPoint\(cx, cy\);\s*return !!hit && \(hit === el \|\| el\.contains\(hit\) \|\| hit\.contains\(el\)\);/);
-    assert.match(code, /if \(pid == null \|\| eq\(pid, c\.me\) \|\| a\.flex\) return;/, 'ほかのメンバーの凸に、自分のぶんを混ぜている');
-    assert.match(code, /if \(!\(dmg > 0\) \|\| Number\(boss\.remaining_hp_raw\) - dmg < keep\) return;/, '練習の世界でボスを倒し切る');
+    assert.match(code, /endOf\[a\.block\] < limit && !eq\(a\.memberId, c\.me\);/, 'ほかのメンバーの凸に、自分のぶんを混ぜている');
+    assert.match(code, /if \(dmg > 0 && Number\(boss\.remaining_hp_raw\) - dmg >= keep\)/, '練習の世界でボスを倒し切る');
+    assert.match(code, /if \(i === list\.length - 1\) return;/, '✓ の練習に残す凸が無い (全部 ✓ 済みにしている)');
     assert.match(GUIDE, /html\[data-practice\] \.player-select-modal > \*:not\(#_\):not\(#_\)[^{]*\{max-height:calc\(100vh - var\(--pm-top,0px\) - 8px\) !important\}/);
     assert.match(GUIDE, /#pmRing\{position:fixed;[^}]*pointer-events:none;/);
     assert.match(GUIDE, /html\[data-practice\] \.header\{display:none !important\}/);
@@ -1069,8 +1059,8 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // Discord に書かれた言い回し (画面には無い) は 『』 で引く
     assert.ok(!/「(?:夜に 2 凸|夜 2 凸|朝に [^」]*へ行きたい|出られるブロックと凸数)」/.test(GUIDE), 'Discord の言い回しを 「」 で引いている (画面の言葉と区別がつかない → 『』 に)');
     // ブロックの名前と、ブロックの名前を差し込んで作るボタン (画面では区切りの設定から出る → 作り方のほうを見る)
-    const NOT_ON_SCREEN = ['夜 2', '夜', '朝', '夕方', '📤 朝のぶんを配信', '📤 夕方のぶんを配信'];
-    assert.match(HTML, /`📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(/, 'ブロックの配信ボタンの名前の作り方が変わった (案内の「📤 ○○のぶんを配信」とずれる)');
+    const NOT_ON_SCREEN = ['夜 2', '夜', '朝', '午前', '夕方'];
+    assert.match(HTML, /を決定してメンバーに配信<\/button>/, '決定のボタンの名前が変わった (案内の「✅ … を決定してメンバーに配信」とずれる)');
     assert.ok(quoted.size >= 10, `案内の文から画面の言葉を読めていない (${quoted.size})`);
     const SCREEN = HTML + fs.readdirSync(path.join(ROOT, 'js/domain')).filter(f => f.endsWith('.js')).map(f => rd('js/domain/' + f)).join('\n');
     for (const w of quoted) {

@@ -100,7 +100,8 @@
                 id: a.id, playerId: a.player_id, name: a.name || String(a.player_id),
                 bossNumber, bossCode: a.boss_code || null, damageB, atMs, hourIdx,
                 level, attackNumber: a.attack_number == null ? null : Number(a.attack_number),
-                confirmedAt: ms(a.confirmed_at), confirmedBy: a.confirmed_by || null, flags, unchecked,
+                // S5: 運営が ✓ 凸の記録で付けた ✓ (source 'ops_tap') は運営が見て付けたもの = 確認済み (⚔️ 戦況の数を ✓ のたびに増やさない)
+                confirmedAt: ms(a.confirmed_at) ?? (a.source === 'ops_tap' ? (ms(a.reported_at) ?? 0) : null), confirmedBy: a.confirmed_by || (a.source === 'ops_tap' ? '✓ 凸の記録' : null), flags, unchecked,
                 planned: matched ? { bossNumber: matched.bossNumber, hourIdx: matched.hourIdx, dmgB: matched.dmgB, level: matched.level } : null,
             };
         });

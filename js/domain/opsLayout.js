@@ -46,7 +46,10 @@
         { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12, tab: null },
         // 📥 結果の取り込み (🧱 段階 4・2026-10-23 / 旧 ✅ 凸報告の確認 ③-f): Discord の結果を運営が取り込んで登録・配信と突き合わせて ✓。当日は開く (当日の運営の主作業)、
         //   終了にも出す (BlaBlaLINK との突き合わせ・報告漏れの確認)。幅 12 で単独の行 (当日 = 残り12 の次、終了 = 先頭)
-        { id: 'opsSecAttackCheck', title: '結果の取り込み',      group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle' },
+        // ✓ 凸の記録 (シンプル化 S5・2026-10-27 ふるり): Discord の報告を見て運営が決定の時間割の行に ✓ を付ける (数字は入れない)。当日の運営の主作業 → ⚔️ 戦況で 結果の取り込み の前
+        { id: 'opsSecAttackTap', title: '✓ 凸の記録',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle' },
+        // S5: 数字を入れる 結果の取り込み は「詳しく」(タブの中でも畳んで始める = tabOpen: false。開いた記憶があればそれ)
+        { id: 'opsSecAttackCheck', title: '結果の取り込み',      group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle', tabOpen: false },
         // 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18): Discord に貼られたスクショを運営が本人の代わりに登録。準備〜当日 (当日は畳む)。
         //   幅 12 で単独の行 — 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭 (各行 12 のまま)
         { id: 'opsSecMockIntake', title: '模擬の取り込み',        group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre', 'day'], span: 12, tab: 'members' },
@@ -74,7 +77,7 @@
     const TABS = [
         { key: 'members', label: '👥 メンバー', sub: '模擬・参加可能時間と凸数・通知の準備' },
         { key: 'build',   label: '🧱 組む',     sub: '次のブロックを組んで配信' },
-        { key: 'battle',  label: '⚔️ 戦況',     sub: 'ボスの HP・凸の報告・締め凸検索' },
+        { key: 'battle',  label: '⚔️ 戦況',     sub: 'ボスの HP・✓ 凸の記録・締め凸検索' },
         { key: 'master',  label: '👑 マスター', sub: '準備と管理 (マスター運営だけ)', masterOnly: true },
     ];
     const TAB_KEYS = TABS.map(t => t.key);
@@ -97,7 +100,7 @@
     function tabCounts({ mbRows, reservations, attackCounts } = {}) {
         return {
             members: Array.isArray(mbRows) ? mbRows.filter(r => r && r.todo).length : null,
-            build: reservations ? (Number(reservations.pending) || 0) + (Number(reservations.expired) || 0) : null,
+            build: (reservations && !reservations.hidden) ? (Number(reservations.pending) || 0) + (Number(reservations.expired) || 0) : null,   // S5: 予約を隠したシーズンは数えない
             battle: attackCounts ? Math.max(0, (Number(attackCounts.total) || 0) - (Number(attackCounts.confirmed) || 0)) + (Number(attackCounts.missing) || 0) : null,
             master: null,
         };
@@ -116,7 +119,7 @@
         const ph = phase === 'day' ? 'day' : 'pre';
         const v = stored && stored[ph] && typeof stored[ph][id] === 'boolean' ? stored[ph][id] : undefined;
         // 🧱 段階 2.5: タブに分けたので、タブの中のカードは既定で開く (畳むのは運営が自分で畳んだときだけ)
-        return v !== undefined ? v : (tabbed ? true : !!(c.open && c.open[ph]));
+        return v !== undefined ? v : (tabbed ? c.tabOpen !== false : !!(c.open && c.open[ph]));   // S5: tabOpen: false = タブの中でも畳んで始める (結果の取り込み)
     }
 
     /** 記憶を更新した新しいオブジェクトを返す (元は変えない) */

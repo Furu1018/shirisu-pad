@@ -1457,7 +1457,8 @@ window.supabaseMarkAttackDone = async function ({ seasonId, playerId, attackDate
         throw error;
     }
     if (!data?.already) {
-        window.supabaseLogActivity?.(opts.byOps ? 'proxy_attack' : 'attack',
+        // 運営の ✓ (S5) は attack_tap — 代理凸 (proxy_attack・👥 メンバー状況の「代理 登録」) に数えない (✓ はほぼ全員が運営の記録になるため)
+        window.supabaseLogActivity?.(opts.byOps ? 'attack_tap' : 'attack',
             `✓ B${bossNumber} Lv${level || 1} 凸しました (${data?.attack_number}凸目${opts.byOps ? '・運営が代わりに' : ''})`,
             { playerId, actorName: opts.actorName || null });
     }

@@ -139,7 +139,10 @@
                 rows.push(row({ key: 'avail', label: '参加可能時間の確認', value: null, pending: true, nudge: 'avail', action: 'members' }));
                 rows.push(row({ key: 'pushcheck', label: '通知の疎通確認', value: null, pending: true, action: 'pushcheck' }));
             }
-            if (reservations) {
+            // S5 (2026-10-27): 予約の画面を隠したシーズン (reservations.hidden) は予約の行を出さない (隠したカードを指さない)
+            if (reservations && reservations.hidden) {
+                /* 予約は使わない (メンバーの入力が シンプル) */
+            } else if (reservations) {
                 const p = Number(reservations.pending) || 0;
                 rows.push(row({ key: 'resv', label: '予約の承認', value: p === 0 ? '待ちなし' : `承認待ち ${p}`, done: p === 0, action: 'reserve' }));
             } else {
@@ -253,7 +256,8 @@
             //   [] に潰すと残り0凸 = 全員完了に見えて、当日のうちに終了処理へ誘導してしまう
             if (remainingTotal == null) return { lead: '盤面を読み込んでいます', why: 'ボスとメンバーが読めると、残り凸と締め凸がここに出ます', action: 'members', label: '👥 状況を見る' };
             const rem = Number(remainingTotal) || 0;
-            if (rem > 0) return { lead: `残り ${rem} 凸`, why: 'メンバー状況で まだ凸していない人を、⚔️ 戦況で 結果がまだの凸を見ます', action: 'members', label: '👥 メンバー状況を見る' };   // 残り戦闘可能のカードは外した (2026-10-23)
+            // S5 (2026-10-27 ふるり): メンバーは Discord で報告 → 運営が ⚔️ 戦況 › ✓ 凸の記録 で ✓ を付ける (当日の運営の主作業)
+            if (rem > 0) return { lead: `残り ${rem} 凸`, why: 'Discord の凸の報告を見て、⚔️ 戦況 › ✓ 凸の記録 で ✓ を付けます。まだ凸していない人は 👥 メンバー状況で', action: 'tap', label: '✓ 凸の記録を開く' };
             // ★ 締め凸の返答 (finPending) が未取得 (null) のうちは「全員完了」と断定しない (Codex再監査 2026-09-08)。
             //   メンバー状況は運営画面の描画で必ず読みに行くので、null は読み込み中か取得失敗のどちらか
             if (finPending == null) return { lead: 'メンバー状況を読み込んでいます', why: '締め凸の返答が読めると、全員完了かどうかが決まります', action: 'members', label: '👥 メンバー状況を見る' };

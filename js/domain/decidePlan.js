@@ -233,9 +233,9 @@
         const has = (set, id) => set.has(Number(id)) || set.has(String(id));
         const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
         const lineOf = (r) => `${r.blockLabel} Lv${Number(r.level) >= 4 ? 4 : Number(r.level) || 1} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`;
-        const tailOf = (changed, id) => !changed || !acked ? 'ホームの時間割で確認してください'
-            : has(acked, id) ? '✅ 確認したあとにプランが変わりました。ホームの時間割で新しい凸を確認してください'
-            : 'まだ確認していませんが、プランが変わりました。ホームの時間割で新しい凸を確認してください';
+        const tailOf = (changed, id) => !changed || !acked ? 'レイド予定表で確認してください'
+            : has(acked, id) ? '✅ 確認したあとにプランが変わりました。レイド予定表で新しい凸を確認してください'
+            : 'まだ確認していませんが、プランが変わりました。レイド予定表で新しい凸を確認してください';
         const out = [], unchanged = [];
         const ids = [...new Set([...prev.keys(), ...next.keys()])].sort((x, y) => x.localeCompare(y, 'en', { numeric: true }));
         for (const id of ids) {
@@ -246,9 +246,9 @@
             if (!n.length) {
                 out.push({ memberId, lines: ['割当なし'], gone: true, changed: true, sig: 'gone',
                     title: '🔄 あなたの凸が外れました',
-                    body: !acked ? '組み直しで、あなたの割当は無くなりました。ホームの時間割で確認してください'
-                        : has(acked, memberId) ? '✅ 確認したあとに組み直され、あなたの割当は無くなりました。ホームの時間割で確認してください'
-                        : 'まだ確認していませんが、組み直しであなたの割当は無くなりました。ホームの時間割で確認してください' });
+                    body: !acked ? '組み直しで、あなたの割当は無くなりました。レイド予定表で確認してください'
+                        : has(acked, memberId) ? '✅ 確認したあとに組み直され、あなたの割当は無くなりました。レイド予定表で確認してください'
+                        : 'まだ確認していませんが、組み直しであなたの割当は無くなりました。レイド予定表で確認してください' });
                 continue;
             }
             // 前の決定にあったブロックだけを比べる (新しく決まったブロックが増えただけなら「決まりました」)
