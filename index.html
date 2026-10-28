@@ -3627,7 +3627,7 @@
         .obr.ro { cursor: default; border-style: solid; }
         /* 帯 (見た目だけ): まだの駒は薄く・✓ 済みは濃く。名前は左から (中央寄せだと両端が切れて頭の ✓・★ が消えた: 盤のレビュー OP-2) */
         .db .obpc { justify-content: flex-start; padding: 0 4px; opacity: .5; }
-        .db .obpc.ok { opacity: 1; }
+        .db .obpc.ok, .db .obpc.unk { opacity: 1; }   /* unk = 完了 / 未完了 を読めない (どれも同じ濃さ・中立) */
         .db .obpc.me { outline: 2.5px solid var(--t-ink); outline-offset: -2.5px; opacity: 1; }
         .db .obpc span { overflow: hidden; text-overflow: ellipsis; }
         /* 名前の札 (押す場所・読む場所): 帯の下に折り返して並べる。まだ = 枠だけ / ✓ 済み = 塗り / 自分 = 太い枠
@@ -7963,7 +7963,7 @@
                 const dmg = Number(e.dmgB) || 0;
                 const [fill, ink] = fillOf(e.weakness);
                 const label = `${doneKnown ? `<b class="db-st">${e.done ? '✓ 完了' : '未完了'}</b>` : ''}<span class="db-nm">${e.mine ? '★ ' : ''}${esc(e.memberName || '')} ${dmg.toFixed(1)}</span><small>B ${esc(pt(e.weakness))}PT 編成${SLOT_JP[e.loadoutSlot] || '①'}${e.others ? ` · ${esc(e.others)}` : ''}</small>`;
-                const cls = `db-tag${e.done ? ' ok' : ''}${e.mine ? ' me' : ''}`;
+                const cls = `db-tag${doneKnown && e.done ? ' ok' : ''}${e.mine ? ' me' : ''}`;   // 読めないときは塗りも付けない (枠だけ = 未完了 に見えないよう、印ごと中立に: Codex DL-1)
                 const style = `--tag-c:${fill};--tag-ink:${ink};`;
                 if (!ops) return `<span class="${cls}" style="${style}">${label}</span>`;
                 const t = e.done && tapRow ? tapRow.get(e.planKey) : null;
@@ -7984,7 +7984,7 @@
                         const w = r.infinite ? 100 / n : Math.max(4, Math.min(100 - Math.min(acc, 100), r.startB > 0 ? dmg / r.startB * 100 : 100));
                         acc += w;
                         const [fill, ink] = fillOf(e.weakness);
-                        return `<span class="obpc${e.done ? ' ok' : ''}${e.mine ? ' me' : ''}${acc > 100.5 ? ' over' : ''}" style="width:${w}%;background:${fill};color:${ink};" aria-hidden="true"><span>${e.done ? '✓ ' : ''}${e.mine ? '★ ' : ''}${esc(e.memberName || '')}</span></span>`;
+                        return `<span class="obpc${doneKnown ? (e.done ? ' ok' : '') : ' unk'}${e.mine ? ' me' : ''}${acc > 100.5 ? ' over' : ''}" style="width:${w}%;background:${fill};color:${ink};" aria-hidden="true"><span>${doneKnown && e.done ? '✓ ' : ''}${e.mine ? '★ ' : ''}${esc(e.memberName || '')}</span></span>`;
                     }).join('');
                     const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B`
                         : (!r.exact ? `予定 ${r.gotB.toFixed(1)}B / 最大 ${r.startB.toFixed(1)}B`

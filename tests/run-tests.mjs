@@ -15579,6 +15579,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         // 完了 / 未完了 を読めないとき (📅 で凸の記録が読めない) は言い切らない (2026-10-28 見落とし点検 DL-1)
         const unk = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk', doneKnown: false });
         assert.ok(!/db-st|✓ 完了/.test(unk) && /完了 \/ 未完了 を読めませんでした/.test(unk), '凸の記録が読めないのに全員を「未完了」と言い切る (DL-1)');
+        // 見た目も中立 (塗り・薄い帯・✓ の記号を出さない: Codex DL-1)。読めたときは完了の札に塗り (ok) が付く
+        assert.ok(!/class="db-tag ok|class="obpc ok/.test(unk) && /class="obpc unk/.test(unk) && !/>✓ /.test(unk), '読めないのに札・帯の見た目が 完了 / 未完了 を言っている (DL-1)');
+        assert.ok(/class="db-tag ok/.test(mem) && /class="obpc ok/.test(mem), '読めたときの完了の見た目');
         // 押す場所は帯の下の名前の札 (帯は見た目だけ・名前が切れても読める・はみ出さない: 盤のレビュー OP-1 / OP-2)
         assert.ok(!/<button[^>]*class="obpc/.test(ops) && /<span class="obpc[^"]*" style="[^"]*" aria-hidden="true">/.test(ops), '帯の駒が押せる (細い駒の名前が読めず押し違える)');
         assert.ok(/<button type="button" class="db-tag( me)?" style="--tag-c:#111;--tag-ink:#fff;" data-tap-done=/.test(ops), '名前の札が ✓ の押す場所になっていない');
