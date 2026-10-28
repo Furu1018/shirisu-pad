@@ -15606,8 +15606,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         // ① 朝を Lv1 で決定 (m1 B1 30B) → ✓ → 朝のうちに Lv2 になって組み直す (m3 B1 40B・始まり 150B)
         const p1 = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, startB: 100, pieces: [pc(1, 0, 30)] }] }], newIdxs: [0], bosses });
         const k1 = dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: 1, loadoutSlot: 1 });
-        const p2 = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 2, rows: [{ bossNumber: 1, startB: 150, pieces: [pc(3, 1, 40)] }] }], newIdxs: [0], prevPlan: p1, bosses, done: { keys: new Set([k1]), loose: new Map() }, hpOf });
-        assert.equal(p2.decided.blocks[0].hp[1], 150, '前のレベル (Lv1) の凸を Lv2 の始まりの HP に足した (BD-1)');
+        //   (始まり 100B は Lv2 の最大 150B より小さく — 頭打ちで足し間違いが隠れないように)
+        const p2 = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 2, rows: [{ bossNumber: 1, startB: 100, pieces: [pc(3, 1, 40)] }] }], newIdxs: [0], prevPlan: p1, bosses, done: { keys: new Set([k1]), loose: new Map() }, hpOf });
+        assert.equal(p2.decided.blocks[0].hp[1], 100, '前のレベル (Lv1) の凸を Lv2 の始まりの HP に足した (BD-1)');
         const v2 = dp.boardView({ blocks, plan: p2, nowIdx: 0, done: new Set([k1]), bosses, hpOf })[0];
         assert.deepEqual(v2.rows[0].pieces.map(e => e.memberId), [3], 'Lv1 の駒を Lv2 の行に載せた (BD-1)');
         assert.deepEqual(v2.others.map(e => [e.memberId, e.level, e.done]), [[1, 1, true]], '前のレベルの凸を others に出していない');
