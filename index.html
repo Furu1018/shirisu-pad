@@ -1062,6 +1062,12 @@
            運営タブ上の 状態の数も同じ (メンバーが状態を押さなくなったので常に 0)。body.home-simple は _applyMemberLite が付ける (消さずに隠す) */
         body.home-simple #myBattleCard, body.home-simple #myBossBoardCard, body.home-simple #mypageStatusSwitcher, body.home-simple #mypageStatusHint,
         body.home-simple #mypageStatusTiles, body.home-simple #opsOverviewChips { display: none !important; }
+        /* ⏰ 参加可能時間の入口は 1 つ (2026-10-28 ふるり「運営側が各メンバーの時間を設定するなら、ホームの設定項目はいらない」):
+           シンプルな画面では 運営モードの人にも ホームの「変更する」と MY設定の行を出さない (自分の時間も 👥 メンバー状況の ⏰ から)。ホームの ⏰ カードは見るだけで残す。
+           [data-avail-ops-note] = 運営モードでシンプルな画面のときだけの案内。従来の画面 (member_input=full) では今までどおり本人が入力する */
+        body.home-simple [data-avail-edit] { display: none !important; }
+        [data-avail-ops-note] { display: none; }
+        body.home-simple.ops-mode [data-avail-ops-note] { display: block; }
         /* 🔒 予約の画面を隠す (シンプル化 S5・body.resv-hidden は _applyMemberLite が付ける)。隠すのはカード・シート単位 (中の要素に印を足さない) */
         body.resv-hidden #myReservationsCard, body.resv-hidden #myResvRequestModal, body.resv-hidden #myTeamEditResvSec,
         body.resv-hidden:not(.resv-live) #opsSecReserve, body.resv-hidden [data-resv-ui] { display: none !important; }
@@ -4442,7 +4448,7 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ ユニオンレイド参加可能時間</div>
                     <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
-                    <button type="button" data-member-input onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
+                    <button type="button" data-member-input data-avail-edit onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
                 </div>
                 <div id="myAvailStripBody"></div>
             </div>
@@ -4526,7 +4532,7 @@
             <!-- ⑤ MY設定 (リスト行スタイル) -->
             <div class="dc-card" data-span="6" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
-                <div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input>
+                <div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input data-avail-edit>
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
                     <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">ユニオンレイド参加可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸検索に使う)</span></div>
                     <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
@@ -5872,6 +5878,7 @@
                         <ul>
                             <li>マスター運営 (ふるり) だけが、👑 マスターのタブで運営担当を任命できます</li>
                             <li>任命された人は名乗った時点で常に運営画面。マスターだけ ホームの「👤 メンバーの見え方で見る」で行き来できます</li>
+                            <li>運営の自分の参加可能時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録します (ホームの ⏰ のカードは見るだけ)</li>
                             <li>メンバーの返事 (従来の画面の予約など) は運営担当の全員に通知されます (押した本人を除く)</li>
                         </ul>
                         <h3>運営タブの中のタブ (カードはいつも同じ場所)</h3>
@@ -8802,7 +8809,8 @@
                     hero = true;
                     lead = lite ? '⏰ 出られるブロックを Discord で運営に伝えてください' : '⏰ 参加可能時間を教えてください';
                     why = lite ? 'Discord に「朝 1・夜 2」のように、出られるブロック (と凸数・凸先の希望) を書いてください。運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。' : 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。読めない人は「⏳隙間時間型」を選べばOK。';
-                    cta = lite ? '' : heroBtn('openMyAvailModal()', '⏰ 参加可能時間を登録する');   // 🗣 9c: lite では PAD に入力しない (Discord → 運営が登録)
+                    // 🗣 9c: lite では PAD に入力しない (Discord → 運営が登録)。シンプルな画面の運営は、入口を 1 つに (👥 メンバー状況の ⏰ と同じシート・2026-10-28)
+                    cta = lite ? '' : (_homeSimple() ? heroBtn('_heroOpenMyOpsAvail()', '⏰ 自分の参加可能時間を登録する') : heroBtn('openMyAvailModal()', '⏰ 参加可能時間を登録する'));
                 } else if (season && season.hard_date === tomorrowStr) {
                     // B2: 前日・準備OK
                     lead = '⏰ 明日が本番です';
@@ -9230,6 +9238,14 @@
         }
 
         // ヒーローの主CTA: 戦闘カードのゲートへスクロールして一瞬ハイライト (H2)
+        // シンプルな画面の運営の「自分の参加可能時間」= 👥 メンバー状況の自分の行の ⏰ と同じ (openOpsAvailModal)。盤面が無ければ読んでから
+        async function _heroOpenMyOpsAvail() {
+            if (!_opsMode) { showNotification('参加可能時間は Discord で運営に伝えてください (運営が登録します)'); return; }
+            const me = getCurrentIdentity();
+            if (!me?.id) return;
+            if (!opsStore.get()) { try { await opsStore.load(); } catch { /* 下で「見つかりません」と出る */ } }
+            openOpsAvailModal(me.id);
+        }
         function _heroGotoToday() {
             document.getElementById('myTodayBlocksCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -10160,7 +10176,8 @@
                 <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>
-                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>`;
+                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>
+                <p data-avail-ops-note style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。運営の自分の時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録します。</p>`;
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)

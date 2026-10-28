@@ -15681,6 +15681,23 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
     });
 }
 
+console.log('\n⏰ 参加可能時間の入口は 1 つ (2026-10-28):');
+{
+    const _fsAv = await import('node:fs');
+    const html = _fsAv.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    test('★ シンプルな画面では運営モードでもホームの「変更する」と MY設定の行を出さない / 見るだけのカードと運営の案内 / ヒーローは 👥 と同じシート / 従来の画面では出る', () => {
+        assert.ok(html.includes('<button type="button" data-member-input data-avail-edit onclick="openMyAvailModal()"'), 'カードの「変更する」に印が無い');
+        assert.ok(html.includes('<div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input data-avail-edit>'), 'MY設定の行に印が無い');
+        const after = html.slice(html.indexOf('</style>'));
+        assert.equal((after.match(/onclick="openMyAvailModal\(\)"/g) || []).length, 2, 'ホームの入口が増えた (印の無い入口がある)');
+        assert.ok(/body\.home-simple \[data-avail-edit\] \{ display: none !important; \}/.test(html) && !/body\.home-simple[^{]*#myAvailStripCard[^{]*\{[^}]*display:\s*none/.test(html), 'シンプルな画面で入口を隠していない / カードごと隠している');
+        assert.ok(/\[data-avail-ops-note\] \{ display: none; \}\s*\n\s*body\.home-simple\.ops-mode \[data-avail-ops-note\] \{ display: block; \}/.test(html) && html.includes('<p data-avail-ops-note '), '運営の案内');
+        assert.ok(/cta = lite \? '' : \(_homeSimple\(\) \? heroBtn\('_heroOpenMyOpsAvail\(\)', '⏰ 自分の参加可能時間を登録する'\) : heroBtn\('openMyAvailModal\(\)', '⏰ 参加可能時間を登録する'\)\);/.test(html), 'ヒーローの入口');
+        const h = html.slice(html.indexOf('async function _heroOpenMyOpsAvail()'), html.indexOf('function _heroGotoToday()'));
+        assert.ok(/if \(!_opsMode\)/.test(h) && /openOpsAvailModal\(me\.id\);/.test(h) && /await opsStore\.load\(\)/.test(h), 'ヒーローが 👥 と同じシートを開かない');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

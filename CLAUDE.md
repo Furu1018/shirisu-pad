@@ -1293,6 +1293,9 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   実行テスト `tests/avail-save.mjs` の `makeEnvReal` が 開く・閉じる・デバウンス・保存・確認・読み込みを実装のまま走らせて、人を切り替えたときの取り違え 5 通りを固定する。
   入口は 👥 メンバー状況の行の ⏰ (`openOpsAvailModal(id)`) と 📸 模擬の取り込みの「⏰ 時間を登録」(選んだ人・`openOpsAvailModalFromIntake`)。催促の文面は「Discord で運営に伝えてください」。
   メンバー側の入口 (時間シート・予約) を隠すのは 9c (9b 運営発の予約 と 9f 練習の作り直し とまとめて — 練習のメンバー編が時間のシートを使っているため)。実行テスト `tests/avail-save.mjs` (forPlayer の確認と保存)・配線は `tests/run-tests.mjs`
+  ★ **⏰ 参加可能時間の入口は 1 つ** (2026-10-28 ふるり「運営側が各メンバーの時間を設定するなら、ホームの設定項目はいらない」): シンプルな画面 (`body.home-simple`) では**運営モードの人にも**
+  ホームの ⏰ カードの「変更する」と MY設定の行 (`[data-avail-edit]`) を出さない (メンバーは 9c で `data-member-input` から隠れていた)。運営の自分の時間も 👥 メンバー状況の自分の行の ⏰ (`openOpsAvailModal(自分の id)` = forPlayer なし)。
+  ⏰ カードは見るだけで残し、運営モードには `[data-avail-ops-note]` の案内。時間未登録のヒーローは運営なら `_heroOpenMyOpsAvail()` (同じシート)。従来の画面 (member_input=full) は今までどおり本人が入力
   ★ **🗣 運用の見直し 9b: 運営発の予約** (2026-10-24 ユーザー決定 Q3「希望があればブロックと凸先」Q4「本人に通知」): Discord で伝えられた凸先の希望を運営が本人の代わりに予約にする。
   入口は 📸 模擬の取り込みの保存直後の「🔒 この編成で予約する」(登録した編成・枠で開く) と、🔒 凸の予約カードの「＋ 予約を登録」。シート `#opsResvCreateModal` は 誰 → どの編成 (その人の模擬のうち対応するボスがある属性だけ・行き先は編成の属性で決まる) → どのブロック (出られないブロックは押せない)。
   **作り方は 📌 仮置き (ブロック・`status: 'pinned'`・`pinnedBy`) を置いて、すぐ 🔒 確定 (`_resvTransition` pinned → approved・理由 `ops_registered`)** — 既存の遷移表 (SQL 45/47) のまま・**SQL の変更は無い**。中身は本人の申請と同じ `buildRequestDraft`、置けるかは 📌 と同じ `canPin` (いまの予約を取り直してから)。
