@@ -1,6 +1,7 @@
 // ============================================================================
 // 決定 (シンプル化 S4・2026-10-27): 組めたブロックまでを 1 つの配信 (published_plans の 1 行) にまとめる。
-//   ・plan.decided = { upTo, at, blocks: [{ key, idx, name, label, from, to, level, kept, attacks }] }
+//   ・plan.decided = { upTo, at, blocks: [{ key, idx, name, label, from, to, level, kept, attacks, hp? }] }
+//     hp = そのブロックの始まりのボスの残り HP ({ ボス番号: B }・決定したときの見積もり)。盤の見え方 (boardView) の幅と「あと ◯B」に使う (2026-10-28)
 //     kept = 今回は組み直さず、前の決定の行から写したブロック (時間の過ぎたブロック・組み直していないブロック)
 //   ・メンバーは 1 枚の時間割 (timetable) で見る。決まっていないブロックは「まだ決まっていません」
 //   ・通知は人ごとに 1 通 (notices)。前の決定にあったブロックの割当が変わった人だけ「変わりました」
@@ -107,22 +108,31 @@
         const doneOf = doneInPrev(bl, prevBlocks, prevPlan, done);
         bl.forEach((blk, idx) => {
             const key = keyOf(blk);
-            let level = null, atks = [], kept = false;
+            let level = null, atks = [], kept = false, hp = null;
             if (newSet.has(idx)) {
                 const o = (Array.isArray(ov) ? ov : []).find(x => x && x.idx === idx);
                 if (!o || o.past || o.level == null) return;
                 level = Number(o.level);
                 for (const r of (o.rows || [])) for (const p of (r.pieces || [])) atks.push({ ...p, level, bossNumber: Number(r.bossNumber), _meta: { name: r.name, weakness: r.weakness, tier: r.tier } });
                 const have = new Set(atks.map(a => planKey({ ...a, block: key })));
-                for (const a of (doneOf.get(key) || [])) if (!have.has(planKey({ ...a, block: key }))) atks.push({ ...a, _meta: {} });   // 自動の結果に同じ凸があれば足さない
+                const readd = [];
+                for (const a of (doneOf.get(key) || [])) if (!have.has(planKey({ ...a, block: key }))) { atks.push({ ...a, _meta: {} }); readd.push(a); }   // 自動の結果に同じ凸があれば足さない
+                // ブロックの始まりの HP (盤の見え方)。始まりの盤面は済んだ凸を入れたあと (_obStripDone と同じ前提) なので、足し戻した済んだ凸のダメージも足す
+                hp = {};
+                for (const r of (o.rows || [])) {
+                    if (r.infinite || !Number.isFinite(Number(r.startB))) continue;
+                    const back = readd.filter(a => Number(a.bossNumber) === Number(r.bossNumber)).reduce((t, a) => t + (Number(a.dmgB) || 0), 0);
+                    hp[Number(r.bossNumber)] = Math.round((Number(r.startB) + back) * 10) / 10;
+                }
             } else if (prevBlocks.has(key) && pc()) {
                 level = Number(prevBlocks.get(key).level) || null;
                 atks = pc().attacksIn(prevPlan, blk).map(a => ({ ...a, _meta: {} }));
                 kept = true;
+                hp = cleanHp(prevBlocks.get(key).hp);   // 前の決定の見積もりをそのまま (無い古い行は無し)
             } else return;
             const fp0 = !kept ? (typeof fpOf === 'function' ? fpOf(idx) : null) : prevBlocks.get(key).fp;
             entries.push({ key, idx, name: blk.name || null, label: blk.label || key, from: Number(blk.from), to: Number(blk.to), level, kept, attacks: atks.length,
-                ...(typeof fp0 === 'string' ? { fp: fp0 } : {}) });
+                ...(typeof fp0 === 'string' ? { fp: fp0 } : {}), ...(hp && Object.keys(hp).length ? { hp } : {}) });
             for (const a of atks) {
                 const lv = Number(a.level) || level || 1;
                 const { _meta, level: _l, bossNumber, infinite: _i, ...rest } = a;
@@ -154,6 +164,56 @@
             out.push(i);
         }
         return out;
+    }
+
+    /** 決定の hp ({ ボス番号: B }) を読む。配信の行は anon で書ける — 数でないもの・負の値・ボス番号でない鍵は捨てる */
+    function cleanHp(hp) {
+        if (!hp || typeof hp !== 'object' || Array.isArray(hp)) return null;
+        const out = {};
+        for (const k of Object.keys(hp)) {
+            const n = Number(k), v = Number(hp[k]);
+            if (Number.isInteger(n) && n >= 1 && n <= 5 && Number.isFinite(v) && v >= 0) out[n] = v;
+        }
+        return Object.keys(out).length ? out : null;
+    }
+
+    /**
+     * 決定を「凸プランを組む」と同じ盤の形にする (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28 ふるり「組むの見え方の方が分かりやすい」)。
+     *   ブロックごとに、そのレベルのボスの行 (Lv4 はボス 5 だけ) と、行に置かれた凸 (駒・幅 = ダメージ)。✓ と自分の駒の印は timetable と同じ。
+     *   幅の物差し startB は 決定したときのブロックの始まりの HP (decided.blocks[].hp)。無い古い行は そのレベルの最大 HP (hpOf) で、hpExact = false
+     * @param {{ blocks:Object[], plan:Object, nowIdx?:number, done?:Set<string>, viewerId?:*, bosses?:Object[], hpOf?:(level:number, tier:string)=>number }} a
+     * @returns {Array<{ idx, key, name, label, state, decided, level, hpExact:boolean, rows:Array<{ bossNumber, name, weakness, tier, infinite, startB, gotB, remB, killed, pieces:Object[] }>,
+     *   entries:Object[], doneN:number, mineN:number }>}
+     */
+    function boardView({ blocks, plan, nowIdx = -1, done = null, viewerId = null, bosses = [], hpOf = null } = {}) {
+        const tt = timetable({ blocks, plan, viewerId, nowIdx, done });
+        const dec = decidedBlocks(plan);
+        const bossList = (Array.isArray(bosses) ? bosses : []).filter(b => b && typeof b === 'object' && Number.isInteger(Number(b.boss_number)))
+            .slice().sort((x, y) => Number(x.boss_number) - Number(y.boss_number));
+        return tt.map(r => {
+            const d = dec.get(r.key) || null;
+            const hp = d ? cleanHp(d.hp) : null;
+            const level = r.level;
+            let rows = [];
+            if (r.decided && level != null) {
+                const infinite = level >= 4;
+                // 行はそのレベルのボス (盤の行の並び)。シーズンのボスが読めないときは 凸のあるボスだけ
+                const nums = bossList.length ? bossList.map(b => Number(b.boss_number)) : [...new Set(r.entries.map(e => Number(e.bossNumber)))].sort((x, y) => x - y);
+                rows = nums.filter(n => !infinite || n === 5).map(n => {
+                    const b = bossList.find(x => Number(x.boss_number) === n) || null;
+                    const pieces = r.entries.filter(e => Number(e.bossNumber) === n);
+                    const tier = (b && b.tier) || 'lord';
+                    const exact = !!(hp && hp[n] != null);
+                    const startB = infinite ? 0 : (exact ? hp[n] : (typeof hpOf === 'function' ? Number(hpOf(level, tier)) || 0 : 0));
+                    const gotB = pieces.reduce((t, e) => t + (Number(e.dmgB) || 0), 0);
+                    return { bossNumber: n, name: (b && (b.name || b.boss_code)) || (pieces[0] && pieces[0].bossName) || `B${n}`, weakness: (b && b.weakness) || (pieces[0] && pieces[0].weakness) || null,
+                        tier, infinite, exact, startB, gotB, remB: infinite ? 0 : Math.max(0, startB - gotB), killed: !infinite && startB > 0 && gotB >= startB - 0.05, pieces };
+                });
+            }
+            return { idx: r.idx, key: r.key, name: r.name, label: r.label, state: r.state, decided: r.decided, level,
+                hpExact: rows.length > 0 && rows.every(x => x.infinite || x.exact), rows, entries: r.entries,
+                doneN: r.entries.filter(e => e.done).length, mineN: r.mine.length };
+        });
     }
 
     /** ✓ 凸しました の鍵 (同じ凸を二重に付けない)。ブロック・レベル・ボス・人・編成 */
@@ -262,5 +322,5 @@
         return { notices: out, unchanged };
     }
 
-    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, rowsOf, notices, SLOT_JP };
+    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

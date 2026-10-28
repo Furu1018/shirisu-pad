@@ -15119,9 +15119,12 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const r = fn('function _renderMyDecided(', 'async function renderMyPublishedPlan(');
         assert.ok(r.includes("${Number(r.level) > 0 ? `<span class=\"mt-lv\">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}") && !/\$\{r\.level/.test(r), '見出しのレベルを数にしていない (XSS)');
         // S5: レイド予定表・✓ 凸の記録 の見出しも数にする (decided.blocks[].level は配信の JSON = anon で書ける)
+        //   2026-10-28: 両方とも「組む」と同じ盤 (_decidedBoardHtml) で描く → レベルはそこで数にする
+        const g = fn('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        assert.ok(g.length > 200 && /const lvOf = \(lv\) => Number\(lv\) >= 4 \? 'Lv4 \(B5\)' : 'Lv' \+ Number\(lv\);/.test(g) && !/\$\{[vr]\.level/.test(g), '盤の見出しのレベルを数にしていない (XSS)');
         for (const [nm, end] of [['async function renderRaidTab(', '// ========== Player Identity'], ['function renderOpsAttackTap(', 'async function _opsTapMark(']]) {
-            const g = fn(nm, end);
-            assert.ok(g.length > 200 && /'Lv' \+ Number\(r\.level\)/.test(g) && !/\$\{r\.level/.test(g), `${nm} の見出しのレベルを数にしていない (XSS)`);
+            const g2 = fn(nm, end);
+            assert.ok(g2.length > 200 && /_decidedBoardHtml\(/.test(g2) && !/\$\{r\.level/.test(g2), `${nm} が盤の共通の描き方を使っていない / レベルを直に埋めている (XSS)`);
         }
         // 3: 読み戻しは決定したときの指紋
         const seed = fn('function _obSeedDecided(', '// 済んだ凸 (S4)');
@@ -15222,7 +15225,8 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(r.length > 500, 'renderRaidTab が無い');
         assert.ok(/window\.supabaseLoadOpsDashboardData\(\{ lite: true \}\)\.catch\(\(\) => null\)/.test(r) && !/opsStore\.(load|get)\(/.test(r), '盤面を opsStore から読んでいる (世代が運営のカードとぶつかる) / 使わない表まで読む (S5 レビュー RT-8)');
         assert.ok(/const seq = \+\+_raidSeq;/.test(r) && /if \(seq !== _raidSeq\) return;/.test(r) && /String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(r), '遅れた描画を捨てていない');
-        assert.ok(/esc\(e\.memberName \|\| ''\)/.test(r) && /esc\(r\.name\)/.test(r) && /esc\(b\.name \|\| b\.boss_code \|\| ''\)/.test(r) && /esc\(decRow\.published_by_name \|\| '運営'\)/.test(r), '名前・ボス名・配信者を escapeHtml していない');
+        const brd = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        assert.ok(/const nm = esc\(e\.memberName \|\| ''\);/.test(brd) && /esc\(r\.name\)/.test(brd) && /esc\(r\.name\)/.test(r) && /esc\(b\.name \|\| b\.boss_code \|\| ''\)/.test(r) && /esc\(decRow\.published_by_name \|\| '運営'\)/.test(r), '名前・ボス名・配信者を escapeHtml していない');
         assert.ok(!/data-tap-done|data-mt-done|_opsMockManual|mk-plus|_opsMockIntakePickFromList|supabaseMarkAttackDone/.test(r), 'レイド予定表に ✓ / 編集 / ＋ がある (読むだけ)');
         assert.ok(/Number\(_myPubState\.planId\) === Number\(decRow\.id\)/.test(r) && /onclick="handleAckPlan\(this\)"/.test(r), '✅ が決定の行と同じ状態のときだけ出る形でない');
         assert.ok(/dp\.currentDecided\(pubRows\)/.test(r) && /String\(r\.season_id\) === String\(season\.id\)/.test(r), '決定の選び方がホームと違う / 別のシーズンの行を見る');
@@ -15266,7 +15270,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/const pub = _opsDecidedPub\(snap\.season\.id\);/.test(v) && !/_opsPublishedPlan/.test(v), '決定の選び方 (ブロックの選択に関係なく最新の決定: S5 レビュー TP-1)');
         assert.ok(/if \(a\.plan_key && a\.source && !\(Number\(a\.damage_raw\) > 0\)\) tapRow\.set/.test(v), '取り消しを数字のある凸にも出す');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
-        assert.ok(/esc\(e\.memberName \|\| ''\)/.test(r) && /data-tap-done="\$\{esc\(e\.planKey\)\}"/.test(r) && /data-tap-undo="\$\{Number\(t\.id\)\}"/.test(r) && !/onclick=/.test(r), '名前の escape / 委譲の鍵');
+        const brd2 = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        assert.ok(/_decidedBoardHtml\(v\.board, \{ sel, blocks: v\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v\.tapRow, busy: _atkTap\.busy \}\)/.test(r)
+            && /data-tap-done="\$\{esc\(e\.planKey\)\}"/.test(brd2) && /data-tap-undo="\$\{Number\(t\.id\)\}"/.test(brd2) && !/onclick=/.test(r) && !/onclick=/.test(brd2), '名前の escape / 委譲の鍵 (盤の駒)');
         assert.ok(/case 'tap': _opsJump\('opsSecAttackTap'\); break;/.test(html), 'ヒーローの行き先');
         assert.ok(/attack_tap:   \{ label: '✓ 凸 \(運営\)'/.test(html) && /types: \['attack', 'attack_tap'\]/.test(html), '活動ログの種類と絞り込み');
         const st = globalThis.opsStageDomain;
@@ -15379,10 +15385,12 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/body\.innerHTML = _opsPublishedFailed\s*\n[^\n]*決定を読み込めませんでした[\s\S]*?'<p class="ops-recent-empty">決定を読み込んでいます…<\/p>';\s*\n\s*if \(cnt\) cnt\.textContent = '';/.test(r) && /_opsPublishedFailed = failed;/.test(html), '読めなかったときに「読み込んでいます」のまま');
         // TP-13: 守れなくなった予約の解除先を言う
         assert.ok(/この人の予約 \$\{risk\} 件が守れなくなりました \(🧱 組む の「🔒 凸の予約」で取り下げてください\)/.test(m), '守れなくなった予約の解除先を言わない');
-        // TP-14: ✓ の残る過ぎたブロックは開いて薄くしない・全部 ✓ 済みは畳む
-        assert.ok(/const fold = r\.state === 'later' \|\| \(r\.state === 'past' && doneN === r\.entries\.length\);/.test(r) && /#opsAtkTapBody \.mt-blk\.past \{ opacity: 1; \}/.test(html), '過ぎたブロックの畳み方 / 薄さ');
-        // GP-2: 開いていたブロックを描き直しで閉じない
-        assert.ok(/const openKeys = new Set\(\[\.\.\.body\.querySelectorAll\('details\.mt-blk\[open\]\[data-blk\]'\)\]\.map\(d => d\.dataset\.blk\)\);/.test(r) && /\$\{openKeys\.has\(String\(r\.key\)\) \? ' open' : ''\}/.test(r), '開いていたブロックを覚えていない');
+        // TP-14 / GP-2 → 2026-10-28 から盤 (組むと同じ見え方)。選んだブロックは描き直しても覚えている (10 秒・30 秒ごとの描き直しで戻らない)・
+        //   最初に開くのは ✓ の残る過ぎたブロック → いま → これから (実行は下の _decidedBoardSel のテスト)
+        assert.ok(/const chosen = _atkTap\.blk && String\(_atkTap\.blk\.sid\) === String\(v\.seasonId\) \? _atkTap\.blk\.idx : null;/.test(r)
+            && /\(vw\) => vw\.filter\(x => x\.decided && x\.state === 'past' && x\.doneN < x\.entries\.length\)\.pop\(\),/.test(r), '選んだブロックを覚えていない / 最初に開くブロックの順');
+        assert.ok(/if \(bk\) \{ _atkTap\.blk = \{ sid: _atkTap\.view \? _atkTap\.view\.seasonId : null, idx: Number\(bk\.dataset\.tapBlk\) \}; renderOpsAttackTap\(\); return; \}/.test(html), 'ブロックのボタンで選べない');
+        assert.ok(!/details class="mt-blk|openKeys/.test(r), '古い一覧 (畳むブロック) が残っている');
         // GP-3: 開きっぱなしでも 30 秒ごとに中央で取り直す (押している最中・組んでいる最中は触らない)
         assert.ok(/if \(_coordPollTick === 2 && _opsMode && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\s*\n\s*&& document\.getElementById\('opsSecAttackTap'\)\?\.offsetParent != null\s*\n\s*&& typeof _atkTap !== 'undefined' && _atkTap\.busy\.size === 0 && _atkCheck\.busy\.size === 0 && !\(typeof _ob !== 'undefined' && _ob\.busy\)\s*\n\s*&& opsStore\.get\(\) && typeof _opsReloadBoardCards === 'function'\) _opsReloadBoardCards\(\);/.test(html), '別の運営の ✓ を取り込まない');
         // TP-6: 決定を使っていないシーズンは従来の案内
@@ -15490,6 +15498,93 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         t = mk({ role: null });
         await t._opsTapMark(k1, null);
         assert.ok(t.calls.notice.some(m => /運営だけです/.test(m)) && t.calls.mark.length === 0, 'メンバーが ✓ を付けられる');
+    });
+    // ===== 盤の見え方 (2026-10-28 ふるり「組むの見え方の方が分かりやすい」): ⚔️ ✓ 凸の記録 と 📅 レイド予定表 =====
+    test('★ 実行 (盤の見え方): build は決定にブロックの始まりの HP を残す (足し戻した済んだ凸のダメージも足す・写したブロックは前の hp) / cleanHp は壊れた値を捨てる', () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const pc = (memberId, hourIdx, dmgB = 10) => ({ memberId, memberName: 'm' + memberId, dmgB, team: ['a' + memberId], loadoutSlot: 1, hourIdx });
+        const ov = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, startB: 80, pieces: [pc(1, 0, 30)] }, { bossNumber: 2, startB: 60.04, pieces: [] }] },
+                    { idx: 1, past: false, level: 1, rows: [{ bossNumber: 1, startB: 50, pieces: [pc(2, 4, 20)] }] }];
+        const p1 = dp.build({ blocks, ov, newIdxs: [0, 1], bosses: [] });
+        assert.deepEqual(p1.decided.blocks.map(b => b.hp), [{ 1: 80, 2: 60 }, { 1: 50 }], 'ブロックの始まりの HP を残していない');
+        // 決定し直し: 朝は前の決定から写す (hp も)・午前は組み直し。午前で済んだ凸 (✓ = plan_key) は足し戻し、その分を始まりの HP に足す
+        const k2 = dp.planKey({ block: '9-12', level: 1, bossNumber: 1, memberId: 2, loadoutSlot: 1 });
+        const ov2 = [{ idx: 0, past: true, level: null, rows: [] }, { idx: 1, past: false, level: 1, rows: [{ bossNumber: 1, startB: 30, pieces: [pc(3, 4, 15)] }] }];
+        const p2 = dp.build({ blocks, ov: ov2, newIdxs: [1], prevPlan: p1, bosses: [], done: { keys: new Set([k2]), loose: new Map() } });
+        assert.deepEqual(p2.decided.blocks.find(b => b.key === '5-8').hp, { 1: 80, 2: 60 }, '写したブロックの hp を落とした');
+        assert.deepEqual(p2.decided.blocks.find(b => b.key === '9-12').hp, { 1: 50 }, '足し戻した済んだ凸のダメージ (20) を始まりの HP に足していない');
+        assert.equal(dp.cleanHp({ 1: 80, 2: -1, 3: 'x', 6: 10, foo: 1, 4: '12.5' })[4], 12.5);
+        assert.deepEqual(dp.cleanHp({ 1: 80, 2: -1, 3: 'x', 6: 10, foo: 1 }), { 1: 80 }, '負の値・数でない値・ボス番号でない鍵を捨てていない');
+        assert.equal(dp.cleanHp([1, 2]), null); assert.equal(dp.cleanHp('x'), null); assert.equal(dp.cleanHp({ 7: 1 }), null);
+    });
+    test('★ 実行 (盤の見え方): boardView — そのレベルのボスの行・幅の物差しは決定の hp (無ければ最大 HP で hpExact=false)・Lv4 はボス 5 だけ・✓ と自分の印', () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const pc = (memberId, hourIdx, dmgB) => ({ memberId, memberName: 'm' + memberId, dmgB, team: ['a' + memberId], loadoutSlot: 1, hourIdx });
+        const ov = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, startB: 40, pieces: [pc(1, 0, 30), pc(2, 1, 15)] }, { bossNumber: 2, startB: 60, pieces: [] }] },
+                    { idx: 1, past: false, level: 4, rows: [{ bossNumber: 5, infinite: true, startB: 0, pieces: [pc(3, 4, 99)] }] }];
+        const plan = dp.build({ blocks, ov, newIdxs: [0, 1], bosses: [] });
+        const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, name: 'ボス' + n, weakness: 'fire', tier: 'lord' }));
+        const k1 = dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: 1, loadoutSlot: 1 });
+        const v = dp.boardView({ blocks, plan, nowIdx: 1, done: new Set([k1]), viewerId: 2, bosses, hpOf: () => 999 });
+        assert.equal(v.length, blocks.length);
+        const m = v[0];
+        assert.deepEqual([m.decided, m.state, m.level, m.rows.length], [true, 'past', 1, 5], '朝: Lv1 の 5 体');
+        const r1 = m.rows[0];
+        assert.deepEqual([r1.startB, r1.gotB, r1.remB, r1.killed, r1.pieces.length], [40, 45, 0, true, 2], 'B1: 始まり 40B に 45B 置いた = 撃破の予定');
+        assert.equal(m.rows[1].startB, 60);
+        assert.equal(m.rows[2].exact, false, 'hp に無いボスは最大 HP');
+        assert.equal(m.rows[2].startB, 999);
+        assert.equal(m.hpExact, false, '1 体でも最大 HP なら hpExact=false');
+        assert.deepEqual(r1.pieces.map(e => [e.done, e.mine]), [[true, false], [false, true]], '✓ と自分の印');
+        assert.deepEqual([m.doneN, m.mineN], [1, 1]);
+        const a = v[1];
+        assert.deepEqual([a.state, a.level, a.rows.map(r => r.bossNumber), a.rows[0].infinite, a.rows[0].remB], ['now', 4, [5], true, 0], 'Lv4 はボス 5 だけ・無限');
+        assert.equal(v[2].decided, false);
+        assert.deepEqual(v[2].rows, []);
+        // ボスが読めないときは 凸のあるボスだけ
+        assert.deepEqual(dp.boardView({ blocks, plan, nowIdx: 0, bosses: [] })[0].rows.map(r => r.bossNumber), [1]);
+    });
+    test('★ 実行 (盤の見え方): _decidedBoardHtml — 名前は escape・運営の駒は押せる (まだ = ✓ / 運営の ✓ = 取り消し / 数字の報告 = 案内)・過ぎたブロックも押せる・メンバーは読むだけ (★ と枠)', () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const evil = '<img src=x onerror=alert(1)>';
+        const pc = (memberId, hourIdx, dmgB, memberName) => ({ memberId, memberName, dmgB, team: ['a'], loadoutSlot: 1, hourIdx });
+        const ov = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, startB: 40, pieces: [pc(1, 0, 10, evil), pc(2, 1, 10, 'b'), pc(3, 2, 10, 'c')] }] }];
+        const plan = dp.build({ blocks, ov, newIdxs: [0], bosses: [] });
+        const key = (m) => dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: m, loadoutSlot: 1 });
+        const view = dp.boardView({ blocks, plan, nowIdx: 2, done: new Set([key(2), key(3)]), viewerId: 1, bosses: [{ boss_number: 1, name: '<b>x</b>', weakness: 'fire', tier: 'lord' }] });
+        const src = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        const esc = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const draw = new Function('escapeHtml', 'PT_ATTRS', '_bbFill', '_obHours', 'SLOT_JP', src + '\nreturn _decidedBoardHtml;')(esc, [{ key: 'fire', name: '灼熱' }], () => ['#111', '#fff'], () => '5〜8時', { 1: '①' });
+        const ops = draw(view, { sel: 0, blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: new Map([[key(2), { id: 77 }]]), busy: new Set() });
+        assert.ok(!ops.includes('<img') && ops.includes('&lt;img') && !ops.includes('<b>x</b>'), '名前・ボス名を escape していない');
+        assert.ok(ops.includes(`data-tap-done="${esc(key(1))}"`), 'まだの駒を押して ✓ にできない');
+        assert.ok(ops.includes('data-tap-undo="77"'), '運営の ✓ の駒を押して取り消せない');
+        assert.equal((ops.match(/data-tap-num="1"/g) || []).length, 1, '数字で報告済みの駒が案内にならない');
+        assert.ok(/<button type="button" class="obb on was" data-tap-blk="0" aria-pressed="true">/.test(ops), '過ぎたブロックが押せない (組むと違い、✓ を付けに戻る)');
+        assert.ok(!/disabled/.test(ops.match(/data-tap-blk="0"[^>]*>/)[0]), '過ぎたブロックのボタンが disabled');
+        assert.ok(ops.includes('data-tap-blk="1"') && ops.includes('>まだ</span>'), '決まっていないブロックのボタン');
+        const mem = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk' });
+        assert.ok(!/data-tap-(done|undo|num)|<button type="button" class="obpc/.test(mem), 'メンバーの盤で駒が押せる');
+        assert.ok(/<span class="obpc me[^"]*"[^>]*>★ /.test(mem) && /<span class="obpc ok[^"]*"[^>]*>✓ /.test(mem), '自分の駒の ★ と枠 / ✓ の印');
+        assert.ok(/撃破の予定 ✓/.test(ops) === false && /予定 あと 10\.0B \/ 40\.0B/.test(mem), '「あと ◯B」が決定の hp から出ていない');
+    });
+    test('★ 実行 (盤の見え方): _decidedBoardSel — 選んだブロックを覚える (なくなったら忘れる)・無ければ prefer の順・それも無ければ最後の決定のブロック', () => {
+        const sel = new Function(fnS5('function _decidedBoardSel(', '// ========== 📅 レイド予定表') + '\nreturn _decidedBoardSel;')();
+        const view = [{ idx: 0, decided: true, state: 'past', doneN: 1, entries: [1, 2] }, { idx: 1, decided: true, state: 'past', doneN: 2, entries: [1, 2] }, { idx: 2, decided: true, state: 'now', doneN: 0, entries: [1] }, { idx: 3, decided: false, state: 'later', doneN: 0, entries: [] }];
+        const opsPrefer = [(vw) => vw.filter(x => x.decided && x.state === 'past' && x.doneN < x.entries.length).pop(), (vw) => vw.find(x => x.decided && x.state === 'now')];
+        assert.equal(sel(view, null, opsPrefer), 0, '✓ の残る過ぎたブロックを先に開かない');
+        assert.equal(sel(view, 3, opsPrefer), 3, '選んだブロックを覚えていない');
+        assert.equal(sel(view, 9, opsPrefer), 0, '無くなったブロックを覚えたまま');
+        assert.equal(sel(view.map(x => ({ ...x, doneN: x.entries.length })), null, opsPrefer), 2, '✓ が全部付いたら いまのブロック');
+        assert.equal(sel(view, null, []), 2, '最後の決定のブロック');
+        // 実際の呼び出し: レイド予定表は「これからの自分の凸」→ いま → これから / ✓ 凸の記録は「✓ の残る過ぎたブロック」→ いま → これから
+        const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
+        assert.ok(/\(vw\) => vw\.find\(x => x\.decided && x\.state !== 'past' && x\.mineN > 0\),/.test(r) && /_raidBlk = \{ sid: _raidBlkSid, idx: Number\(b\.dataset\.raidBlk\) \};/.test(r), 'レイド予定表の最初に開くブロック / 選んだブロック');
+        assert.ok(/<p class="db-mine">★ あなたの凸: /.test(r), '自分の凸の一覧 (盤は 1 ブロックずつなので全部のブロックの自分の凸を 1 行で) が無い');
+        assert.ok(!/mt-boss|mt-list/.test(r), '古い時間割 (ボスごとの名前の一覧) が残っている');
     });
 }
 
