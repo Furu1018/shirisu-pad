@@ -15423,6 +15423,71 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const loader = client.match(/window\.supabaseLoadOpsDashboardData = async function \(opts = \{\}\) \{[\s\S]*?\n\};\n/)?.[0] || '';
         assert.ok(/const lite = !!\(opts && opts\.lite\);/.test(loader) && /if \(!lite\) \{\s*\n\s*const \{ data: avSlots \} = await supabase/.test(loader) && /const \{ data: slvSeasons \} = lite \? \{ data: \[\] \} : await supabase/.test(loader), '軽い読み込みが参加可能時間・SLv を読む');
     });
+    await testAsync('★ 実行 (S5 レビュー TP-2 / TP-3 / TP-8 / TP-9・Codex 1 回目 F): _opsTapMark — 押した時点の決定で確かめる / 運営 OFF で書かない / 取り直しの最中も控えから押せる / 役割の読み込み前は待ってもらう', async () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const { blocks, plan } = twoBlockPlan();
+        const hd = globalThis.opsStageDomain.raidDayKey(Date.now());
+        const season = { id: 7, hard_date: hd };
+        const k1 = dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: 1, loadoutSlot: 1 });
+        const pc = (memberId, hourIdx) => ({ memberId, memberName: 'm' + memberId, dmgB: 10, team: ['a' + memberId], loadoutSlot: 1, hourIdx });
+        const otherPlan = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, pieces: [pc(3, 0)] }] }], newIdxs: [0], bosses: [] });
+        const block = fnS5('        // ✓ 凸の記録 (シンプル化 S5', 'function renderOpsAttacksList()');
+        const deps = tapSrcs().replace(fnS5('function _opsTapView(snap)', '// ✓ と取り消しで同じ判定'), '');
+        const mk = ({ rowsNow = [{ id: 11, season_id: 7, plan, plan_schema: 4 }], snapNull = false, role = 'ops', onPlans = null } = {}) => {
+            const calls = { mark: [], notice: [], reload: 0 };
+            const snap = { season, players: [{ id: 1, attacks: [] }, { id: 2, attacks: [] }, { id: 3, attacks: [] }], bosses: [] };
+            const env = {};
+            const win = { ...globalThis, decidePlanDomain: dp, raidBlocksDomain: rbx, opsStageDomain: globalThis.opsStageDomain, clientGateDomain: globalThis.clientGateDomain,
+                supabaseGetPublishedPlans: async () => { if (onPlans) onPlans(env); return rowsNow; },
+                supabaseLoadMyAttacks: async () => [],
+                supabaseMarkAttackDone: async (a, o) => { calls.mark.push({ a, o }); return { already: false, reservationsAtRisk: [] }; },
+                supabaseLogActivity: () => { } };
+            const names = ['window', 'getCurrentSlotJST', '_gateAllows', 'PLAN_SCHEMA', '_gateRaw', '_opsPublishedRows', '_opsPublishedPlan', 'opsStore', 'ensureActiveSeasonLoaded', 'showNotification', 'confirm',
+                'getCurrentIdentity', '_opsRoleForCurrent', '_syncOpsRole', '_opsReloadBoardCards', '_checkRaidEvents', 'seasonStore', '_opsMode', '_myTodayAttacksCache'];
+            const vals = [win, () => 'h13', () => true, 4, null, [{ id: 11, season_id: 7, plan, plan_schema: 4 }], null,
+                { get: () => (snapNull ? null : snap), invalidate: () => { } }, async () => ({ season, bosses: [] }), (m) => calls.notice.push(m), () => true,
+                () => ({ id: 99, name: 'ふるり' }), () => (role === 'unset' ? undefined : role), () => { }, async () => { calls.reload++; }, () => Promise.resolve(), { invalidate: () => { } }, true, null];
+            const out = new Function(...names, deps + '\n' + block + '\nreturn { _opsTapMark, _opsTapView, atk: _atkTap };')(...vals);
+            Object.assign(env, out, { calls, snap });
+            return env;
+        };
+        // ふつう: いまの決定 (11) のまま → ops_tap で付ける
+        let t = mk();
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 1, '付けていない');
+        assert.equal(t.calls.mark[0].o.byOps, true);
+        assert.equal(t.calls.mark[0].a.planKey, k1);
+        // 別の運営が決定し直し、その凸がいまの決定に無い → 付けない (TP-3)
+        t = mk({ rowsNow: [{ id: 12, season_id: 7, plan: otherPlan, plan_schema: 4 }] });
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 0, 'いまの決定に無い凸に ✓ を付けた (TP-3)');
+        assert.ok(t.calls.notice.some(m => /別の運営が決定し直し/.test(m)));
+        // 決定し直したが、その凸はいまの決定にもある → 付ける
+        t = mk({ rowsNow: [{ id: 12, season_id: 7, plan, plan_schema: 4 }] });
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 1, 'いまの決定にもある凸を断った');
+        // 押している間に運営 OFF (世代が進む) → 書かない (TP-8)
+        t = mk({ onPlans: (env) => { env.atk.gen++; } });
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 0, '運営 OFF のあとに書いた (TP-8)');
+        // 取り直しの最中 (盤面が null) でも、描いた表の控えから押せる。控えが無ければ断るが、取り直しを重ねない (TP-2)
+        t = mk({ snapNull: true });
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 0, '控えが無いのに付けた');
+        assert.equal(t.calls.reload, 0, '取り直しの最中に取り直しを重ねた (読み込みが最初からになる)');
+        const entry = dp.timetable({ blocks, plan, viewerId: null, nowIdx: -1 }).flatMap(r => r.entries).find(e => e.planKey === k1);
+        t.atk.view = { seasonId: 7, pubId: 11, byKey: new Map([[k1, entry]]) };
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 1, '取り直しの間に ✓ を断った (TP-2)');
+        // 役割をまだ読めていない → 待ってもらう (「運営だけです」と言わない・TP-9)
+        t = mk({ role: 'unset' });   // 既定の引数に落ちないよう印で渡す
+        await t._opsTapMark(k1, null);
+        assert.equal(t.calls.mark.length, 0, '役割を読む前に付けた');
+        assert.ok(t.calls.notice.some(m => /役割を読み込んでいます/.test(m)) && !t.calls.notice.some(m => /運営だけです/.test(m)), '役割の読み込み前に「運営だけです」で断った');
+        t = mk({ role: null });
+        await t._opsTapMark(k1, null);
+        assert.ok(t.calls.notice.some(m => /運営だけです/.test(m)) && t.calls.mark.length === 0, 'メンバーが ✓ を付けられる');
+    });
 }
 
 // ---- 結果 --------------------------------------------------------------------
