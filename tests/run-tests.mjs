@@ -15462,10 +15462,13 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         await t._opsTapMark(k1, null);
         assert.equal(t.calls.mark.length, 0, 'いまの決定に無い凸に ✓ を付けた (TP-3)');
         assert.ok(t.calls.notice.some(m => /別の運営が決定し直し/.test(m)));
-        // 決定し直したが、その凸はいまの決定にもある → 付ける
-        t = mk({ rowsNow: [{ id: 12, season_id: 7, plan, plan_schema: 4 }] });
+        // 決定し直したが、その凸 (同じ鍵) はいまの決定にもある → 付ける。送る編成・予定のダメージは いまの決定のもの (描いた古い表のものではない)
+        const samePlan = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, pieces: [{ ...pc(1, 0), dmgB: 25, team: ['新しい編成'] }] }] }], newIdxs: [0], bosses: [] });
+        t = mk({ rowsNow: [{ id: 12, season_id: 7, plan: samePlan, plan_schema: 4 }] });
         await t._opsTapMark(k1, null);
         assert.equal(t.calls.mark.length, 1, 'いまの決定にもある凸を断った');
+        assert.equal(t.calls.mark[0].a.plannedDamageRaw, 25e9, '予定のダメージが描いた古い表のまま (いまの決定のものを送っていない)');
+        assert.deepEqual(Array.from(t.calls.mark[0].a.characters), ['新しい編成'], '編成が描いた古い表のまま');
         // 押している間に運営 OFF (世代が進む) → 書かない (TP-8)
         t = mk({ onPlans: (env) => { env.atk.gen++; } });
         await t._opsTapMark(k1, null);
