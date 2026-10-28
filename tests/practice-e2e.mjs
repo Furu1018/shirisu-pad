@@ -163,9 +163,9 @@ async function run(label, size, scenario = 'member', startAt = '') {
         const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
     const toast = toastNow.shown ? toastNow : (lastToast || toastNow);   // いま消えていても、手順の途中で見えていればそれで判定 (負荷で 3 秒を過ぎることがある)
     if (done && scenario !== 'ops-day' && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
-    // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
+    // ↩ 1つ前に戻る: おしまいから戻ると、1 つ前の課題の最初 (その時点の盤面・時計・課題の印) に戻る。そこからまた最後まで行ける
     if (scenario === 'member') {
-        // 出られる時間と凸数 (夜 2) を伝えた → 運営が「夜」を決定 (本人の凸数が上限) → レイド予定表で確認した → 運営が自分の凸に ✓ を付けた (ダメージ 0・レベルは進めない)
+        // 出られる時間と凸数 (夜 2) を伝えた → 運営が「夕方・夜」を決定 (本番と同じく いまのブロック = 夕方 から・本人の凸数が上限: S5 レビュー PR-4) → レイド予定表で確認した → 運営が自分の凸に ✓ を付けた (ダメージ 0・レベルは進めない)
         const world = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables, me = 9101;
             const pub = T.published_plans.slice().sort((a, b) => b.id - a.id)[0];
             const conf = T.availability_confirmations.find(r => r.player_id === me);
@@ -174,7 +174,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 pushes: window.PAD_PRACTICE.db.outbox.length, lite: !(T.seasons[0].metadata || {}).member_input,
                 byOps: T.attacks.filter(a => a.player_id === me).every(a => a.source === 'ops_tap' && Number(a.damage_raw) === 0) }; })())`));
         if (JSON.stringify(world.counts) !== '{"21-0":2}') problems.push(`凸数 (夜 2) を伝えていない: ${JSON.stringify(world)}`);
-        if (JSON.stringify(world.decided) !== '["夜"]' || !world.acked) problems.push(`夜の決定・確認 のどちらかが欠けている: ${JSON.stringify(world)}`);
+        if (JSON.stringify(world.decided) !== '["夕方","夜"]' || !world.acked) problems.push(`夕方・夜の決定・確認 のどちらかが欠けている: ${JSON.stringify(world)}`);
         if (world.mine !== 1 || !world.byOps || world.level !== 1 || world.dead) problems.push(`運営が自分の凸に ✓ を 1 つ付けた形 (ダメージ 0) になっていない / レベルを進めた: ${JSON.stringify(world)}`);
         if (!world.lite) problems.push(`練習のシーズンが本番の既定 (メンバーの入力は最低限) になっていない: ${JSON.stringify(world)}`);
     } else if (scenario === 'ops-eve') {

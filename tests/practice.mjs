@@ -532,7 +532,7 @@ test('起動: 練習の時計は「レイド前日の 20 時」から始まり�
     // 深夜 (日付が変わった直後) に始めても、日本時間の「今日の翌日」
     assert.equal(bootEnv({ flag: 'member', realNow: Date.UTC(2026, 9, 2, 15, 30, 0) }).win.PAD_PRACTICE.hardDate, '2026-10-04', '日本時間で日付を見ていない');
 });
-test('起動: 印は編の id。役と開始時刻は編ごと (ops-eve = 運営役・前日 20 時 / ops-day = 運営役・当日 20 時) / 古い印 ops は ops-eve', () => {
+test('起動: 印は編の id。役と開始時刻は編ごと (ops-eve = 運営役・前日 20 時 / ops-day = 運営役・当日 17 時) / 古い印 ops は ops-eve', () => {
     const jst = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 16);
     let e = bootEnv({ flag: 'ops-eve' });
     assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-eve', '2026-10-02T20:00']);
@@ -941,6 +941,46 @@ function loadGuide() {
     vm.runInContext(GUIDE, win);
     return P;
 }
+test('練習: 「済んだ」を端末の印で決める課題は、組んだ結果か決定も見る・↩ 戻るの控えに印も入れる (S5 レビュー PR-1 / PR-3)', () => {
+    const mem = new Map();
+    const P = { role: 'ops', hardDate: '2026-10-03', db: null, me: { id: IDS.ops }, ops: { id: IDS.ops, name: OPS_NAME },
+        store: { get: (k) => (mem.has(k) ? mem.get(k) : null), set: (k, v) => { mem.set(k, String(v)); }, del: (k) => { mem.delete(k); } }, clock: { now: () => T0, RealDate: Date } };
+    const win = { PAD_PRACTICE: P, addEventListener() { }, document: { readyState: 'loading', addEventListener() { } } };
+    win.window = win;
+    vm.createContext(win);
+    vm.runInContext(GUIDE, win);
+    const plans = new Map();
+    win._ob = { plans, stale: new Set(), idx: null };
+    const step = (sc, key) => P.steps[sc].find(x => x.key === key);
+    const none = { pub: null };
+    const dec = (names, at) => ({ pub: { id: 9, plan: { decided: { at: at || '', blocks: names.map(name => ({ name })) } } } });
+    // 朝を組む: 印だけ (読み込み直して組んだ結果が消えた) では済まない → 組んだ結果か、朝が決定済みなら済み
+    mem.set('ops-eve:morning', '1');
+    assert.equal(step('ops-eve', 'buildMorning').done(none), false, '印だけで「朝を組む」を済ませた (読み込み直したあと押せない「✅ 決定」に進む)');
+    plans.set(0, {});
+    assert.equal(step('ops-eve', 'buildMorning').done(none), true);
+    plans.clear();
+    assert.equal(step('ops-eve', 'buildMorning').done(dec(['朝'])), true, '朝が決定済みなのに「朝を組む」が済まない');
+    mem.delete('ops-eve:morning');
+    plans.set(0, {});
+    assert.equal(step('ops-eve', 'buildMorning').done(none), false, '印が無いのに済んだ (↩ 戻るで印を戻した意味が無い)');
+    plans.clear();
+    // 夕方を組み直す: 決定から読み戻した結果 (fromDecided) では済まない (PR-3)・要組み直しでも済まない・決定し直したら済み
+    mem.set('ops-day:rebuilt', '1'); mem.set('ops-day:setupAt', '2026-10-03T08:00:00.000Z');
+    plans.set(3, { fromDecided: 5 });
+    assert.equal(step('ops-day', 'rebuild').done(none), false, '決定から読み戻しただけの夕方を「組み直した」としている');
+    plans.set(3, { fromDecided: null });
+    assert.equal(step('ops-day', 'rebuild').done(none), true);
+    win._ob.stale.add(3);
+    assert.equal(step('ops-day', 'rebuild').done(none), false, '要組み直しの夕方を「組み直した」としている');
+    win._ob.stale.clear(); plans.clear();
+    assert.equal(step('ops-day', 'rebuild').done(dec(['夕方'], '2026-10-03T08:30:00.000Z')), true, '決定し直したあとに「組み直す」が済まない');
+    assert.equal(step('ops-day', 'rebuild').done(dec(['夕方'], '2026-10-03T07:00:00.000Z')), false, '前日の決定を「組み直した」としている');
+    // ↩ 1つ前に戻る: 控えに課題の印を入れ、戻すときに印も戻す (控えに無い印は消す)
+    assert.match(GUIDE, /var MARKS = \['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'\];/);
+    assert.match(GUIDE, /function saveSnap\(i\) \{[\s\S]*?MARKS\.forEach[\s\S]*?JSON\.stringify\(\{ db: P\.db\.dump\(\), clock: P\.clock\.get\(\), feed: feed, marks: marks \}\)/, '控えに課題の印が入っていない');
+    assert.match(GUIDE, /function goBack\(toIdx\) \{[\s\S]*?MARKS\.forEach\(function \(k\) \{ if \(Object\.prototype\.hasOwnProperty\.call\(marks, k\)\) store\.set\(k, marks\[k\]\); else store\.del\(k\); \}\);[\s\S]*?P\.closed = true;/, '戻るときに課題の印を戻していない');
+});
 test('見張り: 案内が指す「押す場所」が、本物の画面 (index.html) に実在する', () => {
     const P = loadGuide();
     const names = Object.keys(P.selectors);
@@ -953,15 +993,10 @@ test('見張り: 案内が指す「押す場所」が、本物の画面 (index.h
         for (const m of sel.matchAll(/\[onclick(\^=|=)"([A-Za-z_]\w*)\(/g)) assert.ok(HTML.includes(`onclick="${m[2]}(`) || HTML.includes('`' + m[2] + '('), `${name}: onclick="${m[2]}(…)" のボタンが画面に無い (関数名が変わった?)`);
         for (const m of sel.matchAll(/\.([a-z][\w-]*)/g)) assert.ok(hasClass(m[1]), `${name}: .${m[1]} が画面に無い`);
     }
-    // 生成されるボタンの引数の形 (selector が頼っている部分) も確かめる
-    assert.match(HTML, /onclick="handleMyTeamEdit\('\$\{[^}]+\}', \$\{[^}]+\}\)"/, "模擬カードの onclick の形が変わった (handleMyTeamEdit('fire', 1) で指している)");
-    assert.match(HTML, /_resvReqPick\('time', '\$\{/, "申請シートの時刻ボタンの onclick の形が変わった (_resvReqPick('time', 'h21') で指している)");
-    assert.match(HTML, /handleConfirmAvailability\(false\)/);
-    assert.match(HTML, /class="te-tile\$\{isUsed \? ' used' : ''\}\$\{isDup \? ' dup' : ''\}"/, '選んだキャラの印 (.used / .dup) が変わった');
-    assert.match(HTML, /id="myTeamEditFields"/, '編成の 5 つの入力欄 (#myTeamEditFields) が無い');
-    assert.match(HTML, /id="myAttackManualForm"/);
-    assert.match(HTML, /handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'accepted'/, "了承ボタンの onclick の形が変わった ('accepted' で指している)");
-    assert.match(HTML, /handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'declined'/, "「今回は難しい」の onclick の形が変わった ('declined' で指している)");
+    // 練習がその場で組み立てる押す場所の形 (S5: 模擬の「＋」・組む画面のブロックのボタン) も確かめる。
+    //   S5 より前の練習が指していた画面 (模擬カードの編集・予約の申請・凸報告・締め凸の返事) は練習から外したので見張らない (S5 レビュー PR-7)
+    assert.match(HTML, /class="mk-plus" onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}'\)"/, "模擬ダメージ表の「＋」の onclick の形が変わった (_opsMockManual(id, ' で指している)");
+    assert.match(HTML, /data-ob-blk="\$\{i\}"/, '組む画面のブロックのボタン (data-ob-blk) が変わった');
 });
 test('見張り: 課題の形 / 「〜したことにする」は自動では起きない / 案内の文が引く画面の言葉が実在する', () => {
     const P = loadGuide();
@@ -992,8 +1027,10 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
     // 編の開始状態 (SETUP): 運営編・当日だけ。本物の決定 (朝〜夕方) + 17 時までの ✓ で作り、失敗したら全部戻す
     assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
-    assert.match(GUIDE, /var SETUP = \{[\s\S]*?P\.clock\.set\('eve', 20\);\s*\n\s*try \{ res = await opsDecide\(\['朝', '午前', '午後', '夕方'\], \{ first: 0 \}\); \} finally \{ P\.clock\.put\(clockDay\); \}[\s\S]*?advanceWorld\(context\(\), res\.plan, 17, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (朝〜夕方の決定と 17 時までの ✓) を作っていない');
-    assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/);
+    // ★ 時計は控えた値ではなく編の開始時刻 (当日 17 時) に戻す (途中で読み込み直すと控えが前日 20 時になっていた: S5 レビュー PR-2)
+    assert.match(GUIDE, /var SETUP = \{[\s\S]*?P\.clock\.set\('eve', 20\);\s*\n\s*try \{ res = await opsDecide\(\['朝', '午前', '午後', '夕方'\], \{ first: 0 \}\); \} finally \{ P\.clock\.set\('hard', 17\); \}[\s\S]*?advanceWorld\(context\(\), res\.plan, 17, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (朝〜夕方の決定と 17 時までの ✓) を作っていない / 時計を当日 17 時に戻していない');
+    assert.ok(!/P\.clock\.put\(clockDay\)/.test(GUIDE), '当日の盤面作りのあと、控えた時計 (前日 20 時のことがある) に戻している');
+    assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); if \(SC === 'ops-day'\) P\.clock\.set\('hard', 17\); else P\.clock\.put\(clockWas\);/);
     assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/);
     // 運営役の「組んで決定」は本物のソルバー (🧱 組む の「残りを自動で組む」と同じ渡し方) → blockBuild.overview → decidePlan.build → 本物の決定の配信
     const code = GUIDE.replace(/\/\/[^\n]*/g, '');

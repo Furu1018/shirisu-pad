@@ -32,7 +32,8 @@
                     if (!a || a.memberId == null) continue;
                     out.push({ memberId: a.memberId, bossNumber: Number(b.bossNumber), hourIdx: Number.isInteger(a.hourIdx) ? a.hourIdx : null,
                         dmgB: Number(a.dmgB) || 0, level: lv.level == null ? null : Number(lv.level), flex: !!a.flex, loadoutSlot: Number(a.loadoutSlot) || 1,
-                        blockEnd: !!a.blockEnd });   // ✅ 決定の割当 (S4): 時刻はブロックの終わりに寄せてある (約束はブロックだけ) → 時刻のずれの印は出さない
+                        blockEnd: !!a.blockEnd,   // ✅ 決定の割当 (S4): 時刻はブロックの終わりに寄せてある (約束はブロックだけ) → 時刻のずれの印は出さない
+                        planKey: typeof a.planKey === 'string' && a.planKey ? a.planKey : null });   // ✅ 決定の割当の鍵 (✓ の行の plan_key と同じ形・S5 レビュー TP-4)
                 }
             }
         }
@@ -64,19 +65,33 @@
         const since = ms(sinceMs);   // 配信を算出した時刻 (段階 4)
         // 報告は古い順に見て、同じ人・同じボス・同じレベルの割当のうち時刻の近いものへ当てる (1 つの割当に 1 つの報告)
         const sorted = list.slice().sort((a, b) => ((ms(a.reported_at) ?? 0) - (ms(b.reported_at) ?? 0)) || (Number(a.id) - Number(b.id)));
+        // 照合できない凸: ボス未指定 (代理凸) / 配信に無いレベルの凸 (レベルが進む前のぶん) / 配信の算出より前の凸。印は付けず、割当も食わない
+        const uncheckedOf = (a) => {
+            const atMs = ms(a.reported_at), level = a.level == null ? null : Number(a.level);
+            return a.boss_number == null ? 'ボス未指定 (照合できません)'
+                : (hasPlan && since != null && atMs != null && atMs < since) ? 'いまの配信より前の凸'
+                : (hasPlan && level != null && planLevels.size && !planLevels.has(level)) ? `Lv${level} の凸 (いまの配信は Lv${[...planLevels].sort((x, y) => x - y).join('・')})` : null;
+        };
+        // ✓ の行 (plan_key あり) は、鍵の一致する割当に先に当てる。時刻の近さで当てると、遅れて付けた夜の ✓ が深夜の割当を食い、
+        //   夜の割当が「結果がまだ」に出ていた (S5 レビュー TP-4)。鍵の無い割当 (従来の配信) には当たらない = 従来どおり
+        const byKey = new Map();
+        for (const p of planned) if (p.planKey && !byKey.has(p.planKey)) byKey.set(p.planKey, p);
+        const preMatched = new Map();
+        if (byKey.size) for (const a of sorted) {
+            if (!a.plan_key || uncheckedOf(a)) continue;
+            const p = byKey.get(String(a.plan_key));
+            if (p && !p.used && String(p.memberId) === String(a.player_id)) { p.used = true; preMatched.set(a.id, p); }
+        }
         const rows = sorted.map(a => {
             const atMs = ms(a.reported_at), hourIdx = hourIdxOfMs(atMs);
             const damageB = (Number(a.damage_raw) || 0) / 1e9;
             const level = a.level == null ? null : Number(a.level);
             const bossNumber = a.boss_number == null ? null : Number(a.boss_number);
-            // 照合できない凸: ボス未指定 (代理凸) / 配信に無いレベルの凸 (レベルが進む前のぶん) / 配信の算出より前の凸。印は付けず、割当も食わない
-            const unchecked = bossNumber == null ? 'ボス未指定 (照合できません)'
-                : (hasPlan && since != null && atMs != null && atMs < since) ? 'いまの配信より前の凸'
-                : (hasPlan && level != null && planLevels.size && !planLevels.has(level)) ? `Lv${level} の凸 (いまの配信は Lv${[...planLevels].sort((x, y) => x - y).join('・')})` : null;
+            const unchecked = uncheckedOf(a);
             const mine = unchecked ? [] : planned.filter(p => String(p.memberId) === String(a.player_id) && (level == null || p.level == null || p.level === level));
             const cands = mine.filter(p => !p.used && p.bossNumber === bossNumber);
-            let matched = null;
-            if (cands.length) {
+            let matched = preMatched.get(a.id) || null;
+            if (!matched && cands.length) {
                 const dist = (p) => (p.hourIdx == null || hourIdx == null) ? 0 : Math.abs(p.hourIdx - hourIdx);
                 cands.sort((x, y) => dist(x) - dist(y));
                 matched = cands[0]; matched.used = true;
@@ -98,6 +113,7 @@
             }
             return {
                 id: a.id, playerId: a.player_id, name: a.name || String(a.player_id),
+                source: a.source || null, tapOnly: !!a.source && !(Number(a.damage_raw) > 0),   // ✓ の行 (数字なし・56): 一覧はダメージの代わりに — を出し、運営の ✓ は確認のトグルを出さない (S5 レビュー TP-11)
                 bossNumber, bossCode: a.boss_code || null, damageB, atMs, hourIdx,
                 level, attackNumber: a.attack_number == null ? null : Number(a.attack_number),
                 // S5: 運営が ✓ 凸の記録で付けた ✓ (source 'ops_tap') は運営が見て付けたもの = 確認済み (⚔️ 戦況の数を ✓ のたびに増やさない)

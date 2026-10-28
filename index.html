@@ -1064,7 +1064,10 @@
         body.home-simple #mypageStatusTiles, body.home-simple #opsOverviewChips { display: none !important; }
         /* 🔒 予約の画面を隠す (シンプル化 S5・body.resv-hidden は _applyMemberLite が付ける)。隠すのはカード・シート単位 (中の要素に印を足さない) */
         body.resv-hidden #myReservationsCard, body.resv-hidden #myResvRequestModal, body.resv-hidden #myTeamEditResvSec,
-        body.resv-hidden #opsSecReserve, body.resv-hidden [data-resv-ui] { display: none !important; }
+        body.resv-hidden:not(.resv-live) #opsSecReserve, body.resv-hidden [data-resv-ui] { display: none !important; }
+        /* 隠したシーズンでも、生きている予約 (承認待ち・承認済み・📣 お願い中・時刻の 📌) が残っている間は 🔒 凸の予約 を出して片付けられるように (body.resv-live は
+           renderOpsReservations が付ける・S5 レビュー RS-1)。そのときだけの案内 ([data-resv-hidden-only]) を出し、新しい予約の入口 ([data-resv-ui]) は隠したまま */
+        body:not(.resv-hidden) [data-resv-hidden-only] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(var(--ink-rgb), 0.14)}
@@ -3626,6 +3629,7 @@
         .mt-blk { padding: 8px 10px; border-radius: 10px; border-bottom: 1px solid rgba(var(--ink-rgb), 0.06); }
         .mt-blk.now { outline: 2px solid var(--ops-solid); outline-offset: -2px; background: var(--ops-bg); }
         .mt-blk.past { opacity: .72; }
+        #opsAtkTapBody .mt-blk.past { opacity: 1; }   /* ✓ 凸の記録: 過ぎたブロックの ✓ がまだの行は運営の作業 — 薄くしない (済んだ行だけ .mt-me.ok で薄く・S5 レビュー TP-14) */
         .mt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13px; color: var(--t-ink); }
         .mt-hr { font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
         .mt-lv { font-size: 10.5px; font-weight: 900; color: var(--ops-deep); }
@@ -3674,6 +3678,11 @@
         .rt-e-sub { font-weight: 700; color: var(--t-muted); }
         .mk-chip.ro { cursor: default; }
         .mk-row-me td { background: var(--ops-bg); }
+        /* 📅 レイド予定表のみんなの模擬: 属性のマスはインラインの地色を持つので、自分の行は地色ではなく上下の線で示す (S5 レビュー RT-6)。
+           名前の列は横スクロールしても残す (右の列でも誰の行か分かる: S5 レビュー RT-3) */
+        #raidMocksBody .mk-row-me td { box-shadow: inset 0 2px 0 var(--ops), inset 0 -2px 0 var(--ops); }
+        #raidMocksBody .mk-tbl th:first-child, #raidMocksBody .mk-tbl td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
+        #raidMocksBody .mk-row-me td:first-child { background: var(--ops-bg); }
         .mk-team { display: flex; gap: 2px; flex-wrap: nowrap; margin-top: 2px; }
         .mk-none { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
         .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 11.5px; }
@@ -4661,7 +4670,11 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ボス状況</div>
-                    <span id="opsBossSummaryLevel" style="font-size:10.5px;color:var(--t-muted);"></span>
+                    <span style="display:flex;align-items:baseline;gap:8px;">
+                        <span id="opsBossSummaryLevel" style="font-size:10.5px;color:var(--t-muted);"></span>
+                        <!-- 🎯 BlaBlaLINK のスクショで 5 体の HP を合わせる (S5: ✓ はダメージを入れないので HP を動かすのはこれだけ。以前は HP が 30 分古くなるまで入口が無かった: S5 レビュー DX-7) -->
+                        <button type="button" data-ops-only onclick="openOpsBossHpModal()" title="BlaBlaLINK のボス一覧のスクショで 5 体の残り HP を合わせる" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">🎯 ボス HP を更新する</button>
+                    </span>
                 </div>
                 <div id="opsBossSummary" data-no-swipe style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 8px;-webkit-overflow-scrolling:touch;">
                     <p style="color:var(--t-muted);font-size:12px;padding:14px;">読み込み中...</p>
@@ -4869,10 +4882,11 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 凸の予約</div>
                     <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
-                    <button type="button" onclick="openOpsResvCreate()" title="Discord で伝えられた凸先の希望を、本人の代わりに予約として登録する (🗣 9b)" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">＋ 予約を登録</button>
+                    <button type="button" data-resv-ui onclick="openOpsResvCreate()" title="Discord で伝えられた凸先の希望を、本人の代わりに予約として登録する (🗣 9b)" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">＋ 予約を登録</button>
                     <button onclick="renderOpsReservations(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。 🗣 Discord で伝えられた希望は <strong>＋ 予約を登録</strong> で運営が本人の代わりに登録できます (登録した時点で予約・本人に通知)。</p>
+                <p data-resv-hidden-only style="margin:0 0 10px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.12);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⚠ いまは予約の画面を隠しています (希望は Discord → 🧱 組む で 📌)。前から残っている予約が下にあります — 自動で組むときの拘束になるので、要らなければ「取り下げる」で片付けてください。新しい予約は作れません。</p>
+                <p data-resv-ui style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。 🗣 Discord で伝えられた希望は <strong>＋ 予約を登録</strong> で運営が本人の代わりに登録できます (登録した時点で予約・本人に通知)。</p>
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -5573,7 +5587,7 @@
                         <ul>
                             <li><strong>📅 レイド予定表</strong> (タブ): ブロックごとに、どのボスへ誰が行くか (あなたの行は色付き・運営が ✓ を付けた凸は ✓)。決まっていないブロックは「まだ決まっていません」。下の<strong>みんなの模擬</strong>で、ほかの人の編成とダメージも見られます</li>
                             <li><strong>📅 きょうの凸</strong> (ホーム): あなたの凸だけ (ブロック・ボス・PT・編成と 5 キャラ)。運営が ✓ を付けた凸は「✓ 済み」</li>
-                            <li>配信された凸プラン (ホーム): 🧱 盤 (<a href="#help-plan">§9</a>) と <strong>✅ 確認しました</strong>。「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい決定が入ると自動で消えます</li>
+                            <li>配信された凸プラン (ホーム): <strong>✅ 確認しました</strong> (自分の凸は 📅 きょうの凸・全員の凸は 📅 レイド予定表)。「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい決定が入ると自動で消えます</li>
                         </ul>
                         <h3>④ 📘 登録された模擬</h3>
                         <p>運営が登録したあなたの模擬 (属性 × 編成① / ② / ③) が読み取り専用で出ます。直したいときは Discord に模擬のスクショを貼り直してください (<a href="#help-mock">§4</a>)。</p>
@@ -5700,7 +5714,7 @@
                         <h3>計算の考え方</h3>
                         <ul>
                             <li>目的はユニオンの総与ダメージ (= ランキングのスコア) の最大化。差がつくのは Lv3 踏破後のボス5 (無限) に何Bを積めるか</li>
-                            <li>前回の配信を尊重します — 盤面が動いていなければ人の割当は動きません</li>
+                            <li>決定し直すのは組み直したブロックだけです。ほかのブロックは前の決定のまま残り、同じ盤面なら同じ割当になります</li>
                             <li>⏱ 律速 — そのレベルの中でいちばん遅い時刻に置かれた凸の目印。その凸が終わるまで次のレベルに進めません</li>
                         </ul>
                     </section>
@@ -5740,14 +5754,14 @@
                         <p>⚔️ 戦況の <strong>締め凸検索</strong>。残 HP に対して「今打てる手」と「待って打てる手」を並べます。</p>
                         <ul>
                             <li>候補はオーバーキルを抑えつつ確実に削れる順 (同じダメージなら残凸の多い人)。いまのブロックに出られる人・今回は難しい人を除いて探します</li>
-                            <li>決めたら <strong>📋 名前と文面をコピー</strong> して Discord で声をかけます。やってもらえることになったら、盤に置いて 🔒 確定 → 配信します</li>
+                            <li>決めたら <strong>📋 名前と文面をコピー</strong> して Discord で声をかけます。やってもらえることになったら、🧱 組む でそのブロックに 📌 を置き、残りを自動で組んで ✅ 決定し直します</li>
                             <li>手詰まり (今も待つも無い) なら 🧱 組む で組み直します</li>
                         </ul>
                     </section>
 
                     <section id="help-notify" class="help-section">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
-                        <p>ブロックで配信された「あなたの凸」・予約の登録・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
+                        <p>運営が決定した「あなたの凸」(決まりました / 変わりました / 外れました)・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
                             <span class="ico">📲</span>
                             <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取るなら、それぞれで設定してください。</p>
@@ -5775,7 +5789,7 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 🧱 ブロックのあなたの凸 (配信のたび。配信し直しでは変わった人に ✅ 確認の有無に関わらず・割当が消えた人にも)・予約の登録・割当の変更・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>あなた宛</strong> — 決定の「あなたの凸」(🧱 決まりました / 🔄 変わりました・外れました。決定し直しでは変わった人に ✅ 確認の有無に関わらず。タップで 📅 レイド予定表)・催促・参加可能時間の開始 (従来の画面のときは予約の登録も)。<strong>時間帯に関係なく必ず届きます</strong></li>
                             <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
@@ -7424,7 +7438,7 @@
                 chapterTag: '① 最初に',
                 stepLabel: 'CHAPTER 02',
                 title: 'アプリ化と\nPush通知',
-                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>次に、上の帯の名前をタップして<strong>自分を選び</strong>、ホームの <strong>MY設定 → 🔔 Push通知設定</strong> で「通知を有効にする」。<strong>ブロックごとに決まる「あなたの凸」</strong>・予約の承認 はここに届きます。',
+                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>次に、上の帯の名前をタップして<strong>自分を選び</strong>、ホームの <strong>MY設定 → 🔔 Push通知設定</strong> で「通知を有効にする」。運営が決定した<strong>「あなたの凸」</strong>(決まりました / 変わりました) はここに届きます。タップすると 📅 レイド予定表が開きます。',
                 tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。あなた宛ての通知は時間帯に関係なく届きます。',
                 accentColor: '#9B4DFF', accentDark: '#7C3AED',
             },
@@ -7896,6 +7910,8 @@
         //   材料は運営の盤面と同じ読み込み (supabaseLoadOpsDashboardData) を opsStore を通さずに呼ぶ (opsStore の世代は運営のカードのもの)。RLS は anon のまま (新しいポリシーは無い)
         //   ✓ の印 = 運営が付けた ✓ (attacks.plan_key) + 数字の報告 (人|レベル|ボス の数を前のブロックから消し込む・decidePlanDomain.doneInPrev = 運営の画面と同じ)
         let _raidSeq = 0;
+        let _raidAckSyncFor = null;   // ✅ のためにホームの配信カードを 1 回だけ読ませた鍵 (名乗り|決定の id)。同じ決定で何度も読ませない (S5 レビュー RT-1)
+        let _raidMkLast = null;       // みんなの模擬の表に最後に入れた HTML。同じなら描き直さない (横スクロールを左端に戻さない: S5 レビュー RT-3)
         function _raidDoneKeys(board, blocks, plan) {
             const dp = window.decidePlanDomain;
             const keys = new Set(), loose = new Map();
@@ -7922,15 +7938,19 @@
                 ctx = await ensureActiveSeasonLoaded();
                 [rows, board] = await Promise.all([
                     window.supabaseGetPublishedPlans().catch(() => null),
-                    window.supabaseLoadOpsDashboardData().catch(() => null),
+                    window.supabaseLoadOpsDashboardData({ lite: true }).catch(() => null),   // 参加可能時間・SLv は読まない (S5 レビュー RT-8)
                 ]);
                 if (typeof getNikkeCharsCache === 'function') { try { await getNikkeCharsCache(); } catch { /* キャラは頭文字のタイルに劣化 */ } }
             } catch (e) { console.warn('[レイド予定表] 読み込み失敗:', e?.message || e); }
             if (seq !== _raidSeq) return;   // 待っている間に描き直しが始まった (古い結果で上書きしない)
             if (identity?.id != null && String(getCurrentIdentity()?.id ?? '') !== String(identity.id)) return;   // 待っている間に名乗り直した
-            const season = ctx?.season || null;
+            // シーズンの読み込みに失敗すると seasonStore は「シーズン無し」を覚えてしまう → 盤面 (自分でシーズンを読み直す) のシーズンで続ける (S5 レビュー RT-7)
+            const season = ctx?.season || board?.season || null;
             if (!season?.id) {
-                sBody.innerHTML = '<p class="rt-note">アクティブなシーズンがありません。運営がシーズンを作ると、ここにレイドの予定が出ます。</p>';
+                // 盤面が読めてシーズンが無い = 本当に無い。盤面も読めない = 分からない (下に引くと seasonStore を捨てて取り直す)
+                sBody.innerHTML = board
+                    ? '<p class="rt-note">アクティブなシーズンがありません。運営がシーズンを作ると、ここにレイドの予定が出ます。</p>'
+                    : '<p class="rt-note">シーズンを読み込めませんでした。通信を確かめてから、下に引いて更新してください。</p>';
                 if (sMeta) sMeta.textContent = '';
                 tCard.style.display = 'none'; mCard.style.display = 'none';
                 return;
@@ -7940,10 +7960,16 @@
             const decRow = pubRows ? dp.currentDecided(pubRows) : null;
             const top = pubRows && pubRows.length ? pubRows.reduce((a, b) => (Number(b.id) > Number(a.id) ? b : a)) : null;
             const boardOk = !!(board && String(board.season?.id) === String(season.id));
+            // 互換ゲート: ホームの配信カードと同じく、この版で読めない配信は描かない (S5 レビュー RT-2)。みんなの模擬はプランではないので出す
+            const unreadable = _planUnreadable(decRow || top);
+            const nowIdx = _raidNowIdx(season, blocks);   // レイド日が終わったら全部 済 (S5 レビュー RT-4)
             if (sMeta) sMeta.textContent = `${season.month_key || ''}${season.is_test ? ' 🧪' : ''}`;
             // ① いまの状態 (決定・まだ・従来の配信) と ✅ 確認しました
             if (!pubRows) {
                 sBody.innerHTML = '<p class="rt-note">配信を読めませんでした。通信を確かめてから、下に引いて更新してください。</p>';
+            } else if (unreadable) {
+                sBody.innerHTML = '<p class="rt-note" style="color:var(--bad-deep);">アプリが古いため、いまの配信を正しく表示できません。ページを再読み込みしてください。</p>'
+                    + '<button type="button" class="rt-ack" onclick="location.href=\'./?u=\'+Date.now()">更新する</button>';
             } else if (!decRow) {
                 sBody.innerHTML = top
                     ? '<p class="rt-note">いまの配信は従来の形です。ホームの「配信された凸プラン」で確認してください。</p>'
@@ -7952,27 +7978,34 @@
                 const plan = decRow.plan;
                 const names = plan.decided.blocks.map(b => b.name || b.label).filter(Boolean);
                 const decidedKeys = new Set(plan.decided.blocks.map(b => String(b.key)));
-                const nowIdx0 = rbd.blockIndexOfSlot(blocks, _planNowSlot(season));
-                const rest = blocks.filter((b, i) => !decidedKeys.has(dp.keyOf(b)) && i >= Math.max(0, nowIdx0)).map(b => b.name);
+                const rest = blocks.filter((b, i) => !decidedKeys.has(dp.keyOf(b)) && i >= Math.max(0, nowIdx)).map(b => b.name);
                 let when = '';
                 try { when = new Date(decRow.published_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { /* noop */ }
                 // ✅ はホームの配信カードと同じ状態 (_myPubState) を使う。読めていなければ出さない (ホームが描くまで)
                 const st = (typeof _myPubState !== 'undefined' && _myPubState && identity?.id != null && String(_myPubState.viewerId) === String(identity.id) && Number(_myPubState.planId) === Number(decRow.id)) ? _myPubState : null;
                 const ack = st ? (st.ack?.acked ? '<span class="rt-acked">✅ 確認済み</span>' : '<button type="button" class="rt-ack" onclick="handleAckPlan(this)">✅ 確認しました</button>') : '';
+                // ホームの配信カードがまだこの決定を読んでいない (通知から直接ここを開いた・ホームを描く前に決定が入った) → 1 回だけ読ませて描き直す。
+                //   以前はホームを開くまで ✅ が出なかった (S5 レビュー RT-1 / DX-2)。同じ決定で何度も読ませない (互換ゲートで _myPubState が null のままでも回らない)
+                const syncKey = identity?.id != null ? `${identity.id}|${decRow.id}` : null;
+                if (!st && syncKey && _raidAckSyncFor !== syncKey && typeof renderMyPublishedPlan === 'function') {
+                    _raidAckSyncFor = syncKey;
+                    Promise.resolve(renderMyPublishedPlan(identity)).then(() => {
+                        if (String(getCurrentIdentity()?.id ?? '') === String(identity.id) && document.getElementById('tab-raid')?.classList.contains('active')) renderRaidTab(identity);
+                    }).catch(() => { /* 次の周期で */ });
+                }
                 sBody.innerHTML = `<div class="rt-state">✅ 決定: <b>${esc(names.join('・') || 'なし')}</b>${ack}</div>`
                     + `<p class="rt-note">${esc(decRow.published_by_name || '運営')}${when ? ` · ${esc(when)}` : ''}${rest.length ? ` — まだ決まっていない: ${esc(rest.join('・'))} (運営が組んで決定します)` : ''}</p>`
                     + (decRow.frozen_at ? '<p class="rt-note" style="color:var(--warn-deep);">⏸ 運営が配信を止めています (見直し中)。いまの割当は Discord の案内も確かめてください</p>' : '')
                     + '<p class="rt-note">凸したら、結果の画面のスクショを Discord へ。PAD の ✓ は運営が付けます (数字は入れません)。</p>';
             }
             // ② ブロックごとの凸 (全員・自分の行は強調・✓ は運営が付けたもの)
-            if (!decRow) { tCard.style.display = 'none'; }
+            if (!decRow || unreadable) { tCard.style.display = 'none'; }
             else {
                 tCard.style.display = '';
                 const plan = decRow.plan;
-                const nowIdx = rbd.blockIndexOfSlot(blocks, _planNowSlot(season));
                 const done = boardOk ? _raidDoneKeys(board, blocks, plan) : new Set();
                 const tt = dp.timetable({ blocks, plan, viewerId: identity?.id ?? null, nowIdx, done });
-                const bossOf = (n) => ((boardOk ? board.bosses : ctx.bosses) || []).find(b => Number(b.boss_number) === Number(n));
+                const bossOf = (n) => ((boardOk ? board.bosses : ctx?.bosses) || []).find(b => Number(b.boss_number) === Number(n));
                 const ptOf = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
                 const chip = (r) => r.state === 'now' ? '<span class="mt-chip now">いま</span>' : (r.state === 'past' ? '<span class="mt-chip past">済</span>' : '');
                 let nAll = 0, nDone = 0;
@@ -7996,6 +8029,7 @@
             mCard.style.display = '';
             if (!boardOk) {
                 mBody.innerHTML = '<p class="rt-note">模擬を読めませんでした。下に引いて更新してください。</p>';
+                _raidMkLast = null;
                 if (mMeta) mMeta.textContent = '';
                 return;
             }
@@ -8021,9 +8055,19 @@
                 return `<tr class="${meId != null && String(r.id) === meId ? 'mk-row-me' : ''}"><td><b>${esc(r.name)}</b></td>${cells}</tr>`;
             }).join('');
             const ready = tbl.rows.filter(r => !r.missing.length).length;
-            mBody.innerHTML = tbl.rows.length
-                ? `<p class="rt-note">赤い枠 = 同じ人の別の編成とキャラが被っている (1 日に両方は使えません)。</p><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe><table class="mk-tbl"><thead><tr><th>名前</th>${head}</tr></thead><tbody>${bodyRows}</tbody></table></div>`
+            // 誰にも編成が 1 つも無いときは空の文 (人の行は模擬が無くても並ぶので、行の数では判定できない: S5 レビュー RT-5)
+            const anyMock = tbl.rows.some(r => tbl.attrs.some(a => (r.cells[a] || []).length));
+            const mkHtml = anyMock
+                ? `<p class="rt-note">赤い枠 = 同じ人の別の編成とキャラが被っている (1 日に両方は使えません)。</p><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe data-raid-mk-scroll><table class="mk-tbl"><thead><tr><th>名前</th>${head}</tr></thead><tbody>${bodyRows}</tbody></table></div>`
                 : '<p class="rt-note">まだ模擬が登録されていません。</p>';
+            // 30 秒ごとの描き直しで横スクロールが左端に戻っていた (S5 レビュー RT-3): 中身が同じなら触らない・変わったら位置を戻す
+            if (mkHtml !== _raidMkLast) {
+                const sl = mBody.querySelector('[data-raid-mk-scroll]')?.scrollLeft || 0;
+                mBody.innerHTML = mkHtml;
+                _raidMkLast = mkHtml;
+                const sc = mBody.querySelector('[data-raid-mk-scroll]');
+                if (sc && sl) sc.scrollLeft = sl;
+            }
             if (mMeta) mMeta.textContent = `5 属性そろった人 ${ready} / ${tbl.rows.length}`;
         }
 
@@ -10134,8 +10178,8 @@
         }
         function _renderMyDecided({ body, meta, blocks, season, st, rows, bosses, identity }) {
             const dp = window.decidePlanDomain, rbd = window.raidBlocksDomain, esc = escapeHtml;
-            // いまのブロック: レイド日の前は朝 (運営の組む画面と同じ _planNowSlot)。前日の夜に「朝〜午後は済」と出さない
-            const nowIdx = rbd.blockIndexOfSlot(blocks, _planNowSlot(season));
+            // いまのブロック: レイド日の前は朝 (運営の組む画面と同じ _planNowSlot)。前日の夜に「朝〜午後は済」と出さない。レイド日が終わったら全部 済 (S5 レビュー RT-4)
+            const nowIdx = _raidNowIdx(season, blocks);
             const mine = _myDecidedDoneSets(rows);
             const tt = dp.timetable({ blocks, plan: st.plan, viewerId: identity.id, nowIdx, done: new Set(mine.keys.keys()) });
             // 数字で報告した自分の凸で、同じレベル・ボスの自分の行を消し込む (前のブロックから・Lv4 のボス 5 は Lv3 の報告も: decidePlanDomain.looseKeysOf)
@@ -10361,6 +10405,10 @@
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
                             resv: myResv, todayAttacks, myAttackRows,
                             pubs: pubList, pubKey: pubSel ? pubSel.key : null, pubRows, decidedCurrent: !!decRow, rowsAt };   // 🧱 段階 7: ブロックごとの配信 (きょうの凸・チップ)
+            // ヒーローの「残り N 凸」も、いま読んだ自分の凸で数え直す。S5 では凸の記録は運営の ✓ (ほかの端末) だけになり、
+            //   このキャッシュを捨てる経路が無く、3 凸済みでも「残り 3 凸」のままだった (S5 レビュー GP-1)
+            const heroCountChanged = Array.isArray(myAttackRows) && (!Array.isArray(_myTodayAttacksCache) || _myTodayAttacksCache.length !== myAttackRows.length);
+            if (Array.isArray(myAttackRows) && String(getCurrentIdentity()?.id ?? '') === String(identity.id)) _myTodayAttacksCache = myAttackRows;
             // 済んだ凸を時間割に混ぜるため読む (2026-09-11)。失敗しても本体は描く
             await _ensurePlanDoneAttacks(seasonStore.get()?.season);
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら降りる
@@ -10372,7 +10420,7 @@
             try {
                 const r = _myPlanRows(plan, identity.id, doneCounts);
                 const wantKey = r.length ? `${pub.id}:${r.filter(x => x.done).length}/${r.length}` : `${pub.id}:none`;
-                if (wantKey !== _heroPlanKey) renderMyNextAction(identity);
+                if (wantKey !== _heroPlanKey || heroCountChanged) renderMyNextAction(identity);
             } catch { /* ストリップが出ないだけ */ }
             // 提出カード側にも「この編成が選ばれた」を出す。
             // 配信プランの取得は非同期なので、パネルが先に描かれていることがある → 変化時だけ描き直す
@@ -14506,6 +14554,24 @@
             if (st && typeof st.raidDayKey === 'function' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(hd) && st.raidDayKey(nowMs) < hd) return 'h05';
             return getCurrentSlotJST();
         }
+        // 決定の時間割の「いまのブロック」の添字 (いま / 済 の札)。レイド日の前は朝 (_planNowSlot と同じ)、レイド日が終わったら全部済み (= blocks.length)。
+        //   壁時計のままだと、翌日に開いたとき 午後に「いま」・深夜が「まだ決まっていない (運営が組んで決定します)」と出ていた (S5 レビュー RT-4 / TP-5)。
+        //   📅 レイド予定表・ホームの きょうの凸・⚔️ ✓ 凸の記録 はここだけを使う
+        function _raidNowIdx(season, blocks, nowMs = Date.now()) {
+            const st = window.opsStageDomain, rbd = window.raidBlocksDomain;
+            const bl = Array.isArray(blocks) ? blocks : [];
+            const hd = season && season.hard_date ? String(season.hard_date).slice(0, 10) : '';
+            if (st && typeof st.raidDayKey === 'function' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(hd) && st.raidDayKey(nowMs) > hd) return bl.length;
+            return rbd ? rbd.blockIndexOfSlot(bl, _planNowSlot(season, nowMs)) : -1;
+        }
+        // 互換ゲート: この版で配信 (凸プラン) を描いてよいか。ホームの配信カードと同じ判定 (_gateAllows('plan') + plan_schema)。
+        //   描いてはいけなければ true。📅 レイド予定表・⚔️ ✓ 凸の記録 もここを通す (ゲートの「凸プランの表示を止める」が効くように: S5 レビュー RT-2)
+        function _planUnreadable(pub) {
+            if (!pub || !pub.plan) return false;
+            if (typeof _gateAllows === 'function' && !_gateAllows('plan')) return true;
+            const r = window.clientGateDomain?.planReadable({ planSchema: pub.plan_schema, supportedSchema: PLAN_SCHEMA, gate: _gateRaw });
+            return !!(r && !r.readable);
+        }
 
         // ===== 戦闘可能時間: 🧱 ブロックのチップで選ぶ (内部は 1 時間刻み) =====
         // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列。season = モーダルを開いたときに**取り直した**シーズン (区切りの元・アクティブ無しは null)、
@@ -15299,6 +15365,12 @@
                 // 📅 レイド予定表を開きっぱなしでも、運営の決定と ✓ に追従する (30 秒ごと・S5)
                 if (_coordPollTick === 2 && document.getElementById('tab-raid')?.classList.contains('active')
                     && typeof renderRaidTab === 'function') Promise.resolve(renderRaidTab(id)).catch(() => { /* 次の周期で */ });
+                // ⚔️ ✓ 凸の記録 を開きっぱなしでも、別の運営が付けた ✓ を取り込む (30 秒ごと・S5 レビュー GP-3)。以前は自分で押すか ↻ まで盤面が古いままだった。
+                //   取り直しは中央の 1 か所 (_opsReloadBoardCards)。カードが見えているとき (⚔️ 戦況のタブ) だけ・✓ を押している最中と 🧱 で組んでいる最中は触らない
+                if (_coordPollTick === 2 && _opsMode && document.getElementById('tab-ops')?.classList.contains('active')
+                    && document.getElementById('opsSecAttackTap')?.offsetParent != null
+                    && typeof _atkTap !== 'undefined' && _atkTap.busy.size === 0 && _atkCheck.busy.size === 0 && !(typeof _ob !== 'undefined' && _ob.busy)
+                    && opsStore.get() && typeof _opsReloadBoardCards === 'function') _opsReloadBoardCards();
                 // 👑 任命されたら開き直さなくても運営画面になる (30 秒ごと)
                 if (_coordPollTick === 0 && typeof _syncOpsRole === 'function') _syncOpsRole();
                 _coordPollTick = (_coordPollTick + 1) % 3;
@@ -18320,7 +18392,8 @@
             // 🧱 段階 4: 配信は そのブロックのぶん (blockScope) に絞って突き合わせる (メンバーに約束したのはその範囲だけ)。
             //   配信を算出する前に入っていた凸は、その凸を前提に組んだプランなので照合しない (sinceMs)。
             //   ★ 時刻でブロックを決めない — 運営があとから取り込む凸の reported_at は「登録した時刻」
-            const pub = (_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null;
+            // ✅ 決定のあるシーズンは最新の決定 (ブロックの選択に関係なく: S5 レビュー TP-1 / DX-1)。無ければ従来どおり いまのブロックに効く配信
+            const pub = _opsDecidedPub(snap.season.id) || ((_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null);
             const rawPlan = pub?.plan || null;
             const rb = window.raidBlocksDomain;
             // ✅ 決定 (S4 レビュー [21]): 決定の行は済んだ凸を中に持つ (決定し直しても残す) → 配信の時刻より前の凸も照合する (sinceMs なし)。
@@ -18345,9 +18418,12 @@
                 <div class="ops-atk-row${r.confirmedAt != null ? ' done' : ''}" data-id="${Number(r.id)}">
                     <span class="t">${escapeHtml(r.atMs != null ? _opsHm(r.atMs) : '—')}</span>${chip(r.bossNumber)}
                     <span class="n">${escapeHtml(r.name)}${r.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${r.level}</span>` : ''}</span>
-                    <span class="v">${r.damageB.toFixed(1)}B</span>
+                    <span class="v">${r.tapOnly ? '—' : `${r.damageB.toFixed(1)}B`}</span>
                     ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}${r.unchecked ? `<span class="fl" style="background:var(--s2);color:var(--t-muted);" title="配信プランと照合できない凸 (印は付けません)">${escapeHtml(r.unchecked)}</span>` : ''}
-                    <button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>
+                    ${r.source === 'ops_tap' && r.tapOnly
+                        // 運営の ✓ (数字なし) は付けた時点で確認済み — 外せないトグルを出さない。取り消しは ⚔️ ✓ 凸の記録で (S5 レビュー TP-11)
+                        ? '<span class="ok" aria-pressed="true" title="運営が ⚔️ ✓ 凸の記録で付けた ✓ (取り消しはそのカードで)">✓ 凸の記録</span>'
+                        : `<button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>`}
                 </div>`).join('')
                 : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる凸はありません。' : 'まだ凸が登録されていません。'}</p>`;
             const note = canConfirm ? '' : '<p class="ops-recent-empty" style="margin-top:8px;">✓ の保存には supabase/52_attacks_confirmed.sql の適用が必要です (一覧と印はそのまま使えます)。</p>';
@@ -19067,6 +19143,7 @@
             if (gen !== _resv.gen) return;
             if (!season) {
                 _resv.rows = null;
+                document.body.classList.remove('resv-live');
                 el.innerHTML = '<p style="color:var(--t-muted);font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
                 if (cntEl) cntEl.textContent = '';
                 return;
@@ -19095,6 +19172,9 @@
             _resv.unsupported = false;
             _resv.rows = rows;
             _resv.seasonId = season.id;   // タブの件数は今のシーズンの予約だけ数える (段階 2.5・Codex指摘)
+            // S5: 予約の画面を隠したシーズンでも、生きている予約 (承認待ち・承認済み・取り消し希望・📣 お願い中・時刻の 📌 = 🧱 盤に出ない拘束) が
+            //   残っている間はこのカードを出す。隠したままだと外す手段が無く、自動で組むときの拘束になり続けた (S5 レビュー RS-1)
+            document.body.classList.toggle('resv-live', rows.some(r => rv.isActive(r) || (rv.isPin(r) && (r.asked_at != null || r.time_mode !== 'block'))));
             _paintOpsReservations();
             _renderOpsCockpitSoon();
             // 配信の状況行に「配信後の予約 N件」を出すため、一覧が読めたら取り直す
@@ -23064,7 +23144,10 @@
                     const [fill, ink] = _bbFill(r.weakness) || ['var(--ops)', 'var(--on-fill)'];
                     const nm = escapeHtml(a.memberName || '');
                     const pin = a.pinned && a.reservationId != null;
-                    return `<span class="obpc${pin ? ' pin' : ''}${acc > 100.5 ? ' over' : ''}" style="width:${w}%;background:${fill};color:${ink};"${pin ? ` data-ob-unpin="${Number(a.reservationId)}" title="${nm} ${(Number(a.dmgB) || 0).toFixed(1)}B — 手で置いた駒 (押すと外す)"` : ` title="${nm} ${(Number(a.dmgB) || 0).toFixed(1)}B — 自動で置いた"`}>${pin ? '📌 ' : ''}${nm} ${(Number(a.dmgB) || 0).toFixed(1)}</span>`;
+                    // 🔒 予約 (承認済みの約束・9b の登録) は外せない駒 — 自動の駒と見分けられるように 🔒 と外し方を出す (S5 レビュー RS-1)
+                    const resv = !pin && a.fromReservation && a.reservationId != null;
+                    const ttl = pin ? '手で置いた駒 (押すと外す)' : (resv ? '🔒 予約 (外すには 🔒 凸の予約 の「取り下げる」)' : '自動で置いた');
+                    return `<span class="obpc${pin ? ' pin' : ''}${acc > 100.5 ? ' over' : ''}" style="width:${w}%;background:${fill};color:${ink};"${pin ? ` data-ob-unpin="${Number(a.reservationId)}"` : ''} title="${nm} ${(Number(a.dmgB) || 0).toFixed(1)}B — ${ttl}">${pin ? '📌 ' : (resv ? '🔒 ' : '')}${nm} ${(Number(a.dmgB) || 0).toFixed(1)}</span>`;
                 }).join('');
                 const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B` : (r.done ? `撃破 ✓${r.gotB - r.startB > 0.05 ? ` 余り ${(r.gotB - r.startB).toFixed(1)}B` : ''}` : `あと ${r.remB.toFixed(1)}B / ${r.startB.toFixed(1)}B`);
                 return `<div class="obr${can === true ? ' can' : (can === false ? ' no' : '')}${r.done ? ' done' : ''}" data-ob-boss="${r.bossNumber}"><div class="obr-h"><span class="obr-pt" style="background:${(_bbFill(r.weakness) || [])[0] || 'var(--s2)'};color:${(_bbFill(r.weakness) || [])[1] || 'var(--t-ink)'};">${escapeHtml(pt(r.weakness))}PT</span><b>B${r.bossNumber} ${escapeHtml(r.name)}</b><span class="hp">${hp}</span></div><div class="obr-bar">${pieces}</div></div>`;
@@ -23072,7 +23155,7 @@
             const skipped = (o.skipped || []).map(a => {
                 const nm = escapeHtml(a.memberName || '');
                 const pin = a.pinned && a.reservationId != null;
-                return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>` : ' (約束)'}</span>`;
+                return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>` : ' (🔒 予約 — 🔒 凸の予約 で取り下げ)'}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
             const note = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
@@ -23311,7 +23394,13 @@
             const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
             const p = ctx ? ctx.tray.find(x => x.key === key) : null;
             if (!p) return;
-            if (p.placedIdx != null) { showNotification(p.pinId != null ? '置いてあります (盤の 📌 を押すと外せます)' : '自動で置いた駒です (このブロックをやり直すと外れます)'); return; }
+            if (p.placedIdx != null) {
+                // pinId は承認済みの予約 (🔒) のこともある — 盤に 📌 は無いので外し方を言い分ける (S5 レビュー RS-1)
+                const pinRow = p.pinId != null ? (_ob.pins || []).find(r => Number(r.id) === Number(p.pinId)) : null;
+                showNotification(p.pinId == null ? '自動で置いた駒です (このブロックをやり直すと外れます)'
+                    : (pinRow && pinRow.status !== 'pinned' ? '🔒 予約です (外すには 🧱 組む の「🔒 凸の予約」で取り下げる)' : '置いてあります (盤の 📌 を押すと外せます)'));
+                return;
+            }
             if (p.blocked === 'dup') { showNotification('別の編成とキャラが被るので使えません (同じキャラは 1 日 1 回)'); return; }
             if (p.blocked === 'used') { showNotification('この編成のキャラは、きょうもう使っています (同じキャラは 1 日 1 回)'); return; }
             if (p.remaining <= 0) { showNotification(`${p.name} はこのブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)`); return; }
@@ -24003,6 +24092,7 @@
         async function _opsPlanConfirmPin(id) {
             const rv = window.reservationsDomain;
             const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
+            if (typeof _resvUiHidden === 'function' && _resvUiHidden()) { showNotification('予約の画面を隠しているシーズンです (確定は ✏️ シーズン編集で従来の画面にしてから)'); return; }   // S5 レビュー RS-2
             if (!row || row.status !== 'pinned') { showNotification('この仮置きはもう下書きではありません (本人が引き受けた / 外れた)'); return; }
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             const what = rv.describe(row, bossName);
@@ -24278,7 +24368,8 @@
                     const asked = !!(row && row.asked_at);
                     acts = `<small>📌 運営の仮置き${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
                         + (asked || _homeSimple() ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
-                        + `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人に通知して 🔒 予約にする">🔒 確定する</button>`
+                        // 予約の画面を隠したシーズンでは出さない (確定した予約は本人にも運営にも見えず、外せなくなっていた: S5 レビュー RS-2)
+                        + (typeof _resvUiHidden === 'function' && _resvUiHidden() ? '' : `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人に通知して 🔒 予約にする">🔒 確定する</button>`)
                         + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">仮置きを外す</button>`;
                 } else {
                     acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 仮置きして組み直します (レベルは算出が決めます)</small>`;
@@ -24288,7 +24379,7 @@
             } else if (_opsPlanPromiseNote === 'spent') {
                 acts = '<small>✗ 3凸を使い切った人の計画 — 別のボスに凸したので、この計画は実行されません (置き直す相手は他の人から)</small>';
             } else if (_opsPlanPromiseNote) {
-                acts = '<small>🔒 本人の予約 — 運営の手では動かしません (取り下げは「凸の予約」カードから)</small>';
+                acts = '<small>🔒 予約 — 運営の手では動かしません (取り下げは 🧱 組む の「🔒 凸の予約」から)</small>';
             }
             return `<div class="plan-focus"><span>${esc(p.name)}${p.flexTime ? ' · ⏳隙間型' : ''}</span>`
                 + `<small>参加可能時間 ${esc(hours || (p.flexTime ? 'いつでも' : '未登録'))} · 動かせる幅 <b>${esc(st.label)}</b> (これから ${st.count} コマ)</small>`
@@ -25762,6 +25853,7 @@
             _opsPublishedFlag = !!published;
             _opsPublishedPlan = published || null;   // 段階のチェックリスト (配信後の予約の数) に使う
             _opsPublishedKnown = !failed;
+            _opsPublishedFailed = failed;   // ✓ 凸の記録が「読み込み中」と「読めなかった」を言い分ける (S5 レビュー TP-12)
             if (typeof renderOpsAttackCheck === 'function') renderOpsAttackCheck();   // ✅ 凸報告の確認 (③-f) は配信プランと突き合わせる — 取り直したら描き直す
             if (typeof renderOpsAttackTap === 'function') renderOpsAttackTap();   // ✓ 凸の記録 (S5) も決定と盤面から描く
             _renderOpsPubStatus(published, failed);
@@ -25810,7 +25902,8 @@
             let pending = 0;
             try {
                 const rv = window.reservationsDomain;
-                if (rv && typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) pending = rv.pendingRepublish(_resv.rows, published.plan).count;
+                // 予約の画面を隠したシーズンでは数えない (段階の材料 _renderOpsStage と同じ判定。決定のあとの 📌 を「承認済みの予約」と言っていた: S5 レビュー RS-4)
+                if (rv && typeof _resv !== 'undefined' && Array.isArray(_resv.rows) && !(typeof _resvUiHidden === 'function' && _resvUiHidden())) pending = rv.pendingRepublish(_resv.rows, published.plan).count;
             } catch { pending = 0; }
             // 古い配信ほど「盤面と食い違っている」可能性が高いので色で段階を出す
             const stale = (mins != null && mins >= 180) || pending > 0;
@@ -26621,50 +26714,95 @@
         function _atkCheckDecidedPlan(plan, season) {
             const rb = window.raidBlocksDomain, dp = window.decidePlanDomain;
             const endOf = new Map((rb ? rb.blocksOfSeason(season) : []).map(b => [dp.keyOf(b), b.toIdx]));
+            // 鍵 (planKey) も持たせる: ✓ の行 (plan_key) は鍵の一致する割当に当てる (S5 レビュー TP-4・attackCheck.buildRows)
             const levels = (Array.isArray(plan?.levels) ? plan.levels : []).filter(lv => lv && typeof lv === 'object').map(lv => ({ ...lv,
                 bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).filter(b => b && typeof b === 'object').map(b => ({ ...b,
-                    attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(Boolean).map(a => (a.block != null && endOf.has(String(a.block))) ? { ...a, hourIdx: endOf.get(String(a.block)), blockEnd: true } : a) })) }));
+                    attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(Boolean).map(a => (a.block != null && endOf.has(String(a.block)))
+                        ? { ...a, hourIdx: endOf.get(String(a.block)), blockEnd: true, planKey: dp.planKey({ ...a, level: lv.infinite ? 4 : Number(lv.level), bossNumber: Number(b.bossNumber), block: String(a.block) }) } : a) })) }));
             return { ...plan, levels };
         }
         // ✓ 凸の記録 (シンプル化 S5・2026-10-27 ふるり): 決定の時間割を全員ぶん・行ごとに ✓ / 取り消す。
-        //   材料は「結果の取り込み」と同じ (最新の配信 _opsPublishedPlan + 盤面 opsStore)。✓ の印は レイド予定表と同じ (_raidDoneKeys = plan_key + 数字の報告の消し込み)。
-        //   ★ 自分では load しない (取り直しは中央の _opsReloadBoardCards だけ: 結果の取り込みと同じ決まり)。押したあとは中央で取り直す
-        const _atkTap = { gen: 0, busy: new Set(), bound: false };
+        //   材料は最新の決定 (_opsDecidedPub = レイド予定表と同じ currentDecided・ブロックの選択に関係なく: S5 レビュー TP-1) + 盤面 opsStore。
+        //   ✓ の印は レイド予定表と同じ (_raidDoneKeys = plan_key + 数字の報告の消し込み)。
+        //   ★ 自分では load しない (取り直しは中央の _opsReloadBoardCards だけ: 結果の取り込みと同じ決まり)。押したあとは中央で取り直す。
+        //   view = 最後に描いた表の控え (planKey → 凸)。押したあとの取り直しの間 (盤面が null) も、続けて押せるようにここから引く (S5 レビュー TP-2)。
+        //   gen = 運営 OFF・シーズンの切り替えで進む。押してから書くまでの await のあとに照合する (S5 レビュー TP-8)
+        const _atkTap = { gen: 0, busy: new Set(), bound: false, view: null };
         function _opsTapView(snap) {
             const dp = window.decidePlanDomain, rbd = window.raidBlocksDomain;
             if (!dp || !rbd || !snap?.season) return null;
-            const pub = (_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null;
-            if (!pub || !dp.isDecided(pub.plan)) return { pub: null };
+            const pub = _opsDecidedPub(snap.season.id);
+            if (!pub) return { pub: null };
+            if (_planUnreadable(pub)) return { pub, unreadable: true };   // 互換ゲート (S5 レビュー RT-2)
             const blocks = rbd.blocksOfSeason(snap.season);
-            const nowIdx = rbd.blockIndexOfSlot(blocks, _planNowSlot(snap.season));
+            const nowIdx = _raidNowIdx(snap.season, blocks);   // レイド日が終わったら全部 済 (S5 レビュー TP-5)
             const done = _raidDoneKeys(snap, blocks, pub.plan);
             const tt = dp.timetable({ blocks, plan: pub.plan, viewerId: null, nowIdx, done });
             const tapRow = new Map();   // planKey → ✓ の行 (取り消すのは数字の無い ✓ の行だけ)
             for (const p of (snap.players || [])) for (const a of (p.attacks || [])) if (a.plan_key && a.source && !(Number(a.damage_raw) > 0)) tapRow.set(String(a.plan_key), { ...a, player_id: p.id });
-            return { pub, blocks, nowIdx, tt, tapRow };
+            return { pub, seasonId: snap.season.id, blocks, nowIdx, tt, tapRow };
+        }
+        // ✓ と取り消しで同じ判定 (S5 レビュー TP-9)。役割をまだ読めていない (起動直後・通信断) ときは断らずに待ってもらう
+        function _opsTapRoleOk() {
+            const role = typeof _opsRoleForCurrent === 'function' ? _opsRoleForCurrent() : null;
+            if (role === 'ops' || role === 'master') return true;
+            if (role === undefined) {
+                showNotification('運営の役割を読み込んでいます。少し待ってからもう一度押してください');
+                if (typeof _syncOpsRole === 'function') _syncOpsRole();
+                return false;
+            }
+            showNotification('✓ を付けるのは運営だけです');
+            return false;
         }
         function renderOpsAttackTap(force = false) {
             const body = document.getElementById('opsAtkTapBody'), cnt = document.getElementById('opsAtkTapCounts');
             if (!body) return;
             if (!_opsMode) return;                       // 運営OFF: 描かない
-            ++_atkTap.gen;
+            if (!_atkTap.bound) {   // 委譲は最初に 1 回 (先に「更新する」だけの画面を描いても押せるように)
+                _atkTap.bound = true;
+                body.addEventListener('click', (ev) => {
+                    if (ev.target.closest('[data-tap-reload]')) { location.href = './?u=' + Date.now(); return; }   // 互換ゲートで止めたとき (S5 レビュー RT-2)
+                    const d = ev.target.closest('[data-tap-done]');
+                    if (d) { _opsTapMark(d.dataset.tapDone, d); return; }
+                    const u = ev.target.closest('[data-tap-undo]');
+                    if (u) _opsTapUndo(Number(u.dataset.tapUndo), u);
+                });
+            }
             if (force) return _opsReloadBoardCards();   // ↻: 盤面と配信を中央で取り直す (その最後がここを描く)
             const snap = opsStore.get();
             if (!snap) return;                          // 取り直しの最中 — 完了が描く
-            if (!snap.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
-            if (!_opsPublishedKnown) { body.innerHTML = '<p class="ops-recent-empty">決定を読み込んでいます…</p>'; return; }
+            if (!snap.season) { _atkTap.view = null; body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
+            if (!_opsPublishedKnown) {   // 読み込み中と読めなかったを言い分ける。数は前の値を残さない (S5 レビュー TP-12)
+                body.innerHTML = _opsPublishedFailed
+                    ? '<p class="ops-recent-empty" style="color:var(--bad);">決定を読み込めませんでした。通信を確かめて ↻ で取り直してください。</p>'
+                    : '<p class="ops-recent-empty">決定を読み込んでいます…</p>';
+                if (cnt) cnt.textContent = '';
+                return;
+            }
             const v = _opsTapView(snap);
             if (!v) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">✓ 凸の記録を読み込めませんでした (再読み込みしてください)</p>'; return; }
-            if (!v.pub) { body.innerHTML = '<p class="ops-recent-empty">まだ決定していません。🧱 組む で組んで「✅ 決定」すると、ここに凸の一覧が出ます。</p>'; if (cnt) cnt.textContent = ''; return; }
+            if (!v.pub) { _atkTap.view = null; body.innerHTML = '<p class="ops-recent-empty">まだ決定していません。🧱 組む で組んで「✅ 決定」すると、ここに凸の一覧が出ます。</p>'; if (cnt) cnt.textContent = ''; return; }
+            if (v.unreadable) {
+                _atkTap.view = null;
+                body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">アプリが古いため、いまの決定を表示できません。ページを再読み込みしてください。</p>'
+                    + '<button type="button" class="dc-ops-action" data-tap-reload>更新する</button>';
+                if (cnt) cnt.textContent = '';
+                return;
+            }
             const esc = escapeHtml, bosses = snap.bosses || [];
             const bossOf = (n) => bosses.find(b => Number(b.boss_number) === Number(n));
             const ptOf = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
+            // 開いていたブロックを覚えておく (10 秒ごとの描き直しで閉じていた: S5 レビュー GP-2)。DOM から読むので見張りは要らない
+            const openKeys = new Set([...body.querySelectorAll('details.mt-blk[open][data-blk]')].map(d => d.dataset.blk));
+            const byKey = new Map();
             let nAll = 0, nDone = 0, nDue = 0, nDueDone = 0;
             const html = v.tt.filter(r => r.decided && r.entries.length).map(r => {
                 const due = r.state === 'past' || r.state === 'now';
-                nAll += r.entries.length; nDone += r.entries.filter(e => e.done).length;
-                if (due) { nDue += r.entries.length; nDueDone += r.entries.filter(e => e.done).length; }
-                const head = `<div class="mt-h"><b>${esc(r.name || '')}</b><span class="mt-hr">${esc(_obHours(v.blocks[r.idx]))}</span>${r.state === 'now' ? '<span class="mt-chip now">いま</span>' : (r.state === 'past' ? '<span class="mt-chip past">済</span>' : '')}${Number(r.level) > 0 ? `<span class="mt-lv">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}<span class="mt-hr">✓ ${r.entries.filter(e => e.done).length} / ${r.entries.length}</span></div>`;
+                const doneN = r.entries.filter(e => e.done).length;
+                nAll += r.entries.length; nDone += doneN;
+                if (due) { nDue += r.entries.length; nDueDone += doneN; }
+                for (const e of r.entries) byKey.set(e.planKey, e);
+                const head = `<div class="mt-h"><b>${esc(r.name || '')}</b><span class="mt-hr">${esc(_obHours(v.blocks[r.idx]))}</span>${r.state === 'now' ? '<span class="mt-chip now">いま</span>' : (r.state === 'past' ? '<span class="mt-chip past">済</span>' : '')}${Number(r.level) > 0 ? `<span class="mt-lv">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}<span class="mt-hr">✓ ${doneN} / ${r.entries.length}</span></div>`;
                 const rows = r.entries.map(e => {
                     const t = v.tapRow.get(e.planKey);
                     const act = e.done
@@ -26673,41 +26811,58 @@
                     const c = (_bbFill(e.weakness) || [])[0] || 'var(--ops)';
                     return `<div class="mt-me${e.done ? ' ok' : ''}"><span class="mt-dot" style="background:${c};"></span><div class="mt-me-b"><b>${esc(e.memberName || '')}</b> <span class="mt-sub">B${Number(e.bossNumber)} ${esc(bossOf(e.bossNumber)?.name || e.bossName || '')} · ${esc(ptOf(e.weakness))}PT 編成${SLOT_JP[e.loadoutSlot] || '①'} · ${Number(e.dmgB).toFixed(1)}B</span></div><div class="mt-act">${act}</div></div>`;
                 }).join('');
-                // 先のブロックは畳む (いま・過ぎたブロックが運営の作業)
-                return due ? `<div class="mt-blk ${r.state}">${head}${rows}</div>`
-                    : `<details class="mt-blk ${r.state}"><summary>${head}</summary>${rows}</details>`;
+                // いま・✓ の残っている過ぎたブロックは開いて出す (運営の作業)。全部 ✓ 済みの過ぎたブロックと先のブロックは畳む (S5 レビュー TP-14)
+                const fold = r.state === 'later' || (r.state === 'past' && doneN === r.entries.length);
+                const k = esc(String(r.key));
+                return fold ? `<details class="mt-blk ${r.state}" data-blk="${k}"${openKeys.has(String(r.key)) ? ' open' : ''}><summary>${head}</summary>${rows}</details>`
+                    : `<div class="mt-blk ${r.state}" data-blk="${k}">${head}${rows}</div>`;
             }).join('');
+            _atkTap.view = { seasonId: v.seasonId, pubId: v.pub.id, byKey };
             body.innerHTML = html || '<p class="ops-recent-empty">決定に凸がありません。</p>';
             if (cnt) cnt.textContent = `いままで ✓ ${nDueDone} / ${nDue} · 全体 ${nDone} / ${nAll}`;
-            if (!_atkTap.bound) {
-                _atkTap.bound = true;
-                body.addEventListener('click', (ev) => {
-                    const d = ev.target.closest('[data-tap-done]');
-                    if (d) { _opsTapMark(d.dataset.tapDone, d); return; }
-                    const u = ev.target.closest('[data-tap-undo]');
-                    if (u) _opsTapUndo(Number(u.dataset.tapUndo), u);
-                });
-            }
         }
         async function _opsTapMark(planKey, btn) {
             if (!_opsMode || _atkTap.busy.has(planKey)) return;
-            const role = typeof _opsRoleForCurrent === 'function' ? _opsRoleForCurrent() : null;
-            if (role !== 'ops' && role !== 'master') { showNotification('✓ を付けるのは運営だけです'); return; }
+            if (!_opsTapRoleOk()) return;
+            const dp = window.decidePlanDomain, rbd = window.raidBlocksDomain;
+            // 押した凸: いまの盤面から。直前の ✓ のあとの取り直しの間 (盤面が null) は、描いた表の控えから (S5 レビュー TP-2)
             const snap = opsStore.get();
             const v = snap ? _opsTapView(snap) : null;
-            const e = v?.tt ? v.tt.flatMap(r => r.entries).find(x => x.planKey === planKey) : null;
-            if (!e) { showNotification('表示を更新しています。もう一度押してください'); _opsReloadBoardCards(); return; }
+            let e = v?.tt ? v.tt.flatMap(r => r.entries).find(x => x.planKey === planKey) : null;
+            let seasonId = e ? v.seasonId : null, pubId = e ? v.pub.id : null;
+            if (!e && !snap && _atkTap.view?.byKey.has(planKey)) { e = _atkTap.view.byKey.get(planKey); seasonId = _atkTap.view.seasonId; pubId = _atkTap.view.pubId; }
+            if (!e) {   // 盤面がある (= 決定が変わった) なら取り直す。盤面が null なら取り直しの最中 — 重ねて呼ばない (読み込みが最初からになる)
+                showNotification('表示を更新しています。もう一度押してください');
+                if (snap) _opsReloadBoardCards();
+                return;
+            }
+            const gen = _atkTap.gen;
             const me = getCurrentIdentity();
             _atkTap.busy.add(planKey);
             if (btn) btn.disabled = true;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 const season = ctx?.season;
-                if (!season?.id || String(season.id) !== String(snap.season.id)) { showNotification('シーズンが変わりました。画面を開き直してください'); return; }
+                if (gen !== _atkTap.gen || !_opsMode) return;   // 待っている間に運営 OFF・シーズンの切り替え
+                if (!season?.id || String(season.id) !== String(seasonId)) { showNotification('シーズンが変わりました。画面を開き直してください'); return; }
+                // 押した時点の決定で確かめる: 別の運営が決定し直していたら、その凸がいまの決定にあるかを見る (古い表示のまま押すと、
+                //   いまの決定に無い鍵の行が入り、取り消せないうえ同じ人の凸が 2 行になった: S5 レビュー TP-3)
+                let rowsNow = null;
+                try { rowsNow = await window.supabaseGetPublishedPlans(); } catch (_) { rowsNow = null; }
+                if (gen !== _atkTap.gen || !_opsMode) return;
+                if (!Array.isArray(rowsNow)) { showNotification('⚠️ 決定を読めないため止めました。もう一度お試しください'); return; }
+                const decNow = dp.currentDecided(rowsNow.filter(r => r && Number(r.season_id) === Number(seasonId)));
+                if (!decNow) { showNotification('⚠️ 決定が見つかりません。表示を更新します'); return; }
+                if (Number(decNow.id) !== Number(pubId)) {
+                    const eNow = dp.timetable({ blocks: rbd.blocksOfSeason(season), plan: decNow.plan, viewerId: null, nowIdx: -1 }).flatMap(r => r.entries).find(x => x.planKey === planKey);
+                    if (!eNow) { showNotification('別の運営が決定し直し、この凸はいまの決定にありません。表示を更新します'); return; }
+                    e = eNow;
+                }
                 const b = (ctx.bosses || []).find(x => Number(x.boss_number) === Number(e.bossNumber));
                 // 押した時点のその人の凸で確かめる (画面の盤面は古いかもしれない: S4 レビュー [12])
                 let fresh = null;
                 try { fresh = await window.supabaseLoadMyAttacks(e.memberId, season.id, season.hard_date); } catch (_) { fresh = null; }
+                if (gen !== _atkTap.gen || !_opsMode) return;
                 if (!Array.isArray(fresh)) { showNotification('⚠️ その人の凸を読めないため止めました。もう一度お試しください'); return; }
                 if (fresh.some(x => x.plan_key === planKey)) { showNotification('この凸はもう ✓ が付いています'); return; }
                 const lvOk = (x) => Number(x.level || 1) === Number(e.level) || (Number(e.level) >= 4 && Number(e.bossNumber) === 5 && Number(x.level || 1) === 3);
@@ -26717,8 +26872,9 @@
                     level: e.level, characters: e.team || [], plannedDamageRaw: e.dmgB * 1e9, planKey, reservationId: e.reservationId }, { byOps: true, actorName: me?.name || null });
                 if (typeof _myTodayAttacksCache !== 'undefined') _myTodayAttacksCache = null;   // 自分の凸ならヒーローの「残り N 凸」を数え直す
                 const risk = Array.isArray(r.reservationsAtRisk) ? r.reservationsAtRisk.length : 0;   // 凸は拒まず、凸の数を超えて守れなくなる予約を返す (report_attack と同じ)
+                // 予約の画面を隠しているシーズンでも解除できる場所を言う (S5 レビュー TP-13 / DX-3・🔒 凸の予約 は生きている予約がある間は出る: RS-1)
                 showNotification(r.already ? 'この凸はもう ✓ が付いています'
-                    : `✓ ${e.memberName || ''} さん B${e.bossNumber}${risk ? ` — ⚠ 凸の数を超えるので、この人の予約 ${risk} 件が守れなくなりました` : ''}`);
+                    : `✓ ${e.memberName || ''} さん B${e.bossNumber}${risk ? ` — ⚠ 凸の数を超えるので、この人の予約 ${risk} 件が守れなくなりました (🧱 組む の「🔒 凸の予約」で取り下げてください)` : ''}`);
                 if (typeof seasonStore !== 'undefined') seasonStore.invalidate?.();
                 if (typeof opsStore !== 'undefined') opsStore.invalidate?.();
                 if (typeof _checkRaidEvents === 'function') _checkRaidEvents();
@@ -26726,19 +26882,24 @@
                 showNotification(err?.code === 'NO_RPC' ? `⚠️ ${err.message}` : `❌ ✓ を付けられませんでした: ${err?.message || err}`);
             } finally {
                 _atkTap.busy.delete(planKey);
-                await _opsReloadBoardCards();
+                if (_opsMode) await _opsReloadBoardCards();
             }
         }
         async function _opsTapUndo(attackId, btn) {
             if (!_opsMode || !Number.isFinite(attackId) || _atkTap.busy.has(`undo:${attackId}`)) return;
+            if (!_opsTapRoleOk()) return;   // ✓ と同じ判定 (S5 レビュー TP-9)
+            // 活動ログに残すため、消す前にその行を控える (S5 レビュー TP-10)
+            const row = (opsStore.get()?.players || []).flatMap(p => (p.attacks || []).map(a => ({ ...a, player_id: p.id }))).find(a => Number(a.id) === attackId) || null;
             // ✓ で外れた 📌・実行済みにした約束は戻さない (戻すのは RPC が要る)。そのことを先に言う (S4 引き継ぎ 7)
             if (!confirm('この ✓ を取り消しますか？\n\n・その人の凸の数が 1 つ戻ります\n・手で置いた駒 (📌) は戻りません — 必要なら置き直します')) return;
+            const me = getCurrentIdentity();
             _atkTap.busy.add(`undo:${attackId}`);
             if (btn) btn.disabled = true;
             try {
                 await window.supabaseDeleteAttack(attackId);
                 // 凸の削除は HP を動かす呼び出し (✓ の行はダメージ 0 だが、決まりどおり invalidate の前に撃破の検知: tests/check-raid-event-hooks.mjs)
                 _checkRaidEvents().catch(e => console.warn('[undo] 撃破の検知skip:', e?.message || e));
+                window.supabaseLogActivity?.('attack_tap', `✓ を取り消し${row ? `: B${Number(row.boss_number)} Lv${Number(row.level) || 1}` : ''} (運営)`, { playerId: row?.player_id ?? null, actorName: me?.name || null });
                 showNotification('✓ を取り消しました');
                 if (typeof _myTodayAttacksCache !== 'undefined') _myTodayAttacksCache = null;
                 if (typeof seasonStore !== 'undefined') seasonStore.invalidate?.();
@@ -26747,7 +26908,7 @@
                 showNotification(`❌ 取り消せませんでした: ${err?.message || err}`);
             } finally {
                 _atkTap.busy.delete(`undo:${attackId}`);
-                await _opsReloadBoardCards();
+                if (_opsMode) await _opsReloadBoardCards();
             }
         }
         function renderOpsAttacksList() {
@@ -27021,7 +27182,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 4. **運営が先に置いた凸 (希望) はそのまま置き**、残りの枠だけ計算します (何時に凸するかはブロックの中で自由)
 5. **オーバーキル (削りすぎ) が小さい人を優先** — 残り 4B のボスに 30B 出せる人を当てるのはもったいない、という計算
 6. **参加可能時間の中で、そのレベルが開く時刻以降のいちばん早い時刻に**。登録した時間の外には置きません (⏰ 時間厳守)
-7. **前回の配信を尊重** — 盤面が動いていなければ人の割当は動きません
+7. **決定し直すのは組み直したブロックだけ** — ほかのブロックは前の決定のまま。同じ盤面なら同じ割当になります
 ＋ **ボス 5 の弱点の編成② は Lv4 でだけ使います** (18 時以降に出られる人は 2 編成を)
 
 **🙋 よくある疑問**
@@ -30170,7 +30331,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         // ★ CLIENT_BUILD は**手で上げる**単調増加の整数 (YYYYMMDDnn)。
         //   app-build (コミットSHA) は大小比較できないので別に持つ。
         //   予約まわりの契約を変えたときに上げ、行き渡ってから運営がゲートを締める
-        const CLIENT_BUILD = 2026090801;   // 2026-09-08: 予約からレベルを外した (古い版はレベル無しの予約を拘束から落とす)
+        const CLIENT_BUILD = 2026102801;   // 2026-10-28: S5 でメンバーの ✓ 凸しました を無くした (古い版は本人の ✓ (source 'tap') を作れる — 行き渡ったらゲートの『凸の報告』を締めて止められる: S5 レビュー DX-4)。以前: 2026090801 予約からレベルを外した
         // このクライアントが読める配信プランの版。予約を含むプランは 2。
         // 3 = 🧱 blockScope を持つ配信 (2026-10-18)。古い版はこの印を知らず 1 日ぶんを見せてしまうので、版を上げて読ませない (too_new → 更新を促す)。
         // ★ 配信に付ける版は _planSchemaOf(plan): blockScope が無い従来どおりの配信は 2 のまま (古い端末の表示を無駄に止めない — Codex指摘)
@@ -30237,6 +30398,12 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             return cg ? cg.allows(_gateVerdict, feature) : true;
         }
 
+        // 更新の帯の「更新」: キャッシュを避けて読み込み直す。いま開いているタブに戻る (通知から 📅 レイド予定表を開いた人がホームに落ちない: S5 レビュー DX-4)
+        function _reloadFresh() {
+            let t = '';
+            try { const n = document.querySelector('.tab-content.active')?.id?.replace('tab-', ''); if (n && /^[a-z]+$/.test(n) && n !== 'mypage') t = '&tab=' + n; } catch { /* タブが分からなければホーム */ }
+            location.href = './?u=' + Date.now() + t;
+        }
         function _renderClientGateBanner() {
             const cg = window.clientGateDomain;
             const on = !!(_gateVerdict && _gateVerdict.blocked);
@@ -30247,7 +30414,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             b.id = 'clientGateBanner';
             b.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 8px) + 8px);z-index:9999;background:var(--attr-fire-solid);color:var(--attr-fire-ink);border-radius:14px;padding:12px 15px;font-size:12px;font-weight:800;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
             b.innerHTML = `<span style="flex:1;">⚠️ ${escapeHtml(cg ? cg.describe(_gateVerdict) : 'アプリが古いため一部の操作を止めています')}</span>`
-                + `<button onclick="location.href='./?u='+Date.now()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
+                + `<button onclick="_reloadFresh()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
             document.body.appendChild(b);
         }
 
@@ -30316,7 +30483,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const b = document.createElement('div');
                 b.id = 'appUpdateBanner';
                 b.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 8px) + 8px);z-index:9998;background:var(--t-ink);color:var(--card);border-radius:14px;padding:12px 15px;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;animation:dcFadeIn .2s ease;';
-                b.innerHTML = `<span style="flex:1;">✨ 新しいバージョンがあります (古いキャッシュで起動しています)</span><button onclick="location.href='./?u='+Date.now()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
+                b.innerHTML = `<span style="flex:1;">✨ 新しいバージョンがあります (古いキャッシュで起動しています)</span><button onclick="_reloadFresh()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
                 document.body.appendChild(b);
             } catch { /* オフライン等は無視 */ }
         }
@@ -31179,6 +31346,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             try {
                 if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache(name);
                 if (name === 'ops') { seasonStore.invalidate(); opsStore.invalidate(); }
+                if (name === 'raid') { seasonStore.invalidate(); _raidMkLast = null; }   // 📅 シーズンの読み込みに失敗して「シーズン無し」を覚えていたら、ここで取り直す (S5 レビュー RT-7)
                 _renderTabContent(name);
             } catch (e) { console.warn('[PTR]', e?.message || e); }
             setTimeout(() => {
@@ -31545,7 +31713,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (!_opsMode) {
                 if (typeof _atkCheck !== 'undefined') _atkCheck.gen++;
                 if (typeof _mockIntake !== 'undefined') _mockIntake.gen++;
-                if (typeof _atkTap !== 'undefined') _atkTap.gen++;   // ✓ 凸の記録 (S5)
+                if (typeof _atkTap !== 'undefined') { _atkTap.gen++; _atkTap.view = null; }   // ✓ 凸の記録 (S5): 押している途中の ✓ を書かせない・描いた表の控えも捨てる
             } else if (document.getElementById('tab-ops')?.classList.contains('active') && typeof _opsReloadBoardCards === 'function') {
                 // 盤面の取り直しは**中央で 1 回だけ** → メンバー状況 → 配信の取り直し (最後に凸報告の確認) → 模擬の取り込み。
                 // 素早い OFF→ON→OFF… は中央の世代 (_opsBoardReloadSeq) と OFF の確認で古い取り直しが先へ進まない (Codex指摘 c0fa346・1857fd6・5186ffc)
@@ -31601,12 +31769,21 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             //   1 日ぶんの行のあとに別のブロックの行が入ったとき、その別のブロックの行が代表になり、結果の取り込み・凍結・配信後の予約が別のブロックを見た)
             return pd.effectiveFor(rows, pd.keyOfBlock(_opsPlanBlock()));
         }
+        // ✅ 決定のあるシーズン: 運営が「いまの決定」として見る行は、ブロックの選択に関係なく最新の決定 (📅 レイド予定表と同じ currentDecided)。
+        //   _opsPublishedPlan (いまのブロックに効く行) で見ると、いまのブロックがまだ決定に入っていない間 = 前のブロックの ✓ を付けてから次を組む時間に、
+        //   ✓ 凸の記録と結果の取り込みから決定が消えていた (S5 レビュー TP-1 / DX-1)。決定のあとの従来の配信は SQL 56 のトリガーが拒むので、最新の行 = 決定
+        function _opsDecidedPub(seasonId) {
+            const dp = window.decidePlanDomain;
+            if (!dp || seasonId == null || !Array.isArray(_opsPublishedRows)) return null;
+            return dp.currentDecided(_opsPublishedRows.filter(r => r && Number(r.season_id) === Number(seasonId)));
+        }
         async function _loadOpsPublished() {
             const rows = typeof window.supabaseGetPublishedPlans === 'function' ? await window.supabaseGetPublishedPlans() : [];
             _opsPublishedRows = Array.isArray(rows) ? rows : [];
             return { rows: _opsPublishedRows, pub: _opsPickPublished(_opsPublishedRows) };
         }
         let _opsPublishedKnown = false;  // 配信の有無を取得できたか (取れていなければ「不明」として出す)
+        let _opsPublishedFailed = false; // 直近の配信の取得が失敗したか (✓ 凸の記録の文の出し分け)
         let _opsEtcRendered = false;     // その他 › メンテナンス を描いたか (開いたときに1回)
         const _OPS_BACKUP_AT_KEY = 'shirisuko_backup_saved_at_v1';
         function _opsStageSeason() { return opsStore.get()?.season || seasonStore.get()?.season || null; }
@@ -31694,6 +31871,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 remainingTotal: players ? Math.max(0, attackCap - attacksDone) : null,
                 finPending: Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null,
                 attacksDone, attackCap,
+                // 決定のあるシーズンだけ「✓ 凸の記録を開く」へ。配信をまだ読めていない (null) ときは決定ありとみなす (S5 の既定の流れ: S5 レビュー TP-6)
+                decided: !(Array.isArray(_opsPublishedRows) && season?.id != null) || !!(window.decidePlanDomain && window.decidePlanDomain.latestDecided(_opsPublishedRows.filter(r => r && Number(r.season_id) === Number(season.id)))),
             });
             bar.innerHTML = _opsStageBarHtml(st, season);
             heroEl.innerHTML = _opsStageHeroHtml(h, st.stage);

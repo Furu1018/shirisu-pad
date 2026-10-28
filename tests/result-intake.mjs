@@ -150,6 +150,7 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         opsStore: { get: () => store, generation: () => gen, invalidate: () => { calls.push(['invalidate']); store = null; } },
         _opsMode: true,
         _opsPublishedPlan: pub,
+        _opsDecidedPub: () => env._decidedPub || null,   // ✅ 決定のあるシーズンは最新の決定 (S5 レビュー TP-1)。既定は決定なし = 従来の配信を見る
         DC_ATTR_COLORS: { electric: '#111111', wind: '#222222', iron: '#333333' },
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
         _opsHm: () => '00:00',
@@ -171,7 +172,7 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         _skipsDb: new Set(), _claim: 'claimed', _pushFail: false, _beforeOcrReturn: null, _skipsGate: null, _skipsGates: [], _attacksGate: null, _confirmFail: false, _ocrQueue: [],
         el, calls, setStore: (s) => { store = s; gen++; },
     };
-    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore'].includes(k) && !k.startsWith('_') || ['_opsMode', '_opsPublishedPlan', '_opsHm', '_reservationIdForAttack', '_ocrAttackMultiAndMerge', '_checkRaidEvents', '_opsReloadBoardCards', '_renderOpsCockpitSoon', '_renderOpsBlockSteps', '_opsJump'].includes(k));
+    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore'].includes(k) && !k.startsWith('_') || ['_opsMode', '_opsPublishedPlan', '_opsDecidedPub', '_opsHm', '_reservationIdForAttack', '_ocrAttackMultiAndMerge', '_checkRaidEvents', '_opsReloadBoardCards', '_renderOpsCockpitSoon', '_renderOpsBlockSteps', '_opsJump'].includes(k));
     const names = ['renderOpsAttackCheck', 'handleOpsAtkSkip', '_opsAtkAsk', '_renderOpsPlanTidy', '_opsResultPick', '_renderOpsResultPlayers', '_opsResultFromMissing',
         '_opsResultManual', 'handleOpsResultUpload', '_renderOpsResultDraft', '_opsResultSetBoss', '_opsResultSetSlot', '_opsResultSetDamage', '_opsResultSetLevel',
         '_opsResultSetHp', '_opsResultCancel', 'handleOpsResultSave', '_notifyBlockPublish', '_opsResultWarnings'];

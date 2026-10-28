@@ -160,10 +160,11 @@
         }
         return { pub: pub, plan: plan, blocks: blocks };
     }
-    /** (メンバー編) 当日の 20 時にして、運営役が「夜」を決定する (通知の見本も)。読み込み直しはしない (呼ぶ側が決める) */
+    /** (メンバー編) 当日の 20 時にして、運営役が「夕方・夜」を決定する (通知の見本も)。読み込み直しはしない (呼ぶ側が決める)。
+     *   本番の決定は いまのブロック (20 時 = 夕方) から続くところまで — 夜だけの決定は画面からは作れない (S5 レビュー PR-4) */
     async function decideNight() {
         P.clock.set('hard', 20);
-        await opsDecide(['夜'], { notify: true });
+        await opsDecide(['夕方', '夜'], { notify: true });
     }
     /** 決定の凸のうち、その人の凸 (ブロックの鍵つき) */
     function myDecidedAttack(c) {
@@ -172,10 +173,10 @@
         return dp.flat(plan).filter(function (a) { return eq(a.memberId, c.me); })[0] || null;
     }
     var ASSUME = {
-        // (メンバー編) 当日の夜の前に、運営が「夜」を決定した — 本物のソルバー (🧱 ブロックの人・本人の凸数の上限) と決定の関数で
+        // (メンバー編) 当日の夜の前に、運営が「夕方・夜」を決定した — 本物のソルバー (🧱 ブロックの人・本人の凸数の上限) と決定の関数で
         nightDecide: async function () {
             await decideNight();
-            note('assume', '当日の 20 時になり、運営が「夜」を決定した、と仮定しました', '本番では運営が見通しのつくブロックまで決定します。📅 レイド予定表で確かめます');
+            note('assume', '当日の 20 時になり、運営が「夕方・夜」を決定した、と仮定しました', '本番では運営が見通しのつくブロックまで決定します。📅 レイド予定表で確かめます');
             saveFeed();
             if (typeof P.save === 'function') P.save();   // ★ 読み込み直す前に、いま入れた決定を待たずに控える
             location.reload();
@@ -234,11 +235,16 @@
         return who || null;
     }
     // ---------- 編 (シナリオ) と課題 ----------
-    // ★ 2026-10-22 作り直し (🧱 ブロック制・段階 2.5 の画面に合わせて): メンバーは「出られる時間と凸数」と「いつ・どの PT で凸するか」だけ、
-    //   運営はブロックの頭の手順 (⚔️ HP を直す → ⚔️ 結果の取り込み → 🧱 そのブロックを組む → 配信 → 締凸検索で探す) を本物の画面で動かす。
+    // ★ S5 (2026-10-27) 作り直し: メンバーは Discord で伝える → 📅 レイド予定表で確かめる → 凸したら Discord へ (PAD に入力しない)、
+    //   運営・前日は 📸 模擬の登録 → 🧱 朝を組む (📌 → 残りを自動で) → 午前も組む → ✅ 決定、
+    //   運営・当日 (17 時) は 🎯 HP → ✓ 凸の記録 → 🧱 夕方を組み直す → ✅ 決定し直す → 締め凸検索 を本物の画面で動かす。
     // ★ id は js/practice/boot.js の SCENARIOS と同じ一覧 (テストが突き合わせる)。役と開始時刻は boot.js が決める
     var obIdx = function () { return (typeof _ob !== 'undefined' && _ob) ? _ob.idx : null; };
     var obBuilt = function (i) { return typeof _ob !== 'undefined' && _ob && _ob.plans && _ob.plans.has(i) && !_ob.stale.has(i); };
+    /** 決定の行に、その名前のブロックが入っているか */
+    var decidedHas = function (c, name) { return !!(c && c.pub && c.pub.plan && c.pub.plan.decided && c.pub.plan.decided.blocks.some(function (b) { return b && b.name === name; })); };
+    // 「済んだ」を端末の印 (store) で決める課題の印。「↩ 1つ前に戻る」の控えに入れて一緒に戻す (控えに入れないと、戻っても課題が戻らなかった: S5 レビュー PR-1)
+    var MARKS = ['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'];
     /** 組む画面で「そのブロックを開く」→「(📌 を置く)」→「🧮 残りを自動で組む」の案内 (印は store に残す: 自動の結果はこの端末のメモリだけ) */
     function buildGuide(c, idx, name, flagKey, withPin) {
         if (obBuilt(idx) && (!withPin || pinnedIn(c, idx))) { try { store.set(flagKey, '1'); } catch (_) { /* noop */ } }
@@ -277,7 +283,7 @@
                     if (!(c.pub && c.pub.plan && c.pub.plan.decided)) {
                         return stray(c, []) || { text: '模擬は Discord にスクショを貼るだけです (運営が登録します)。あとは運営の決定を待ちます。決まると通知が届き、📅 レイド予定表 に出ます。',
                             real: '運営はブロックごとに、出られる人の模擬で凸を組み、見通しのつくブロックまで決定します。',
-                            assume: ['nightDecide', '⏩ 当日の夜の前に、運営が「夜」を決定したことにする'] };
+                            assume: ['nightDecide', '⏩ 当日の夜の前に、運営が「夕方・夜」を決定したことにする'] };
                     }
                     if (c.tab !== 'raid') return stray(c, []) || nav('navRaid', 'レイド予定表');
                     var ack = pick('planAck');
@@ -300,6 +306,8 @@
                 guide: function (c) {
                     var who = mockTarget(c);
                     if (!who) return { text: '模擬の相手が見つかりません。この課題は飛ばします。' };
+                    // 案内どおりキャラの枠を押すとアイコンのシートが上に開く — 「閉じます」と止めない (S5 レビュー PR-5)
+                    if (c.modalId === 'iconPickerModal') return { text: 'キャラを選びます (分からなければ閉じても保存できます)。' };
                     if (c.modalId === 'myDmgPreviewModal') {
                         var inp = pick('mockDmg');
                         if (inp && !(Number(inp.value) > 0)) return { text: 'Discord に貼られた模擬のスクショのダメージを入れます (例: 31.2)。キャラは分かれば選びます (無くても保存できます)。', target: inp };
@@ -311,10 +319,11 @@
                         real: '本番はスクショを「📷 スクショを選ぶ」で読み取れます (PC はカードに落とすだけ)。読めないときに手で入れます。', target: q('#opsMockIntakeBody .mk-plus[onclick^="_opsMockManual(' + Number(who.id) + ',"]') };
                 } },
             { key: 'buildMorning', title: '🧱 朝を組む (📌 を 1 つ置く → 残りを自動で)',
-                done: function () { return store.get('ops-eve:morning') === '1'; },
+                // 組んだ結果はこの端末のメモリだけ — 読み込み直して消えたら、決定するまでは組み直す (印だけで済ませると、押せない「✅ 決定」に進んでいた: S5 レビュー PR-1)
+                done: function (c) { return store.get('ops-eve:morning') === '1' && (decidedHas(c, '朝') || obBuilt(0)); },
                 guide: function (c) { return buildGuide(c, 0, '朝', 'ops-eve:morning', true); } },
             { key: 'buildMore', title: '🧱 午前も組む',
-                done: function () { return store.get('ops-eve:more') === '1'; },
+                done: function (c) { return store.get('ops-eve:more') === '1' && (decidedHas(c, '午前') || obBuilt(1)); },
                 guide: function (c) { return buildGuide(c, 1, '午前', 'ops-eve:more', false); } },
             { key: 'decide', title: '✅ 朝〜午前を決定してメンバーに配信する',
                 done: function (c) { return !!(c.pub && c.pub.plan && c.pub.plan.decided && c.pub.plan.decided.blocks.some(function (b) { return b.name === '朝'; })); },
@@ -323,7 +332,7 @@
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('obDecide');
                     if (!btn) return stray(c, []) || buildGuide(c, 0, '朝', 'ops-eve:morning', false);
-                    return stray(c, []) || { text: '組めたブロックの下にある決定のボタン (✅ 朝〜午前 を決定してメンバーに配信) を押します。確認が出たら OK。',
+                    return stray(c, []) || { text: '組めたブロックの下にある決定のボタン (' + (btn.textContent || '').trim() + ') を押します。確認が出たら OK。',   // 名前はボタンから (朝だけのときもずれない: S5 レビュー PR-6)
                         real: '決定すると、メンバーの 📅 レイド予定表 に出て、割当のある人に「あなたの凸が決まりました」の通知が届きます。先のブロックは見通しがついたら組んで、決定し直します。', target: btn };
                 } },
         ],
@@ -353,7 +362,12 @@
                         real: '✓ を付けると、その人の残り凸と使ったキャラが減り、次のブロックを組むときに正しくなります。押し間違えたら「取り消す」。', target: btn };
                 } },
             { key: 'rebuild', title: '🧱 夕方 (いまのブロック) を組み直す',
-                done: function () { return store.get('ops-day:rebuilt') === '1'; },
+                // 印に加えて「いま組んだ結果がある」か「もう決定し直した」(読み込み直して消えたら組み直す: S5 レビュー PR-1)
+                done: function (c) {
+                    var at = store.get('ops-day:setupAt') || '';
+                    return store.get('ops-day:rebuilt') === '1' && (!!(c && c.pub && c.pub.plan && c.pub.plan.decided && String(c.pub.plan.decided.at || '') > at)
+                        || (typeof _ob !== 'undefined' && _ob && _ob.plans && _ob.plans.has(3) && _ob.plans.get(3).fromDecided == null && !_ob.stale.has(3)));
+                },
                 guide: function (c) {
                     // 決定から読み戻した結果 (fromDecided) ではなく、いま組んだ結果がある = 組み直した
                     if (typeof _ob !== 'undefined' && _ob && _ob.plans && _ob.plans.has(3) && _ob.plans.get(3).fromDecided == null && !_ob.stale.has(3)) { try { store.set('ops-day:rebuilt', '1'); } catch (_) { /* noop */ } }
@@ -370,7 +384,7 @@
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('obDecide');
                     if (!btn) return stray(c, []) || { text: 'まず夕方を組み直します。', target: pick('obAuto') };
-                    return stray(c, []) || { text: '決定のボタン (✅ 夕方 を決定してメンバーに配信) を押します。確認が出たら OK。',
+                    return stray(c, []) || { text: '決定のボタン (' + (btn.textContent || '').trim() + ') を押します。確認が出たら OK。',
                         real: '過ぎたブロックと組み直していないブロックは前の決定のまま残ります。夕方の割当が変わった人だけに通知が届きます。配信したら Discord の運営スレに 1 行残すと、交代した運営が迷いません。', target: btn };
                 } },
             { key: 'finish', title: '⚔️ 締め凸検索で候補を探して声をかける',
@@ -443,10 +457,11 @@
         // ゲームの HP はそのぶん減っているが、B1 だけ多めに残す。HP の更新は 2 時間前 (運営タブの先頭に「HP 更新が古い」が出る = 最初の課題)
         'ops-day': async function (c) {
             // 決定は前日 20 時の時計で (ソルバーの「いま」は 時計 と ブロックの頭 の遅いほう — 当日 17 時のままだと朝〜午後に凸を置けない)。そのあと 17 時に戻す
-            var clockDay = P.clock.get();
+            // ★ 戻す先は控えた値ではなく編の開始時刻 (boot.js の SCENARIOS と同じ当日 17 時)。盤面作りの途中で読み込み直すと、
+            //   置き場に前日 20 時が残り、それを控えて戻していた = 前日の段階で当日の練習が始まって進めなかった (S5 レビュー PR-2)
             var res;
             P.clock.set('eve', 20);
-            try { res = await opsDecide(['朝', '午前', '午後', '夕方'], { first: 0 }); } finally { P.clock.put(clockDay); }
+            try { res = await opsDecide(['朝', '午前', '午後', '夕方'], { first: 0 }); } finally { P.clock.set('hard', 17); }
             advanceWorld(context(), res.plan, 17, { 1: 0.45 });
             var stale = new Date(Date.now() - 2 * 3600000).toISOString();
             P.db.tx(function () { c.T.bosses.forEach(function (b) { if (eq(b.season_id, c.season.id)) b.updated_at = stale; }); });
@@ -462,7 +477,7 @@
             return true;
         } catch (e) {
             console.warn('[練習] 開始の盤面を作れませんでした:', e && e.message || e);
-            try { P.db.restore(snap); P.clock.put(clockWas); } catch (_) { /* noop */ }
+            try { P.db.restore(snap); if (SC === 'ops-day') P.clock.set('hard', 17); else P.clock.put(clockWas); } catch (_) { /* noop */ }   // 当日は控えが前日 20 時のことがある (S5 レビュー PR-2)
             try { store.set('setup:err', String((e && e.message) || e)); } catch (_) { /* noop */ }
             return false;
         }
@@ -498,7 +513,9 @@
     var stepIdx = Number(store.get('stepIdx'));
     if (!Number.isInteger(stepIdx)) stepIdx = -1;
     function saveSnap(i) {
-        try { store.set('snap:' + i, JSON.stringify({ db: P.db.dump(), clock: P.clock.get(), feed: feed })); }
+        var marks = {};
+        MARKS.forEach(function (k) { var v = store.get(k); if (v != null) marks[k] = v; });
+        try { store.set('snap:' + i, JSON.stringify({ db: P.db.dump(), clock: P.clock.get(), feed: feed, marks: marks })); }
         catch (e) { console.warn('[練習] 控えを置けませんでした (戻れなくなるだけ):', e && e.message || e); }
     }
     function hasSnap(i) { return i >= 0 && !!store.get('snap:' + i); }
@@ -517,6 +534,9 @@
         P.clock.put(snap.clock);
         feed = Array.isArray(snap.feed) ? snap.feed : [];
         saveFeed();
+        // 課題の印も控えた時点に戻す (控えに無い印は消す・S5 レビュー PR-1)
+        var marks = snap.marks && typeof snap.marks === 'object' ? snap.marks : {};
+        MARKS.forEach(function (k) { if (Object.prototype.hasOwnProperty.call(marks, k)) store.set(k, marks[k]); else store.del(k); });
         for (var i = toIdx + 1; i < 20; i++) store.del('snap:' + i);   // 戻った先より後の控えは捨てる (また進めば新しく控える)
         try { store.set('stepIdx', String(toIdx)); } catch (_) { /* noop */ }
         try { store.set('db', P.db.dump()); } catch (_) { /* noop */ }

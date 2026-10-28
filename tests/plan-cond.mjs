@@ -199,7 +199,7 @@ await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする /
     assert.ok(!oc.includes('_opsPlanAsk(') && !oc.includes('_opsPlanUnpin('), 'まだ置いていない駒に お願い / 外す が出ている');
     const d = run({ snap: { season, players }, lastPlan: plan, focus: 1, sel: null, promiseNote: true });
     const od = d._opsPlanFocusBarHtml(plan);
-    assert.ok(od.includes('🔒 本人の予約 — 運営の手では動かしません'), '約束を動かさない注意が無い');
+    assert.ok(od.includes('🔒 予約 — 運営の手では動かしません (取り下げは 🧱 組む の「🔒 凸の予約」から)'), '約束を動かさない注意が無い / 取り下げる場所を言わない (S5 レビュー RS-2)');
     assert.ok(od.includes('onclick="_opsPlanClearSel()">閉じる'), '閉じるが選択も捨てる形になっていない');
 });
 

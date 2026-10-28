@@ -12384,7 +12384,9 @@ console.log('\ngrowthDomain:');
         for (const old of ['現在凸可能のみ', '全員で算出', '画面右上の', '2つのモード', '模擬提出チェック', '前回ダメージ引継ぎは廃止',
             '5つのタブ', '模擬タブ', '⏳ 隙間', '隙間時間型', '戦闘準備', '⚔️ 凸報告', '凸を報告する ▶', '締め凸の依頼', '依頼への返事', '締め凸コンソール', '📈 消化のペース', '🔁 直近の動き', '🧹 整理', '残り戦闘可能メンバー',
             // 用語集 (docs/用語集.md・2026-10-23 ユーザー決定) の「使わない言い方」
-            '戦闘可能時間', '出られる時間', '締凸検索', '締め凸候補検索', '申請', '引き受けた凸', '🎯 あなたの3凸', '📣 お願い', '📌 固定', '運営の固定', '🔒 予約で固定']) {
+            '戦闘可能時間', '出られる時間', '締凸検索', '締め凸候補検索', '申請', '引き受けた凸', '🎯 あなたの3凸', '📣 お願い', '📌 固定', '運営の固定', '🔒 予約で固定',
+            // S5 (用語集): メンバーは ✓ を押さない・決定し直すのは組み直したブロックだけ・予約の通知は従来の画面だけ (S5 レビュー DX-9 / DX-6 / RS-5)
+            '✓ 凸しました', '前回の配信を尊重', '予約の承認 はここに届きます', 'ブロックで配信された「あなたの凸」']) {
             assert.ok(!helpBody.includes(old), 'ヘルプに古い言葉「' + old + '」が残っている');
         }
         // ツアー: 配列を実際に評価する (文字列の検査ではなく、壊れた JS なら落ちる)
@@ -12401,7 +12403,7 @@ console.log('\ngrowthDomain:');
         assert.ok(steps[0].body.includes('8つのステップ'), '冒頭の案内がステップ数と合っていない');
         // ツアーも用語集 (docs/用語集.md) の「使わない言い方」を出さない
         const tourText = steps.map(st => [st.chapterTag, st.title, st.body, st.tip].join(' ')).join(' ');
-        for (const old of ['戦闘可能時間', '出られる時間', '締凸検索', '申請', '引き受けた凸', 'あなたの3凸', '📣 お願い', '📌 固定', '模擬タブ', '戦闘に入る']) {
+        for (const old of ['戦闘可能時間', '出られる時間', '締凸検索', '申請', '引き受けた凸', 'あなたの3凸', '📣 お願い', '📌 固定', '模擬タブ', '戦闘に入る', '✓ 凸しました', '予約の承認']) {   // S5: メンバーは ✓ を押さない・予約の通知は来ない (S5 レビュー DX-9 / RS-5)
             assert.ok(!tourText.includes(old), 'ツアーに古い言葉「' + old + '」が残っている');
         }
         const head = (s) => s.chapterTag + ' ' + s.title;
@@ -13267,7 +13269,7 @@ console.log('\ngrowthDomain:');
         // SQL 52: 2 列を冪等に足す。99 の判定行は別テスト
         assert.ok(/ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;/.test(sql) && /ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_by TEXT;/.test(sql) && /NOTIFY pgrst, 'reload schema';/.test(sql), '52 の SQL が違う');
         // 盤面: confirmed_* を一緒に読む。列が無いときだけ落として取り直し、attackConfirm=false を添える
-        const board = client.match(/window\.supabaseLoadOpsDashboardData = async function \(\) \{[\s\S]*?\n\};\n/)?.[0] || '';
+        const board = client.match(/window\.supabaseLoadOpsDashboardData = async function \(opts = \{\}\) \{[\s\S]*?\n\};\n/)?.[0] || '';
         assert.ok(/const ATK_CONFIRM = ', confirmed_at, confirmed_by';/.test(board) && /\.select\(`\$\{ATK_COLS\}, characters\$\{ATK_CONFIRM\}`\)/.test(board), '凸の取得に confirmed_* が無い');
         assert.ok(/if \(aErr && \(_isMissingColumnErr\(aErr, 'confirmed_at'\) \|\| _isMissingColumnErr\(aErr, 'confirmed_by'\)\)\) \{\s*\n\s*attackConfirm = false;/.test(board), '52 未適用で落として取り直していない');
         assert.ok(/return \{ season, bosses, players: result, attackConfirm \};/.test(board), '盤面に attackConfirm を添えていない');
@@ -13280,12 +13282,12 @@ console.log('\ngrowthDomain:');
         const render = html.match(/async function renderOpsAttackCheck\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /const res = dom\.buildRows\(\{ attacks, plan, nowMs: Date\.now\(\), sinceMs, planId: pub\?\.id \?\? null, skips \}\);/.test(render), '運営OFF / ドメインで決めていない');
         // 段階 4: 配信は同じシーズンの _opsPublishedPlan (別クエリを増やさない) を そのブロックのぶんに絞り、算出の時刻より前の凸は照合しない
-        assert.ok(/const pub = \(_opsPublishedPlan && Number\(_opsPublishedPlan\.season_id\) === Number\(snap\.season\.id\)\) \? _opsPublishedPlan : null;/.test(render)
+        assert.ok(/const pub = _opsDecidedPub\(snap\.season\.id\) \|\| \(\(_opsPublishedPlan && Number\(_opsPublishedPlan\.season_id\) === Number\(snap\.season\.id\)\) \? _opsPublishedPlan : null\);/.test(render)
             && /const plan = isDec \? _atkCheckDecidedPlan\(rawPlan, snap\.season\) : \(\(rawPlan && rawPlan\.blockScope && rb\) \? rb\.scopePlan\(rawPlan, rawPlan\.blockScope\) : rawPlan\);/.test(render)
-            && /const sinceMs = isDec \? null : \(rawPlan\?\.conditions\?\.computedAt \|\| pub\?\.published_at \|\| null\);/.test(render), '配信プランは同じシーズンの _opsPublishedPlan を そのブロックに絞って使う / 決定の行は sinceMs なし・ブロックの終わり (S4 レビュー [21])');
+            && /const sinceMs = isDec \? null : \(rawPlan\?\.conditions\?\.computedAt \|\| pub\?\.published_at \|\| null\);/.test(render), '配信プランは 決定があれば最新の決定 (S5 レビュー TP-1)・無ければ同じシーズンの _opsPublishedPlan を そのブロックに絞って使う / 決定の行は sinceMs なし・ブロックの終わり (S4 レビュー [21])');
         assert.ok(/const canConfirm = snap\.attackConfirm !== false;/.test(render) && /disabled title="supabase\/52_attacks_confirmed\.sql を SQL Editor で実行すると押せます"/.test(render), '52 未適用で ✓ を止めていない');
         assert.ok(/if \(g !== _atkCheck\.localGen\) \{ _atkCheck\.local\.clear\(\); _atkCheck\.localGen = g; \}/.test(render), '盤面を取り直したら ✓ の上書きを捨てていない');
-        assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
+        assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*_opsPublishedFailed = failed;[^\n]*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
         assert.ok(/if \(force\) return _opsReloadBoardCards\(\);/.test(render), '↻ が中央の取り直しを通っていない');
         assert.ok(!/opsStore\.load\(\)/.test(render), '凸報告の確認が自分で盤面を取り直している (取り直しは中央だけ)');
         assert.ok(/const snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) return;/.test(render), '盤面が無いとき (別の取り直しの最中) に描いている / 「シーズン無し」と誤認する');
@@ -15080,7 +15082,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/decRow = window\.decidePlanDomain \? window\.decidePlanDomain\.currentDecided\(pubRows\) : null;\s*\n\s*if \(decRow\) \{ pub = decRow; pubList = \[\]; pubSel = null; \}/.test(html) && /let pub = null, pubList = \[\], pubRows = \[\], pubSel = null, decRow = null;/.test(html), '決定の行を選んでいない');
         assert.ok(/if \(st\?\.decidedCurrent && st\?\.plan\?\.decided && window\.decidePlanDomain\) \{[^\n]*\n\s*_renderMyDecided\(/.test(html), 'きょうの凸を時間割にしていない / 最新の行が決定でないときも時間割にする (S4 引き継ぎ 5)');
         const r = fn('function _renderMyDecided(', 'async function renderMyPublishedPlan(');
-        assert.ok(/rbd\.blockIndexOfSlot\(blocks, _planNowSlot\(season\)\)/.test(r), 'いまのブロックをレイド日の時計で決めていない (前日の夜に朝が「済」になる)');
+        assert.ok(/const nowIdx = _raidNowIdx\(season, blocks\);/.test(r), 'いまのブロックをレイド日の時計で決めていない (前日の夜に朝が「済」になる / 翌日に「いま」が付く)');
         assert.ok(/esc\(b\?\.name \|\| e\.bossName \|\| ''\)/.test(r) && /esc\(ptOf\(e\.weakness\)\)/.test(r), 'ボス名・PT を escapeHtml していない');
         // S5 (2026-10-27 ふるり「中途半端に配置するならいっそのこと不要」): メンバーの ✓・取り消し・代わりの ✓ はホームに無い。全員ぶんは 📅 レイド予定表
         assert.ok(!/data-mt-done|data-mt-undo|canProxy|_myMarkDone|_myUndoDone|_myTappedKeys|_myProxyBoardLoad/.test(r), 'ホームに ✓ / 代わりの ✓ が残っている');
@@ -15091,9 +15093,9 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // 運営の ✓ 凸の記録 (戦況)
         const m = fn('async function _opsTapMark(', 'async function _opsTapUndo(');
         assert.ok(/window\.supabaseMarkAttackDone\(\{ seasonId: season\.id, playerId: e\.memberId, attackDate: season\.hard_date, bossNumber: e\.bossNumber, bossCode: b\?\.boss_code \|\| null,\s*\n\s*level: e\.level, characters: e\.team \|\| \[\], plannedDamageRaw: e\.dmgB \* 1e9, planKey, reservationId: e\.reservationId \}, \{ byOps: true, actorName: me\?\.name \|\| null \}\)/.test(m), '✓ の中身が違う (運営の ✓ = ops_tap)');
-        assert.ok(/err\?\.code === 'NO_RPC'/.test(m) && /String\(season\.id\) !== String\(snap\.season\.id\)/.test(m), '56 未適用の案内 / シーズンの照合');
-        assert.ok(/if \(role !== 'ops' && role !== 'master'\) \{ showNotification\('✓ を付けるのは運営だけです'\); return; \}/.test(m) && /if \(!_opsMode \|\| _atkTap\.busy\.has\(planKey\)\) return;/.test(m), '運営でない人 / 二重押し');
-        assert.ok(/finally \{\s*\n\s*_atkTap\.busy\.delete\(planKey\);\s*\n\s*await _opsReloadBoardCards\(\);/.test(m), '押したあとに中央で盤面を取り直していない');
+        assert.ok(/err\?\.code === 'NO_RPC'/.test(m) && /String\(season\.id\) !== String\(seasonId\)/.test(m), '56 未適用の案内 / シーズンの照合 (取り直しの間は描いた表の控えのシーズンで: S5 レビュー TP-2)');
+        assert.ok(/if \(!_opsTapRoleOk\(\)\) return;/.test(m) && /showNotification\('✓ を付けるのは運営だけです'\);\s*\n\s*return false;/.test(html) && /if \(!_opsMode \|\| _atkTap\.busy\.has\(planKey\)\) return;/.test(m), '運営でない人 / 二重押し');
+        assert.ok(/finally \{\s*\n\s*_atkTap\.busy\.delete\(planKey\);\s*\n\s*if \(_opsMode\) await _opsReloadBoardCards\(\);/.test(m), '押したあとに中央で盤面を取り直していない (運営 OFF のあとは取り直さない)');
         const c = _fsA.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/supabase\.rpc\('mark_attack_done', \{/.test(c) && /const source = opts\.byOps \? 'ops_tap' : 'tap';/.test(c) && /await _gateGuard\('attack'\);\s*\n\s*const source/.test(c), 'クライアントの ✓');
         assert.ok(/window\.supabaseLogActivity\?\.\(opts\.byOps \? 'attack_tap' : 'attack',/.test(c) && /attack_tap:   \{ label: '✓ 凸 \(運営\)'/.test(html), '運営の ✓ を代理凸 (proxy_attack) に数えている (👥 の「代理 登録」がほぼ全員になる)');
@@ -15218,13 +15220,13 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
     test('★ renderRaidTab: 材料は運営の盤面と同じ読み込み (opsStore を通さない) / 世代と名乗りで遅れた描画を捨てる / 名前・ボス名は escapeHtml / ボタンは ✅ だけ (✓・編集・＋ は無い)', () => {
         const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
         assert.ok(r.length > 500, 'renderRaidTab が無い');
-        assert.ok(/window\.supabaseLoadOpsDashboardData\(\)\.catch\(\(\) => null\)/.test(r) && !/opsStore\.(load|get)\(/.test(r), '盤面を opsStore から読んでいる (世代が運営のカードとぶつかる)');
+        assert.ok(/window\.supabaseLoadOpsDashboardData\(\{ lite: true \}\)\.catch\(\(\) => null\)/.test(r) && !/opsStore\.(load|get)\(/.test(r), '盤面を opsStore から読んでいる (世代が運営のカードとぶつかる) / 使わない表まで読む (S5 レビュー RT-8)');
         assert.ok(/const seq = \+\+_raidSeq;/.test(r) && /if \(seq !== _raidSeq\) return;/.test(r) && /String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(r), '遅れた描画を捨てていない');
         assert.ok(/esc\(e\.memberName \|\| ''\)/.test(r) && /esc\(r\.name\)/.test(r) && /esc\(b\.name \|\| b\.boss_code \|\| ''\)/.test(r) && /esc\(decRow\.published_by_name \|\| '運営'\)/.test(r), '名前・ボス名・配信者を escapeHtml していない');
         assert.ok(!/data-tap-done|data-mt-done|_opsMockManual|mk-plus|_opsMockIntakePickFromList|supabaseMarkAttackDone/.test(r), 'レイド予定表に ✓ / 編集 / ＋ がある (読むだけ)');
         assert.ok(/Number\(_myPubState\.planId\) === Number\(decRow\.id\)/.test(r) && /onclick="handleAckPlan\(this\)"/.test(r), '✅ が決定の行と同じ状態のときだけ出る形でない');
         assert.ok(/dp\.currentDecided\(pubRows\)/.test(r) && /String\(r\.season_id\) === String\(season\.id\)/.test(r), '決定の選び方がホームと違う / 別のシーズンの行を見る');
-        assert.ok(/data-no-swipe><table class="mk-tbl">/.test(r) && /renderTeamSnippet\(c\.team, \{ size: 16 \}\)/.test(r), '模擬の表の横スクロール / キャラ');
+        assert.ok(/data-no-swipe data-raid-mk-scroll><table class="mk-tbl">/.test(r) && /renderTeamSnippet\(c\.team, \{ size: 16 \}\)/.test(r), '模擬の表の横スクロール / キャラ');
         assert.ok(!/#[0-9A-Fa-f]{6}\b/.test(r), '色を直に書いている');
     });
     test('★ 実行: _raidDoneKeys — plan_key の ✓ + 数字の報告 (人|レベル|ボス) を決定の凸に前のブロックから消し込む (運営の ✓ 凸の記録と同じ印)', () => {
@@ -15259,9 +15261,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const card = html.slice(html.indexOf('id="opsSecAttackTap"'), html.indexOf('id="opsSecAttackCheck"'));
         for (const w of ['結果の取り込み', '凸の予約', 'ボス状況']) assert.ok(!card.includes(w), `カードの文に「${w}」(ほかのカードの見出しと取り違える)`);
         assert.ok(/if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);[^\n]*\n\s*if \(typeof renderOpsAttackTap === 'function'\) renderOpsAttackTap\(\);/.test(html), '配信の取り直しのあとに描いていない');
-        assert.ok(/if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;\s*\n\s*if \(typeof _atkTap !== 'undefined'\) _atkTap\.gen\+\+;/.test(html), '運営 OFF で待機中の描画を無効にしていない (typeof の守りも要る: member-board.mjs が実行する)');
+        assert.ok(/if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;\s*\n\s*if \(typeof _atkTap !== 'undefined'\) \{ _atkTap\.gen\+\+; _atkTap\.view = null; \}/.test(html), '運営 OFF で押している途中の ✓ を止めていない / 描いた表の控えを捨てていない (typeof の守りも要る: member-board.mjs が実行する)');
         const v = fnS5('function _opsTapView(snap)', 'function renderOpsAttackTap(');
-        assert.ok(/_opsPublishedPlan && Number\(_opsPublishedPlan\.season_id\) === Number\(snap\.season\.id\)/.test(v) && /dp\.isDecided\(pub\.plan\)/.test(v), '決定の選び方');
+        assert.ok(/const pub = _opsDecidedPub\(snap\.season\.id\);/.test(v) && !/_opsPublishedPlan/.test(v), '決定の選び方 (ブロックの選択に関係なく最新の決定: S5 レビュー TP-1)');
         assert.ok(/if \(a\.plan_key && a\.source && !\(Number\(a\.damage_raw\) > 0\)\) tapRow\.set/.test(v), '取り消しを数字のある凸にも出す');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
         assert.ok(/esc\(e\.memberName \|\| ''\)/.test(r) && /data-tap-done="\$\{esc\(e\.planKey\)\}"/.test(r) && /data-tap-undo="\$\{Number\(t\.id\)\}"/.test(r) && !/onclick=/.test(r), '名前の escape / 委譲の鍵');
@@ -15277,7 +15279,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
     });
     test('★ 予約の画面を隠す (S5): 判定 1 つ → body.resv-hidden → CSS 1 規則 / 読みに行かない / 段階のチェックリストとヒーロー・🧱 の数は予約を出さない / 従来の画面では戻る', () => {
         assert.ok(/const _resvUiHidden = \(\) => !_memberInputFull\(\);/.test(html) && /document\.body\.classList\.toggle\('resv-hidden', _resvUiHidden\(\)\);/.test(html), '判定・切り替え');
-        assert.ok(/body\.resv-hidden #myReservationsCard, body\.resv-hidden #myResvRequestModal, body\.resv-hidden #myTeamEditResvSec,\s*\n\s*body\.resv-hidden #opsSecReserve, body\.resv-hidden \[data-resv-ui\] \{ display: none !important; \}/.test(html), 'CSS');
+        assert.ok(/body\.resv-hidden #myReservationsCard, body\.resv-hidden #myResvRequestModal, body\.resv-hidden #myTeamEditResvSec,\s*\n\s*body\.resv-hidden:not\(\.resv-live\) #opsSecReserve, body\.resv-hidden \[data-resv-ui\] \{ display: none !important; \}/.test(html), 'CSS (生きている予約が残っている間は 🔒 凸の予約 を出す: S5 レビュー RS-1)');
         assert.ok(/<button type="button" data-resv-ui onclick="openOpsResvCreate\(/.test(html), '📸 のあとの「この編成で予約する」を隠していない');
         const rr = fnS5('async function renderMyReservations(identity)', 'const bossName = new Map(');
         assert.ok(/if \(!ctx\?\.season\?\.id\) \{ card\.style\.display = 'none'; return; \}\s*\n\s*if \(typeof _resvUiHidden === 'function' && _resvUiHidden\(\)\) \{ _myResvRows = null; card\.style\.display = 'none'; return; \}[^\n]*\n\s*let rows = null;/.test(rr), '隠しているのに予約を読みに行く');
@@ -15289,6 +15291,137 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(!rows.some(r => r.key === 'resv'), '隠しているのに予約の行がある');
         assert.ok(st.checklist({ stage: 'pre', bosses: [], mbRows: [], reservations: { pending: 0 }, published: false }).some(r => r.key === 'resv'), '従来の画面で予約の行が消えた');
         assert.equal(L.tabCounts({ reservations: { hidden: true, pending: 1 } }).build, null);
+    });
+    // ===== S5 敵対的レビュー (2026-10-28・45 件) の直し =====
+    const tapSrcs = () => [
+        fnS5('function _planNowSlot(season, nowMs = Date.now())', '// 決定の時間割の「いまのブロック」'),
+        fnS5('function _raidNowIdx(season, blocks, nowMs = Date.now())', '// 互換ゲート: この版で配信'),
+        fnS5('function _planUnreadable(pub)', '// ===== 戦闘可能時間'),
+        fnS5('function _raidDoneKeys(board, blocks, plan)', 'async function renderRaidTab('),
+        fnS5('function _opsDecidedPub(seasonId)', 'async function _loadOpsPublished()'),
+        fnS5('function _opsTapView(snap)', '// ✓ と取り消しで同じ判定'),
+    ].join('\n');
+    const tapEnv = ({ rows, slot = 'h13', gateOk = true } = {}) => new Function('window', 'getCurrentSlotJST', '_gateAllows', 'PLAN_SCHEMA', '_gateRaw', '_opsPublishedRows', '_opsPublishedPlan',
+        tapSrcs() + '\nreturn { _opsTapView, _raidNowIdx, _planUnreadable };')(globalThis, () => slot, () => gateOk, 4, null, rows, null);
+    const twoBlockPlan = () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const pc = (memberId, hourIdx) => ({ memberId, memberName: 'm' + memberId, dmgB: 10, team: ['a' + memberId], loadoutSlot: 1, hourIdx });
+        const ov = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, pieces: [pc(1, 0)] }] }, { idx: 1, past: false, level: 1, rows: [{ bossNumber: 2, pieces: [pc(2, 4)] }] }];
+        return { blocks, plan: dp.build({ blocks, ov, newIdxs: [0, 1], bosses: [] }) };
+    };
+    test('★ 実行 (S5 レビュー TP-1 / DX-1): ✓ 凸の記録 は いまのブロック (午後) がまだ決定に入っていなくても、最新の決定 (朝・午前) を出す', () => {
+        const { plan } = twoBlockPlan();
+        const hd = globalThis.opsStageDomain.raidDayKey(Date.now());
+        const rows = [{ id: 11, season_id: 7, plan, plan_schema: 4 }, { id: 3, season_id: 7, plan: { levels: [] }, plan_schema: 4 }, { id: 99, season_id: 8, plan, plan_schema: 4 }];
+        const env = tapEnv({ rows, slot: 'h13' });
+        const v = env._opsTapView({ season: { id: 7, hard_date: hd }, players: [], bosses: [] });
+        assert.ok(v && v.pub && v.pub.id === 11, '最新の決定を選んでいない (いまのブロックに効く行で選ぶと午後は null になる)');
+        assert.equal(v.nowIdx, 2, 'いまのブロック (午後) の添字');
+        assert.equal(v.tt.filter(r => r.decided && r.entries.length).length, 2, '朝・午前の凸が並ばない');
+        // 別のシーズンの決定は見ない / 決定が無ければ pub: null / 互換ゲートで止めた配信は描かない
+        assert.equal(env._opsTapView({ season: { id: 8 }, players: [], bosses: [] }).pub.id, 99);
+        assert.equal(tapEnv({ rows: [{ id: 3, season_id: 7, plan: { levels: [] } }] })._opsTapView({ season: { id: 7, hard_date: hd }, players: [], bosses: [] }).pub, null);
+        assert.equal(tapEnv({ rows, gateOk: false })._opsTapView({ season: { id: 7, hard_date: hd }, players: [], bosses: [] }).unreadable, true, '互換ゲートで止めた決定を描く (S5 レビュー RT-2)');
+    });
+    test('★ 実行 (S5 レビュー RT-4 / TP-5): _raidNowIdx — レイド日の前は朝・当日は時計のブロック・翌朝 5 時からは全部 済 (blocks.length)', () => {
+        const rbx = globalThis.raidBlocksDomain, st = globalThis.opsStageDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const jst = (y, mo, d, h, mi = 0) => Date.UTC(y, mo - 1, d, h - 9, mi);
+        const season = { hard_date: '2026-10-31' };
+        const at = (ms, slot) => tapEnv({ rows: [], slot })._raidNowIdx(season, blocks, ms);
+        assert.equal(at(jst(2026, 10, 30, 22), 'h22'), 0, '前日の夜は朝 (いま)');
+        assert.equal(at(jst(2026, 10, 31, 13), 'h13'), 2, '当日 13 時は午後');
+        assert.equal(at(jst(2026, 11, 1, 3), 'h03'), 5, '翌 3 時はまだレイド日の深夜');
+        assert.equal(at(jst(2026, 11, 1, 6), 'h06'), blocks.length, '翌朝 6 時に「いま」が付く (終わったレイドに これから決まる凸があるように見える)');
+        assert.equal(st.raidDayKey(jst(2026, 11, 1, 3)), '2026-10-31');
+        const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
+        const v = fnS5('function _opsTapView(snap)', '// ✓ と取り消しで同じ判定');
+        assert.ok(/const nowIdx = _raidNowIdx\(season, blocks\);/.test(r) && /const nowIdx = _raidNowIdx\(snap\.season, blocks\);/.test(v) && !/_planNowSlot/.test(r), 'レイド予定表・✓ 凸の記録 が _raidNowIdx を使っていない');
+    });
+    test('★ 実行 (S5 レビュー TP-4): 結果の取り込み — ✓ の行 (plan_key) は鍵の一致する割当に先に当てる (遅れて付けた夜の ✓ が深夜の割当を食わない)', () => {
+        const ac = globalThis.attackCheckDomain;
+        const k1 = '21-0|L4|B5|1|S1', k2 = '1-4|L4|B5|1|S2';
+        const plan = { levels: [{ level: 4, bosses: [{ bossNumber: 5, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 19, blockEnd: true, loadoutSlot: 1, planKey: k1 }, { memberId: 1, dmgB: 20, hourIdx: 23, blockEnd: true, loadoutSlot: 2, planKey: k2 }] }] }] };
+        const jst = (y, mo, d, h, mi = 0) => new Date(Date.UTC(y, mo - 1, d, h - 9, mi)).toISOString();
+        const res = ac.buildRows({ attacks: [{ id: 1, player_id: 1, boss_number: 5, level: 4, reported_at: jst(2026, 11, 1, 3, 10), damage_raw: 0, source: 'ops_tap', plan_key: k1 }], plan, nowMs: Date.parse(jst(2026, 11, 1, 4, 30)) });
+        assert.equal(res.missing.length, 0, '夜の ✓ を深夜の割当に当てて、夜を「結果がまだ」に出している');
+        assert.equal(res.rows[0].planned.hourIdx, 19);
+        assert.equal(res.rows[0].tapOnly, true, '✓ の行の印 (一覧の — と確認のトグルを出さない: S5 レビュー TP-11)');
+        // 鍵の無い割当 (従来の配信) は従来どおり時刻の近さで当てる
+        const legacy = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 2 }, { memberId: 1, dmgB: 30, hourIdx: 10 }] }] }] };
+        const r2 = ac.buildRows({ attacks: [{ id: 2, player_id: 1, boss_number: 1, level: 1, reported_at: jst(2026, 10, 31, 15), damage_raw: 5e9 }], plan: legacy, nowMs: Date.parse(jst(2026, 10, 31, 16)) });
+        assert.equal(r2.rows[0].planned.hourIdx, 10);
+        const dec = fnS5('function _atkCheckDecidedPlan(plan, season)', '// ✓ 凸の記録 (シンプル化 S5');
+        assert.ok(/planKey: dp\.planKey\(\{ \.\.\.a, level: lv\.infinite \? 4 : Number\(lv\.level\), bossNumber: Number\(b\.bossNumber\), block: String\(a\.block\) \}\)/.test(dec), '決定の割当に鍵を持たせていない');
+        assert.ok(/_opsDecidedPub\(snap\.season\.id\) \|\| \(\(_opsPublishedPlan/.test(html), '結果の取り込みが最新の決定を見ていない (TP-1)');
+        assert.ok(/\$\{r\.tapOnly \? '—' : /.test(html) && /r\.source === 'ops_tap' && r\.tapOnly\s*\n[^\n]*\n\s*\? '<span class="ok" aria-pressed="true"/.test(html), '運営の ✓ の行に外せない確認のトグルを出している (TP-11)');
+    });
+    test('★ ✓ 凸の記録 の直し (S5 レビュー TP-2 / TP-3 / TP-8 / TP-9 / TP-10 / TP-12 / TP-13 / TP-14 / GP-2 / GP-3)', () => {
+        const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
+        const m = fnS5('async function _opsTapMark(', 'async function _opsTapUndo(');
+        const u = fnS5('async function _opsTapUndo(', 'function renderOpsAttacksList()');
+        // TP-2: 描いた表の控え (取り直しの間も続けて押せる)・取り直しの最中は重ねて呼ばない
+        assert.ok(/_atkTap\.view = \{ seasonId: v\.seasonId, pubId: v\.pub\.id, byKey \};/.test(r), '描いた表を控えていない');
+        assert.ok(/if \(!e && !snap && _atkTap\.view\?\.byKey\.has\(planKey\)\) \{ e = _atkTap\.view\.byKey\.get\(planKey\);/.test(m) && /if \(snap\) _opsReloadBoardCards\(\);/.test(m), '取り直しの間に ✓ を断る / 取り直しを重ねる');
+        // TP-3: 押した時点の決定で確かめる
+        assert.ok(/rowsNow = await window\.supabaseGetPublishedPlans\(\)/.test(m) && /if \(Number\(decNow\.id\) !== Number\(pubId\)\) \{[\s\S]*?if \(!eNow\) \{ showNotification\('別の運営が決定し直し/.test(m), '押した時点の決定を確かめていない');
+        // TP-8: await のあとに世代を照合する (OFF にしたら書かない)
+        assert.equal((m.match(/if \(gen !== _atkTap\.gen \|\| !_opsMode\) return;/g) || []).length, 3, 'await のあとに世代を照合していない');
+        assert.ok(!/\+\+_atkTap\.gen/.test(r), '描くたびに世代を進めている (押している途中の ✓ が毎回止まる)');
+        // TP-9: ✓ と取り消しで同じ役割の判定・読み込み前は待ってもらう
+        assert.ok(/if \(!_opsTapRoleOk\(\)\) return;/.test(m) && /if \(!_opsTapRoleOk\(\)\) return;/.test(u), '✓ と取り消しで役割の判定が違う');
+        assert.ok(/if \(role === undefined\) \{\s*\n\s*showNotification\('運営の役割を読み込んでいます/.test(html), '役割を読む前に「運営だけです」で断る');
+        // TP-10: 取り消しを活動ログに / 56 未適用の文は運営向け
+        assert.ok(/window\.supabaseLogActivity\?\.\('attack_tap', `✓ を取り消し/.test(u), '取り消しが活動ログに残らない');
+        assert.ok(_fsS5.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n').includes("'✓ を付けるには supabase/56_attack_done_tap.sql の適用が必要です (SQL Editor で実行してください)'"), '56 未適用の文がメンバー向けのまま');
+        // TP-12: 読み込み中と読めなかったを言い分ける・数を残さない
+        assert.ok(/body\.innerHTML = _opsPublishedFailed\s*\n[^\n]*決定を読み込めませんでした[\s\S]*?'<p class="ops-recent-empty">決定を読み込んでいます…<\/p>';\s*\n\s*if \(cnt\) cnt\.textContent = '';/.test(r) && /_opsPublishedFailed = failed;/.test(html), '読めなかったときに「読み込んでいます」のまま');
+        // TP-13: 守れなくなった予約の解除先を言う
+        assert.ok(/この人の予約 \$\{risk\} 件が守れなくなりました \(🧱 組む の「🔒 凸の予約」で取り下げてください\)/.test(m), '守れなくなった予約の解除先を言わない');
+        // TP-14: ✓ の残る過ぎたブロックは開いて薄くしない・全部 ✓ 済みは畳む
+        assert.ok(/const fold = r\.state === 'later' \|\| \(r\.state === 'past' && doneN === r\.entries\.length\);/.test(r) && /#opsAtkTapBody \.mt-blk\.past \{ opacity: 1; \}/.test(html), '過ぎたブロックの畳み方 / 薄さ');
+        // GP-2: 開いていたブロックを描き直しで閉じない
+        assert.ok(/const openKeys = new Set\(\[\.\.\.body\.querySelectorAll\('details\.mt-blk\[open\]\[data-blk\]'\)\]\.map\(d => d\.dataset\.blk\)\);/.test(r) && /\$\{openKeys\.has\(String\(r\.key\)\) \? ' open' : ''\}/.test(r), '開いていたブロックを覚えていない');
+        // GP-3: 開きっぱなしでも 30 秒ごとに中央で取り直す (押している最中・組んでいる最中は触らない)
+        assert.ok(/if \(_coordPollTick === 2 && _opsMode && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\s*\n\s*&& document\.getElementById\('opsSecAttackTap'\)\?\.offsetParent != null\s*\n\s*&& typeof _atkTap !== 'undefined' && _atkTap\.busy\.size === 0 && _atkCheck\.busy\.size === 0 && !\(typeof _ob !== 'undefined' && _ob\.busy\)\s*\n\s*&& opsStore\.get\(\) && typeof _opsReloadBoardCards === 'function'\) _opsReloadBoardCards\(\);/.test(html), '別の運営の ✓ を取り込まない');
+        // TP-6: 決定を使っていないシーズンは従来の案内
+        const st = globalThis.opsStageDomain;
+        assert.equal(st.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: null, remainingTotal: 12, decided: false }).action, 'members', '決定の無いシーズンでも空の ✓ 凸の記録へ誘う');
+        assert.equal(st.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: null, remainingTotal: 12, decided: true }).action, 'tap');
+        assert.ok(/decided: !\(Array\.isArray\(_opsPublishedRows\) && season\?\.id != null\) \|\| !!\(window\.decidePlanDomain && window\.decidePlanDomain\.latestDecided\(/.test(html), 'ヒーローに決定の有無を渡していない');
+    });
+    test('★ 予約を隠す の直し (S5 レビュー RS-1 / RS-2 / RS-4) と ⚔️ ボス状況の 🎯 (DX-7)', () => {
+        // RS-1: 生きている予約が残っている間はカードを出す (新しい予約の入口は隠したまま)・盤の 🔒 予約の駒を見分ける
+        assert.ok(/document\.body\.classList\.toggle\('resv-live', rows\.some\(r => rv\.isActive\(r\) \|\| \(rv\.isPin\(r\) && \(r\.asked_at != null \|\| r\.time_mode !== 'block'\)\)\)\);/.test(html), '生きている予約を数えていない');
+        assert.ok(/body:not\(\.resv-hidden\) \[data-resv-hidden-only\] \{ display: none !important; \}/.test(html) && /<p data-resv-hidden-only /.test(html), '隠しているときだけの案内');
+        assert.ok(/<button type="button" data-resv-ui onclick="openOpsResvCreate\(\)"/.test(html), '「＋ 予約を登録」を隠していない (カードを出したときに新しい予約が作れる)');
+        assert.ok(/const resv = !pin && a\.fromReservation && a\.reservationId != null;/.test(html) && /'🔒 予約 \(外すには 🔒 凸の予約 の「取り下げる」\)'/.test(html), '盤の 🔒 予約の駒が「自動で置いた」に見える');
+        assert.ok(/pinRow && pinRow\.status !== 'pinned' \? '🔒 予約です/.test(html), 'ピースを押したときの外し方が 📌 のまま');
+        // RS-2: 隠しているシーズンでは 🔒 確定する を出さない・押させない
+        assert.ok(/\+ \(typeof _resvUiHidden === 'function' && _resvUiHidden\(\) \? '' : `<button type="button" class="act ask" onclick="_opsPlanConfirmPin\(/.test(html), '🔒 確定する が隠れていない');
+        assert.ok(/async function _opsPlanConfirmPin\(id\) \{[\s\S]{0,300}if \(typeof _resvUiHidden === 'function' && _resvUiHidden\(\)\) \{ showNotification\('予約の画面を隠しているシーズンです/.test(html), '確定の関数が隠しているシーズンで止まらない');
+        // RS-4: 配信の状況は隠した予約を数えない
+        assert.ok(/Array\.isArray\(_resv\.rows\) && !\(typeof _resvUiHidden === 'function' && _resvUiHidden\(\)\)\) pending = rv\.pendingRepublish/.test(html), '配信の状況が隠した予約を数える');
+        // DX-7: ⚔️ ボス状況のカードから 🎯 (運営だけ)
+        assert.ok(/<button type="button" data-ops-only onclick="openOpsBossHpModal\(\)"[^>]*>🎯 ボス HP を更新する<\/button>/.test(html), 'ボス状況に 🎯 の入口が無い');
+    });
+    test('★ レイド予定表・ホーム・分析の直し (S5 レビュー RT-1 / RT-2 / RT-3 / RT-5 / RT-6 / RT-7 / GP-1 / GP-4)', () => {
+        const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
+        assert.ok(/if \(!st && syncKey && _raidAckSyncFor !== syncKey && typeof renderMyPublishedPlan === 'function'\) \{\s*\n\s*_raidAckSyncFor = syncKey;\s*\n\s*Promise\.resolve\(renderMyPublishedPlan\(identity\)\)\.then/.test(r), '✅ のためにホームの配信カードを読ませていない (RT-1)');
+        assert.ok(/const unreadable = _planUnreadable\(decRow \|\| top\);/.test(r) && /if \(!decRow \|\| unreadable\) \{ tCard\.style\.display = 'none'; \}/.test(r), '互換ゲートを通していない (RT-2)');
+        assert.ok(/if \(mkHtml !== _raidMkLast\) \{/.test(r) && /sc\.scrollLeft = sl;/.test(r) && /#raidMocksBody \.mk-tbl th:first-child, #raidMocksBody \.mk-tbl td:first-child \{ position: sticky;/.test(html), '横スクロールが 30 秒ごとに左端に戻る (RT-3)');
+        assert.ok(/const anyMock = tbl\.rows\.some\(r => tbl\.attrs\.some\(a => \(r\.cells\[a\] \|\| \[\]\)\.length\)\);/.test(r), '模擬が 0 件でも表を出す (RT-5)');
+        assert.ok(/#raidMocksBody \.mk-row-me td \{ box-shadow: inset 0 2px 0 var\(--ops\), inset 0 -2px 0 var\(--ops\); \}/.test(html), '自分の行の強調 (RT-6)');
+        assert.ok(/const season = ctx\?\.season \|\| board\?\.season \|\| null;/.test(r) && /if \(name === 'raid'\) \{ seasonStore\.invalidate\(\);/.test(html), 'シーズンの読み込みの失敗から戻れない (RT-7)');
+        // GP-1: ヒーローの「残り N 凸」もいま読んだ自分の凸で
+        assert.ok(/if \(Array\.isArray\(myAttackRows\) && String\(getCurrentIdentity\(\)\?\.id \?\? ''\) === String\(identity\.id\)\) _myTodayAttacksCache = myAttackRows;/.test(html) && /if \(wantKey !== _heroPlanKey \|\| heroCountChanged\) renderMyNextAction\(identity\);/.test(html), 'ヒーローの残り凸が運営の ✓ で減らない (GP-1)');
+        // GP-4: ✓ の行が 1 つでもある回は分析に返さない
+        assert.ok(/if \(atks\.length < atkCount0\) continue;/.test(_fsS5.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n')), '✓ と数字が混ざった回を分析に返す (GP-4)');
+        // RT-8: 軽い読み込み — 参加可能時間と SLv を読まない
+        const client = _fsS5.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+        const loader = client.match(/window\.supabaseLoadOpsDashboardData = async function \(opts = \{\}\) \{[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/const lite = !!\(opts && opts\.lite\);/.test(loader) && /if \(!lite\) \{\s*\n\s*const \{ data: avSlots \} = await supabase/.test(loader) && /const \{ data: slvSeasons \} = lite \? \{ data: \[\] \} : await supabase/.test(loader), '軽い読み込みが参加可能時間・SLv を読む');
     });
 }
 

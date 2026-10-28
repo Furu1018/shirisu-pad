@@ -214,7 +214,7 @@
      * @param {number=} a.attackCap         定員×3
      * @returns {{lead:string, why:string, action:string, label:string}}
      */
-    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, finPending, attacksDone, attackCap } = {}) {
+    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, finPending, attacksDone, attackCap, decided = true } = {}) {
         const rp = Number(pendingRepublish) || 0;
         const rvP = reservations ? Number(reservations.pending) || 0 : 0;
         if (stage === 'prep') {
@@ -257,6 +257,8 @@
             if (remainingTotal == null) return { lead: '盤面を読み込んでいます', why: 'ボスとメンバーが読めると、残り凸と締め凸がここに出ます', action: 'members', label: '👥 状況を見る' };
             const rem = Number(remainingTotal) || 0;
             // S5 (2026-10-27 ふるり): メンバーは Discord で報告 → 運営が ⚔️ 戦況 › ✓ 凸の記録 で ✓ を付ける (当日の運営の主作業)
+            //   決定を使っていないシーズン (decided === false・従来の配信) は ✓ 凸の記録が空なので従来の案内 (S5 レビュー TP-6)
+            if (rem > 0 && decided === false) return { lead: `残り ${rem} 凸`, why: 'メンバー状況で まだ凸していない人を、⚔️ 戦況で 結果がまだの凸を見ます', action: 'members', label: '👥 メンバー状況を見る' };
             if (rem > 0) return { lead: `残り ${rem} 凸`, why: 'Discord の凸の報告を見て、⚔️ 戦況 › ✓ 凸の記録 で ✓ を付けます。まだ凸していない人は 👥 メンバー状況で', action: 'tap', label: '✓ 凸の記録を開く' };
             // ★ 締め凸の返答 (finPending) が未取得 (null) のうちは「全員完了」と断定しない (Codex再監査 2026-09-08)。
             //   メンバー状況は運営画面の描画で必ず読みに行くので、null は読み込み中か取得失敗のどちらか

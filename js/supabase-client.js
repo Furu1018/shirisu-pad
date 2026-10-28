@@ -443,8 +443,9 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
         if (aErr) throw aErr;
         const atkCount0 = (atks || []).length;
         atks = (atks || []).filter(a => !(a.source && !(Number(a.damage_raw) > 0)));
-        // 凸がすべて ✓ (数字なし) の回は分析の比較に使えない (全員 0 凸・0 ダメージの「今月」になる: S4 レビュー [20]) → 返さない (月次の JSON を置けばそちらを読む)
-        if (atkCount0 > 0 && atks.length === 0) continue;
+        // ✓ (数字なし) の行が 1 つでもある回は分析の比較に使えない。すべて ✓ なら全員 0 凸・0 ダメージ (S4 レビュー [20])、
+        //   混ざっていれば「数字の凸だけ」の欠けた月が確定した結果に見え、✓ だけの人は 0 凸に並ぶ (S5 レビュー GP-4) → 返さない (月次の JSON を置けばそちらを読む)
+        if (atks.length < atkCount0) continue;
 
         // 4) Fururi 模擬戦スコア
         const { data: sims, error: simErr } = await supabase
@@ -1450,7 +1451,7 @@ window.supabaseMarkAttackDone = async function ({ seasonId, playerId, attackDate
     if (error) {
         const msg = String(error.message || '');
         if (/mark_attack_done/.test(msg) && /does not exist|schema cache|function/i.test(msg) || error.code === 'PGRST202') {
-            const e = new Error('✓ 凸しました には supabase/56_attack_done_tap.sql の適用が必要です (運営に伝えてください)');
+            const e = new Error('✓ を付けるには supabase/56_attack_done_tap.sql の適用が必要です (SQL Editor で実行してください)');   // S5: ✓ は運営だけが付ける (S5 レビュー TP-10)
             e.code = 'NO_RPC';
             throw e;
         }
@@ -5304,7 +5305,10 @@ window.supabaseResetAllDamages = async function () {
 
 // 運営ダッシュボード用: 全アクティブメンバーを取得し、その人の各種関連情報を結合
 // 戻り値: [{ id, name, archived, damagesByAttr:{fire:N,...}, attacks:[{boss_number, damage_raw, ...}], attackCount }]
-window.supabaseLoadOpsDashboardData = async function () {
+// opts.lite (📅 レイド予定表・S5 レビュー RT-8): 参加可能時間 (availability) と SLv (seasons・player_sync_levels) を読まない。
+//   レイド予定表が使うのは 人・模擬・凸・今回は難しい だけで、開いている間 30 秒ごとに読むため。運営の盤面 (opsStore) は従来どおり全部読む
+window.supabaseLoadOpsDashboardData = async function (opts = {}) {
+    const lite = !!(opts && opts.lite);
     const ctx = await window.supabaseLoadActiveSeasonWithBosses();
     const { season, bosses } = ctx || { season: null, bosses: [] };
 
@@ -5478,15 +5482,17 @@ window.supabaseLoadOpsDashboardData = async function () {
     // 4) availability(凸可能時間帯): 「現在凸可能な人のみ」モードのフィルタ用。
     //    旧 morning/noon 形式は読み込み時に hXX (時刻別) に自動展開。
     const slotsByPlayer = new Map();
-    const { data: avSlots } = await supabase
-        .from('availability')
-        .select('player_id, time_slot');
-    const rawByPlayer = new Map();
-    (avSlots || []).forEach(s => {
-        if (!rawByPlayer.has(s.player_id)) rawByPlayer.set(s.player_id, []);
-        rawByPlayer.get(s.player_id).push(s.time_slot);
-    });
-    rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
+    if (!lite) {
+        const { data: avSlots } = await supabase
+            .from('availability')
+            .select('player_id, time_slot');
+        const rawByPlayer = new Map();
+        (avSlots || []).forEach(s => {
+            if (!rawByPlayer.has(s.player_id)) rawByPlayer.set(s.player_id, []);
+            rawByPlayer.get(s.player_id).push(s.time_slot);
+        });
+        rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
+    }
 
     // 4-2) 今期「参加が難しい」と申告した人 (37)。
     // ★ 申告した本人をプラン・締め凸候補・残凸表に残すと、催促からは外れたのに
@@ -5524,7 +5530,7 @@ window.supabaseLoadOpsDashboardData = async function () {
     //    アクティブシーズンで手動更新した値が最優先になる。
     //    最適プランで「低レベルは低SLv、高レベルは高SLv」の割当に使う。
     const slvByPlayer = new Map();
-    const { data: slvSeasons } = await supabase
+    const { data: slvSeasons } = lite ? { data: [] } : await supabase
         .from('seasons').select('id, hard_date, is_active')
         .order('hard_date', { ascending: false });
     // アクティブを先頭に寄せる (同 hard_date でも active を優先)
