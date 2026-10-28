@@ -15575,7 +15575,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(ops.includes('data-tap-blk="1"') && ops.includes('>まだ</span>'), '決まっていないブロックのボタン');
         const mem = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk' });
         assert.ok(!/data-tap-(done|undo|num)|<button type="button" class="(obpc|db-tag)/.test(mem), 'メンバーの盤で駒・札が押せる');
-        assert.ok(/<span class="db-tag me"[^>]*>★ /.test(mem) && /<span class="db-tag ok"[^>]*>✓ /.test(mem), '自分の札の ★ と太い枠 / ✓ の塗り');
+        assert.ok(/<span class="db-tag me"[^>]*><b class="db-st">未完了<\/b>★ /.test(mem) && /<span class="db-tag ok"[^>]*><b class="db-st">✓ 完了<\/b>/.test(mem), '自分の札の ★ と太い枠 / 札の頭に 完了・未完了 の文字 (塗りと枠だけでは区別しにくい: 2026-10-28 ふるり)');
         // 押す場所は帯の下の名前の札 (帯は見た目だけ・名前が切れても読める・はみ出さない: 盤のレビュー OP-1 / OP-2)
         assert.ok(!/<button[^>]*class="obpc/.test(ops) && /<span class="obpc[^"]*" style="[^"]*" aria-hidden="true">/.test(ops), '帯の駒が押せる (細い駒の名前が読めず押し違える)');
         assert.ok(/<button type="button" class="db-tag( me)?" style="--tag-c:#111;--tag-ink:#fff;" data-tap-done=/.test(ops), '名前の札が ✓ の押す場所になっていない');
@@ -15647,9 +15647,19 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const evil = '<img src=x onerror=alert(1)>';
         const view = [{ name: evil, entries: [{ mine: true, done: true, bossNumber: 2, bossName: evil, weakness: 'fire', loadoutSlot: 1 }] }];
         const h = fnL(view, () => evil, { id: 1 });
-        assert.ok(h.startsWith('<p class="db-mine">★ あなたの凸: ✓ ') && !h.includes('<img') && !h.includes('<i>') && h.includes('&lt;img'), '自分の凸の 1 行を escape していない');
+        assert.ok(h.startsWith('<p class="db-mine">★ あなたの凸: ') && h.endsWith(' ✓ 完了</p>') && !h.includes('<img') && !h.includes('<i>') && h.includes('&lt;img'), '自分の凸の 1 行を escape していない / 完了・未完了 が無い');
         assert.ok(/名乗ると/.test(fnL(view, () => '', null)), '名乗っていない人に「あなたの凸はありません」と言い切る (RV-10)');
         assert.ok(/あなたの凸はありません/.test(fnL([{ name: 'x', entries: [] }], () => '', { id: 1 })));
+    });
+    test('★ 完了 / 未完了 を文字で (2026-10-28 ふるり「完了と未完了が区別しにくい。『完了』とか入っているとわかりやすい」): 盤の札・ブロックのボタン・数・ホームの きょうの凸', () => {
+        const brd = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        assert.ok(brd.includes("<b class=\"db-st\">${e.done ? '✓ 完了' : '未完了'}</b>"), '盤の札の頭に 完了 / 未完了 が無い');
+        assert.ok(brd.includes("const ct = ops ? `完了 ${v.doneN} / ${v.entries.length}`"), 'ブロックのボタンの数が「✓ N / M」のまま');
+        assert.ok(/\.db-st \{[^}]*\}/.test(html) && /\.db-tag\.ok \.db-st \{[^}]*color: var\(--ok-deep\);/.test(html), '完了 / 未完了 の印の色がトークンでない');
+        const home = fnS5('function _renderMyDecided(', 'async function renderMyPublishedPlan(');
+        assert.ok(home.includes(`const act = e.done ? '<span class="mt-ok">✓ 完了</span>' : '<span class="mt-pend">未完了</span>';`), 'ホームの きょうの凸 に 未完了 が出ない');
+        assert.ok(html.includes('cnt.textContent = `いままで 完了 ${nDueDone} / ${nDue}'), '✓ 凸の記録の数が「いままで ✓」のまま');
+        assert.ok(!/✓ 済み<\/span>/.test(home), '「✓ 済み」(記号の言い方) が残っている');
     });
     test('★ ✓ 凸の記録 の盤 (盤のレビュー OP-3 / GP-1): 取り消しの確認に誰の・どの凸か / 取り直しの最中のブロックの切り替えは控えから描く (札は押せない)', () => {
         const u = fnS5('async function _opsTapUndo(', 'function renderOpsAttacksList()');

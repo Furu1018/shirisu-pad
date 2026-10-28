@@ -3638,6 +3638,9 @@
         .db-tag.ok { background: var(--tag-c, var(--s2)); color: var(--tag-ink, var(--t-ink)); }
         .db-tag.me { box-shadow: 0 0 0 2px var(--t-ink); }
         .db-tag small { font-weight: 700; opacity: .8; }
+        /* 札の頭の状態 (2026-10-28 ふるり「完了と未完了が区別しにくい」): 塗りと枠だけでなく文字で。完了 = 白地に緑 / 未完了 = 灰色 */
+        .db-st { flex: none; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; background: var(--s2); color: var(--t-muted); }
+        .db-tag.ok .db-st { background: var(--card); color: var(--ok-deep); }
         button.db-tag { cursor: pointer; }
         button.db-tag:disabled { cursor: progress; opacity: .55; }
         .db-others { margin-top: 8px; padding: 7px 9px; border-radius: 12px; border: 1.5px dashed var(--line); }
@@ -3669,6 +3672,7 @@
         .mt-done { padding: 8px 12px; border-radius: 10px; border: 0; background: var(--ok-solid); color: var(--ok-ink); font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; white-space: nowrap; }
         .mt-done:disabled, .mt-undo:disabled { opacity: .5; cursor: default; }
         .mt-ok { font-size: 12px; font-weight: 900; color: var(--ok-deep); white-space: nowrap; }
+        .mt-pend { font-size: 11px; font-weight: 800; color: var(--t-muted); white-space: nowrap; padding: 1px 7px; border-radius: 999px; background: var(--s2); }
         .mt-undo { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-muted); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
         .mt-all { margin-top: 6px; } .mt-all summary { font-size: 11px; font-weight: 800; color: var(--t-muted); cursor: pointer; }
         .mt-boss { display: flex; align-items: flex-start; gap: 6px; margin-top: 5px; }
@@ -4798,7 +4802,7 @@
                     <button onclick="renderOpsAttackTap(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
-                    Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと ✓ が付きます (札は塗りになります)。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、塗りの札をもう一度押して取り消し。
+                    Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと「未完了」が「✓ 完了」になります。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し。
                 </p>
                 <div id="opsAtkTapBody"></div>
             </div>
@@ -5608,8 +5612,8 @@
                         <h3>③ 📅 きょうの凸 と 📅 レイド予定表</h3>
                         <p>運営は見通しのつくブロックまで組んで<strong>決定</strong>します。決まると<strong>割当のある人に通知</strong>が届き (「🧱 あなたの凸が決まりました — 朝 5〜8時 Lv1 B3 灼熱PT 編成②」)、<strong>📅 レイド予定表</strong> タブに出ます。読んだら <strong>✅ 確認しました</strong> を押してください (運営が「見た人 / まだの人」を知るためです。押していなくても、割当が変わったら通知が届きます)。</p>
                         <ul>
-                            <li><strong>📅 レイド予定表</strong> (タブ): ブロックのボタンを押すと、そのブロックでボスごとに誰が行くかが出ます (帯の幅 = ダメージ・下に名前の札。★ と太い枠があなた・塗りの札 = 運営が ✓ を付けた凸)。上の「★ あなたの凸」に全部のブロックのあなたの凸。決まっていないブロックは「まだ決まっていません」。下の<strong>みんなの模擬</strong>で、ほかの人の編成とダメージも見られます</li>
-                            <li><strong>📅 きょうの凸</strong> (ホーム): あなたの凸だけ (ブロック・ボス・PT・編成と 5 キャラ)。運営が ✓ を付けた凸は「✓ 済み」</li>
+                            <li><strong>📅 レイド予定表</strong> (タブ): ブロックのボタンを押すと、そのブロックでボスごとに誰が行くかが出ます (帯の幅 = ダメージ・下に名前の札。★ と太い枠があなた・札の頭に「✓ 完了」/「未完了」)。上の「★ あなたの凸」に全部のブロックのあなたの凸。決まっていないブロックは「まだ決まっていません」。下の<strong>みんなの模擬</strong>で、ほかの人の編成とダメージも見られます</li>
+                            <li><strong>📅 きょうの凸</strong> (ホーム): あなたの凸だけ (ブロック・ボス・PT・編成と 5 キャラ)。運営が ✓ を付けた凸は「✓ 完了」、まだの凸は「未完了」</li>
                             <li>配信された凸プラン (ホーム): <strong>✅ 確認しました</strong> (自分の凸は 📅 きょうの凸・全員の凸は 📅 レイド予定表)。「運営が組み直し中です」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい決定が入ると自動で消えます</li>
                         </ul>
                         <h3>④ 📘 登録された模擬</h3>
@@ -5681,7 +5685,7 @@
                         </ul>
                         <h3>運営: ✓ 凸の記録 (⚔️ 戦況)</h3>
                         <ul>
-                            <li>決定が 凸プランを組むと同じ盤で出ます (ブロックのボタン → ボスの行の帯 + 名前の札)。Discord に結果のスクショを貼った人の<strong>名前の札を押すと ✓</strong> (札が塗りになる・数字は入れません)。押し間違えたら、塗りの札をもう一度押して取り消し (誰の凸かの確認が出ます)</li>
+                            <li>決定が 凸プランを組むと同じ盤で出ます (ブロックのボタン → ボスの行の帯 + 名前の札)。Discord に結果のスクショを貼った人の<strong>「未完了」の名前の札を押すと「✓ 完了」</strong> (数字は入れません)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し (誰の凸かの確認が出ます)</li>
                             <li>✓ が付くと、その人の残り凸と使ったキャラが減り、次のブロックを組むときに正しくなります。ボスの残 HP は動かないので、🎯 ボス HP を更新する で BlaBlaLINK の画像と合わせます (30 分〜1 時間おき)</li>
                             <li>数字を入れたいときだけ、下に畳んである <strong>📥 結果の取り込み</strong> (スクショからボス・ダメージ・使ったキャラを読み取って登録・<strong>⏰ 結果がまだの凸</strong> の一覧) を使います</li>
                         </ul>
@@ -5765,7 +5769,7 @@
                         <h2>11. ✓ 凸の記録 <span class="help-pill">運営</span></h2>
                         <p>⚔️ 戦況の <strong>✓ 凸の記録</strong>。Discord に貼られた凸の結果を見て、決定の盤の名前の札を押して ✓ を付けます (<a href="#help-real">§6</a>)。</p>
                         <ul>
-                            <li>凸プランを組むと同じ盤です (押すのは帯の下の名前の札)。ブロックのボタン (✓ N / M) を押して切り替え — 過ぎたブロックも押せます。最初は 直前のブロック (✓ が残っていれば) か いまのブロックが開き、選んだブロックは開き直すまで替わりません。見出しに「いままで ✓ N / M」</li>
+                            <li>凸プランを組むと同じ盤です (押すのは帯の下の名前の札)。ブロックのボタン (完了 N / M) を押して切り替え — 過ぎたブロックも押せます。最初は 直前のブロック (✓ が残っていれば) か いまのブロックが開き、選んだブロックは開き直すまで替わりません。見出しに「いままで ✓ N / M」</li>
                             <li>✓ は数字を持ちません (ダメージ 0・ボスの HP は動かない)。HP は 🎯 で合わせます</li>
                             <li>数字で登録したいときは下の 📥 結果の取り込み (畳んである)。<strong>⏰ 結果がまだの凸</strong>: 📥 取り込む / 📋 聞く / 凸していない。登録された凸は配信と突き合わせて、食い違いに印 (計画にない / 予定よりかなり低い)</li>
                             <li>⚔️ のタブの横の数字 = 確認していない凸 + 結果がまだの凸 (✓ を付けた凸は確認済みに数えます)</li>
@@ -7944,7 +7948,7 @@
                 const cls = `obb${on ? ' on' : ''}${v.state === 'past' ? ' was' : ''}`;
                 const head = `<span class="nm">${esc(v.name || '')}${chip}</span><span class="hr">${esc(_obHours(blk))}</span>`;
                 if (!v.decided) return `<button type="button" class="${cls}" ${blkAttr}="${v.idx}" aria-pressed="${on}">${head}<span class="lv idle">${v.state === 'past' ? '—' : 'まだ'}</span></button>`;
-                const ct = ops ? `✓ ${v.doneN} / ${v.entries.length}` : `${v.entries.length} 凸${v.mineN ? ` · ★ ${v.mineN}` : ''}`;
+                const ct = ops ? `完了 ${v.doneN} / ${v.entries.length}` : `${v.entries.length} 凸${v.mineN ? ` · ★ ${v.mineN}` : ''}`;
                 const minis = v.rows.map(r => {
                     // 始まりで倒れているボス (0B) は満タンの帯 (組むと同じ: 盤のレビュー BD-3)
                     const pct = r.infinite ? (r.gotB > 0 ? 100 : 0) : (r.startB > 0 ? Math.min(100, r.gotB / r.startB * 100) : (r.killed ? 100 : 0));
@@ -7956,7 +7960,7 @@
             const tagOf = (e) => {
                 const dmg = Number(e.dmgB) || 0;
                 const [fill, ink] = fillOf(e.weakness);
-                const label = `${e.done ? '✓ ' : ''}${e.mine ? '★ ' : ''}${esc(e.memberName || '')} ${dmg.toFixed(1)}<small>B ${esc(pt(e.weakness))}PT 編成${SLOT_JP[e.loadoutSlot] || '①'}</small>`;
+                const label = `<b class="db-st">${e.done ? '✓ 完了' : '未完了'}</b>${e.mine ? '★ ' : ''}${esc(e.memberName || '')} ${dmg.toFixed(1)}<small>B ${esc(pt(e.weakness))}PT 編成${SLOT_JP[e.loadoutSlot] || '①'}</small>`;
                 const cls = `db-tag${e.done ? ' ok' : ''}${e.mine ? ' me' : ''}`;
                 const style = `--tag-c:${fill};--tag-ink:${ink};`;
                 if (!ops) return `<span class="${cls}" style="${style}">${label}</span>`;
@@ -7991,10 +7995,10 @@
                 // 盤の行に載らない凸 (ブロックの途中でレベルが上がる前の凸・Lv4 のボス 1〜4): 札だけ別に (✓ の取り消しもここから: 盤のレビュー BD-2)
                 const others = (v.others || []).length
                     ? `<div class="db-others"><p class="ob-note">この盤に載らない凸 (このブロックで前のレベルに入った凸)</p><div class="db-tags">${v.others.map(e => tagOf({ ...e, memberName: `${e.memberName || ''} Lv${Number(e.level) >= 4 ? 4 : Number(e.level) || 1} B${Number(e.bossNumber)}` })).join('')}</div></div>` : '';
-                const legend = ops ? '名前の札を押すと ✓ (数字は入れません)・✓ の札 (塗り) をもう一度押すと取り消し。帯の幅 = ダメージ (決定したときの見積もり)'
-                    : '★ と太い枠 = あなたの凸・塗り (✓) = 運営が凸を確かめた・枠だけ = まだ。帯の幅 = ダメージ (決定したときの見積もり)';
+                const legend = ops ? '「未完了」の札を押すと「✓ 完了」(数字は入れません)・「✓ 完了」の札をもう一度押すと取り消し。帯の幅 = ダメージ (決定したときの見積もり)'
+                    : '★ と太い枠 = あなたの凸・「✓ 完了」= 運営が凸を確かめた・「未完了」= まだ。帯の幅 = ダメージ (決定したときの見積もり)';
                 const allDone = v.entries.length > 0 && v.doneN === v.entries.length;
-                panel = `<div class="ob-panel db"><div class="ob-head"><b>${esc(v.name || '')} ${esc(_obHours(blocks[v.idx]))} — ${lvOf(v.level)}</b><span class="mt-hr">${ops ? `✓ ${v.doneN} / ${v.entries.length}${allDone ? ' (全部付きました)' : ''}` : `${v.entries.length} 凸`}</span></div>`
+                panel = `<div class="ob-panel db"><div class="ob-head"><b>${esc(v.name || '')} ${esc(_obHours(blocks[v.idx]))} — ${lvOf(v.level)}</b><span class="mt-hr">${ops ? `完了 ${v.doneN} / ${v.entries.length}${allDone ? ' (全部完了)' : ''}` : `完了 ${v.doneN} / ${v.entries.length} 凸`}</span></div>`
                     + `<p class="ob-note">${legend}${v.hpExact ? '' : ' (古い決定のため、物差しはそのレベルの最大 HP)'}${frozen ? ' — <b>取り直し中…</b>' : ''}</p><div class="ob-board">${rows || '<p class="ob-note">このブロックの凸はありません。</p>'}${others}</div></div>`;
             }
             return `<div class="obb-grid" role="group" aria-label="ブロック" style="margin-bottom:10px;">${btns}</div>${panel}`;
@@ -8021,7 +8025,7 @@
             if (identity?.id == null) return '<p class="rt-note">名乗ると、あなたの凸がここにまとめて出ます。</p>';
             const mineAll = view.flatMap(x => x.entries.filter(e => e.mine).map(e => ({ e, name: x.name })));
             if (!mineAll.length) return '<p class="rt-note">決まったブロックに、あなたの凸はありません。</p>';
-            return `<p class="db-mine">★ あなたの凸: ${mineAll.map(({ e, name }) => `${e.done ? '✓ ' : ''}${esc(name || '')} B${Number(e.bossNumber)} ${esc(bossNameOf(e.bossNumber) || e.bossName || '')} (${esc(PT_ATTRS.find(x => x.key === e.weakness)?.name || '')}PT 編成${SLOT_JP[e.loadoutSlot] || '①'})`).join(' / ')}</p>`;
+            return `<p class="db-mine">★ あなたの凸: ${mineAll.map(({ e, name }) => `${esc(name || '')} B${Number(e.bossNumber)} ${esc(bossNameOf(e.bossNumber) || e.bossName || '')} (${esc(PT_ATTRS.find(x => x.key === e.weakness)?.name || '')}PT 編成${SLOT_JP[e.loadoutSlot] || '①'}) ${e.done ? '✓ 完了' : '未完了'}`).join(' / ')}</p>`;
         }
         function _raidBoardPaint(tBody) {
             const L = _raidLast;
@@ -8145,7 +8149,7 @@
                     });
                 }
                 const nAll = view.reduce((t, x) => t + x.entries.length, 0), nDone = view.reduce((t, x) => t + x.doneN, 0);
-                if (tMeta) tMeta.textContent = boardOk ? `✓ ${nDone} / ${nAll} 凸` : '';
+                if (tMeta) tMeta.textContent = boardOk ? `完了 ${nDone} / ${nAll} 凸` : '';
             }
             // ③ みんなの模擬 (人 × 属性・読むだけ。運営の ▶︎ 模擬ダメージ表と同じ並びと色)
             mCard.style.display = '';
@@ -10322,7 +10326,7 @@
                 const mineHtml = r.mine.map(e => {
                     const b = bossOf(e.bossNumber), c = (_bbFill(e.weakness) || [])[0] || 'var(--ops)';
                     const team = Array.isArray(e.team) && e.team.length && typeof renderTeamSnippet === 'function' ? `<span class="mt-team">${renderTeamSnippet(e.team, { size: 22 })}</span>` : '';
-                    const act = e.done ? '<span class="mt-ok">✓ 済み</span>' : '';
+                    const act = e.done ? '<span class="mt-ok">✓ 完了</span>' : '<span class="mt-pend">未完了</span>';   // 文字で 完了 / 未完了 (2026-10-28 ふるり)
                     return `<div class="mt-me${e.done ? ' ok' : ''}"><span class="mt-dot" style="background:${c};"></span><div class="mt-me-b"><b>B${e.bossNumber} ${esc(b?.name || e.bossName || '')}</b> <span class="mt-sub">${esc(ptOf(e.weakness))}PT 編成${SLOT_JP[e.loadoutSlot] || '①'} · ${e.dmgB.toFixed(1)}B</span>${team}</div><div class="mt-act">${act}</div></div>`;
                 }).join('');
                 return `<div class="mt-blk ${r.state}">${head}${mineHtml}</div>`;
@@ -26946,7 +26950,7 @@
             body.innerHTML = nAll ? _decidedBoardHtml(v.board, { sel, blocks: v.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v.tapRow, busy: _atkTap.busy })
                 : '<p class="ops-recent-empty">決定に凸がありません。</p>';
             _atkTap.last = { seasonId: v.seasonId, board: v.board, blocks: v.blocks, tapRow: v.tapRow, sel };
-            if (cnt) cnt.textContent = `いままで ✓ ${nDueDone} / ${nDue} · 全体 ${nDone} / ${nAll}`;
+            if (cnt) cnt.textContent = `いままで 完了 ${nDueDone} / ${nDue} · 全体 ${nDone} / ${nAll}`;
         }
         async function _opsTapMark(planKey, btn) {
             if (!_opsMode || _atkTap.busy.has(planKey)) return;
