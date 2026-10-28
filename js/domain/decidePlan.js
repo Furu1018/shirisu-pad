@@ -86,7 +86,7 @@
      *   fpOf = ブロックの駒の指紋 (決定したときのもの)。decided.blocks[].fp に残し、読み戻しはそれを使う (S4 引き継ぎ 3)
      * @returns {Object} levels[].bosses[].attacks[] の形 (ソルバーの出力と同じ読み方ができる) + decided
      */
-    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null, done = null, fpOf = null } = {}) {
+    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null, done = null, fpOf = null, hpOf = null } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const newSet = new Set((Array.isArray(newIdxs) ? newIdxs : []).map(Number));
         const prevBlocks = decidedBlocks(prevPlan);
@@ -117,12 +117,17 @@
                 const have = new Set(atks.map(a => planKey({ ...a, block: key })));
                 const readd = [];
                 for (const a of (doneOf.get(key) || [])) if (!have.has(planKey({ ...a, block: key }))) { atks.push({ ...a, _meta: {} }); readd.push(a); }   // 自動の結果に同じ凸があれば足さない
-                // ブロックの始まりの HP (盤の見え方)。始まりの盤面は済んだ凸を入れたあと (_obStripDone と同じ前提) なので、足し戻した済んだ凸のダメージも足す
+                // ブロックの始まりの HP (盤の見え方)。始まりの盤面は済んだ凸を入れたあと (_obStripDone と同じ前提) なので、足し戻した済んだ凸のダメージも足す。
+                //   ★ 足すのはこのブロックのレベルの凸だけ (ブロックの途中でレベルが上がってから組み直すと、前のレベルの凸を新しいレベルの HP に足していた: 盤のレビュー BD-1)。
+                //   ★ そのレベルの最大 HP で頭打ち (✓ は HP を動かさないので、🎯 で合わせる前に組み直すと最大を超えた: BD-6)。0.01B で残す (0.1B に丸めると 撃破 ✓ が「あと 0.1B」になった: BD-7)
                 hp = {};
                 for (const r of (o.rows || [])) {
                     if (r.infinite || !Number.isFinite(Number(r.startB))) continue;
-                    const back = readd.filter(a => Number(a.bossNumber) === Number(r.bossNumber)).reduce((t, a) => t + (Number(a.dmgB) || 0), 0);
-                    hp[Number(r.bossNumber)] = Math.round((Number(r.startB) + back) * 10) / 10;
+                    const back = readd.filter(a => Number(a.bossNumber) === Number(r.bossNumber) && Number(a.level) === level).reduce((t, a) => t + (Number(a.dmgB) || 0), 0);
+                    let v = Number(r.startB) + back;
+                    const cap = typeof hpOf === 'function' ? Number(hpOf(level, r.tier || (bossOf.get(Number(r.bossNumber)) || {}).tier || 'lord')) : 0;
+                    if (cap > 0 && v > cap) v = cap;
+                    hp[Number(r.bossNumber)] = Math.round(v * 100) / 100;
                 }
             } else if (prevBlocks.has(key) && pc()) {
                 level = Number(prevBlocks.get(key).level) || null;
@@ -182,8 +187,8 @@
      *   ブロックごとに、そのレベルのボスの行 (Lv4 はボス 5 だけ) と、行に置かれた凸 (駒・幅 = ダメージ)。✓ と自分の駒の印は timetable と同じ。
      *   幅の物差し startB は 決定したときのブロックの始まりの HP (decided.blocks[].hp)。無い古い行は そのレベルの最大 HP (hpOf) で、hpExact = false
      * @param {{ blocks:Object[], plan:Object, nowIdx?:number, done?:Set<string>, viewerId?:*, bosses?:Object[], hpOf?:(level:number, tier:string)=>number }} a
-     * @returns {Array<{ idx, key, name, label, state, decided, level, hpExact:boolean, rows:Array<{ bossNumber, name, weakness, tier, infinite, startB, gotB, remB, killed, pieces:Object[] }>,
-     *   entries:Object[], doneN:number, mineN:number }>}
+     * @returns {Array<{ idx, key, name, label, state, decided, level, hpExact:boolean, rows:Array<{ bossNumber, name, weakness, tier, infinite, exact, startB, gotB, remB, killed, pieces:Object[] }>,
+     *   entries:Object[], others:Object[], allKilled:boolean, doneN:number, mineN:number }>}
      */
     function boardView({ blocks, plan, nowIdx = -1, done = null, viewerId = null, bosses = [], hpOf = null } = {}) {
         const tt = timetable({ blocks, plan, viewerId, nowIdx, done });
@@ -199,19 +204,28 @@
                 const infinite = level >= 4;
                 // 行はそのレベルのボス (盤の行の並び)。シーズンのボスが読めないときは 凸のあるボスだけ
                 const nums = bossList.length ? bossList.map(b => Number(b.boss_number)) : [...new Set(r.entries.map(e => Number(e.bossNumber)))].sort((x, y) => x - y);
+                // ★ 行に載せるのはこのブロックのレベルの凸だけ (Lv4 はボス 5 の Lv4)。ブロックの途中でレベルが上がってから組み直したブロックには、前のレベルの済んだ凸が入る —
+                //   それを今のレベルの行に混ぜると幅と「あと ◯B」が狂い、Lv4 では盤のどこにも出ず ✓ を取り消せなかった (盤のレビュー BD-1 / BD-2) → others で別に返す
+                const onBoard = (e) => infinite ? (Number(e.level) >= 4 && Number(e.bossNumber) === 5) : Number(e.level) === level;
                 rows = nums.filter(n => !infinite || n === 5).map(n => {
                     const b = bossList.find(x => Number(x.boss_number) === n) || null;
-                    const pieces = r.entries.filter(e => Number(e.bossNumber) === n);
+                    const pieces = r.entries.filter(e => Number(e.bossNumber) === n && onBoard(e));
                     const tier = (b && b.tier) || 'lord';
                     const exact = !!(hp && hp[n] != null);
                     const startB = infinite ? 0 : (exact ? hp[n] : (typeof hpOf === 'function' ? Number(hpOf(level, tier)) || 0 : 0));
                     const gotB = pieces.reduce((t, e) => t + (Number(e.dmgB) || 0), 0);
+                    // 始まりで倒れている (hp 0) ボスも撃破 (組むの overview と同じ: BD-3)。物差しが分からない (最大 HP も 0) ときだけ撃破にしない
+                    const killed = !infinite && (exact || startB > 0) && gotB >= startB - 0.05;
                     return { bossNumber: n, name: (b && (b.name || b.boss_code)) || (pieces[0] && pieces[0].bossName) || `B${n}`, weakness: (b && b.weakness) || (pieces[0] && pieces[0].weakness) || null,
-                        tier, infinite, exact, startB, gotB, remB: infinite ? 0 : Math.max(0, startB - gotB), killed: !infinite && startB > 0 && gotB >= startB - 0.05, pieces };
+                        tier, infinite, exact, startB, gotB, remB: infinite ? 0 : Math.max(0, startB - gotB), killed, pieces };
                 });
             }
+            const placed = new Set(rows.flatMap(x => x.pieces.map(e => e.planKey)));
             return { idx: r.idx, key: r.key, name: r.name, label: r.label, state: r.state, decided: r.decided, level,
                 hpExact: rows.length > 0 && rows.every(x => x.infinite || x.exact), rows, entries: r.entries,
+                others: r.entries.filter(e => !placed.has(e.planKey)),   // 盤の行に載らない凸 (別のレベル・Lv4 のボス 1〜4)。数 (doneN・entries) には入れたまま、別に見せる
+                // 撃破 (緑の Lv) は HP のある行だけで見る (無限の行を撃破に数えていた: BD-5)
+                allKilled: rows.some(x => !x.infinite) && rows.every(x => x.infinite || x.killed),
                 doneN: r.entries.filter(e => e.done).length, mineN: r.mine.length };
         });
     }

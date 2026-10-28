@@ -64,7 +64,7 @@
         bossHpOpen: ['[onclick="_opsStageAct(\'hp\')"]', '[onclick="openOpsBossHpModal()"]'],   // 先頭のヒーロー「🎯 ボス HP を更新する」が出ていればそれ
         bossHpInput: ['#opsBossHpModal [data-boss-num="1"] input.ops-hp-rem'],
         bossHpSave: ['#opsBossHpModal [data-boss-num="1"] button[onclick^="handleOpsBossHpSave("]'],
-        tapDone: ['#opsAtkTapBody [data-tap-done]'],   // ✓ 凸の記録 の盤の、まだ ✓ の無い駒 (S5・2026-10-28 から組むと同じ盤)
+        tapDone: ['#opsAtkTapBody [data-tap-done]'],   // ✓ 凸の記録 の盤の、まだ ✓ の無い名前の札 (S5・2026-10-28 から組むと同じ盤)
         finishPick: ['.dc-boss-card[data-boss-card="1"] .js-finish[data-action="finish-pick"]:not([disabled])'],
         finishCopy: ['#opsFinishPlans button[onclick^="handleOpsFinishPlanCopy("]'],
     };
@@ -151,7 +151,7 @@
         var ov = bb.overview({ board: board, blocks: blocks, first: first, planOf: planOf, hpOf: hpOf });
         var pubs = await window.supabaseGetPublishedPlans();
         var prev = dp.latestDecided((pubs || []).filter(function (r) { return eq(r.season_id, c.season.id); }));
-        var plan = dp.build({ blocks: blocks, ov: ov, newIdxs: want, prevPlan: prev ? prev.plan : null, bosses: snapshot.bosses, at: new Date().toISOString() });
+        var plan = dp.build({ blocks: blocks, ov: ov, newIdxs: want, prevPlan: prev ? prev.plan : null, bosses: snapshot.bosses, at: new Date().toISOString(), hpOf: hpOf });
         plan.seasonId = c.season.id;
         var schema = (typeof window._planSchemaOf === 'function') ? window._planSchemaOf(plan) : (typeof PLAN_SCHEMA !== 'undefined' ? PLAN_SCHEMA : null);
         var pub = await window.supabasePublishDecidedPlan(plan, P.ops.id, P.ops.name, c.season.id, schema, prev ? prev.id : 0);
@@ -288,7 +288,7 @@
                     if (c.tab !== 'raid') return stray(c, []) || nav('navRaid', 'レイド予定表');
                     var ack = pick('planAck');
                     if (!ack) return stray(c, []) || { text: 'レイド予定表を読み込んでいます…' };
-                    return stray(c, []) || { text: '「ブロックごとの凸 (盤)」は 凸プランを組むと同じ見え方です。ブロックのボタン (夜) を押すと、ボスごとに誰が行くかが駒で出ます (★ と枠があなた・幅 = ダメージ)。下の「みんなの模擬」で、ほかの人の編成とダメージも見られます。読んだら「✅ 確認しました」を押します。',
+                    return stray(c, []) || { text: '「ブロックごとの凸 (盤)」のブロックのボタン (夜) を押すと、ボスごとに誰が行くかが出ます (帯の幅 = ダメージ・下に名前の札・★ と太い枠があなた)。下の「みんなの模擬」で、ほかの人の編成とダメージも見られます。読んだら「✅ 確認しました」を押します。',
                         real: '運営が組み直して決定し直すと、変わった人だけに通知が届きます。✅ はそのときの文の出し分けに使います。', target: ack };
                 } },
             { key: 'report', title: '凸したら Discord へ',
@@ -358,8 +358,8 @@
                     if (opsTab('battle')) return stray(c, []) || opsTab('battle');
                     var btn = pick('tapDone');
                     if (!btn) return stray(c, []) || { text: '「✓ 凸の記録」を読み込んでいます…' };
-                    return stray(c, []) || { text: 'Discord に、まだ ✓ の無い人の結果のスクショが貼られた、とします。「✓ 凸の記録」の盤で その人の駒を押すと ✓ が付きます (数字は入れません)。',
-                        real: '✓ を付けると、その人の残り凸と使ったキャラが減り、次のブロックを組むときに正しくなります。押し間違えたら、✓ の付いた駒をもう一度押して取り消し。', target: btn };
+                    return stray(c, []) || { text: 'Discord に、まだ ✓ の無い人の結果のスクショが貼られた、とします。「✓ 凸の記録」の盤で その人の名前の札を押すと ✓ が付きます (札が塗りになる・数字は入れません)。',
+                        real: '✓ を付けると、その人の残り凸と使ったキャラが減り、次のブロックを組むときに正しくなります。押し間違えたら、塗りの札をもう一度押して取り消し。', target: btn };
                 } },
             { key: 'rebuild', title: '🧱 夕方 (いまのブロック) を組み直す',
                 // 印に加えて「いま組んだ結果がある」か「もう決定し直した」(読み込み直して消えたら組み直す: S5 レビュー PR-1)
