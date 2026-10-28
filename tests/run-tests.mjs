@@ -15603,7 +15603,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const pc = (memberId, hourIdx, dmgB) => ({ memberId, memberName: 'm' + memberId, dmgB, team: ['a' + memberId], loadoutSlot: 1, hourIdx });
         const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, name: 'ボス' + n, weakness: 'fire', tier: 'lord' }));
         const hpOf = (lv) => ({ 1: 100, 2: 150, 3: 200 })[lv] || 0;
-        // ① 朝を Lv1 で決定 (m1 B1 30B) → ✓ → 朝のうちに Lv2 になって組み直す (m3 B1 40B・始まり 150B)
+        // ① 朝を Lv1 で決定 (m1 B1 30B) → ✓ → 朝のうちに Lv2 になって組み直す (m3 B1 40B・始まり 100B)
         const p1 = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, startB: 100, pieces: [pc(1, 0, 30)] }] }], newIdxs: [0], bosses });
         const k1 = dp.planKey({ block: '5-8', level: 1, bossNumber: 1, memberId: 1, loadoutSlot: 1 });
         //   (始まり 100B は Lv2 の最大 150B より小さく — 頭打ちで足し間違いが隠れないように)
