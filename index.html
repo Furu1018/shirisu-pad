@@ -7929,7 +7929,7 @@
         // ========== 決定を「凸プランを組む」と同じ盤で描く (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28 ふるり「組むの見え方の方が分かりやすい」) ==========
         //   材料は decidePlanDomain.boardView (ブロックごとのボスの行と駒・幅 = ダメージ・物差しは決定したときのブロックの始まりの HP)。
         //   部品は組むと同じ (.obb ブロックのボタン / .obr ボスの行 / .obpc 駒)。組むと違い、過ぎたブロックも押せる (✓ を付けに戻る・見返す)
-        //   opts: sel = 選んでいるブロックの添字 / blkAttr = ブロックのボタンの data 属性 / ops = 駒を押して ✓ (運営) / tapRow = planKey → ✓ の行 / busy = 押している最中の planKey
+        //   opts: sel = 選んでいるブロックの添字 / blkAttr = ブロックのボタンの data 属性 / ops = 名前の札を押して ✓ (運営) / tapRow = planKey → ✓ の行 / busy = 押している最中の planKey
         function _decidedBoardHtml(view, { sel, blocks, blkAttr, ops = false, tapRow = null, busy = null, frozen = false } = {}) {
             const esc = escapeHtml;
             const pt = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
