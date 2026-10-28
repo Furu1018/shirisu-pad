@@ -10463,7 +10463,7 @@ console.log('\ngrowthDomain:');
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
         // 2026-09-10 段階1 完了: 727 → 14。残り14はコメントと、インラインの style を拾う
         // 属性セレクタ (button[style*="background:#14161A"]) — 段階2でインラインを直すまで動かせない
-        const LIMIT_HEX = 14, LIMIT_RGBA = 196;   // 段階3a: 線・輪郭のベールを --ink-rgb へ / 2026-10-03: 黒いカードの上の白ベールを --paper-rgb へ
+        const LIMIT_HEX = 14, LIMIT_RGBA = 195;   // 段階3a: 線・輪郭のベールを --ink-rgb へ / 2026-10-03: 黒いカードの上の白ベールを --paper-rgb へ / 2026-10-29: ツアーの使われない「📍 タブを開いて試す」の CSS を消した
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
@@ -15712,6 +15712,62 @@ console.log('\n⏰ 参加可能時間の入口は 1 つ (2026-10-28):');
         assert.ok(/cta = lite \? '' : \(_homeSimple\(\) \? heroBtn\('_heroOpenMyOpsAvail\(\)', '⏰ 自分の参加可能時間を登録する'\) : heroBtn\('openMyAvailModal\(\)', '⏰ 参加可能時間を登録する'\)\);/.test(html), 'ヒーローの入口');
         const h = html.slice(html.indexOf('async function _heroOpenMyOpsAvail()'), html.indexOf('function _heroGotoToday()'));
         assert.ok(/if \(!_opsMode\)/.test(h) && /openOpsAvailModal\(me\.id\);/.test(h) && /await opsStore\.load\(\)/.test(h), 'ヒーローが 👥 と同じシートを開かない');
+    });
+}
+
+console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは 1 つ / ナビと同じ所へ行くだけのボタンは置かない / ずっと押せない・押してもトーストだけのボタンは置かない:');
+{
+    const _fsBt = await import('node:fs');
+    const html = _fsBt.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    const guide = _fsBt.readFileSync('js/practice/guide.js', 'utf8').replace(/\r\n/g, '\n');
+    const after = html.slice(html.indexOf('</style>'));
+    const fnB = (start, end) => { const a = html.indexOf(start); const b = html.indexOf(end, a + start.length); return a >= 0 && b > a ? html.slice(a, b) : ''; };
+    test('★ ホーム: 切替は上の帯 / サイドバー足元・得意属性とアバターはプロフィール (MY設定の 2 つ目を置かない)', () => {
+        assert.equal((after.match(/onclick="openPlayerSelectModal\(\)"/g) || []).length, 2, '名乗りの入口が上の帯 + サイドバー足元の 2 つでない (プロフィールの「切替」が戻った?)');
+        assert.equal((after.match(/onclick="openMyStrongAttrsModal\(\)"/g) || []).length, 1, '得意属性の入口が 2 つある');
+        assert.equal((after.match(/onclick="openAvatarEditModal\(\)"/g) || []).length, 1, 'アバターの入口が 2 つある');
+        assert.ok(!html.includes("'📈 分析タブへ'") && !html.includes('📸 模擬の取り込み (戦況タブ) で登録する'), 'ナビと同じ所へ行くだけのヒーローのボタンがある');
+        assert.ok(html.includes('${stale && !_myPubState.decidedCurrent ?'), '決定に「再配信をお待ちください」を出す');
+        assert.ok(/\$\{set\.size > 0 \? '<p data-member-input-lite/.test(html) && html.includes("${set.size > 0 ? '登録されている時間です。' : ''}運営の自分の時間も"), '未登録でも「登録されている時間です」と言う');
+        assert.ok(!html.includes('「⏳隙間時間型」を選べばOK'), '撤廃した ⏳隙間時間型 を勧める');
+    });
+    test('★ 再読み込みは上の ↻ の 1 つ (運営タブの「同期」とカードの ↻・設定の「同期」「全データを再読み込み」を置かない)', () => {
+        assert.ok(!after.includes('onclick="reloadOpsDashboard()"') && !after.includes('onclick="renderSettingsTab()" title="再同期"'), '「同期」が残っている');
+        for (const f of ['renderOpsAttackTap(true)', 'renderOpsAttackCheck(true)', 'renderOpsMockIntake(true)', 'renderOpsMemberStatus(null, true)', 'renderOpsReservations(true)', 'renderOpsGrowth(true)'])
+            assert.ok(!after.includes(`onclick="${f}" title="再読み込み"`), 'カードの ↻ が残っている: ' + f);
+        assert.ok(!after.includes('onclick="location.reload()" class="dc-danger-btn"'), '「全データを再読み込み」が残っている');
+        const hr = fnB('async function handleHeaderReload()', '\n        }\n');
+        assert.ok(/if \(tabName === 'ops' && _opsMode\) \{\s*\n\s*if \(typeof renderOpsReservations === 'function'\) renderOpsReservations\(true\);/.test(hr), '↻ が運営タブの予約の一覧を取り直さない');
+    });
+    test('★ 運営タブ: 従来の算出・配信はシンプルな画面で出さない / ⏳ は外に / ヒーローは同じタブのカードなら文だけ / 🔔 疎通確認の入口がいつもある', () => {
+        assert.ok(/body\.home-simple #opsPlanLegacy \{ display: none !important; \}/.test(html), 'シンプルな画面で従来の算出・配信を隠していない');
+        assert.ok(html.indexOf('id="opsPlanUnpublishBtn"') > 0 && html.indexOf('id="opsPlanUnpublishBtn"') < html.indexOf('<details id="opsPlanLegacy"'), '⏳ 組み直し中にする が隠れる側にある');
+        const hero = fnB('        function _opsStageHeroHtml(h, stage) {', '        function _opsStageListHtml(');
+        assert.ok(/const here = !!\(card && lay && typeof lay\.tabOf === 'function' && typeof _opsTabNow === 'function' && lay\.tabOf\(card\) === _opsTabNow\(stage\)\);/.test(hero) && /hp: 'opsSecBoss'/.test(hero) && /pushcheck: 'opsSecPush'/.test(hero), 'ヒーローが同じタブのカードのボタンと 2 つになる');
+        assert.ok(/if \(masterAct && !isMaster\) \{/.test(hero), '運営担当にマスターの作業のボタンを出す (押してもトーストだけ)');
+        assert.equal((after.match(/onclick="openOpsPushCheckModal\(\)"/g) || []).length, 1, '🔔 疎通確認のいつもある入口が無い');
+        assert.ok(!html.includes('handleOpsMemberPhase') && !html.includes('opsMbPhasePre'), '👥 メンバー状況の「前日 / 当日」が残っている');
+        assert.ok(!html.includes('id="settingsRestoreBtn"') && html.includes('いまは画面から復元できません'), '本番で必ず止まる「復元」がボタンのまま');
+        assert.ok(/if \(o\.past\) return `<div class="obb past" aria-disabled="true"/.test(html), '過ぎたブロックがずっと押せないボタン');
+        assert.ok(html.includes('${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset"'), 'やり直すものが無くても「このブロックをやり直す」を出す');
+        assert.ok(/if \(!_opsMode && typeof _memberLite === 'function' && _memberLite\(\) && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) switchTab\('mypage'\);/.test(html), '運営タブで 🛠 OFF にしてもメンバーに無いページに残る');
+        const rd = fnB('        async function handleOpsResetDamages() {', '            try {');
+        assert.ok(/if \(stNow && stNow\.auto === 'day'\) \{ alert\(/.test(rd), 'レイド当日に模擬のダメージをリセットできる');
+    });
+    test('★ 互換ゲートの「更新する」は、上の更新の帯が出ていればカードに置かない (同じ _reloadFresh)', () => {
+        assert.equal((html.match(/_gateReloadHtml\('/g) || []).length, 3, 'カードの「更新する」が帯と 2 つになる所がある');
+        assert.ok(!html.includes("location.href=\\'./?u=\\'+Date.now()\">更新する"), 'カードの「更新する」がいまのタブに戻らない');
+    });
+    test('★ 分析 / ツアー / 設定 / 練習: 押せない・同じ・残骸のボタンを置かない', () => {
+        assert.ok(!html.includes('rankingSeasonNav') && !html.includes('fururi-help-footer') && !html.includes('toggleSimulatorSection'), '分析の押せない / 同じ / 残骸のボタンがある');
+        assert.ok(html.includes(".attribute-tab-btn[data-attribute]').forEach") && html.includes(".sim-mode-btn[data-sim-mode]').forEach"), 'ほかのボタンを押すと、ふるり値の選択の印が消える');
+        assert.ok(/<button class="fururi-help-btn" data-slv-view="fururi"/.test(html) && /<div id="fururiPageSubtitle" data-slv-view="fururi"/.test(html), 'ふるり値の「?」がほかの分析にも出る');
+        assert.ok(html.includes(`\${isLast ? '<div style="width:50px;"></div>' : '<button class="tour-skip" onclick="_skipTour()">スキップ</button>'}`), 'ツアー最後の章に「スキップ」と「完了」が並ぶ');
+        assert.ok(!html.includes('_tourJumpAndContinue') && !html.includes('tour-flow'), 'ツアーの残骸がある');
+        assert.ok(!html.includes('運営</strong> をONにすると表示されます') && html.includes("openHelpFromSettings('help-finisher')"), '設定の案内 / ガイドの章の行き先が古い');
+        assert.ok(!guide.includes('練習をやめる'), '練習のおしまいに上の帯の「やめる」と同じボタンがある');
+        assert.ok(/_myTeamEditHasRow = !isNew;/.test(html) && /if \(!_myTeamEditHasRow\) \{ showNotification\('この編成はまだ提出されていません'\); return; \}/.test(html), '未提出の編成に「削除」を出す');
+        assert.ok(html.includes("_popularTeamsHtml(attrKey, { copyable: true, skipTop: true })") && html.includes("${opts.skipTop ? '' : `"), '模擬シートに同じ人気PTが 2 回並ぶ');
     });
 }
 
