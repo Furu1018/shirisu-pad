@@ -15361,7 +15361,13 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const dec = fnS5('function _atkCheckDecidedPlan(plan, season)', '// ✓ 凸の記録 (シンプル化 S5');
         assert.ok(/planKey: dp\.planKey\(\{ \.\.\.a, level: lv\.infinite \? 4 : Number\(lv\.level\), bossNumber: Number\(b\.bossNumber\), block: String\(a\.block\) \}\)/.test(dec), '決定の割当に鍵を持たせていない');
         assert.ok(/_opsDecidedPub\(snap\.season\.id\) \|\| \(\(_opsPublishedPlan/.test(html), '結果の取り込みが最新の決定を見ていない (TP-1)');
-        assert.ok(/\$\{r\.tapOnly \? '—' : /.test(html) && /r\.source === 'ops_tap' && r\.tapOnly\s*\n[^\n]*\n\s*\? '<span class="ok" aria-pressed="true"/.test(html), '運営の ✓ の行に外せない確認のトグルを出している (TP-11)');
+        // 運営の ✓ の行: 外せない確認のトグルを出さない (TP-11)。代わりに ✓ 凸の記録へのリンク (丸い札だとボタンに見えて押しても何も起きなかった: 2026-10-28 ふるり)
+        assert.ok(/\$\{r\.tapOnly \? '—' : /.test(html) && /r\.source === 'ops_tap' && r\.tapOnly\s*\n(?:[^\n]*\n){1,3}?\s*\? '<button type="button" class="src" onclick="_opsJump\(\\'opsSecAttackTap\\'\)"[^']*>✓ 凸の記録で付けた ›<\/button>'/.test(html), '運営の ✓ の行に外せない確認のトグルを出している / ✓ 凸の記録へ飛べない (TP-11)');
+        assert.ok(/\.ops-atk-row \.src \{[^}]*border: none; background: none;[^}]*text-decoration: underline;/.test(html), '✓ 凸の記録へのリンクがボタンの見た目のまま');
+        // 確認のボタン: 押す前は「確認する」、押したあとは「✓ 確認済み (確かめた人)」— 名前だけだと凸した人と取り違えた (2026-10-28 ふるり)
+        assert.ok(html.includes("${r.confirmedAt != null ? `✓ 確認済み${r.confirmedBy && r.confirmedBy !== '✓ 凸の記録' ? ` (${escapeHtml(r.confirmedBy)})` : ''}` : '確認する'}</button>"), '確認のボタンの言い方 (確認する / ✓ 確認済み (名前))');
+        assert.ok(!html.includes(": '✓ 確認'}</button>"), '「✓ 確認」と確かめた人の名前が入れ替わるだけの言い方が残っている');
+        assert.ok(html.includes("${r.source === 'tap' && r.tapOnly ? '<span class=\"fl\"") && html.includes('>本人の ✓</span>'), '本人が付けた ✓ の行に印が無い (なぜ確認が要るのか分からない)');
     });
     test('★ ✓ 凸の記録 の直し (S5 レビュー TP-2 / TP-3 / TP-8 / TP-9 / TP-10 / TP-12 / TP-13 / TP-14 / GP-2 / GP-3)', () => {
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');

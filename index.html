@@ -3176,6 +3176,8 @@
         .ops-atk-row .ok { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
         .ops-atk-row .ok[aria-pressed="true"] { background: rgba(24, 194, 107, 0.14); color: var(--ok); border-color: transparent; }
         .ops-atk-row .ok:disabled { opacity: 0.55; cursor: not-allowed; }
+        /* 運営が ✓ 凸の記録で付けた ✓ の行: 確認のボタンではなく、✓ 凸の記録へのリンク (以前は押しても何も起きない丸い札だった: 2026-10-28 ふるり) */
+        .ops-atk-row .src { flex: none; padding: 5px 2px; border: none; background: none; color: var(--ops); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
         .ops-atk-row.done .n, .ops-atk-row.done .v { color: var(--t-muted); }
         /* 📥 結果の取り込み (🧱 段階 4): 報告の無い凸の操作と、取り込みの下書き */
         .ops-atk-row .act { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
@@ -4808,7 +4810,7 @@
                     <button onclick="renderOpsAttackCheck(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
-                    Discord に貼られた<strong>凸の結果のスクショ</strong>を取り込んで、本人の代わりに凸を登録します。使った編成はその人の模擬から選びます (PC はこのカードに落とすだけ)。取り込んだ凸は ✓ 確認済みになります。
+                    Discord に貼られた<strong>凸の結果のスクショ</strong>を取り込んで、本人の代わりに凸を登録します。使った編成はその人の模擬から選びます (PC はこのカードに落とすだけ)。取り込んだ凸は ✓ 確認済みになります。下の一覧の右端の「確認する」は、運営がその凸を確かめた印です (本人が自分で付けた ✓ や報告に出ます)。✓ 凸の記録で付けた凸は、もう確認済みです。
                 </p>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の凸か
@@ -18537,13 +18539,15 @@
             const list = rows.length ? rows.map(r => `
                 <div class="ops-atk-row${r.confirmedAt != null ? ' done' : ''}" data-id="${Number(r.id)}">
                     <span class="t">${escapeHtml(r.atMs != null ? _opsHm(r.atMs) : '—')}</span>${chip(r.bossNumber)}
-                    <span class="n">${escapeHtml(r.name)}${r.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${r.level}</span>` : ''}</span>
+                    <span class="n">${escapeHtml(r.name)}${r.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${r.level}</span>` : ''}</span>${r.source === 'tap' && r.tapOnly ? '<span class="fl" style="background:var(--s2);color:var(--t-body);" title="本人が PAD で付けた ✓ (S4 の「✓ 凸しました」・古い版のアプリ)。運営が確かめたら「確認する」">本人の ✓</span>' : ''}
                     <span class="v">${r.tapOnly ? '—' : `${r.damageB.toFixed(1)}B`}</span>
                     ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}${r.unchecked ? `<span class="fl" style="background:var(--s2);color:var(--t-muted);" title="配信プランと照合できない凸 (印は付けません)">${escapeHtml(r.unchecked)}</span>` : ''}
                     ${r.source === 'ops_tap' && r.tapOnly
                         // 運営の ✓ (数字なし) は付けた時点で確認済み — 外せないトグルを出さない。取り消しは ⚔️ ✓ 凸の記録で (S5 レビュー TP-11)
-                        ? '<span class="ok" aria-pressed="true" title="運営が ⚔️ ✓ 凸の記録で付けた ✓ (取り消しはそのカードで)">✓ 凸の記録</span>'
-                        : `<button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>`}
+                        // 押すと ✓ 凸の記録へ (取り消しもそこで)。以前は丸い札で、ボタンに見えるのに何も起きなかった (2026-10-28 ふるり)
+                        ? '<button type="button" class="src" onclick="_opsJump(\'opsSecAttackTap\')" title="運営が ⚔️ ✓ 凸の記録で付けた ✓ です (確認済み)。押すと ✓ 凸の記録へ — 取り消しもそこで">✓ 凸の記録で付けた ›</button>'
+                        // 確認 = 運営がこの凸を確かめた印。押す前は「確認する」、押したあとは「✓ 確認済み (確かめた人)」— 名前だけだと凸した人と取り違えた (2026-10-28 ふるり)
+                        : `<button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? ` title="${r.confirmedAt != null ? '運営が確かめた印です。押すと外します' : '運営がこの凸を確かめたら押します'}"` : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ 確認済み${r.confirmedBy && r.confirmedBy !== '✓ 凸の記録' ? ` (${escapeHtml(r.confirmedBy)})` : ''}` : '確認する'}</button>`}
                 </div>`).join('')
                 : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる凸はありません。' : 'まだ凸が登録されていません。'}</p>`;
             const note = canConfirm ? '' : '<p class="ops-recent-empty" style="margin-top:8px;">✓ の保存には supabase/52_attacks_confirmed.sql の適用が必要です (一覧と印はそのまま使えます)。</p>';
