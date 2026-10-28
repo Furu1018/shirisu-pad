@@ -134,7 +134,7 @@ await test('★ きっかけ: 前回の算出のあとに模擬が更新され�
     noUndef(out);
     assert.equal(a.els.opsPlanCue.style.display, '');
     assert.ok(out.includes('前回の算出 (21:04) のあと、<b>模擬の提出が 4 件</b>更新されました'), `文面が違う: ${out}`);
-    assert.ok(out.includes('onclick="computeAndRenderOptimalPlan()">組み直す'), '組み直すボタンが無い');
+    assert.ok(!out.includes('computeAndRenderOptimalPlan()') && out.includes('下の「🧮 この条件で算出」で組み直します'), 'きっかけに 2 つ目の算出ボタンがある / 案内が無い (2026-10-29 ボタンの監査)');
     // 算出が無ければ配信を基準にする
     const b = run({ snap: { season, players }, pub: { season_id: 45, published_at: '2026-09-11T04:02:00Z' }, count: async () => 2 });
     await b.renderOpsPlanCue();

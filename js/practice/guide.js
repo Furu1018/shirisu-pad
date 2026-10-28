@@ -643,7 +643,7 @@
             var err = store.get('setup:err');
             if (err) {
                 render('<div class="pm-band"><span class="t">🎮 練習中 — 本番には反映されません</span><button data-pm="quit">やめる</button></div><div class="pm-body"><div class="pm-in"><p>開始の盤面を作れませんでした: ' + esc(err) + '</p>'
-                    + '<div class="pm-row"><button class="pm-btn" data-pm="restart">もう一度</button><button class="pm-btn sub" data-pm="quit">練習をやめる</button></div></div></div>', 'setup-err:' + err);
+                    + '<div class="pm-row"><button class="pm-btn" data-pm="restart">もう一度</button></div></div></div>', 'setup-err:' + err);
                 target = null; return;
             }
             if (!ffBusy) {
@@ -694,8 +694,8 @@
                     + '<p>本番でも同じ場所・同じボタンです。このまま自由に触ることもできます。</p>'
                     + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>' + esc(scn.diff || '') + '</div>'
                     + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button>' + (backBtn ? '<button class="pm-btn sub" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '')
-                    + (nextSc ? '<button class="pm-btn" data-pm="goto" data-sc="' + esc(scn.next) + '">次は ' + esc(nextSc.title) + ' →</button>' : '') + '<button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
-                : '<p>この編はまだ用意されていません。画面は自由に触れます。</p><div class="pm-row"><button class="pm-btn" data-pm="goto" data-sc="member">メンバー編へ</button><button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>';
+                    + (nextSc ? '<button class="pm-btn" data-pm="goto" data-sc="' + esc(scn.next) + '">次は ' + esc(nextSc.title) + ' →</button>' : '') + '</div>' + dots + '</div>'
+                : '<p>この編はまだ用意されていません。画面は自由に触れます。</p><div class="pm-row"><button class="pm-btn" data-pm="goto" data-sc="member">メンバー編へ</button></div>';
         } else {
             body = '<div class="pm-top"><span class="pm-cnt">課題 ' + (cur.i + 1) + '/' + cur.n + '</span><b>' + esc(cur.step.title) + '</b>'
                 + (target ? '<button class="pm-where" data-pm="where">どこ？</button>' : '') + '</div>'

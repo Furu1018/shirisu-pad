@@ -121,7 +121,7 @@ await test('★ 予約で固定 + 配信の割当 + 空き枠 (理由つき) の
     assert.ok(/21時/.test(out), '予約の時刻が出ていない');
     assert.ok(/dc-plan-card empty/.test(out), '空き枠が無い');
     assert.ok(out.includes('ほかの凸とキャラが被って、使える編成が残っていません'), '空き枠の理由 (日本語) が無い');
-    assert.ok(/openMyResvRequest\(\)/.test(out), '空き枠から申請できない');
+    assert.ok(!/openMyResvRequest\(\)/.test(out) && out.includes('予約は 🔒 予約'), '空き枠に予約の 2 つ目の入口がある / 予約カードへの案内が無い (入口は 🔒 予約カードの 1 つ: 2026-10-29 ボタンの監査)');
     assert.ok(/on-hero/.test(out), '黒ヒーロー用の見た目になっていない');
     assert.ok(!/運営が組み直し中/.test(out), '配信が予約を知っているのに組み直し中と出ている');
     assert.ok(!/undefined|NaN/.test(out), `未定義参照が混ざっている: ${out.match(/.{40}(undefined|NaN).{40}/)?.[0]}`);
@@ -170,7 +170,7 @@ await test('★ 「わたしの凸」一覧も同じ3枠 (予約の行に取り�
     assert.ok(out.includes('運営Aが承認'), '承認者が出ていない');
     assert.ok(/class="claim"/.test(out), '配信の行に引き受けるが無い');
     assert.ok(out.includes('参加可能時間に合う枠がありません'), '空き枠の理由が無い');
-    assert.ok(/openMyResvRequest\(\)/.test(out), '空き枠から申請できない');
+    assert.ok(!/openMyResvRequest\(\)/.test(out) && out.includes('予約は 🔒 予約'), '空き枠に予約の 2 つ目の入口がある / 予約カードへの案内が無い (入口は 🔒 予約カードの 1 つ: 2026-10-29 ボタンの監査)');
     assert.ok(/報告する ▶/.test(out), '現在レベルの配信の行に報告ボタンが無い');
     assert.ok(!/undefined|NaN/.test(out), `未定義参照が混ざっている: ${out.match(/.{40}(undefined|NaN).{40}/)?.[0]}`);
 });

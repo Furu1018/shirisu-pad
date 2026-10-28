@@ -98,7 +98,8 @@ test('前日・未完のみ: 未完の行だけ描画され、名前はエスケ
     assert.ok(!out.includes('<script>'), '名前が生のまま出ている');
     assert.ok(out.includes('&lt;script&gt;x&lt;/script&gt;'), 'エスケープ済みの名前が出ていない');
     assert.ok(!out.includes('完了さん'), '完了の人が「未完のみ」に出ている');
-    assert.ok(/handleOpsMemberNudge\(1\)[^>]*disabled/.test(out), 'Push未購読の催促ボタンが disabled になっていない');
+    // 押せない催促はボタンにしない — 理由の札 (スマホでは title が見えない: 2026-10-29 ボタンの監査)
+    assert.ok(!/handleOpsMemberNudge\(1\)/.test(out) && out.includes('🔕 通知なし'), 'Push未購読の人に押せない催促ボタンを出している / 理由の札が無い');
     assert.ok(!out.includes('handleOpsMemberProxy'), '前日に代理凸ボタンが出ている');
     assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
     assert.ok(el('opsMbSummary').innerHTML.includes('模擬 3属性 (被りなし)'), '前日の集計が出ていない');
@@ -106,7 +107,6 @@ test('前日・未完のみ: 未完の行だけ描画され、名前はエスケ
     assert.equal(el('opsMbFilterTodo').textContent, '未完のみ (1)', '3属性(被りなし)の人は完了扱い');
     assert.equal(el('opsMbFilterAll').textContent, '全員 (4)');
     assert.ok(!out.includes('三属性'), '3属性で完了の人が「未完のみ」に出ている');
-    assert.equal(el('opsMbPhasePre').attrs['aria-pressed'], 'true');
 });
 
 test('前日・全員: 完了の行は ✓ で出る / アバター画像は src がエスケープされる', () => {
@@ -140,7 +140,6 @@ test('当日: 凸 L1 表示・代理バッジ・締め凸未返答・代理凸�
     _mb.rows = dom.buildRows({ players, extras, phase: 'day' });
     _mbPaint('day');
     assert.ok(el('opsMbSummary').innerHTML.includes('3凸 完了'), '当日の集計が出ていない');
-    assert.equal(el('opsMbPhaseDay').attrs['aria-pressed'], 'true');
     assert.ok(!/undefined|NaN/.test(out));
 });
 

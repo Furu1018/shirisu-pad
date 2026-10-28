@@ -1063,7 +1063,7 @@
         body.home-simple #myBattleCard, body.home-simple #myBossBoardCard, body.home-simple #mypageStatusSwitcher, body.home-simple #mypageStatusHint,
         body.home-simple #mypageStatusTiles, body.home-simple #opsOverviewChips { display: none !important; }
         /* ⏰ 参加可能時間の入口は 1 つ (2026-10-28 ふるり「運営側が各メンバーの時間を設定するなら、ホームの設定項目はいらない」):
-           シンプルな画面では 運営モードの人にも ホームの「変更する」と MY設定の行を出さない (自分の時間も 👥 メンバー状況の ⏰ から)。ホームの ⏰ カードは見るだけで残す。
+           シンプルな画面では 運営モードの人にも ホームの「変更する」を出さない (自分の時間も 👥 メンバー状況の ⏰ から・MY設定の行は 2026-10-29 に外した)。ホームの ⏰ カードは見るだけで残す。
            [data-avail-ops-note] = 運営モードでシンプルな画面のときだけの案内。従来の画面 (member_input=full) では今までどおり本人が入力する */
         body.home-simple [data-avail-edit] { display: none !important; }
         [data-avail-ops-note] { display: none; }
@@ -2455,12 +2455,6 @@
             border-left: 3px solid var(--warn-solid)}
         #tourOverlay .tour-tip-emoji { font-size: 14px; flex: none; margin-top: 1px; }
         #tourOverlay .tour-tip-text { font-size: 12.5px; font-weight: 700; color: var(--t-body); line-height: 1.55}
-        #tourOverlay .tour-jump {
-            display: flex; align-items: center; justify-content: center;
-            gap: 7px; margin-top: 13px; padding: 11px 14px;
-            border-radius: 11px; background: rgba(46,160,255,0.04);
-            font-size: 12.5px; font-weight: 900; cursor: pointer;
-        }
         #tourOverlay .tour-buttons {
             padding: 14px 18px calc(env(safe-area-inset-bottom, 8px) + 18px);
             border-top: 1px solid var(--s2);
@@ -2489,42 +2483,6 @@
             background: var(--card); color: var(--t-ink);
             font-size: 13px; font-weight: 700; cursor: pointer}
         .tour-guide-launcher:hover { background: var(--s1)}
-
-        /* インタラクティブ フロー (順番に光る 3 ステップ) */
-        @keyframes tour-flow-cycle {
-            0%   { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
-            25%  { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
-            34%  { background: var(--s1); border-color: rgba(var(--ink-rgb), 0.05); box-shadow: none; transform: scale(1)}
-            100% { background: var(--s1); border-color: rgba(var(--ink-rgb), 0.05); box-shadow: none; transform: scale(1)}
-        }
-        @keyframes tour-flow-num-cycle {
-            0%,25%   { background: var(--fc); color: var(--fc-ink, var(--on-fill)); transform: scale(1.1)}
-            34%,100% { background: var(--line); color: var(--t-muted); transform: scale(1)}
-        }
-        @keyframes tour-flow-arrow { 0%,100% { opacity: .3; transform: translateY(-1px); } 50% { opacity: 1; transform: translateY(1px); } }
-        #tourOverlay .tour-flow { display: flex; flex-direction: column; margin-top: 16px; }
-        #tourOverlay .tour-flow-step {
-            display: flex; align-items: flex-start; gap: 11px;
-            padding: 12px 13px; border-radius: 14px;
-            background: var(--s1); border: 1px solid rgba(var(--ink-rgb), 0.05);
-            animation: tour-flow-cycle 3.9s ease-in-out infinite}
-        #tourOverlay .tour-flow-num {
-            width: 27px; height: 27px; flex: none; border-radius: 50%;
-            background: var(--line); color: var(--t-muted);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12.5px; font-weight: 900;
-            animation: tour-flow-num-cycle 3.9s ease-in-out infinite}
-        #tourOverlay .tour-flow-title { font-size: 13.5px; font-weight: 900; color: var(--t-ink); letter-spacing: 0.2px}
-        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.5; margin-top: 3px}
-        #tourOverlay .tour-flow-arrow {
-            align-self: center; margin: 2px 0; font-size: 12px; line-height: 1;
-            color: var(--fc, var(--t-muted));
-            animation: tour-flow-arrow 1.8s ease-in-out infinite}
-        @media (prefers-reduced-motion: reduce) {
-            #tourOverlay .tour-flow-step,
-            #tourOverlay .tour-flow-num,
-            #tourOverlay .tour-flow-arrow { animation: none; }
-        }
 
         /* 体験デモ (実UIのモックアップを触って学ぶゾーン) */
         @keyframes tour-demo-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -3605,6 +3563,7 @@
         .obb { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 9px 10px 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
         .obb.on { border-color: var(--ops); box-shadow: 0 0 0 3px var(--ops-bg); }
         .obb.past { opacity: .5; cursor: default; }
+        .obb.nodec { cursor: default; }   /* 決まっていないブロック (📅 / ✓ 凸の記録): 押せない札 (2026-10-29 ボタンの監査) */
         .obb .nm { font-size: 14px; font-weight: 900; } .obb .hr { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
         .obb .lv { font-size: 11px; font-weight: 900; color: var(--ops); } .obb .lv.done { color: var(--ok); } .obb .lv.idle { color: var(--t-muted); }
         .obb .ct { font-size: 10.5px; font-weight: 800; color: var(--t-body); }
@@ -3695,6 +3654,8 @@
         .ob-decide-btn:disabled { opacity: .45; cursor: default; }
         .ob-decide-st { font-size: 12px; color: var(--t-sub, var(--t-ink)); min-width: 0; overflow-wrap: anywhere; }
         .ob-skip button { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+        body.home-simple #opsPlanLegacy { display: none !important; }
+        body.home-simple .full-only-note { display: none; }   /* 従来の画面 (member_input=full) だけに出す添え書き */   /* シンプルな画面: 組む → ✅ 決定 だけ (従来の算出・配信は従来の画面で・2026-10-29 ボタンの監査) */
         .ob-legacy { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; } .ob-legacy > summary { cursor: pointer; font-size: 12px; font-weight: 800; color: var(--t-muted); padding: 4px 0; }
         /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
         /* 📅 レイド予定表 (S5)。色はトークンだけ (時間割の .mt-* と模擬表の .mk-* を使い回す) */
@@ -3723,7 +3684,7 @@
         .mk-tbl th, .mk-tbl td { padding: 4px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
         .mk-tbl th { font-size: 10.5px; font-weight: 800; color: var(--t-muted); line-height: 1.3; }
         .mk-tbl td { font-variant-numeric: tabular-nums; }
-        .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-weight: 900; padding: 2px 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+        .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-weight: 900; padding: 2px 0; }
         .mk-dl { font-size: 10.5px; font-weight: 800; color: var(--t-muted); } .mk-dl.warn { color: var(--warn-deep); }
         .mk-chip { display: inline-block; margin: 1px 2px 1px 0; padding: 2px 7px; border-radius: 8px; border: 2px solid transparent; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; cursor: pointer; }
         .mk-chip small { font-size: 9.5px; font-weight: 700; color: var(--t-muted); margin-left: 1px; }
@@ -4343,8 +4304,6 @@
                             <div id="mypageStrongAttrsDisplay" style="display:flex;gap:7px;"></div>
                         </div>
                     </div>
-                    <!-- top-right 編集 pill (player select) -->
-                    <div onclick="openPlayerSelectModal()" title="プレイヤー変更" style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:4px;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;cursor:pointer;"><span data-sp-icon="user" data-sp-size="12"></span> 切替</div>
                 </div>
                 <!-- ステータス切替 3ボタン (soft-fill) -->
                 <div id="mypageStatusSwitcher" style="display:flex;gap:8px;margin-top:18px;">
@@ -4532,25 +4491,9 @@
             <!-- ⑤ MY設定 (リスト行スタイル) -->
             <div class="dc-card" data-span="6" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
-                <div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input data-avail-edit>
-                    <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
-                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">ユニオンレイド参加可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸検索に使う)</span></div>
-                    <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
-                    <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
-                </div>
                 <div onclick="openMyPushModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="bell" data-sp-size="17"></div>
                     <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">Push通知設定</div>
-                    <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
-                </div>
-                <div onclick="openMyStrongAttrsModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon" data-sp-icon="sword" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">得意属性</div>
-                    <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
-                </div>
-                <div onclick="openAvatarEditModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon" data-sp-icon="image" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">アバターを変更</div>
                     <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
                 </div>
             </div>
@@ -4560,6 +4503,7 @@
             <div id="mypageCoordSelf" style="display:none;"></div>
             <div id="mypageCoordActiveList" style="display:none;"></div>
             <div id="mypageStrongAttrs" style="display:none;"></div>
+            <div hidden><span id="myAvailConfirmBadge" style="display:none;"></span></div>   <!-- ⏰ 確認のバッジの元の値 (写しは ⏰ カードの #myAvailStripBadge・MY設定の行は 2026-10-29 に外した) -->
             <p id="mypageStrongAttrsMessage" style="display:none;"></p>
 
             <!-- OCR 提出後プレビュー (ボトムシート) -->
@@ -4676,9 +4620,6 @@
                     <div id="opsPageTitle" style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">戦況</div>
                     <div style="font-size:11px;color:var(--t-muted);margin-top:3px;letter-spacing:0.2px;">アクティブ: <strong id="opsSeasonLabel" style="font-weight:800;color:var(--t-ink);">読み込み中...</strong></div>
                 </div>
-                <div onclick="reloadOpsDashboard()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
-                    <span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
-                </div>
             </div>
 
             <!-- テストシーズンバナー (細ピル, JS で中身を描画) -->
@@ -4718,7 +4659,7 @@
             <!-- 締め凸候補検索 -->
             <div class="dc-card">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:8px;">締め凸検索</div>
-                <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);">ボス状況カードの「PT属性 締め凸」ボタンから対象ボスを選ぶと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
+                <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);">ボス状況の各ボスの「締め凸検索」を押すと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
                     <p style="color:var(--t-muted);font-size:12px;">ボス状況カードから対象ボスをタップしてください。</p>
@@ -4806,7 +4747,6 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">✓ 凸の記録</div>
                     <span id="opsAtkTapCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
-                    <button onclick="renderOpsAttackTap(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと「未完了」が「✓ 完了」になります。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し。
@@ -4818,7 +4758,6 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📥 結果の取り込み</div>
                     <span id="opsAtkCheckCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
-                    <button onclick="renderOpsAttackCheck(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord に貼られた<strong>凸の結果のスクショ</strong>を取り込んで、本人の代わりに凸を登録します。使った編成はその人の模擬から選びます (PC はこのカードに落とすだけ)。取り込んだ凸は ✓ 確認済みになります。下の一覧の右端の「確認する」は、運営がその凸を確かめた印です (本人が自分で付けた ✓ や報告に出ます)。✓ 凸の記録で付けた凸は、もう確認済みです。
@@ -4859,7 +4798,6 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📸 模擬の取り込み</div>
                     <span id="opsMockIntakeCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
-                    <button onclick="renderOpsMockIntake(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord に貼られた<strong>模擬戦のスクショ</strong>を、本人の代わりに登録します。読み取った属性・ダメージ・5 キャラは保存前に直せます (PC はこのカードに落とすだけ)。
@@ -4868,10 +4806,8 @@
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の模擬か
                         <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
                     </label>
-                    <button type="button" onclick="openOpsAvailModalFromIntake()" title="選んだ人の参加可能時間と凸数を登録する (Discord の報告を写す)" style="flex:none;padding:7px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-family:inherit;font-size:12px;font-weight:900;cursor:pointer;">⏰ 時間を登録</button>
-                    <button type="button" onclick="_opsMockManual()" title="選んだ人の模擬を 属性・ダメージ (+ 任意でキャラ) で手入力する" style="flex:none;padding:7px 12px;border-radius:9px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">✏️ 手で入力</button>
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
-                        <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
+                        <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onclick="if (_mockIntake.picked == null) { event.preventDefault(); showNotification('先に「誰の模擬か」を選んでください'); }" onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
                         <div class="btn-nikke-inner">
                             <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
                             <span class="btn-nikke-title">📷 スクショを選ぶ</span>
@@ -4892,12 +4828,7 @@
             <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 メンバー状況</div>
-                    <div class="dc-mb-seg" role="group" aria-label="フェーズ">
-                        <button id="opsMbPhasePre" aria-pressed="false" onclick="handleOpsMemberPhase('pre')">前日</button>
-                        <button id="opsMbPhaseDay" aria-pressed="false" onclick="handleOpsMemberPhase('day')">当日</button>
-                    </div>
                     <span id="opsMbUpdated" style="font-size:10.5px;color:var(--t-muted);"></span>
-                    <button onclick="renderOpsMemberStatus(null, true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--card);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">↻ 更新</button>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
                     <button class="dc-mb-pill" id="opsMbFilterTodo" aria-pressed="true" onclick="handleOpsMemberFilter('todo')">未完のみ</button>
@@ -4917,7 +4848,6 @@
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 凸の予約</div>
                     <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
                     <button type="button" data-resv-ui onclick="openOpsResvCreate()" title="Discord で伝えられた凸先の希望を、本人の代わりに予約として登録する (🗣 9b)" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">＋ 予約を登録</button>
-                    <button onclick="renderOpsReservations(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p data-resv-hidden-only style="margin:0 0 10px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.12);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⚠ いまは予約の画面を隠しています (希望は Discord → 🧱 組む で 📌)。前から残っている予約が下にあります — 自動で組むときの拘束になるので、要らなければ「取り下げる」で片付けてください。新しい予約は作れません。</p>
                 <p data-resv-ui style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。 🗣 Discord で伝えられた希望は <strong>＋ 予約を登録</strong> で運営が本人の代わりに登録できます (登録した時点で予約・本人に通知)。</p>
@@ -4931,6 +4861,9 @@
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">凸プランを組む</div>
                 </div>
                 <div id="opsBuild" class="ob" data-ops-only><p class="ob-note">運営ONで読み込みます…</p></div>
+                <div style="display:flex;justify-content:flex-end;margin:10px 0 0 0;">
+                    <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
+                </div>
                 <details id="opsPlanLegacy" class="ob-legacy"><summary>従来の算出・配信 (詳しく)</summary>
                 <!-- 最適凸プラン (パズル盤 ①・2026-09-11: 条件を選んで → 算出。判定は js/domain/planBoard.js) — 2026-10-26 から「凸プランを組む」の下に畳んで残す -->
                 <!-- 最終配信の状況 (L5 運営ガード・2026-09-07)。運営3人が別々に組み直していた第44回は、
@@ -4938,9 +4871,6 @@
                 <!-- 🧱 段階 6 ③ 1 ブロックの手順 (引き継ぎ用・_renderOpsBlockSteps が描く): HP → 結果の取り込み → 組む → 配信 → 締凸検索 -->
                 <div id="opsBlockSteps" class="bs" data-ops-only style="display:none;"></div>
                 <div id="opsPlanPubStatus" data-ops-only style="display:none;margin:0 0 6px 0;padding:8px 11px;border-radius:10px;font-size:11px;font-weight:800;line-height:1.55;"></div>
-                <div style="display:flex;justify-content:flex-end;margin:0 0 10px 0;">
-                    <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
-                </div>
                 <!-- きっかけ: 前回の算出のあとに模擬が更新された / 締め凸コンソールの手詰まり (renderOpsPlanCue が描く) -->
                 <!-- 片付け (🧱 段階 4): 結果がまだの凸があれば、次のブロックを組む前に取り込みへ (_renderOpsPlanTidy が描く・止めはしない) -->
                 <div id="opsPlanTidy" class="plan-cue" style="display:none;"></div>
@@ -4999,6 +4929,7 @@
                     </div>
                 </div>
                 <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:13px;background:linear-gradient(180deg,var(--t-ink),var(--t-ink));color:var(--card);font-size:15px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
+                <button type="button" onclick="openOpsPushCheckModal()" title="確認の通知を全員に送り、届いた人がタップすると記録されます (レイドの 2 日前から)" style="margin-top:8px;width:100%;height:40px;border-radius:12px;border:none;background:var(--s2);color:var(--t-ink);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">🔔 通知の疎通確認 (届くか確かめる)</button>
             </div>
 
             <!-- シーズン制御 -->
@@ -5009,14 +4940,14 @@
                 <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:var(--t-ink);color:var(--card);"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
-                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 予約テスト (序盤)</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 テスト (序盤・凸ゼロ)</button>
                     <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-testlink" data-stage="prep">🧪 クイックテスト (中盤)</button>
                     <button onclick="handleOpsTestFromActive('pre')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (前日から)</button>
                     <button onclick="handleOpsTestFromActive('day')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (当日)</button>
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、予約→承認→配信→結果の取り込みの1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
+                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>テスト (序盤・凸ゼロ)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 の 1 周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
             </div>
 
             <!-- 🧬 育成データの取り込み (43 / 運営ON・段階「終了」のみ)。純ロジックは js/domain/growth.js -->
@@ -5024,7 +4955,6 @@
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🧬 育成データの取り込み</div>
                     <span id="opsGrowthCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
-                    <button onclick="renderOpsGrowth(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     今回のレイドで<strong>実際に使われたキャラ</strong>だけ、BlaBlaLINK から育成状況を取り込みます。
@@ -5036,7 +4966,7 @@
             <!-- 📣 Discord 告知テンプレ (運営用) -->
             <div class="dc-card" data-ops-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">📣 Discord 用の文面</div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">メンバー向けの「前日まで/前日/当日にやること」案内と、凸プランのロジック解説。コピーしてDiscordに貼るだけ (模擬デーの日付などは適宜書き換えてください)。</p>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">メンバー向けの「前日まで/前日/当日にやること」案内と、凸プランのロジック解説。コピーしてDiscordに貼るだけ。<span class="full-only-note">※ シンプルな画面 (メンバーの PAD 入力なし) の流れの文面です。</span></p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <button onclick="copyAnnouncementText('main')" class="dc-ops-action">📋 メンバー向け案内</button>
                     <button onclick="copyAnnouncementText('logic')" class="dc-ops-action">📋 プランのロジック解説</button>
@@ -5062,7 +4992,7 @@
 
             <!-- 分析セグメント: 実績 (このタブ) / ふるり値・シミュレータ・GB比較 (tab-slv-ranking のビュー) -->
             <div class="ana-seg ana-seg-fill">
-                <button class="active" type="button"><span class="seg-ico">📊 </span>実績</button>
+                <button class="active" type="button" aria-current="page" tabindex="-1" style="cursor:default;"><span class="seg-ico">📊 </span>実績</button>
                 <button type="button" onclick="_gotoSlvView('review')"><span class="seg-ico">🛡 </span>全体分析</button>
                 <button type="button" onclick="_gotoSlvView('fururi')"><span class="seg-ico">⚡ </span>ふるり値</button>
                 <button type="button" onclick="_gotoSlvView('growth')"><span class="seg-ico">🧬 </span>育成</button>
@@ -5137,10 +5067,8 @@
             </div>
 
             <!-- シーズン切替 -->
-            <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
-                <button id="rankingSeasonPrev" onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
+            <div style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
                 <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
-                <button id="rankingSeasonNext" onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
             </div>
 
             <!-- ③ NIKKE編成 (折り畳み) -->
@@ -5148,7 +5076,7 @@
                 <div onclick="toggleCharactersSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">NIKKE編成</div>
-                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;">属性別のおすすめPT編成と想定ダメージ</div>
+                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;">このシーズンの凸と編成 (実際のダメージ順)</div>
                     </div>
                     <div id="charactersSectionCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
@@ -5206,11 +5134,11 @@
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">分析</div>
-                        <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
+                        <button class="fururi-help-btn" data-slv-view="fururi" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
-                    <div id="fururiPageSubtitle" style="font-size:11px;color:var(--t-muted);margin-top:4px;letter-spacing:0.2px;">SLv補正スコア</div>
+                    <div id="fururiPageSubtitle" data-slv-view="fururi" style="font-size:11px;color:var(--t-muted);margin-top:4px;letter-spacing:0.2px;">SLv補正スコア</div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+                <div data-slv-view="fururi" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
                     <div id="fururiSeasonBadge" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了 · シーズン結果</div>
                     <div style="text-align:right;font-size:10.5px;color:var(--t-muted);line-height:1.5;"><span style="color:var(--t-strong);font-weight:700;">基準:</span> <span id="fururiBaseInfo">読み込み中...</span></div>
                 </div>
@@ -5285,10 +5213,8 @@
             </div>
 
             <!-- シーズン切替 -->
-            <div data-slv-view="fururi" style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
-                <button onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
+            <div data-slv-view="fururi" style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
                 <div id="fururiSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
-                <button onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
             </div>
 
             <!-- ③ シミュレータ (シミュレータビュー — 旧折り畳みから格上げ。既定は非表示、_setSlvView('sim') で表示) -->
@@ -5354,14 +5280,13 @@
             </div>
 
             <div class="dc-card" data-slv-view="sim" hidden>
-                <div id="simulatorSectionHeader" onclick="toggleSimulatorSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                <div id="simulatorSectionHeader" style="display:flex;align-items:center;justify-content:space-between;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;"><span data-sp-icon="flask" data-sp-size="15"></span> シミュレータ</div>
                         <div style="font-size:11px;color:var(--t-muted);margin-top:3px;">育成によるダメージ予測と、想定ダメージのふるり値試算</div>
                     </div>
-                    <div id="simulatorSectionCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
-                <div id="simulatorSectionBody" style="display:none;margin-top:14px;animation:dcFadeIn 0.2s ease;">
+                <div id="simulatorSectionBody" style="margin-top:14px;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
                         <button class="sim-mode-btn active" data-sim-mode="damage" onclick="switchSimMode('damage')">📈 ダメージ予測</button>
                         <button class="sim-mode-btn" data-sim-mode="fururi" onclick="switchSimMode('fururi')"><span data-sp-icon="target" data-sp-size="13"></span> ふるり値試算</button>
@@ -5536,7 +5461,7 @@
                     <a href="#help-finisher">7. 締め凸</a>
                     <a href="#help-fururi">8. ふるり値の見方</a>
                     <a href="#help-plan">9. あなたの凸はこう決まる</a>
-                    <a href="#help-plan-ops">10. 最適凸プラン算出 (運営)</a>
+                    <a href="#help-plan-ops">10. 凸プランを組む (運営)</a>
                     <a href="#help-remaining">11. ✓ 凸の記録 (運営)</a>
                     <a href="#help-finish-call">12. 締め凸検索 (運営)</a>
                     <a href="#help-notify">13. 通知を受け取る</a>
@@ -6071,18 +5996,10 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex:none;">
                     <!-- ops タブと同じ 🛠運営 モードを共有 (body.ops-mode / data-ops-only) -->
-                    <button id="settingsOpsModeBtn" onclick="toggleOpsMode()" title="運営向けの項目 (メンバーの通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) の表示を切り替え" style="padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10px;font-weight:800;letter-spacing:0.3px;cursor:pointer;font-family:inherit;white-space:nowrap;">🛠 運営</button>
-                    <div onclick="renderSettingsTab()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;">
-                        <span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
-                    </div>
+                    <button id="settingsOpsModeBtn" onclick="toggleOpsMode()" title="運営の画面 ⇄ メンバーの見え方 を切り替える (この端末だけ・ホームの切替と同じ)" style="padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10px;font-weight:800;letter-spacing:0.3px;cursor:pointer;font-family:inherit;white-space:nowrap;">🛠 運営</button>
                 </div>
             </div>
 
-            <!-- 運営項目が隠れていることの案内 (OFF のときだけ表示) -->
-            <div data-ops-off-only style="display:flex;align-items:center;gap:7px;padding:9px 12px;margin-bottom:10px;border-radius:11px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);font-size:10.5px;line-height:1.5;color:var(--t-muted);">
-                <span style="flex:none;">🛠</span>
-                <span style="flex:1;">運営向けの項目 (通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) は <strong style="color:var(--t-strong);">運営</strong> をONにすると表示されます</span>
-            </div>
 
             <!-- ⓪ ガイド / チュートリアル (折り畳み, デフォルト開) -->
             <div class="dc-card" data-span="6">
@@ -6105,7 +6022,7 @@
                             <div style="font-size:12px;font-weight:900;color:var(--on-fill);letter-spacing:1.5px;text-shadow:0 1px 4px rgba(0,40,90,0.4);">CHAPTER GUIDE</div>
                         </div>
                         <!-- 下部ラベル -->
-                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">7 CHAPTERS · 6 min</div>
+                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">10 CHAPTERS · 6 min</div>
                         <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:var(--on-fill);font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">▶ 再生</div>
                     </button>
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
@@ -6130,22 +6047,22 @@
                         </button>
                         <button onclick="openHelpFromSettings('help-mypage')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">02</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">ホームとデータ入力</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">ホームの使い方</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-real')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">03</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">本番レイド (凸の流れ・報告)</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">凸したら Discord へ</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">通知・参加可能時間の設定</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">通知を受け取る</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
-                        <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
+                        <button onclick="openHelpFromSettings('help-finisher')" class="dc-guide-row" style="border-bottom:none;">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">05</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">締め凸候補 / ソフトロック</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">締め凸</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                     </div>
@@ -6199,11 +6116,11 @@
             <!-- 復元 (巻き戻し) は全員のデータを戻す最高危険操作なので master 専用。保存 (ダウンロード) は運営の作業なのでメンテナンスに残す (Codex 提案) -->
             <div class="dc-card" data-span="6" data-master-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">復元 (巻き戻し)</div>
-                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">バックアップの JSON から全データを戻します。保存は 運営タブ › その他 › メンテナンス の「バックアップ」から。</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">バックアップの JSON から全データを戻す操作です。保存は 同じ 👑 マスターのタブの「バックアップ」から。</div>
                 <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
                     <div style="font-size:10.5px;font-weight:800;color:var(--bad-deep);margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
                     <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
-                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
+                    <p style="margin:0;font-size:11px;font-weight:800;color:var(--t-body);line-height:1.6;">いまは画面から復元できません。予約の履歴の表 (plan_reservation_events・39) がある DB では、表を消す順の途中で必ず止まるためです (何も消さずに止める安全策は入っています)。戻す必要があるときは SQL Editor で行います (ROADMAP「復元を 1 つのサーバ側の処理に」)。</p>
                 </div>
                 <p id="settingsRestoreMsg" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;text-align:center;"></p>
             </div>
@@ -6352,7 +6269,6 @@
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span data-sp-icon="user" data-sp-size="15"></span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
                         <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span data-sp-icon="trash" data-sp-size="15"></span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
-                        <button onclick="location.reload()" class="dc-danger-btn"><span data-sp-icon="refresh" data-sp-size="15"></span><span style="flex:1;text-align:left;">全データを再読み込み</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
                     </div>
                 </div>
                 <div style="font-size:10px;color:var(--t-muted);margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
@@ -6363,7 +6279,7 @@
                 <div onclick="toggleSettingsBackup()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">バックアップ</div>
-                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">全データの JSON 保存。レイド前後に保存推奨。復元は 設定タブ › 👑 マスター運営 から (ふるり だけ)。</div>
+                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">全データの JSON 保存。レイド前後に保存推奨。復元は 同じ 👑 マスターのタブの「復元 (巻き戻し)」(いまは画面からは使えません)。</div>
                     </div>
                     <div id="settingsBackupCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
@@ -7001,7 +6917,7 @@
                     <h2 id="myTeamEditTitle" style="flex:1;min-width:0;">模擬を提出する</h2>
                     <button onclick="closeMyTeamEditModal()" style="flex:none;padding:6px 12px;border-radius:9px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
                 </div>
-                <p class="subtitle" style="margin:4px 0 8px;">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を提出します。編成は1属性に2つまで。</p>
+                <p class="subtitle" style="margin:4px 0 8px;">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を提出します。編成は1属性に3つまで。</p>
                 <!-- 運営除外 (35): 除外されている提出を開いたときだけ理由を出す -->
                 <div id="myTeamEditExclNote" style="display:none;margin:6px 0 8px;padding:8px 10px;border-radius:10px;background:rgba(255,61,68,0.08);color:var(--bad-deep);font-size:11.5px;font-weight:800;line-height:1.5;"></div>
 
@@ -7045,7 +6961,7 @@
                             <span><i class="sw" style="background:var(--ok-solid);"></i>B1</span>
                             <span><i class="sw" style="background:var(--warn-solid);"></i>B2</span>
                             <span><i class="sw" style="background:var(--bad-solid);"></i>B3</span>
-                            <span><i class="sw" style="background:var(--warn-solid);"></i>もう一方の編成で使用中</span>
+                            <span><i class="sw" style="background:var(--warn-solid);"></i>ほかの編成で使用中</span>
                             <span>％ = 単独での採用率</span>
                         </div>
                         <!-- みんなの編成: よく使われている編成 (ワンタップで入れる) + 人気編成の参考 (統計) を1つに (2026-09-08) -->
@@ -7363,9 +7279,6 @@
                 <h3>📖 このデータの使い方</h3>
                 <p>この指標は「誰かと競うため」ではなく、自分のSLv.に対してどれくらいダメージを出せているかを知り、自分の課題を見つけるために使ってもらえたら嬉しいです。</p>
             </div>
-            <div class="fururi-help-footer">
-                <button onclick="closeFururiHelp()">閉じる</button>
-            </div>
         </div>
     </div>
 
@@ -7568,7 +7481,7 @@
             return `<div class="tour-demo">
                 <div class="tour-demo-tag">🎮 本物の画面を、練習用のデータのまま触れます (本番には残りません)</div>
                 <button type="button" class="tour-guide-launcher" style="width:100%;margin-top:8px;" onclick="startPractice('member', '${d[0]}')">練習モードで「${escapeHtml(d[1])}」をやってみる →</button>
-                <div style="font-size:11px;color:var(--t-muted);margin-top:6px;line-height:1.5;">ツアーはここで閉じ、練習の課題「${escapeHtml(d[1])}」から始まります (その前の課題は済んだ状態)。</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:6px;line-height:1.5;">ツアーはここで閉じ、練習の課題「${escapeHtml(d[1])}」から始まります${d[0] === 'discord' ? ' (メンバー編の最初の課題)' : ' (その前の課題は済んだ状態)'}。</div>
             </div>`;
         }
 
@@ -7626,33 +7539,10 @@
                     <div style="height:5px;background:var(--s2);border-radius:3px;width:78%;"></div>
                 </div>` : '';
 
-            // インタラクティブ フロー (順番に光る 3 ステップ)
-            const flowHtml = (Array.isArray(step.flow) && step.flow.length) ? `
-                <div class="tour-flow">
-                    ${step.flow.map((f, i) => {
-                        const delay = (i * 1.3).toFixed(2);
-                        const stepEl = `
-                            <div class="tour-flow-step" style="--fc:${accent};--fc-ink:${_burstInk(accent)};--fc-on:${accent}14;--fc-sh:${accent}33;animation-delay:${delay}s;">
-                                <div class="tour-flow-num" style="animation-delay:${delay}s;">${i + 1}</div>
-                                <div style="flex:1;min-width:0;">
-                                    <div class="tour-flow-title">${f.title}</div>
-                                    <div class="tour-flow-desc">${f.desc}</div>
-                                </div>
-                            </div>`;
-                        const arrow = i < step.flow.length - 1 ? `<div class="tour-flow-arrow" style="--fc:${accent};">▼</div>` : '';
-                        return stepEl + arrow;
-                    }).join('')}
-                </div>` : '';
-
             const tipHtml = step.tip ? `
                 <div class="tour-tip">
                     <span class="tour-tip-emoji">💡</span>
                     <span class="tour-tip-text">${step.tip}</span>
-                </div>` : '';
-
-            const jumpHtml = step.jumpTo ? `
-                <div class="tour-jump" onclick="_tourJumpAndContinue('${step.jumpTo.tab}')" style="border:1.5px dashed ${accent};color:${accent};">
-                    <span>📍</span><span>${step.jumpTo.label}</span>
                 </div>` : '';
 
             const backHtml = _tourCurrentIdx > 0
@@ -7663,7 +7553,7 @@
             overlay.id = 'tourOverlay';
             overlay.innerHTML = `
                 <div class="tour-topbar">
-                    <button class="tour-skip" onclick="_skipTour()">スキップ</button>
+                    ${isLast ? '<div style="width:50px;"></div>' : '<button class="tour-skip" onclick="_skipTour()">スキップ</button>'}
                     <div class="tour-dots">${dotsHtml}</div>
                     <div style="width:50px;"></div>
                 </div>
@@ -7687,9 +7577,7 @@
                     <div class="tour-body-scroll">
                         <div>${step.body}</div>
                         ${step.demo ? _tourDemoHtml(step.demo) : ''}
-                        ${flowHtml}
                         ${tipHtml}
-                        ${jumpHtml}
                     </div>
                     <div class="tour-buttons">
                         ${backHtml}
@@ -7700,11 +7588,6 @@
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-        }
-        function _tourJumpAndContinue(tabName) {
-            // タブを切り替えてからモーダルを閉じる (ユーザーが実際に画面を見て触れるように)
-            _finishTour();
-            try { switchTab(tabName); } catch { /* noop */ }
         }
         function _nextTourStep() {
             _tourCurrentIdx++;
@@ -7765,6 +7648,11 @@
                 const active = document.querySelector('.tab-content.active');
                 const tabName = active ? active.id.replace('tab-', '') : null;
                 if (tabName) switchTab(tabName);
+                // 運営タブ: カードごとの ↻ をやめたので、ここで手元に持っている一覧 (予約・育成) も取り直す (2026-10-29 ボタンの監査)
+                if (tabName === 'ops' && _opsMode) {
+                    if (typeof renderOpsReservations === 'function') renderOpsReservations(true);
+                    if (typeof renderOpsGrowth === 'function' && document.getElementById('opsSecGrowth')?.offsetParent) renderOpsGrowth(true);
+                }
                 showNotification('🔄 データを再読み込みしました');
             } catch (e) {
                 console.warn('[handleHeaderReload]', e);
@@ -7956,7 +7844,7 @@
                 const chip = v.state === 'now' ? '<span class="mt-chip now">いま</span>' : '';
                 const cls = `obb${on ? ' on' : ''}${v.state === 'past' ? ' was' : ''}`;
                 const head = `<span class="nm">${esc(v.name || '')}${chip}</span><span class="hr">${esc(_obHours(blk))}</span>`;
-                if (!v.decided) return `<button type="button" class="${cls}" ${blkAttr}="${v.idx}" aria-pressed="${on}">${head}<span class="lv idle">${v.state === 'past' ? '—' : 'まだ'}</span></button>`;
+                if (!v.decided) return `<div class="${cls} nodec" aria-disabled="true" title="${v.state === 'past' ? '決定に入っていないブロック' : 'まだ決まっていません (運営が組んで決定します)'}">${head}<span class="lv idle">${v.state === 'past' ? '—' : 'まだ'}</span></div>`;
                 const ct = ops ? `完了 ${v.doneN} / ${v.entries.length}` : `${v.entries.length} 凸${v.mineN ? ` · ★ ${v.mineN}` : ''}`;
                 const minis = v.rows.map(r => {
                     // 始まりで倒れているボス (0B) は満タンの帯 (組むと同じ: 盤のレビュー BD-3)
@@ -7974,8 +7862,10 @@
                 const style = `--tag-c:${fill};--tag-ink:${ink};`;
                 if (!ops) return `<span class="${cls}" style="${style}">${label}</span>`;
                 const t = e.done && tapRow ? tapRow.get(e.planKey) : null;
+                // 数字で報告済み (📥 結果の取り込み) の凸は ✓ の札で取り消せない → 押せない札にして「📥 報告済み」と書く (2026-10-29 ボタンの監査)
+                if (e.done && !(t && t.id != null)) return `<span class="${cls}" style="${style}" title="数字で報告済み (直すのは 📥 結果の取り込み › 登録された凸)">${label.replace('<b class="db-st">✓ 完了</b>', '<b class="db-st">📥 報告済み</b>')}</span>`;
                 const act = !e.done ? `data-tap-done="${esc(e.planKey)}"${frozen || (busy && busy.has(e.planKey)) ? ' disabled' : ''}`
-                    : (t && t.id != null ? `data-tap-undo="${Number(t.id)}" data-plan-key="${esc(e.planKey)}"${frozen ? ' disabled' : ''}` : 'data-tap-num="1"');
+                    : `data-tap-undo="${Number(t.id)}" data-plan-key="${esc(e.planKey)}"${frozen ? ' disabled' : ''}`;
                 return `<button type="button" class="${cls}" style="${style}" ${act}>${label}</button>`;
             };
             const v = view.find(x => x.idx === sel) || null;
@@ -8004,7 +7894,7 @@
                 // 盤の行に載らない凸 (ブロックの途中でレベルが上がる前の凸・Lv4 のボス 1〜4): 札だけ別に (✓ の取り消しもここから: 盤のレビュー BD-2)
                 const others = (v.others || []).length
                     ? `<div class="db-others"><p class="ob-note">この盤に載らない凸 (このブロックで前のレベルに入った凸)</p><div class="db-tags">${v.others.map(e => tagOf({ ...e, others: `Lv${Number(e.level) >= 4 ? 4 : Number(e.level) || 1} B${Number(e.bossNumber)}` })).join('')}</div></div>` : '';
-                const legend = ops ? '「未完了」の札を押すと「✓ 完了」(数字は入れません)・「✓ 完了」の札をもう一度押すと取り消し。帯の幅 = ダメージ (決定したときの見積もり)'
+                const legend = ops ? '「未完了」の札を押すと「✓ 完了」(数字は入れません)・「✓ 完了」の札をもう一度押すと取り消し・「📥 報告済み」= 数字で報告済み (直すのは 📥 結果の取り込み)。帯の幅 = ダメージ (決定したときの見積もり)'
                     : (doneKnown ? '★ と太い枠 = あなたの凸・「✓ 完了」= 凸が済んだ (運営が ✓ を付けたか、結果を登録した)・「未完了」= まだ。帯の幅 = ダメージ (決定したときの見積もり)'
                         : '★ と太い枠 = あなたの凸。帯の幅 = ダメージ (決定したときの見積もり)。<b>完了 / 未完了 を読めませんでした</b> (下に引いて更新してください)');
                 const allDone = v.entries.length > 0 && v.doneN === v.entries.length;
@@ -8108,7 +7998,7 @@
                 sBody.innerHTML = '<p class="rt-note">配信を読めませんでした。通信を確かめてから、下に引いて更新してください。</p>';
             } else if (unreadable) {
                 sBody.innerHTML = '<p class="rt-note" style="color:var(--bad-deep);">アプリが古いため、いまの配信を正しく表示できません。ページを再読み込みしてください。</p>'
-                    + '<button type="button" class="rt-ack" onclick="location.href=\'./?u=\'+Date.now()">更新する</button>';
+                    + _gateReloadHtml('<button type="button" class="rt-ack" onclick="_reloadFresh()">更新する</button>');
             } else if (!decRow) {
                 sBody.innerHTML = top
                     ? '<p class="rt-note">いまの配信は従来の形です。ホームの「配信された凸プラン」で確認してください。</p>'
@@ -8670,10 +8560,13 @@
             const lite = typeof _memberLite === 'function' && _memberLite();
             const liteNote = lite ? ' 模擬は Discord にスクショを貼ってください。運営が PAD に登録します。' : '';
             const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 運営モードでも模擬タブは隠れる → 📸 模擬の取り込みへ (2026-10-22)
-            const mockCta = (label, soft = false) => lite
+            // ★ ボタンを出すのは足りないときだけ (soft = そろっている: 押しても下のナビの「模擬」と同じ所へ行くだけ — 2026-10-29 ボタンの監査)。
+            //   模擬タブが隠れている運営は 👥 メンバー › 📸 模擬の取り込み を「自分」を選んだ状態で開く (以前は「(戦況タブ) で登録する」に固定・人を選び直す必要があった)
+            const _MOCK_TAB_GO = "switchTab('mock')";
+            const mockCta = (label, soft = false) => (lite || soft)
                 ? ''   // 模擬は Discord に貼る (liteNote が言う)。関係のないボタンを出さない (Codex 全体監査 A 2026-10-23)
-                : mockHidden ? (soft ? softBtn : heroBtn)('_gotoOpsMockIntake()', '📸 模擬の取り込み (戦況タブ) で登録する')
-                : (soft ? softBtn : heroBtn)("switchTab('mock')", label);
+                : mockHidden ? heroBtn('_gotoOpsMockIntake(true)', '📸 自分の模擬を登録する (👥 メンバー › 模擬の取り込み)')
+                : heroBtn(_MOCK_TAB_GO, label);   // 模擬タブへ行く導線はこの 1 か所 (テストが直書きを見張る)
             const maxPick = _maxDisjointSquads(squads);
             const canForm3 = maxPick >= 3;
             const lack = 3 - maxPick;   // 3凸に足りない部隊数
@@ -8746,7 +8639,7 @@
                     // A2: 全凸消化
                     lead = '✅ 3凸おつかれさまでした!';
                     why = 'きょうの凸はすべて消化済みです。結果はレイド終了後の集計で分析タブに反映されます。';
-                    cta = lite ? '' : softBtn("switchTab('ops')", '👀 戦況を見る');   // 段階 2.5: メンバー (lite) の戦況タブはなくした (Codex指摘 9e81574)
+                    cta = '';   // 「👀 戦況を見る」は下のナビの「運営」と同じ所へ行くだけ (2026-10-29 ボタンの監査)。メンバー (lite) の戦況タブは段階 2.5 でなくした
                 } else {
                     // A1: 残凸あり
                     hero = true;
@@ -8765,9 +8658,7 @@
                         cta = heroBtn('_heroGotoBattle()', '⚔️ 戦闘に入る');
                     }
                     // 運営の用事は本人の凸を隠さずサブリンクで (当日は自分の凸が先)
-                    subLink = opsNotice
-                        ? heroSub(opsNotice.onclick, `${opsNotice.lead} →`)
-                        : (lite ? '' : heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)'));
+                    subLink = opsNotice ? heroSub(opsNotice.onclick, `${opsNotice.lead} →`) : '';   // 「👀 戦況を見る」はナビと同じ・シンプルな画面には交戦状況も無い (2026-10-29 ボタンの監査)
                 }
             } else if (opsNotice) {
                 // 当日以外 (前日・準備期間) は運営の用事が最優先の1アクション
@@ -8808,7 +8699,7 @@
                     // S2: 戦闘可能時間 未登録
                     hero = true;
                     lead = lite ? '⏰ 出られるブロックを Discord で運営に伝えてください' : '⏰ 参加可能時間を教えてください';
-                    why = lite ? 'Discord に「朝 1・夜 2」のように、出られるブロック (と凸数・凸先の希望) を書いてください。運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。' : 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。読めない人は「⏳隙間時間型」を選べばOK。';
+                    why = lite ? 'Discord に「朝 1・夜 2」のように、出られるブロック (と凸数・凸先の希望) を書いてください。運営が PAD に登録すると、ホームの「⏰ ユニオンレイド参加可能時間」に出ます。' : 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。';
                     // 🗣 9c: lite では PAD に入力しない (Discord → 運営が登録)。シンプルな画面の運営は、入口を 1 つに (👥 メンバー状況の ⏰ と同じシート・2026-10-28)
                     cta = lite ? '' : (_homeSimple() ? heroBtn('_heroOpenMyOpsAvail()', '⏰ 自分の参加可能時間を登録する') : heroBtn('openMyAvailModal()', '⏰ 参加可能時間を登録する'));
                 } else if (season && season.hard_date === tomorrowStr) {
@@ -8830,7 +8721,7 @@
                     // D: シーズンなし
                     lead = '📊 シーズンはお休み中';
                     why = '前回の結果は分析タブで見られます。実績・ふるり値・編成分析でユニオンの振り返りをどうぞ。';
-                    cta = softBtn("switchTab('ranking')", '📈 分析タブへ');
+                    cta = '';   // 「📈 分析タブへ」はナビの「分析」と同じ (2026-10-29 ボタンの監査)
                 }
             }
             card.style.display = '';
@@ -8913,12 +8804,20 @@
                 }
                 const canAsk = Array.isArray(_myResvRows);   // 39未適用なら申請の導線は出さない
                 const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden();   // 模擬タブが隠れていれば 📸 模擬の取り込みへ (Codex指摘 2026-10-22)
-                return `
-                <button type="button" onclick="${canAsk ? 'openMyResvRequest()' : (mockHidden ? '_gotoOpsMockIntake()' : "switchTab('mock')")}" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
+                // ★ 予約の入口は 🔒 予約カードの「枠を予約する」1 つ・模擬タブはナビにある (どちらも同じ所へ行くボタンを 2 つ目にしない — 2026-10-29 ボタンの監査)。
+                //   ボタンにするのは、模擬タブが隠れている運営が自分の模擬を登録するときだけ (ナビに無い行き先)
+                if (!canAsk && mockHidden) return `
+                <button type="button" onclick="_gotoOpsMockIntake(true)" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
                     <div class="dc-plan-empty-title">空き枠 ${i + 1}</div>
                     <div class="dc-plan-empty-why">${esc(slot.text || '')}</div>
-                    <div class="dc-plan-empty-cta">${canAsk ? '＋ 枠を予約する' : (mockHidden ? '📸 模擬の取り込み' : '📸 模擬を見る')}</div>
+                    <div class="dc-plan-empty-cta">📸 自分の模擬を登録する</div>
                 </button>`;
+                return `
+                <div class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
+                    <div class="dc-plan-empty-title">空き枠 ${i + 1}</div>
+                    <div class="dc-plan-empty-why">${esc(slot.text || '')}</div>
+                    <div class="dc-plan-empty-cta">${canAsk ? '予約は 🔒 予約 のカードから' : '模擬は 模擬 のタブで提出'}</div>
+                </div>`;
             }
             if (slot.kind === 'done') {
                 return `
@@ -10176,8 +10075,8 @@
                 <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>
-                <p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>
-                <p data-avail-ops-note style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。運営の自分の時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録します。</p>`;
+                ${set.size > 0 ? '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>' : ''}
+                <p data-avail-ops-note style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">${set.size > 0 ? '登録されている時間です。' : ''}運営の自分の時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録・変更します。</p>`;
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
@@ -10356,7 +10255,7 @@
             const restHtml = rest.length ? `<p class="mt-none">まだ決まっていない: ${esc(rest.join('・'))} (運営が組んで決定します)</p>` : '';
             body.innerHTML = html + empty + restHtml
                 + '<p class="mt-foot">凸したら、結果の画面のスクショを Discord へ。✓ は運営が付けます (数字は入れません)。ボスの残り HP は運営が BlaBlaLINK の画像で合わせます</p>'
-                + `<button type="button" class="rt-ack" style="margin-top:8px;" onclick="switchTab('raid')">📅 レイド予定表を見る (全員の凸・みんなの模擬)</button>`;
+                + '<p class="mt-foot">全員の凸とみんなの模擬は、下のメニューの「📅 レイド予定表」で見られます。</p>';   // ナビと同じ所へ行くだけのボタンは置かない (2026-10-29 ボタンの監査)
             if (meta) meta.textContent = `完了 ${myDone} / ${myAll} · きょう ${rows.length} / 3 凸`;   // 言い方を 完了 にそろえる (2026-10-28 見落とし点検 DL-6)
         }
 
@@ -10414,7 +10313,7 @@
                         + '<div style="font-size:12.5px;font-weight:900;color:var(--bad-deep);">凸プランを表示できません</div>'
                         + '<div style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:4px;color:var(--t-body);">'
                         + 'アプリが古いため、いまの配信を正しく表示できません。ページを再読み込みしてください。</div>'
-                        + '<button onclick="location.href=\'./?u=\'+Date.now()" style="margin-top:10px;border:none;border-radius:999px;padding:10px 16px;font-family:inherit;font-size:12px;font-weight:900;color:var(--card);background:var(--t-ink);cursor:pointer;">更新する</button></div>';
+                        + _gateReloadHtml('<button onclick="_reloadFresh()" style="margin-top:10px;border:none;border-radius:999px;padding:10px 16px;font-family:inherit;font-size:12px;font-weight:900;color:var(--card);background:var(--t-ink);cursor:pointer;">更新する</button>') + '</div>';
                 }
                 return;
             }
@@ -10672,7 +10571,7 @@
                 ${resvStaleBanner}${frozenBanner}${changeBanner}
                 ${chips}${chainLine}${scopeLine}${condLine}
                 ${updatedBanner}
-                ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:var(--warn-deep);">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
+                ${stale && !_myPubState.decidedCurrent ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:var(--warn-deep);">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 ${tabs}
                 ${inner}
                 ${ackBtn}`;
@@ -11291,7 +11190,7 @@
                             <div style="font-size:12px;font-weight:900;color:var(--t-body);">空き枠 ${i + 1}</div>
                             <div style="margin-top:3px;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">${esc(a.text || '')}</div>
                         </div>
-                        ${canAsk ? '<button type="button" onclick="openMyResvRequest()" style="flex:none;border:1.5px solid var(--ops-solid);border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:var(--ops);background:var(--card);cursor:pointer;">予約する</button>' : ''}
+                        ${canAsk ? '<span style="flex:none;font-size:10px;font-weight:800;color:var(--t-muted);">予約は 🔒 予約 から</span>' : ''}
                     </div>`;
                 }
                 if (a.kind === 'done') {
@@ -11893,11 +11792,6 @@
             _availUI.countsPending = true;
             renderMyAvailabilitySettings({ id: p.id, name: p.name });
             _loadMyAvailConfirm(p.id);
-        }
-        function openOpsAvailModalFromIntake() {
-            const pid = _mockIntake.picked;
-            if (!pid) { showNotification('先に「誰の模擬か」で人を選んでください'); return; }
-            openOpsAvailModal(pid);
         }
         function _renderAvailForWho() {
             const el = document.getElementById('myAvailForWho');
@@ -12508,9 +12402,11 @@
         async function handleMyTeamEditDeleteCurrent() {
             return _deleteMyTeamEditSlot(MY_TEAM_SLOTS.includes(_myTeamEditSlot) ? _myTeamEditSlot : 1);
         }
+        let _myTeamEditHasRow = false;   // 開いている編成に提出の行があるか (handleMyTeamEdit が決める)
         async function _deleteMyTeamEditSlot(slot) {
             const id = getCurrentIdentity();
             if (!id?.id || !_myTeamEditAttr) return;
+            if (!_myTeamEditHasRow) { showNotification('この編成はまだ提出されていません'); return; }
             const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
             // 🔒 予約中の編成は消させない (削除すると約束と食い違う — ユーザー要望 2026-09-08)。
             //   ★ 画面の地図 (_myMockResv) は別のプレイヤーのものかもしれない (切替直後の再描画前 — Codex指摘) ので、
@@ -12687,6 +12583,9 @@
             }
             _renderTeamEditSlotTabs(existingSlots, allRows);
             _renderTeamEditLevel();
+            // 「削除」は提出のある編成だけ (未提出の編成で押すと、無い行を消して「削除しました」と言っていた — 2026-10-29 ボタンの監査)
+            _myTeamEditHasRow = !isNew;
+            document.querySelectorAll('#myTeamEditModal .te-dellink').forEach(el => { el.style.display = isNew ? 'none' : ''; });
             // 運営除外 (35): 理由を見せ、保存し直しで解除されることを案内
             const exclNote = document.getElementById('myTeamEditExclNote');
             if (exclNote) {
@@ -12838,7 +12737,7 @@
             try {
                 await Promise.all([_loadTeamSubs(true), _loadMockRadarBase()]);
                 if (_myTeamEditAttr !== attrKey) return;   // モーダルが別属性に切り替わっていたら破棄
-                popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:var(--t-ink);margin-bottom:7px;">📚 みんなの${ptName}PT編成 (統計)</div>` + _popularTeamsHtml(attrKey, { copyable: true });
+                popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:var(--t-ink);margin-bottom:7px;">📚 みんなの${ptName}PT編成 (統計)</div>` + _popularTeamsHtml(attrKey, { copyable: true, skipTop: true });   // 人気PT は上の「★ みんなの編成」(使う) と同じ — 2 回並べない (2026-10-29 ボタンの監査)
                 _tePopularLoadedFor = attrKey;
             } catch (e) {
                 popEl.innerHTML = `<p style="margin:0;font-size:11.5px;color:var(--attr-fire);">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
@@ -13156,7 +13055,7 @@
                 //   (キャラ名は OCR 由来の外部入力)。data 属性 + 委譲リスナーで受ける
                 return `<button type="button" class="te-tile${isUsed ? ' used' : ''}${isDup ? ' dup' : ''}"`
                     + ` data-te-pick="${escapeHtml(nm)}"`
-                    + ` title="${escapeHtml(nm)}${isDup ? ' — もう一方の編成で使用中' : ''}${pct ? ` — 単独の採用率 ${pct}%` : ''}">`
+                    + ` title="${escapeHtml(nm)}${isDup ? ' — ほかの編成で使用中' : ''}${pct ? ` — 単独の採用率 ${pct}%` : ''}">`
                     + `<span class="te-thumb">${img}${_teBand(c, pct)}`
                     + `${isDup ? '<span class="te-dup">!</span>' : ''}</span>`
                     + `<span class="te-cap">${escapeHtml(nm)}</span></button>`;
@@ -13414,9 +13313,9 @@
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
 
             return `
-                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:var(--t-muted);margin-bottom:6px;">人気PT TOP${st.topTeams.length}（今期の模擬+過去シーズンの凸から · 5人の組み合わせで集計/並び順不問）</div>
+                ${opts.skipTop ? '' : `<div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:var(--t-muted);margin-bottom:6px;">人気PT TOP${st.topTeams.length}（今期の模擬+過去シーズンの凸から · 5人の組み合わせで集計/並び順不問）</div>
                 ${topHtml}
-                ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:var(--t-muted);">まだ同じPTを使っている人はいません（各1人）。</p>' : ''}
+                ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:var(--t-muted);">まだ同じPTを使っている人はいません（各1人）。</p>' : ''}`}
                 ${dmgHtml}
                 ${fururiHtml}
                 ${fururiNote}`;
@@ -15834,11 +15733,10 @@
             if (sub && sub.supported && sub.subscribed) {
                 card.innerHTML = head('🔔 確認の通知は届きましたか？')
                     + note('レイドの前に、通知がちゃんと届くかを運営が確かめています。「通知の確認」という通知が届いていたら、下のボタンで伝えてください。')
-                    + `<div style="display:flex;gap:8px;flex-wrap:wrap;">${btn("handleMyPushCheckConfirm('button')", '✅ 届きました', true)}${btn('openMyPushModal()', '届いていない', false)}</div>`;
+                    + `<div style="display:flex;gap:8px;flex-wrap:wrap;">${btn("handleMyPushCheckConfirm('button')", '✅ 届きました', true)}${btn('openMyPushModal()', '届いていない (通知の設定を開く)', false)}</div>`;
             } else {
                 card.innerHTML = head('🔔 この端末は通知がまだ有効ではありません')
-                    + note('このままだと、レイド当日の締め凸のお願いやチームの状況が届きません。iPhone は先に「ホーム画面に追加」でアプリにしてから、通知を有効にしてください。')
-                    + `<div style="display:flex;gap:8px;flex-wrap:wrap;">${btn('openMyPushModal()', '🔔 通知を設定する', true)}</div>`;
+                    + note('このままだと、レイド当日の締め凸のお願いやチームの状況が届きません。iPhone は先に「ホーム画面に追加」でアプリにしてから、下の MY設定の「Push通知設定」で通知を有効にしてください。');   // ボタンはヒーロー / MY設定と同じになるので置かない (2026-10-29 ボタンの監査)
             }
             card.style.display = '';
         }
@@ -17847,15 +17745,6 @@
         }
 
         // 分析·ふるり値 (tab-slv-ranking): シミュレータ 折り畳み
-        function toggleSimulatorSection() {
-            const body = document.getElementById('simulatorSectionBody');
-            const caret = document.getElementById('simulatorSectionCaret');
-            if (!body) return;
-            const open = body.style.display !== 'none';
-            body.style.display = open ? 'none' : 'block';
-            if (caret) caret.textContent = open ? '▼' : '▲';
-        }
-
         // ===== 分析タブ (tab-slv-ranking) のビュー切替: ふるり値 ⇄ シミュレータ =====
         // シミュレータが折りたたみに埋もれて見つけにくかった実機フィードバックへの対応。
         // data-slv-view 付き要素の表示を切り替えるだけ — 描画・PTR経路 (renderFururiRanking) は
@@ -17874,15 +17763,6 @@
             document.querySelectorAll('#tab-slv-ranking .ana-seg button[data-view]').forEach(b => {
                 b.classList.toggle('active', b.dataset.view === _slvView);
             });
-            if (_slvView === 'sim') {
-                // ビューに格上げしたので折りたたみは常時展開・ヘッダーは畳めなくする
-                const body = document.getElementById('simulatorSectionBody');
-                const caret = document.getElementById('simulatorSectionCaret');
-                const header = document.getElementById('simulatorSectionHeader');
-                if (body) body.style.display = 'block';
-                if (caret) caret.style.display = 'none';
-                if (header) { header.style.pointerEvents = 'none'; header.style.cursor = 'default'; }
-            }
             window.scrollTo(0, 0);
         }
         // 実績タブ (tab-ranking) のセグメントから: タブ遷移 + ビュー指定を1タップで
@@ -18952,13 +18832,6 @@
         // 保存後に戻る先 (このカード) だけ。純ロジック (届いていない人・期限ブロック) は js/domain/mockIntake.js
         const _mockIntake = { gen: 0, picked: null, players: [] };
         function _opsMockIntakePick(v) { _mockIntake.picked = v ? Number(v) : null; }
-        // 届いていない人の名前を押す = その人を選んでスクショを選ぶ
-        function _opsMockIntakePickFromList(id) {
-            _mockIntake.picked = Number(id);
-            const sel = document.getElementById('opsMockIntakePlayer');
-            if (sel) sel.value = String(Number(id));
-            document.getElementById('opsMockIntakeInput')?.click();
-        }
         async function renderOpsMockIntake(force = false) {
             const body = document.getElementById('opsMockIntakeBody'), sel = document.getElementById('opsMockIntakePlayer'), cnt = document.getElementById('opsMockIntakeCounts');
             if (!body || !sel) return;
@@ -19004,7 +18877,7 @@
                     const plus = list.length < MY_TEAM_SLOTS.length ? `<button type="button" class="mk-plus" onclick="_opsMockManual(${Number(r.id)}, '${a}')" title="${escapeHtml(r.name)} の ${escapeHtml(PT_ATTRS.find(x => x.key === a)?.name || a)}PT を手で入力">＋</button>` : '';
                     return `<td style="background:${C[a].bg};">${chips}${b5n}${plus}</td>`;
                 }).join('');
-                return `<tr><td><button type="button" class="mk-name" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として読み取る (スクショを選ぶ)">${escapeHtml(r.name)}</button></td><td class="mk-dl${r.deadline ? ' warn' : ''}">${dl}</td>${cells}</tr>`;
+                return `<tr><td><span class="mk-name">${escapeHtml(r.name)}</span></td><td class="mk-dl${r.deadline ? ' warn' : ''}">${dl}</td>${cells}</tr>`;
             }).join('');
             body.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe><table class="mk-tbl"><thead><tr><th>名前</th><th>〆</th>${head}</tr></thead><tbody>${body2}</tbody></table></div>`;
         }
@@ -19171,7 +19044,6 @@
             const shown = dom.sortRows(_mb.filter === 'all' ? all : all.filter(r => r.todo), _mb.sort);
             // ボタンの状態
             const press = (id, on) => { const el = document.getElementById(id); if (el) el.setAttribute('aria-pressed', on ? 'true' : 'false'); };
-            press('opsMbPhasePre', !isDay); press('opsMbPhaseDay', isDay);
             press('opsMbFilterTodo', _mb.filter === 'todo'); press('opsMbFilterAll', _mb.filter === 'all');
             press('opsMbSortWhy', _mb.sort === 'why'); press('opsMbSortName', _mb.sort === 'name');
             const ft = document.getElementById('opsMbFilterTodo'); if (ft) ft.textContent = `未完のみ (${todoCount})`;
@@ -19182,6 +19054,7 @@
             // 行
             const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || 'var(--ghost)'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
             const strip = (r) => {
+                if (r.availUnavailable) return '<span class="dc-mb-c mute" title="今回は参加が難しいと伝えている人 (候補にも催促にも入れません)">✋ 今回は難しい</span>';
                 if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err" title="時間が未登録の人は最適凸プランの候補にしません (段階 2b)">時間帯 未登録</span>';
                 const on = new Set(r.slots.map(s => parseInt(String(s).slice(1), 10)).filter(Number.isFinite));
                 let cells = '';
@@ -19251,8 +19124,11 @@
                     : r.pushUnknown ? 'Push の購読状況を取得できていません (↻ で取り直し)'
                     : r.push ? 'この人だけに催促Push' : 'Push未購読のため届きません';
                 const timeBtn = `<button class="dc-mb-btn sub" onclick="openOpsAvailModal(${r.id})" title="参加可能時間と凸数を登録する (Discord の報告を写す)">⏰</button>`;   // 🗣 9a
+                // 押せない催促はボタンにしない (理由は title だけでスマホでは見えなかった — 2026-10-29 ボタンの監査)。理由の札にする
+                const nudgeHtml = canNudge ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" title="${escapeHtml(nudgeTitle)}">催促</button>`
+                    : `<span class="dc-mb-c mute" title="${escapeHtml(nudgeTitle)}">${r.availUnavailable ? '催促しない' : r.pushUnknown ? '通知 不明' : '🔕 通知なし'}</span>`;
                 const acts = timeBtn + (r.todo
-                    ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${escapeHtml(nudgeTitle)}">催促</button>` +
+                    ? nudgeHtml +
                       (isDay && r.atkCount < dom.MAX_ATTACKS && !_homeSimple() ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')   // シンプルな画面では 📥 結果の取り込みで登録する
                     : '<span class="dc-mb-c ok">✓</span>');
                 const av = r.avatarUrl
@@ -19339,7 +19215,9 @@
             const pending = rows.filter(r => r.status === 'requested');
             const cancelReq = rows.filter(r => r.status === 'cancel_requested');
             const approved = rows.filter(r => r.status === 'approved');
-            const pins = rows.filter(r => r.status === 'pinned');   // 📌 運営の下書き (パズル盤 ③)
+            const resvHiddenUi = typeof _resvUiHidden === 'function' && _resvUiHidden();
+            // 📌 運営の下書き (パズル盤 ③)。予約を隠したシーズンでは 🧱 組む で置いたブロックの駒は出さない (組む の盤で外す — 外し方が 2 つになっていた: 2026-10-29 ボタンの監査)
+            const pins = rows.filter(r => r.status === 'pinned' && !(resvHiddenUi && r.time_mode === 'block'));
             const done = rows.filter(r => ['fulfilled', 'released', 'rejected'].includes(r.status));
             const expiredPins = rv.expiredPins ? rv.expiredPins(pins) : [];   // ⏰ 返事の無い 📣 (全体監査 #7)
             if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 予約 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}${expiredPins.length ? ` · ⏰ 期限切れ ${expiredPins.length}` : ''}`;
@@ -19368,8 +19246,9 @@
 
             const sections = [];
             if (pending.length) {
-                sections.push(`<div class="dc-resv-head">承認待ち (${pending.length})</div>` + pending.map(r => card(r,
-                    btn('承認する', `handleReservationApprove(${Number(r.id)})`, 'primary', r.id)
+                // 予約を隠したシーズン: 承認すると隠した予約の流れ・従来の配信へ進む → 見送るだけ (希望は 🧱 組む で 📌 を置く)
+                sections.push(`<div class="dc-resv-head">承認待ち (${pending.length})</div>` + (resvHiddenUi ? '<p class="ob-note" style="margin:0 0 6px;">このシーズンは予約を使いません。希望は 🧱 凸プランを組む で 📌 を置いてください (ここでは「見送る」で片付けます)</p>' : '') + pending.map(r => card(r,
+                    (resvHiddenUi ? '' : btn('承認する', `handleReservationApprove(${Number(r.id)})`, 'primary', r.id))
                     + btn('見送る', `handleReservationReject(${Number(r.id)})`, '', r.id), 'pending')).join(''));
             }
             if (cancelReq.length) {
@@ -19389,7 +19268,7 @@
                     (r.asked_at
                         ? `<span style="font-size:10px;font-weight:800;color:${rv.isExpiredPin && rv.isExpiredPin(r) ? 'var(--bad-deep)' : 'var(--warn-deep)'};align-self:center;">${rv.isExpiredPin && rv.isExpiredPin(r) ? '⏰ 期限切れ' : '📣 お願い中'}${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
                         : (_homeSimple() ? '' : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id)))
-                    + btn('🔒 確定', `_opsPlanConfirmPin(${Number(r.id)})`, 'primary', r.id)
+                    + (resvHiddenUi ? '' : btn('🔒 確定', `_opsPlanConfirmPin(${Number(r.id)})`, 'primary', r.id))   // 予約を隠したシーズンでは押してもトーストだけだった
                     + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が仮置き' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
                     'pending')).join(''));
@@ -19474,7 +19353,15 @@
             if (typeof renderMyNextAction === 'function') renderMyNextAction(getCurrentIdentity());
         }
         // 運営ホームのヒーローから: 固定して組み直し → 配信へ (A)
-        function _opsGotoRepublish() { _recomputeAndOfferPublish(null).catch(e => alert(`❌ ${e?.message || e}`)); }
+        async function _opsGotoRepublish() {
+            const sid = opsStore.get()?.season?.id ?? (await seasonStore.ensure().catch(() => null))?.season?.id;
+            if (sid != null && await _seasonHasDecision(sid)) {
+                _opsJump('opsSecPlan');
+                showNotification('✅ 決定のあるシーズンです。🧱 凸プランを組む で組み直して「✅ 決定」し直してください (予約は組むときに入ります)');
+                return;
+            }
+            _recomputeAndOfferPublish(null).catch(e => alert(`❌ ${e?.message || e}`));
+        }
         // 描画が落ち着くまでスクロールを合わせ直す (実機FB 2026-09-08: タブ切替直後は上のカードが
         // あとから描かれて目標がずれ、承認の部分まで正確に飛べなかった)。位置が動かなくなるまで最大 ~2.5秒
         function _opsScrollSettled(id) {
@@ -19691,7 +19578,6 @@
             return impact;
         }
 
-        function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
         function handleOpsMemberFilter(f) { _mb.filter = f; _mbPaint(_mbCurrentPhase()); }
         function handleOpsMemberSort(s) { _mb.sort = s; _mbPaint(_mbCurrentPhase()); }
         async function handleOpsMemberNudge(playerId) {
@@ -20824,7 +20710,7 @@
         async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
             const fresh = scenario === 'fresh';
             const msg = fresh
-                ? '🧪 予約テスト (序盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (予約→承認→配信→結果の取り込みを練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約・締め凸依頼・配信も一緒に消えます。ただし送った Push の履歴と、端末に届いた通知は残ります)'
+                ? '🧪 テスト (序盤・凸ゼロ) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 を練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約・締め凸依頼・配信も一緒に消えます。ただし送った Push の履歴と、端末に届いた通知は残ります)'
                 : '🧪 クイックテスト (中盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元';
             if (!confirm(msg)) return;
             try {
@@ -21835,12 +21721,7 @@
                         ${optChip(_opsFinish.shots == null, "handleOpsFinishOpt('shots', null)", '自動')}
                         ${[1, 2, 3].map(n => optChip(_opsFinish.shots === n, `handleOpsFinishOpt('shots', ${n})`, `${n}人`)).join('')}
                     </div>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <span style="font-size:10.5px;font-weight:900;color:var(--t-muted);min-width:52px;">今から</span>
-                        ${optChip(_opsFinish.hours == null, "handleOpsFinishOpt('hours', null)", '制限なし')}
-                        ${[1, 2, 4, 6].map(h => optChip(_opsFinish.hours === h, `handleOpsFinishOpt('hours', ${h})`, `${h}時間`)).join('')}
-                        ${windowNote ? `<span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${windowNote}</span>` : ''}
-                    </div>
+                    ${windowNote ? `<div style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${windowNote} (時間は上の「いま打つか、待つか」で選びます)</div>` : ''}
                 </div>`;
 
             const header = `
@@ -23272,7 +23153,7 @@
             // ① ブロックの大きなボタン
             const btns = blocks.map((b, i) => {
                 const o = ov[i];
-                if (o.past) return `<button type="button" class="obb past" disabled title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">過ぎた</span></button>`;
+                if (o.past) return `<div class="obb past" aria-disabled="true" title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">過ぎた</span></div>`;   // 押せない札 (ずっと押せないボタンにしない — 2026-10-29 ボタンの監査)
                 const built = _ob.plans.has(i);
                 const lvTxt = o.level >= 4 ? 'Lv4 (ボス 5・∞)' : (o.allDone ? `Lv${o.level} 撃破 ✓` : (o.attacks ? `Lv${o.level} を組み中` : `Lv${o.level} から`));
                 const minis = o.rows.map(r => `<i title="B${r.bossNumber} ${escapeHtml(r.name)} ${r.infinite ? '∞' : 'あと ' + r.remB.toFixed(1) + 'B'}"><b style="width:${r.infinite ? (r.gotB > 0 ? 100 : 0) : Math.min(100, r.startB > 0 ? r.gotB / r.startB * 100 : 100)}%;background:${(_bbFill(r.weakness) || [])[0] || 'var(--ops)'};"></b></i>`).join('');
@@ -23341,7 +23222,7 @@
             host.innerHTML = `<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${decideHtml}
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.name)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
-                        <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button><button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button></span></div>
+                        <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
                     <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-board">${rows}</div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
@@ -23950,8 +23831,7 @@
             if (!n) { el.style.display = 'none'; return; }
             el.style.display = '';
             el.innerHTML = `🔔 <span>前回の${_opsLastPlan?.conditions?.computedAt ? '算出' : '配信'} (${_hhmm(since)}) のあと、<b>模擬の提出が ${n} 件</b>更新されました`
-                + `<br><small>締め凸コンソールで「今」も「待つ」も無い (手詰まり) ときも、ここから組み直します</small></span>`
-                + `<button type="button" class="go" onclick="computeAndRenderOptimalPlan()">組み直す</button>`;
+                + `<br><small>下の「🧮 この条件で算出」で組み直します (締め凸コンソールで「今」も「待つ」も無い手詰まりのときも)</small></span>`;   // 同じ算出のボタンを 2 つ並べない (2026-10-29 ボタンの監査)
         }
         // ② 時間割で選んだチップ (運営だけ)。その人の戦闘可能時間を光らせ、動かせる幅を出す
         let _opsPlanFocus = null;
@@ -24856,10 +24736,8 @@
                         : b.targetHpB <= 0 ? '既に撃破済み'
                         : (b.timeConstrained ? '火力はありますが、時間内に凸できるメンバーがいません' : 'この属性で凸できる候補がいません');
                     // 手詰まり (倒したいのに出せる人がいない) は、プランを組み直す入口をここに置く (パズル盤 ①・2026-09-11)
-                    const replanLink = (b.attacks.length === 0 && b.targetHpB > 0)
-                        ? ` <button type="button" onclick="_opsJump('opsSecPlan')" style="margin-left:6px;padding:4px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:900;cursor:pointer;">プランを組み直す ›</button>` : '';
                     const attacksHtml = b.attacks.length === 0
-                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? 'var(--t-muted)' : (b.timeConstrained ? 'var(--warn-deep)' : 'var(--attr-fire)')};">${emptyMsg}${replanLink}</div>`
+                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? 'var(--t-muted)' : (b.timeConstrained ? 'var(--warn-deep)' : 'var(--attr-fire)')};">${emptyMsg}</div>`
                         : b.attacks.map((a, i) => {
                             const isMe = _myId != null && a.memberId === _myId;
                             // 左端の固定幅 時刻カラム (配信版「わたしの凸」と同じ設計)。
@@ -25956,8 +25834,8 @@
                 if (!confirm('⏳ このプランを「組み直し中」にしますか？\n\n'
                     + '・メンバーの画面にはプランが残ったまま「運営が組み直し中です」と出ます\n'
                     + '・「確認しました」の記録は消えません\n'
-                    + '・新しいプランを 📤 配信すると自動で解除されます\n\n'
-                    + '※ 組み直すだけなら、この操作は不要です (そのまま 📤 配信で上書きできます)')) return;
+                    + '・新しいプランを ✅ 決定 (または 📤 配信) すると自動で解除されます\n\n'
+                    + '※ 組み直すだけなら、この操作は不要です (そのまま ✅ 決定し直せば上書きされます)')) return;
             }
             try {
                 const r = await window.supabaseSetPlanFrozen(pub.id, !nowFrozen, me?.name || null);
@@ -26911,10 +26789,9 @@
             if (!_atkTap.bound) {   // 委譲は最初に 1 回 (先に「更新する」だけの画面を描いても押せるように)
                 _atkTap.bound = true;
                 body.addEventListener('click', (ev) => {
-                    if (ev.target.closest('[data-tap-reload]')) { location.href = './?u=' + Date.now(); return; }   // 互換ゲートで止めたとき (S5 レビュー RT-2)
+                    if (ev.target.closest('[data-tap-reload]')) { _reloadFresh(); return; }   // 互換ゲートで止めたとき (S5 レビュー RT-2)
                     const bk = ev.target.closest('[data-tap-blk]');
                     if (bk) { _atkTap.blk = { sid: _atkTap.view ? _atkTap.view.seasonId : null, idx: Number(bk.dataset.tapBlk) }; renderOpsAttackTap(); return; }   // 盤のブロックを選ぶ
-                    if (ev.target.closest('[data-tap-num]')) { showNotification('数字で報告済みの凸です (直すときは 📥 結果の取り込み › 登録された凸)'); return; }
                     const d = ev.target.closest('[data-tap-done]');
                     if (d) { _opsTapMark(d.dataset.tapDone, d); return; }
                     const u = ev.target.closest('[data-tap-undo]');
@@ -26945,7 +26822,7 @@
             if (v.unreadable) {
                 _atkTap.view = null;
                 body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">アプリが古いため、いまの決定を表示できません。ページを再読み込みしてください。</p>'
-                    + '<button type="button" class="dc-ops-action" data-tap-reload>更新する</button>';
+                    + _gateReloadHtml('<button type="button" class="dc-ops-action" data-tap-reload>更新する</button>');
                 if (cnt) cnt.textContent = '';
                 return;
             }
@@ -27799,8 +27676,11 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         }
 
         async function handleOpsResetDamages() {
+            // シーズン終了と同じく、レイド当日 (自動判定) は止める — 段階を手で「終了」にするとボタンが出る (2026-10-29 ボタンの監査)
+            const stNow = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
+            if (stNow && stNow.auto === 'day') { alert('レイド当日は模擬のダメージをリセットできません。\n翌日 5 時以降に行ってください。'); return; }
             if (!confirm('⚠️ 全メンバーの属性別ダメージ登録を一括リセットします。\nこの操作は取り消せません。よろしいですか？')) return;
-            if (!confirm('本当によろしいですか？全メンバーがホームでダメージを再登録する必要があります。')) return;
+            if (!confirm(_memberInputFull() ? '本当によろしいですか？全メンバーがホームでダメージを再登録する必要があります。' : '本当によろしいですか？次のシーズンの模擬は、運営が 📸 模擬の取り込み で登録し直します。')) return;
             try {
                 await window.supabaseResetAllDamages();
                 opsStore.invalidate();
@@ -29188,11 +29068,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             });
         }
 
-        // シーズン切替バー: 過去シーズンへのナビゲーション (現状は最新のみ表示なので無効化)
-        function rankingSeasonNav(/* delta */) {
-            showNotification('過去シーズンの閲覧は近日対応予定です');
-        }
-
         // ========== Player Detail Modal (Composition Comparison) ==========
         function showPlayerDetails(playerName) {
             const current = currentData.find(p => p.player === playerName);
@@ -29560,7 +29435,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
         // シミュレータタブ内の2モード切替 (ダメージ予測 / ふるり値試算)
         function switchSimMode(mode) {
-            document.querySelectorAll('.sim-mode-btn').forEach(b => {
+            document.querySelectorAll('.sim-mode-btn[data-sim-mode]').forEach(b => {   // ふるり値の基準モード (#fururiModeBtn*) は触らない
                 b.classList.toggle('active', b.dataset.simMode === mode);
             });
             const d = document.getElementById('simModeDamage');
@@ -29956,7 +29831,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
         function switchAttributeTab(attr) {
             currentAttribute = attr;
-            document.querySelectorAll('.attribute-tab-btn').forEach(b => {
+            document.querySelectorAll('.attribute-tab-btn[data-attribute]').forEach(b => {   // ふるり値の属性ボタン (data-fururi-boss) は触らない
                 b.classList.toggle('active', b.getAttribute('data-attribute') === attr);
             });
             updateTeamCompositionsDisplay();
@@ -30558,6 +30433,12 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             let t = '';
             try { const n = document.querySelector('.tab-content.active')?.id?.replace('tab-', ''); if (n && /^[a-z]+$/.test(n) && n !== 'mypage') t = '&tab=' + n; } catch { /* タブが分からなければホーム */ }
             location.href = './?u=' + Date.now() + t;
+        }
+        // カードの「更新する」は、上の更新の帯 (#clientGateBanner = 同じ _reloadFresh) が出ていないときだけ置く (同じボタンを 2 つ並べない・2026-10-29 ボタンの監査)
+        function _gateReloadHtml(btnHtml) {
+            return (_gateVerdict && _gateVerdict.blocked)
+                ? '<span style="display:block;margin-top:6px;font-size:11px;font-weight:800;color:var(--t-muted);">画面の上の帯の「更新」を押してください。</span>'
+                : btnHtml;
         }
         function _renderClientGateBanner() {
             const cg = window.clientGateDomain;
@@ -31760,9 +31641,16 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (mockHidden && document.getElementById('tab-mock')?.classList.contains('active')) TabController.activate(_opsMode ? 'ops' : 'mypage');
         }
         // 戦況タブの「📸 模擬の取り込み」カードを開いて位置を合わせる (運営モードで模擬タブが隠れているときのヒーローの導線)
-        function _gotoOpsMockIntake() {
+        function _gotoOpsMockIntake(self = false) {
             // 運営 OFF (メンバーの見え方) で押されたら戦況へ飛ばない — 切替チップで OFF にしたあとの古い導線 (Codex指摘 2026-10-22)
             if (!_opsMode) { showNotification('模擬の登録は運営の画面 (🛠 ON) で行います'); return; }
+            // self = ホームのヒーロー「自分の模擬を登録する」: 「誰の模擬か」を自分にしておく (選び直させない・2026-10-29 ボタンの監査)
+            const me = self ? getCurrentIdentity() : null;
+            if (me?.id) {
+                _mockIntake.picked = Number(me.id);
+                const sel = document.getElementById('opsMockIntakePlayer');
+                if (sel && [...sel.options].some(o => o.value === String(Number(me.id)))) sel.value = String(Number(me.id));
+            }
             if (typeof switchTab === 'function') switchTab('ops');
             if (typeof setOpsTab === 'function') setOpsTab('members');   // 段階 2.5: 模擬の取り込みは 👥 メンバーのタブ
             const card = document.getElementById('opsSecMockIntake');
@@ -31807,7 +31695,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             document.body.classList.toggle('ops-master', role === 'master');
             for (const el of [b, s]) {
                 if (!el) continue;
-                if (role === 'ops') { el.textContent = '🛠 運営担当'; el.disabled = true; el.style.display = ''; el.title = '運営担当は常に運営画面です'; }
+                if (role === 'ops') { el.style.display = 'none'; }   // 運営担当は常に運営画面。押せないボタンを置かない (2026-10-29 ボタンの監査)
                 else if (role === null) { el.style.display = 'none'; }
                 else { el.disabled = false; el.style.display = ''; }
             }
@@ -31822,6 +31710,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             _opsMode = !_opsMode;
             _rememberOpsMode(_opsMode);   // 名乗っている人ごとに覚える (名乗っていなければ覚えない)
             _afterOpsModeChanged();
+            // メンバーの見え方 (lite) には運営タブが無い — 運営タブで OFF にしたらホームへ (2026-10-29 ボタンの監査)
+            if (!_opsMode && typeof _memberLite === 'function' && _memberLite() && document.getElementById('tab-ops')?.classList.contains('active')) switchTab('mypage');
             showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
         }
         /**
@@ -32065,9 +31955,26 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         function _opsStageHeroHtml(h, stage) {
             if (!h || !h.lead) return '';
             const esc = escapeHtml;
+            const lay = window.opsLayoutDomain;
+            const a = String(h.action || '');
+            // 行き先のカード: いま開いているタブにあるなら、そのカードのボタンを使う (同じボタンを 2 つ並べない — 2026-10-29 ボタンの監査)
+            const HERO_CARD = { hp: 'opsSecBoss', tap: 'opsSecAttackTap', plan: 'opsSecPlan', members: 'opsSecMembers', remaining: 'opsSecMembers',
+                reserve: 'opsSecReserve', pushcheck: 'opsSecPush', create: 'opsSecSeason', 'season-edit': 'opsSecSeason', end: 'opsSecSeason', reset: 'opsSecSeason' };
+            const masterAct = typeof _OPS_MASTER_ACTS !== 'undefined' && _OPS_MASTER_ACTS.has(a);
+            const isMaster = typeof _opsIsMasterNow === 'function' ? _opsIsMasterNow() : true;
+            let foot;
+            if (masterAct && !isMaster) {
+                foot = '<div class="s"><b>マスター運営 (👑) の作業です。</b>マスター運営にお願いしてください。</div>';   // 押してもトーストだけのボタンを出さない
+            } else {
+                const card = HERO_CARD[a];
+                const here = !!(card && lay && typeof lay.tabOf === 'function' && typeof _opsTabNow === 'function' && lay.tabOf(card) === _opsTabNow(stage));
+                foot = here
+                    ? `<div class="s">↓ この下の「${esc(lay.cardById(card)?.title || '')}」から</div>`
+                    : `<button type="button" class="b" onclick="_opsStageAct('${esc(a)}')">${esc(h.label)}</button>`;
+            }
             return `<div class="ops-stage-hero ${esc(stage)}"><div class="k">📌 いちばん先に</div><div class="h">${esc(h.lead)}</div>`
                 + (h.why ? `<div class="s">${esc(h.why)}</div>` : '')
-                + `<button type="button" class="b" onclick="_opsStageAct('${esc(h.action)}')">${esc(h.label)}</button></div>`;
+                + foot + '</div>';
         }
         function _opsStageListHtml(rows, stage) {
             if (!Array.isArray(rows) || !rows.length) return '';

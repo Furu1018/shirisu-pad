@@ -5547,7 +5547,8 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.ok(!/dead \? 'disabled'/.test(render), '倒れたボスを選べなくしている');
             assert.ok(render.includes('いまのLvでは撃破済み'));
             // 入口: ホームの「引き受けた凸」カードと配信プランカードの両方 (モック①)
-            assert.ok((html.match(/onclick="openMyResvRequest\(\)"/g) || []).length >= 2, '入口が2つ無い');
+            // 入口は 🔒 予約カードの「枠を予約する」1 つ (2026-10-29 ボタンの監査: ヒーローと配信カードの空き枠に同じボタンを重ねない)
+            assert.equal((html.match(/onclick="openMyResvRequest\(\)"/g) || []).length, 1, '予約の入口が 1 つでない');
             // 下スワイプで閉じられる
             assert.ok(/\['myResvRequestModal', \(\) => closeMyResvRequestModal\(\)\]/.test(html));
         });
@@ -5627,7 +5628,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const card = html.match(/function _homeSlotCardHtml\(slot, i, hero\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         for (const k of ["slot.kind === 'empty'", "slot.kind === 'done'", "slot.kind === 'fixed'"]) assert.ok(card.includes(k), `${k} の描き分けが無い`);
         assert.ok(/esc\(slot\.text \|\| ''\)/.test(card), '空き枠に理由 (日本語) を出していない');
-        assert.ok(card.includes("openMyResvRequest()"), '空き枠から申請シートを開けない');
+        assert.ok(!card.includes("openMyResvRequest()") && card.includes('予約は 🔒 予約 のカードから'), '空き枠に予約の 2 つ目の入口がある / 予約カードへの案内が無い');
         // 39未適用なら申請の導線は出さない
         assert.ok(/const canAsk = Array\.isArray\(_myResvRows\);/.test(card));
         assert.ok(/'🔒 予約 \(組み直し待ち\)'/.test(card), '配信に入っていない予約を区別していない');
@@ -7146,7 +7147,9 @@ console.log('\nfinishDomain (人数・時間範囲):');
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/function renderOpsFinishList\(attrKey\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const candidates = finishDomain\.filterByWindow\(candidatesAll, \{ curHour: curHourJst, hours: _opsFinish\.hours \}\);/.test(fn), '範囲で候補を絞っていない');
-        assert.ok(fn.includes("handleOpsFinishOpt('shots'") && fn.includes("handleOpsFinishOpt('hours'"), 'チップが無い');
+        // 時間の窓は「🏁 いま打つか、待つか」の行で選ぶ (「今から」のチップは同じ絞り込みの 2 つ目だった — 2026-10-29 ボタンの監査)
+        const fcon = html.match(/function _opsFinishConsoleHtml\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.includes("handleOpsFinishOpt('shots'") && !fn.includes("handleOpsFinishOpt('hours'") && fcon.includes("handleOpsFinishOpt('hours'"), 'チップが無い / 時間の窓を選ぶ所が 2 つある');
         assert.ok(/listEl\.innerHTML = header \+ consoleHtml \+ controls \+ rows \+ pushBtn \+ timelineHtml;/.test(fn),
             'チップ / コンソールを描いていない');
         // ★ コンソールには**窓で絞る前の全員**を渡す — 絞ったあとだと「待つと増える人」が出せない
@@ -7819,9 +7822,10 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // 最優先: 当日の「残り凸」より先に判定される
         assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("if (season && raidToday(season)) {") && fn.indexOf("if (season && raidToday(season)) {") > 0, '当日の分岐より後になっている');   // 当日 = レイド日 (S4 レビュー [30])
         assert.ok(/onclick: '_opsGotoRepublish\(\)', label: /.test(fn), '押して飛べない');
-        assert.ok(/function _opsGotoRepublish\(\) \{ _recomputeAndOfferPublish\(null\)/.test(html));
+        // 決定のあるシーズンでは従来の配信が止まるので 🧱 組む へ (行き止まりにしない — 2026-10-29 ボタンの監査)
+        assert.ok(/async function _opsGotoRepublish\(\) \{[\s\S]*?if \(sid != null && await _seasonHasDecision\(sid\)\) \{\s*\n\s*_opsJump\('opsSecPlan'\);[\s\S]*?_recomputeAndOfferPublish\(null\)/.test(html), '決定のあるシーズンで行き止まり');
         // ★ 当日に本人の残り凸があるときは、運営の用事はサブリンク (本人の「戦闘に入る」を隠さない — Codex指摘 2026-09-08)
-        assert.ok(/subLink = opsNotice\s*\n\s*\? heroSub\(opsNotice\.onclick, `\$\{opsNotice\.lead\} →`\)/.test(fn), '当日の残凸より運営の用事を優先している');
+        assert.ok(/subLink = opsNotice \? heroSub\(opsNotice\.onclick, `\$\{opsNotice\.lead\} →`\)/.test(fn), '当日の残凸より運営の用事を優先している');
         assert.ok(/if \(opsNotice && atkCount != null && atkCount >= 3\) \{\s*\n[^\n]*\n\s*opsHero\(\);/.test(fn), '全凸消化後は運営の用事をヒーローにしていない');
         assert.ok(/\} else if \(opsNotice\) \{\s*\n[^\n]*\n\s*opsHero\(\);/.test(fn), '当日以外で運営の用事をヒーローにしていない');
         // ★ 承認待ち (requested / cancel_requested) があればホームで気づける (ユーザー要望 2026-09-08)。
@@ -9913,15 +9917,15 @@ console.log('\ngrowthDomain:');
         // 📸 模擬の取り込みへの導線: 「その他」の中へ移されたカードは親を開く / 予約未対応の空き枠の導線も同じ (Codex指摘 7cbfa94)
         // 段階 2.5: 取り込みカードはいつも 👥 メンバーのタブ (「その他」には入らない) → タブを切り替えてから開く
         assert.ok(/if \(typeof setOpsTab === 'function'\) setOpsTab\('members'\);[^\n]*\n\s*const card = document\.getElementById\('opsSecMockIntake'\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '取り込みカードのタブへ切り替えていない');
-        assert.ok(/onclick="\$\{canAsk \? 'openMyResvRequest\(\)' : \(mockHidden \? '_gotoOpsMockIntake\(\)' : "switchTab\('mock'\)"\)\}"/.test(html), '予約未対応の空き枠の導線が隠れた模擬タブへ飛ぶ');
+        assert.ok(/if \(!canAsk && mockHidden\) return `\s*\n\s*<button type="button" onclick="_gotoOpsMockIntake\(true\)"/.test(html) && !/switchTab\('mock'\)"\)\}" class="dc-plan-card/.test(html), '予約未対応の空き枠の導線が隠れた模擬タブへ飛ぶ / ナビと同じ所へ行くボタンがある');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(mockHidden && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\(_opsMode \? 'ops' : 'mypage'\);/.test(html), '開いたまま隠されたときに戻していない (運営は戦況へ)');
         // 👑 ホームの切替チップ (マスター運営だけ): 🛠 と同じ toggleOpsMode・文字は _applyOpsMode が合わせる (2026-10-22 ユーザー要望)
         assert.ok(/<button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode\(\)"/.test(html), 'ホームの切替チップが無い / マスターだけ (data-master-only) でない');
         assert.ok(/h\.textContent = _opsMode \? '👤 メンバーの見え方で見る' : '🛠 運営の画面に戻す';/.test(html), '切替チップの文字を合わせていない');
-        assert.ok(/function _gotoOpsMockIntake\(\) \{[\s\S]*?switchTab\('ops'\)[\s\S]*?_setOpsCardOpen\(card, true\)[\s\S]*?_opsScrollSettled\('opsSecMockIntake'\)/.test(html), '📸 模擬の取り込みへ飛ぶ導線が無い');
+        assert.ok(/function _gotoOpsMockIntake\(self = false\) \{[\s\S]*?switchTab\('ops'\)[\s\S]*?_setOpsCardOpen\(card, true\)[\s\S]*?_opsScrollSettled\('opsSecMockIntake'\)/.test(html), '📸 模擬の取り込みへ飛ぶ導線が無い');
         // 運営 OFF で押された古い導線は戦況へ飛ばない / 運営モードの切替でヒーローを描き直す (Codex指摘 5eaf9d2)
-        assert.ok(/function _gotoOpsMockIntake\(\) \{\s*\n[^\n]*\n\s*if \(!_opsMode\) \{ showNotification\('模擬の登録は運営の画面 \(🛠 ON\) で行います'\); return; \}/.test(html), '運営 OFF の守りが無い');
+        assert.ok(/function _gotoOpsMockIntake\(self = false\) \{\s*\n[^\n]*\n\s*if \(!_opsMode\) \{ showNotification\('模擬の登録は運営の画面 \(🛠 ON\) で行います'\); return; \}/.test(html), '運営 OFF の守りが無い');
         assert.ok(/function _afterOpsModeChanged\(\) \{\s*\n\s*_applyOpsMode\(\);\s*\n[^\n]*\n\s*if \(typeof renderMyNextAction === 'function'\) \{ try \{ const p = renderMyNextAction\(getCurrentIdentity\(\)\);/.test(html), '運営モードの切替でホームのヒーローを描き直していない');
         // 🧱 段階 1 (2026-10-22 決定 a/f): lite で ボスの状況・状態ボタン・戦闘ゲート・凸報告の入口 を隠す (消さない) / 読み取り専用の模擬カード
         for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions',
@@ -9974,7 +9978,9 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
         // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
         const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? ''   \/\/ 模擬は Discord に貼る[^\n]*\n\s*: mockHidden \? \(soft \? softBtn : heroBtn\)\('_gotoOpsMockIntake\(\)', '📸 模擬の取り込み \(戦況タブ\) で登録する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
+        // ボタンは足りないときだけ (soft = そろっている: ナビと同じ所へ行くだけ)。模擬タブが隠れた運営は 📸 を「自分」で開く (2026-10-29 ボタンの監査)
+        assert.ok(/const mockCta = \(label, soft = false\) => \(lite \|\| soft\)\s*\n\s*\? ''   \/\/ 模擬は Discord に貼る[^\n]*\n\s*: mockHidden \? heroBtn\('_gotoOpsMockIntake\(true\)', '📸 自分の模擬を登録する \(👥 メンバー › 模擬の取り込み\)'\)\s*\n\s*: heroBtn\(_MOCK_TAB_GO, label\);/.test(hero) && /const _MOCK_TAB_GO = "switchTab\('mock'\)";/.test(hero), 'mockCta が無い (運営モードで模擬タブが隠れているときの導線を含む)');
+        assert.ok(/const me = self \? getCurrentIdentity\(\) : null;\s*\n\s*if \(me\?\.id\) \{\s*\n\s*_mockIntake\.picked = Number\(me\.id\);/.test(html), 'ヒーローから開いたとき「誰の模擬か」を自分にしていない');
         assert.ok(/const mockHidden = typeof _mockTabHidden === 'function' && _mockTabHidden\(\);/.test(hero), 'ヒーローが模擬タブの判定を見ていない');
         assert.ok(!/heroBtn\("switchTab\('mock'\)"/.test(hero) && !/softBtn\("switchTab\('mock'\)"/.test(hero), '模擬タブへの直の導線が残っている');
         assert.equal((hero.match(/mockCta\(/g) || []).length, 6, 'mockCta を使う場所が 6 か所 (B1 / C0 / C1 / B2 / C3 / C2) でない');
@@ -10608,7 +10614,8 @@ console.log('\ngrowthDomain:');
             const i = html.indexOf(fn); assert.ok(i > 0, fn);
             assert.ok(/switchTab\('ops'\);\s*\n\s*if \(typeof setOpsTab === 'function'\) setOpsTab\('build'\);/.test(html.slice(i, i + 400)), `${fn} が 🧱 組むへ切り替えない`);
         }
-        assert.ok(/cta = lite \? '' : softBtn\("switchTab\('ops'\)", '👀 戦況を見る'\);/.test(html) && /: \(lite \? '' : heroSub\("switchTab\('ops'\)"/.test(html), 'lite のメンバーに「戦況を見る」が残る');
+        // 「👀 戦況を見る」はナビと同じ所へ行くだけ → 誰にも出さない (2026-10-29 ボタンの監査)
+        assert.ok(!html.includes("'👀 戦況を見る") && /subLink = opsNotice \? heroSub\(opsNotice\.onclick, `\$\{opsNotice\.lead\} →`\) : '';/.test(html), '「戦況を見る」が残る');
         assert.ok(/attackCounts: \(typeof _atkCheck !== 'undefined' && _atkCheck\.counts && same\(_atkCheck\.counts\.seasonId\)\)/.test(html)
             && /reservations: \(typeof _resv !== 'undefined' && same\(_resv\.seasonId\)\)/.test(html) && /mbRows: \(typeof _mb !== 'undefined' && same\(_mb\.season\?\.id\)\)/.test(html), '件数をシーズンで確かめていない');
         assert.ok(/_resv\.rows = rows;\s*\n\s*_resv\.seasonId = season\.id;/.test(html) && /_resv\.rows = reservations;[^\n]*\n\s*_resv\.seasonId = snapshot\.season\.id;/.test(html), '予約にシーズンを持たせていない');
@@ -10828,7 +10835,8 @@ console.log('\ngrowthDomain:');
         // 見せ方: master だけ body.ops-master (任命パネル) / ops は「運営担当」固定 / メンバーはトグルを出さない
         const applyMode = html.match(/function _applyOpsMode\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/document\.body\.classList\.toggle\('ops-master', role === 'master'\);/.test(applyMode), 'body.ops-master を立てていない');
-        assert.ok(/if \(role === 'ops'\) \{ el\.textContent = '🛠 運営担当'; el\.disabled = true;/.test(applyMode) && /else if \(role === null\) \{ el\.style\.display = 'none'; \}/.test(applyMode), '役割でトグルの見せ方を変えていない');
+        // 運営担当にはずっと押せない「🛠 運営担当」を置かない (2026-10-29 ボタンの監査)
+        assert.ok(/if \(role === 'ops'\) \{ el\.style\.display = 'none'; \}/.test(applyMode) && /else if \(role === null\) \{ el\.style\.display = 'none'; \}/.test(applyMode) && !/el\.disabled = true/.test(applyMode), '役割でトグルの見せ方を変えていない / 押せないボタンを出す');
         assert.ok(/body:not\(\.ops-master\) \[data-master-only\] \{ display: none !important; \}/.test(html), 'master 限定の CSS が無い');
         assert.ok(/<div class="dc-card" data-span="6" data-master-only>\s*<div style="[^"]*">\s*<div style="[^"]*">👑 運営担当<\/div>/.test(html) && /id="settingsRolesBody"/.test(html), '任命パネルが無い / data-ops-only が付いている (🛠 OFF で消える)');
         // 👑 区画は設定タブに残す (メンテナンスへ移さない): 互換ゲート / 運営担当 / メンバー管理 / 復元。バックアップ保存はメンテナンス
@@ -11660,8 +11668,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/window\.supabaseCountMockUpdatesSince = async function \(sinceIso\)/.test(_grRd('js/supabase-client.js')), '模擬の更新数を数える関数が無い');
         const cue = html.match(/async function renderOpsPlanCue\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(seq !== _planCueSeq\) return;/.test(cue), 'きっかけの取得に世代ガードが無い (遅い応答が新しい結果を上書きする)');
-        assert.ok(/onclick="_opsJump\('opsSecPlan'\)"[^>]*>プランを組み直す ›/.test(html), '締め凸の手詰まりからプランへ飛べない');
-        assert.ok(/\$\{emptyMsg\}\$\{replanLink\}/.test(html), '「プランを組み直す」を候補なしの文の横に置いていない (定義だけで使っていない)');
+        // 「プランを組み直す ›」(同じカードの先頭へスクロールするだけ) と きっかけの「組み直す」(真下の 🧮 と同じ) は置かない (2026-10-29 ボタンの監査)
+        assert.ok(!/プランを組み直す ›/.test(html) && !/computeAndRenderOptimalPlan\(\)">組み直す</.test(html) && /下の「🧮 この条件で算出」で組み直します/.test(cue), '同じ算出・同じカードへ行くボタンが残る');
         // 算出のあとに「きっかけ」を消す / 盤面の描画で条件パネルとチップを合わせる
         assert.ok(/_opsLastPlan = plan;[\s\S]*?renderOpsPlanCue\(\);/.test(fn), '算出し直したのに「模擬が更新」が残る');
         const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -11898,7 +11906,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/onclick="handleAcceptPin\(\$\{Number\(r\.id\)\}\)"/.test(home) && /onclick="handleDeclinePin\(\$\{Number\(r\.id\)\}\)"/.test(home), '返事のボタンが無い');
         // 運営の予約カード: 📌 のグループ (お願いする / 外す)
         const paint = html.match(/function _paintOpsReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の仮置き \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
+        assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned' && !\(resvHiddenUi && r\.time_mode === 'block'\)\);/.test(paint) && /📌 運営の仮置き \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い / 予約を隠したシーズンで組むの駒まで並べる');
+        assert.ok(/\(resvHiddenUi \? '' : btn\('🔒 確定'/.test(paint) && /\(resvHiddenUi \? '' : btn\('承認する'/.test(paint), '予約を隠したシーズンで 確定 / 承認 (押してもトーストだけ・隠した流れへ進む) を出す');
         assert.ok(/btn\('📣 お願いする', `_opsPlanAsk\(\$\{Number\(r\.id\)\}\)`/.test(paint) && /btn\('外す', `_opsPlanUnpin\(\$\{Number\(r\.id\)\}\)`/.test(paint), '📌 に お願いする / 外す が無い');
         // ★ 承認前の影響計算は同じカードの 📌 を拘束から外す (外さないと候補と奪い合って承認が止まる — Codex指摘 2026-09-11)
         const imp = html.match(/async function _reservationImpact\(row, recomputeOpts = _recomputeOptsAfterApproval\(\)\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -13090,7 +13099,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(_availUI\.forPlayer\) return;\s*\/\/ 🗣 9a/.test(html), '運営の登録中に本人の MY設定のバッジへ書いている');
         // 入口
         assert.ok(html.includes('onclick="openOpsAvailModal(${r.id})"'), '👥 メンバー状況の行に ⏰ が無い');
-        assert.ok(html.includes('onclick="openOpsAvailModalFromIntake()"') && /function openOpsAvailModalFromIntake\(\) \{\s*\n\s*const pid = _mockIntake\.picked;/.test(html), '📸 模擬の取り込みに「時間を登録」が無い');
+        // 入口は 👥 メンバー状況の行の ⏰ の 1 つ (📸 の「⏰ 時間を登録」は同じシートを開く 2 つ目だった — 2026-10-29 ボタンの監査)
+        assert.ok(!html.includes('openOpsAvailModalFromIntake'), '📸 模擬の取り込みに 2 つ目の「時間を登録」がある');
         assert.ok(html.includes('id="myAvailForWho"') && /function _renderAvailForWho\(\)/.test(html), 'シートに「誰のぶんか」の見出しが無い');
         // クライアント: 活動ログに代理の印
         assert.ok(/window\.supabaseSaveAvailability = async function \(playerId, slots, opts = \{\}\)/.test(client) && client.includes("${opts.actorName ? ' (運営が代理で登録)' : ''}`, { playerId, actorName: opts.actorName || null });"), '保存の活動ログに代理の印が無い');
@@ -13394,7 +13404,7 @@ console.log('\ngrowthDomain:');
         assert.ok(html.includes('<script defer src="./js/domain/mockIntake.js"></script>'), 'mockIntake.js を読み込んでいない');
         assert.ok(/id: 'opsSecMockIntake', title: '模擬の取り込み',[^\n]*opsOnly: true,[^\n]*stages: \['prep', 'pre', 'day'\], span: 12/.test(layout), 'CARDS に無い / 段階・幅が違う');
         assert.ok(/<div class="dc-card" data-ops-only id="opsSecMockIntake">\s*\n[\s\S]{0,400}📸 模擬の取り込み</.test(html), 'カードが無い (id は CARDS と同じにして受け口に使う)');
-        assert.ok(/<select id="opsMockIntakePlayer" onchange="_opsMockIntakePick\(this\.value\)"/.test(html) && /<input type="file" id="opsMockIntakeInput" accept="image\/\*" multiple onchange="handleOpsMockIntakeUpload\(event\)"/.test(html), '誰の模擬か / スクショの入口が無い');
+        assert.ok(/<select id="opsMockIntakePlayer" onchange="_opsMockIntakePick\(this\.value\)"/.test(html) && /<input type="file" id="opsMockIntakeInput" accept="image\/\*" multiple onclick="if \(_mockIntake\.picked == null\) \{ event\.preventDefault\(\); showNotification\('先に「誰の模擬か」を選んでください'\); \}" onchange="handleOpsMockIntakeUpload\(event\)"/.test(html), '誰の模擬か / スクショの入口が無い (人を選ぶ前にファイル選択が開く)');
         // 受け口: カードそのもの (モーダルの .player-select-content が無いので、.dc-card を受け口にする)
         assert.ok(/\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],/.test(html), '_FILE_DROPS に無い');
         assert.ok(/const content = modal \? \(modal\.querySelector\('\.player-select-content'\) \|\| \(modal\.classList\.contains\('dc-card'\) \? modal : null\)\) : null;/.test(html), 'カードを受け口にできない');
@@ -13423,7 +13433,7 @@ console.log('\ngrowthDomain:');
         const render = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /\+\+_mockIntake\.gen;/.test(render), '運営OFF / 世代を進めていない');
         assert.ok(/const rows = dom\.missingRows\(\{ players, blocks, b5Weakness: b5Weak \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
-        assert.ok(/_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)/.test(render), '名前を押してその人を選べない');
+        assert.ok(/<span class="mk-name">/.test(render) && !/_opsMockIntakePickFromList/.test(html), '表の名前がボタンのまま (「誰の模擬か + 📷」と同じ入口の 2 つ目 — 2026-10-29 ボタンの監査)');
     });
 
     await testAsync('★ 実行: 代理登録の印 (actorName) は 31 未適用の劣化経路 (supabaseSavePlayerDamage) でも活動ログに残る / 本人の提出には付かない (Codex指摘 adae2da)', async () => {
@@ -14007,7 +14017,8 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         const card = html.match(/async function renderMyPushCheckCard\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(seq !== _pushCheckCardSeq\) return;/.test(card) && /if \(!me\?\.id \|\| String\(me\.id\) !== String\(identity\.id\)\) return;/.test(card), '追い越し・名乗り直しの守りが無い');
         assert.ok(/if \(!check \|\| !check\.sentAt \|\| check\.confirmed\.some\(c => String\(c\.player_id\) === String\(identity\.id\)\)\) \{ hide\(\); return; \}/.test(card), '送っていない・もう伝えた・取れなかった のにカードを出す');
-        assert.ok(/if \(sub && sub\.supported && sub\.subscribed\) \{[\s\S]*?handleMyPushCheckConfirm\('button'\)[\s\S]*?\} else \{[\s\S]*?openMyPushModal\(\)/.test(card), '通知が無効な端末に「届きました」を出している');
+        // 無効な端末: 「届きました」を出さない・設定のボタンも置かない (ヒーロー / MY設定と同じ — 2026-10-29 ボタンの監査)。「届いていない」は動きどおりの名前
+        assert.ok(/if \(sub && sub\.supported && sub\.subscribed\) \{[\s\S]*?handleMyPushCheckConfirm\('button'\)[\s\S]*?\} else \{[\s\S]*?MY設定の「Push通知設定」/.test(card) && !/\} else \{[\s\S]*?btn\('openMyPushModal\(\)', '🔔 通知を設定する'/.test(card) && card.includes("'届いていない (通知の設定を開く)'"), '通知が無効な端末に「届きました」/ 2 つ目の設定ボタンを出している');
         assert.ok(/if \(!identity\?\.id \|\| window\.PAD_PRACTICE\) \{ hide\(\); return; \}/.test(card), '練習中に端末の通知の状態を読んでいる');
         assert.ok(/renderMyPushCheckCard\(id\);       \/\/ 🔔 通知の疎通確認/.test(html) && /case 'pushcheck': openOpsPushCheckModal\(\); break;/.test(html));
         assert.ok(/id="myPushCheckCard" style="display:none;"/.test(html) && /data-span="6" id="myPushCheckCard"/.test(html), 'ホームのカードに幅 (data-span) が無い');
@@ -14492,9 +14503,11 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.ok(/<table class="mk-tbl">/.test(r) && /data-no-swipe/.test(r), '表が無い / 横スクロールの箱に data-no-swipe が無い');
         assert.ok(/onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}', \$\{Number\(c\.slot\)\}\)"/.test(r) && /onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}'\)"/.test(r), '編成を押して直す / ＋ で手入力 が無い');
         assert.ok(/class="mk-chip\$\{c\.dup \? ' dup' : ''\}"/.test(r), '被りの赤い枠が無い');
-        assert.ok(/onclick="_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)"/.test(r), '名前を押して読み取る が無い');
+        // 名前は文字 (押すとファイル選択が開いた・「誰の模擬か + 📷」と同じ — 2026-10-29 ボタンの監査)
+        assert.ok(/<td><span class="mk-name">\$\{escapeHtml\(r\.name\)\}<\/span><\/td>/.test(r) && !html.includes('_opsMockIntakePickFromList'), '名前がボタンのまま');
         assert.ok(/list\.length < MY_TEAM_SLOTS\.length \? `<button type="button" class="mk-plus"/.test(r), '3 編成そろったマスにも ＋ が出る');
-        assert.ok(/onclick="_opsMockManual\(\)" title="選んだ人の模擬を 属性・ダメージ/.test(html), '✏️ 手で入力 のボタンが無い');
+        // 手で入力の入口は表のマスの ＋ / 編成のチップ (カードの「✏️ 手で入力」は同じ操作の 2 つ目だった — 2026-10-29 ボタンの監査)
+        assert.ok(!/onclick="_opsMockManual\(\)"/.test(html) && /_opsMockManual\(\$\{Number\(r\.id\)\}/.test(html), '✏️ 手で入力 が 2 つある / 表から手入力できない');
         const m = html.slice(html.indexOf('function _opsMockManual(playerId, attr, slot)'), html.indexOf('async function handleOpsMockIntakeUpload'));
         assert.ok(/files: \[\], manual: true,/.test(m) && /forPlayer: \{ id: Number\(target\.id\), name: target\.name \},/.test(m) && /\.\.\.\(cur \? \{ slot: Number\(cur\.slot\), slotTouched: true \} : \{\}\),/.test(m) && /openMyDmgPreviewModal\(\);/.test(m), '手入力がプレビュー (読み取りと同じ保存の経路) を使っていない');
         assert.ok(/if \(!target\) \{ fail\('先に「誰の模擬か」を選んでください'\); return; \}/.test(m), '誰のか決まらずに開ける');
@@ -15087,7 +15100,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // S5 (2026-10-27 ふるり「中途半端に配置するならいっそのこと不要」): メンバーの ✓・取り消し・代わりの ✓ はホームに無い。全員ぶんは 📅 レイド予定表
         assert.ok(!/data-mt-done|data-mt-undo|canProxy|_myMarkDone|_myUndoDone|_myTappedKeys|_myProxyBoardLoad/.test(r), 'ホームに ✓ / 代わりの ✓ が残っている');
         assert.ok(!/function _myMarkDone\(|function _myUndoDone\(|const _myTappedKeys/.test(html), 'メンバーの ✓ の関数が残っている');
-        assert.ok(/const mineBlocks = tt\.filter\(r => r\.decided && r\.mine\.length\);/.test(r) && /onclick="switchTab\('raid'\)">📅 レイド予定表を見る/.test(r), 'ホームが自分の凸だけ + レイド予定表への導線になっていない');
+        assert.ok(/const mineBlocks = tt\.filter\(r => r\.decided && r\.mine\.length\);/.test(r) && r.includes('下のメニューの「📅 レイド予定表」で見られます') && !/switchTab\('raid'\)/.test(r), 'ホームが自分の凸だけ + レイド予定表の案内 (ボタンでない) になっていない');
         assert.ok(r.includes('凸したら、結果の画面のスクショを Discord へ。✓ は運営が付けます (数字は入れません)'), 'ホームの案内が S5 の流れでない');
         assert.ok(/for \(const lk of dp\.looseKeysOf\(e\)\) if \(\(loose\.get\(lk\) \|\| 0\) > 0\)/.test(r), '数字で報告した凸の消し込みが Lv4 (DB は level 3) を拾わない');
         // 運営の ✓ 凸の記録 (戦況)
@@ -15251,7 +15264,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
     test('★ ホームの 📅 きょうの凸 は自分の凸だけ + レイド予定表へ / ヒーローの決定の文 / 決定の通知はレイド予定表へ', () => {
         const r = fnS5('function _renderMyDecided(', 'async function renderMyPublishedPlan(');
         assert.ok(/const mineBlocks = tt\.filter\(r => r\.decided && r\.mine\.length\);/.test(r) && !/r\.entries\.map|allHtml|mt-all/.test(r), 'ホームに全員の欄が残っている');
-        assert.ok(/onclick="switchTab\('raid'\)"/.test(r), 'レイド予定表への導線が無い');
+        assert.ok(r.includes('「📅 レイド予定表」') && !/onclick="switchTab\('raid'\)"/.test(r), 'レイド予定表の案内が無い / ナビと同じボタンがある');
         const nd = fnS5('async function _obNotifyDecide(', '// ブロックの時間の言い方');
         assert.ok(/url: '\.\/\?tab=raid'/.test(nd) && !/tab=mypage&focus=plan/.test(nd), '決定の通知の行き先がレイド予定表でない');
         const dpSrc = _fsS5.readFileSync('js/domain/decidePlan.js', 'utf8').replace(/\r\n/g, '\n');
@@ -15569,10 +15582,12 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(!ops.includes('<img') && ops.includes('&lt;img') && !ops.includes('<b>x</b>'), '名前・ボス名を escape していない');
         assert.ok(ops.includes(`data-tap-done="${esc(key(1))}"`), 'まだの駒を押して ✓ にできない');
         assert.ok(ops.includes('data-tap-undo="77"'), '運営の ✓ の駒を押して取り消せない');
-        assert.equal((ops.match(/data-tap-num="1"/g) || []).length, 1, '数字で報告済みの駒が案内にならない');
+        // 数字で報告済み (取り消せない) は押せない札「📥 報告済み」(押してもトーストだけのボタンだった — 2026-10-29 ボタンの監査)
+        assert.ok(!ops.includes('data-tap-num') && (ops.match(/<span class="db-tag ok[^"]*"[^>]*><b class="db-st">📥 報告済み<\/b>/g) || []).length === 1, '数字で報告済みの駒が押せない札になっていない');
         assert.ok(/<button type="button" class="obb on was" data-tap-blk="0" aria-pressed="true">/.test(ops), '過ぎたブロックが押せない (組むと違い、✓ を付けに戻る)');
         assert.ok(!/disabled/.test(ops.match(/data-tap-blk="0"[^>]*>/)[0]), '過ぎたブロックのボタンが disabled');
-        assert.ok(ops.includes('data-tap-blk="1"') && ops.includes('>まだ</span>'), '決まっていないブロックのボタン');
+        // 決まっていないブロックは押せない札 (押しても「まだ決まっていません」の 1 文だけだった — 2026-10-29 ボタンの監査)
+        assert.ok(!ops.includes('data-tap-blk="1"') && /<div class="obb[^"]* nodec" aria-disabled="true"/.test(ops) && ops.includes('>まだ</span>'), '決まっていないブロックがボタン');
         const mem = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk' });
         assert.ok(!/data-tap-(done|undo|num)|<button type="button" class="(obpc|db-tag)/.test(mem), 'メンバーの盤で駒・札が押せる');
         assert.ok(/<span class="db-tag me"[^>]*><b class="db-st">未完了<\/b><span class="db-nm">★ /.test(mem) && /<span class="db-tag ok"[^>]*><b class="db-st">✓ 完了<\/b>/.test(mem), '自分の札の ★ と太い枠 / 札の頭に 完了・未完了 の文字 (塗りと枠だけでは区別しにくい: 2026-10-28 ふるり)');
@@ -15687,9 +15702,11 @@ console.log('\n⏰ 参加可能時間の入口は 1 つ (2026-10-28):');
     const html = _fsAv.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
     test('★ シンプルな画面では運営モードでもホームの「変更する」と MY設定の行を出さない / 見るだけのカードと運営の案内 / ヒーローは 👥 と同じシート / 従来の画面では出る', () => {
         assert.ok(html.includes('<button type="button" data-member-input data-avail-edit onclick="openMyAvailModal()"'), 'カードの「変更する」に印が無い');
-        assert.ok(html.includes('<div onclick="openMyAvailModal()" class="dc-setting-row" data-member-input data-avail-edit>'), 'MY設定の行に印が無い');
+        // MY設定の行は 2026-10-29 に外した (従来の画面でも ⏰ カードの「変更する」と同じシートの 2 つ目だった — ボタンの監査)
+        assert.ok(!html.includes('<div onclick="openMyAvailModal()" class="dc-setting-row"'), 'MY設定に 2 つ目の入口がある');
+        assert.ok(/<div hidden><span id="myAvailConfirmBadge"/.test(html), '確認のバッジの元の値の置き場が無い (⏰ カードが写す)');
         const after = html.slice(html.indexOf('</style>'));
-        assert.equal((after.match(/onclick="openMyAvailModal\(\)"/g) || []).length, 2, 'ホームの入口が増えた (印の無い入口がある)');
+        assert.equal((after.match(/onclick="openMyAvailModal\(\)"/g) || []).length, 1, 'ホームの入口が増えた (印の無い入口がある)');
         assert.ok(/body\.home-simple \[data-avail-edit\] \{ display: none !important; \}/.test(html) && !/body\.home-simple[^{]*#myAvailStripCard[^{]*\{[^}]*display:\s*none/.test(html), 'シンプルな画面で入口を隠していない / カードごと隠している');
         assert.ok(/\[data-avail-ops-note\] \{ display: none; \}\s*\n\s*body\.home-simple\.ops-mode \[data-avail-ops-note\] \{ display: block; \}/.test(html) && html.includes('<p data-avail-ops-note '), '運営の案内');
         assert.ok(/cta = lite \? '' : \(_homeSimple\(\) \? heroBtn\('_heroOpenMyOpsAvail\(\)', '⏰ 自分の参加可能時間を登録する'\) : heroBtn\('openMyAvailModal\(\)', '⏰ 参加可能時間を登録する'\)\);/.test(html), 'ヒーローの入口');
