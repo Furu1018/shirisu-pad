@@ -15575,7 +15575,10 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(ops.includes('data-tap-blk="1"') && ops.includes('>まだ</span>'), '決まっていないブロックのボタン');
         const mem = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk' });
         assert.ok(!/data-tap-(done|undo|num)|<button type="button" class="(obpc|db-tag)/.test(mem), 'メンバーの盤で駒・札が押せる');
-        assert.ok(/<span class="db-tag me"[^>]*><b class="db-st">未完了<\/b>★ /.test(mem) && /<span class="db-tag ok"[^>]*><b class="db-st">✓ 完了<\/b>/.test(mem), '自分の札の ★ と太い枠 / 札の頭に 完了・未完了 の文字 (塗りと枠だけでは区別しにくい: 2026-10-28 ふるり)');
+        assert.ok(/<span class="db-tag me"[^>]*><b class="db-st">未完了<\/b><span class="db-nm">★ /.test(mem) && /<span class="db-tag ok"[^>]*><b class="db-st">✓ 完了<\/b>/.test(mem), '自分の札の ★ と太い枠 / 札の頭に 完了・未完了 の文字 (塗りと枠だけでは区別しにくい: 2026-10-28 ふるり)');
+        // 完了 / 未完了 を読めないとき (📅 で凸の記録が読めない) は言い切らない (2026-10-28 見落とし点検 DL-1)
+        const unk = draw(view, { sel: 0, blocks, blkAttr: 'data-raid-blk', doneKnown: false });
+        assert.ok(!/db-st|✓ 完了/.test(unk) && /完了 \/ 未完了 を読めませんでした/.test(unk), '凸の記録が読めないのに全員を「未完了」と言い切る (DL-1)');
         // 押す場所は帯の下の名前の札 (帯は見た目だけ・名前が切れても読める・はみ出さない: 盤のレビュー OP-1 / OP-2)
         assert.ok(!/<button[^>]*class="obpc/.test(ops) && /<span class="obpc[^"]*" style="[^"]*" aria-hidden="true">/.test(ops), '帯の駒が押せる (細い駒の名前が読めず押し違える)');
         assert.ok(/<button type="button" class="db-tag( me)?" style="--tag-c:#111;--tag-ink:#fff;" data-tap-done=/.test(ops), '名前の札が ✓ の押す場所になっていない');
@@ -15598,7 +15601,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
         const paint = fnS5('function _raidBoardPaint(tBody)', 'function _raidDoneKeys(');
         assert.ok(/\(vw\) => vw\.find\(x => x\.decided && x\.state !== 'past' && x\.mineN > 0\),/.test(paint) && /_raidBlk = \{ sid: _raidBlkSid, idx: Number\(b\.dataset\.raidBlk\) \};\s*\n\s*_raidBoardPaint\(tBody\);/.test(r), 'レイド予定表の最初に開くブロック / 選んだブロック (押したら控えから描く)');
-        assert.ok(/_decidedBoardHtml\(L\.view, \{ sel, blocks: L\.blocks, blkAttr: 'data-raid-blk' \}\)/.test(paint), 'レイド予定表の盤に運営の操作 (ops) を渡している / 呼び方が違う (盤のレビュー RV-5)');
+        assert.ok(/_decidedBoardHtml\(L\.view, \{ sel, blocks: L\.blocks, blkAttr: 'data-raid-blk', doneKnown: L\.boardOk \}\)/.test(paint) && !/ops:/.test(paint), 'レイド予定表の盤に運営の操作 (ops) を渡している / 呼び方が違う (盤のレビュー RV-5) / 読めないときの印 (DL-1)');
         assert.ok(/_raidBlkSid = season\.id;/.test(r) && /if \(!tBody\.dataset\.boardBound\) \{\s*\n\s*tBody\.dataset\.boardBound = '1';/.test(r), 'シーズンの印 / 委譲を 1 回だけ (RV-5)');
         assert.ok(!/renderRaidTab\(getCurrentIdentity\(\)\)/.test(r.slice(r.indexOf("tBody.addEventListener('click'"))), 'ブロックを押すたびに全部を取り直す (盤のレビュー RV-3)');
         assert.ok(!/mt-boss|mt-list/.test(r), '古い時間割 (ボスごとの名前の一覧) が残っている');
@@ -15641,7 +15644,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.equal(p8.decided.blocks[0].hp[1], 70, '数字の報告で済んだ凸のダメージを始まりの HP に足していない');
     });
     test('★ 実行 (盤のレビュー RV-5 / RV-10): 自分の凸の 1 行 — 名前・ボス名・ブロック名を escape / 名乗っていない人には「名乗ると」', () => {
-        const src = fnS5('function _raidMineLineHtml(view, bossNameOf, identity)', 'function _raidBoardPaint(');
+        const src = fnS5('function _raidMineLineHtml(view, bossNameOf, identity, doneKnown = true)', 'function _raidBoardPaint(');
         const esc = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const fnL = new Function('escapeHtml', 'PT_ATTRS', 'SLOT_JP', src + '\nreturn _raidMineLineHtml;')(esc, [{ key: 'fire', name: '<i>灼熱' }], { 1: '①' });
         const evil = '<img src=x onerror=alert(1)>';
@@ -15649,6 +15652,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const h = fnL(view, () => evil, { id: 1 });
         assert.ok(h.startsWith('<p class="db-mine">★ あなたの凸: ') && h.endsWith(' ✓ 完了</p>') && !h.includes('<img') && !h.includes('<i>') && h.includes('&lt;img'), '自分の凸の 1 行を escape していない / 完了・未完了 が無い');
         assert.ok(/名乗ると/.test(fnL(view, () => '', null)), '名乗っていない人に「あなたの凸はありません」と言い切る (RV-10)');
+        assert.ok(!/完了/.test(fnL(view, () => 'x', { id: 1 }, false)), '凸の記録を読めないのに「★ あなたの凸」に 完了 / 未完了 を付けた (DL-1)');
         assert.ok(/あなたの凸はありません/.test(fnL([{ name: 'x', entries: [] }], () => '', { id: 1 })));
     });
     test('★ 完了 / 未完了 を文字で (2026-10-28 ふるり「完了と未完了が区別しにくい。『完了』とか入っているとわかりやすい」): 盤の札・ブロックのボタン・数・ホームの きょうの凸', () => {
@@ -15660,6 +15664,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(home.includes(`const act = e.done ? '<span class="mt-ok">✓ 完了</span>' : '<span class="mt-pend">未完了</span>';`), 'ホームの きょうの凸 に 未完了 が出ない');
         assert.ok(html.includes('cnt.textContent = `いままで 完了 ${nDueDone} / ${nDue}'), '✓ 凸の記録の数が「いままで ✓」のまま');
         assert.ok(!/✓ 済み<\/span>/.test(home), '「✓ 済み」(記号の言い方) が残っている');
+        assert.ok(home.includes(`(r.state === 'past' ? '<span class="mt-chip past">過ぎた</span>' : '')`) && !/mt-chip past">済</.test(html), '過ぎたブロックの札が「済」— 未完了と並ぶと矛盾して見える (DL-2)');
+        assert.ok(/\.mt-blk\.past \.mt-h, \.mt-blk\.past \.mt-me-b \{ opacity: \.72; \}/.test(html) && !/\.mt-blk\.past \{ opacity/.test(html) && /\.mt-me\.ok \.mt-me-b \{ opacity: \.8; \}/.test(html), '完了 / 未完了 の文字まで薄くしている (3:1 を割る: DL-3)');
+        assert.ok(home.includes('meta.textContent = `完了 ${myDone} / ${myAll} · きょう ${rows.length} / 3 凸`'), 'ホームの見出しの数が「凸 済み · 割当 ✓」のまま (DL-6)');
     });
     test('★ ✓ 凸の記録 の盤 (盤のレビュー OP-3 / GP-1): 取り消しの確認に誰の・どの凸か / 取り直しの最中のブロックの切り替えは控えから描く (札は押せない)', () => {
         const u = fnS5('async function _opsTapUndo(', 'function renderOpsAttacksList()');
