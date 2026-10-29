@@ -2844,6 +2844,25 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 //       模擬戦提出は各メンバーがシーズン期間中に行う運用です。
 //       テストシーズン (isTest=true) のみ、動作確認・入力練習用に模擬戦データを
 //       自動シードします (前回実績 + ランダム補完 / 終了時にスナップショットから復元)。
+// 動いているシーズンがあれば止める (作成の前・2026-10-30 の決まり「アクティブは 1 つだけ」)。2 つ以上あっても limit(1) で読む
+async function _assertNoActiveSeason() {
+    const { data, error } = await supabase.from('seasons').select('id, month_key, is_test').eq('is_active', true).limit(1);
+    if (error) throw error;
+    const a = Array.isArray(data) ? data[0] : null;
+    if (!a) return;
+    throw new Error(`いま動いているシーズン (${a.is_test ? '🧪 ' : ''}${a.month_key}) があります。先に${a.is_test ? '「🧪 ✕ 終了」' : '「シーズン終了」'}で終えてから作ってください`);
+}
+
+// シーズンの行を消す = RPC delete_season (57)。予約の履歴 (39 の append-only) があっても CASCADE で消せる。
+// 57 未適用 (PGRST202・コードだけで判定) なら素の delete — 予約の無いシーズンだけ消せる (あれば append-only で止まるので 57 を案内)
+async function _deleteSeasonRow(id, what) {
+    const { error } = await supabase.rpc('delete_season', { p_season_id: id });
+    if (!error) return;
+    if (error.code !== 'PGRST202') throw new Error(`${what}: ${error.message}`);
+    const { error: e2 } = await supabase.from('seasons').delete().eq('id', id);
+    if (e2) throw new Error(`${what}: ${e2.message}${/append-only/.test(String(e2.message)) ? ' (SQL 57_season_rules.sql を実行してください)' : ''}`);
+}
+
 window.supabaseCreateSeason = async function (payload) {
     if (!payload.hardDate) throw new Error('hardDate 必須');
     if (!payload.monthKey) throw new Error('monthKey 必須');
@@ -2858,18 +2877,10 @@ window.supabaseCreateSeason = async function (payload) {
 
     const isTest = !!payload.isTest;
 
-    // テスト終了時に「テスト前の状態」へ正確に戻すため、テスト作成前に
-    // アクティブだったシーズンの ID を記録しておく (運用前に手動で 🏁 終了されている場合は null)
-    let previousActiveSeasonId = null;
-    if (isTest) {
-        const { data: prevActive } = await supabase
-            .from('seasons')
-            .select('id')
-            .eq('is_active', true)
-            .eq('is_test', false)
-            .maybeSingle();
-        previousActiveSeasonId = prevActive?.id || null;
-    }
+    // ★ アクティブなシーズンは 1 つだけ (2026-10-30 ふるり「本番のうえにテストを作成するのが良くない」)。
+    //   動いているシーズンがあれば作らない (以前は黙って止めてから作っていた → 本番の上に作ったテストを「シーズン終了」で終えると、
+    //   本番が止まったまま残った: 10/27)。同時に 2 人が作ったときは DB の一意索引 (57) が 2 つ目を拒む
+    await _assertNoActiveSeason();
 
     // テストシーズン: 現在の player_damages (characters 含む) + nikke_characters の
     // キャノニカル名一覧をスナップショットして metadata に保存。テスト終了時に復元する。
@@ -2905,16 +2916,11 @@ window.supabaseCreateSeason = async function (payload) {
                 .select('canonical_name');
             charNames = (chars || []).map(c => c.canonical_name);
         } catch { /* テーブル未マイグ環境では空配列のまま */ }
-        // 本番のボスでテストするとき: 本番の区切り (blocks) と メンバーの入力 (member_input) だけを写す。
-        //   白リストで取り、復元に使う鍵 (is_test / damages_snapshot / previous_active_season_id) より前に置く (上書きさせない: Codex 監査)
-        const cm = payload.copyMeta && typeof payload.copyMeta === 'object' ? payload.copyMeta : {};
+        // 本番の上には作らない (上の _assertNoActiveSeason) ので、終了時に戻す「前のアクティブ」は無い (previous_active_season_id は書かない)
         metadata = {
-            ...(Array.isArray(cm.blocks) ? { blocks: cm.blocks } : {}),
-            ...(cm.member_input != null ? { member_input: cm.member_input } : {}),
             is_test: true,
             damages_snapshot: dmgs,
             nikke_characters_snapshot: charNames,
-            previous_active_season_id: previousActiveSeasonId,
         };
     }
 
@@ -2938,15 +2944,9 @@ window.supabaseCreateSeason = async function (payload) {
         if ((atkCount || 0) > 0) {
             throw new Error(`月キー "${payload.monthKey}" のシーズン (${existing.is_test ? 'テスト' : '本番'}) には ${atkCount} 件の凸記録があるので使えません。同じ月の 2 回目のレイドなら「${payload.monthKey}b」のように末尾に b を付けてください`);
         }
-        // 凸ゼロ → 安全に削除して再作成 (CASCADE で bosses も消える)
-        const { error: delErr } = await supabase.from('seasons').delete().eq('id', existing.id);
-        if (delErr) throw new Error(`既存の空シーズン削除に失敗: ${delErr.message}`);
+        // 凸ゼロ → 安全に削除して再作成 (CASCADE で bosses も予約も消える)
+        await _deleteSeasonRow(existing.id, '既存の空シーズン削除に失敗');
     }
-
-    // 残りのアクティブシーズンを is_active=false (同月以外で active のもの)
-    const { error: deactivateErr } = await supabase
-        .from('seasons').update({ is_active: false }).eq('is_active', true);
-    if (deactivateErr) throw deactivateErr;
 
     // シーズン挿入
     const { data: season, error: sErr } = await supabase
@@ -2961,7 +2961,11 @@ window.supabaseCreateSeason = async function (payload) {
         })
         .select('id, hard_date, month_key, is_test')
         .single();
-    if (sErr) throw sErr;
+    if (sErr) {
+        // 確かめてから入れるまでの間に別の運営が作った (57 の一意索引)
+        if (sErr.code === '23505' && /uq_seasons_one_active/.test(String(sErr.message))) throw new Error('別の運営が先にシーズンを作りました。画面を更新してください');
+        throw sErr;
+    }
     _invalidateActiveTestSeasonCache();   // テスト開始/本番作成のどちらでも OCR のタグ判定を即時に切り替える
 
     // ボス5体挿入
@@ -3021,71 +3025,7 @@ window.supabaseCreateSeason = async function (payload) {
 // プレースホルダのボス (テストボス1〜5) + 既存5コードのローテーション + 標準ティア配分
 // 完全独立: 前回シーズンからのシードなし、終了時に player_damages と nikke_characters は復元される。
 // opts.scenario: 'midraid' (既定・数名が凸済みのレイド中盤) / 'fresh' (序盤・未凸・全ボス満タン = 予約の練習用)
-// 🧪 いまの本番のボスでテストする (2026-10-25 ふるり「もっと簡単にテストシーズンを作れないか」):
-//   アクティブな本番シーズンのボス (名前・コード・級) と区切りを写し、月キーは TEST-… (本番と衝突しない)。
-//   day = 'pre' → ハード日は明日 (前日の流れから) / 'day' → きょう (当日の流れ)。凸は入れない (序盤)。
-//   テストを終えると本番シーズンに戻る (previous_active_season_id)。
-window.supabaseCreateTestFromActive = async function (opts = {}) {
-    const { data: act, error: aErr } = await supabase.from('seasons').select('id, month_key, is_test, metadata').eq('is_active', true).maybeSingle();
-    if (aErr) throw aErr;
-    if (!act) throw new Error('いま動いている本番シーズンがありません (シーズン作成から作ってください)');
-    if (act.is_test) throw new Error('いまはテストシーズン中です。先に 🧪 ✕ 終了 で本番に戻してください');
-    const { data: bs, error: bErr } = await supabase.from('bosses').select('boss_number, boss_code, name, tier').eq('season_id', act.id).order('boss_number');
-    if (bErr) throw bErr;
-    if (!Array.isArray(bs) || bs.length !== 5) throw new Error(`本番シーズンのボスが 5 体そろっていません (${(bs || []).length} 体)`);
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (opts.day === 'day' ? 0 : 1));
-    const p2 = (n) => String(n).padStart(2, '0');
-    const ts = `${now.getFullYear()}${p2(now.getMonth() + 1)}${p2(now.getDate())}${p2(now.getHours())}${p2(now.getMinutes())}${p2(now.getSeconds())}`;
-    const meta = act.metadata && typeof act.metadata === 'object' && !Array.isArray(act.metadata) ? act.metadata : {};
-    const copyMeta = {};
-    if (Array.isArray(meta.blocks)) copyMeta.blocks = meta.blocks;
-    if (meta.member_input != null) copyMeta.member_input = meta.member_input;
-    return window.supabaseCreateSeason({
-        testScenario: 'fresh',
-        hardDate: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`,
-        // 同じ秒に 2 回でも衝突しない (Codex 監査)。2 人の運営が同時にシーズンを作る競合そのものは従来から残る (承知・運用で 1 人が作る)
-        monthKey: `TEST-${ts}-${(globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') ? globalThis.crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10)}`,
-        bosses: bs.map(b => ({ bossNumber: b.boss_number, bossCode: b.boss_code, name: b.name || '', tier: b.tier })),
-        isTest: true,
-        copyMeta,
-    });
-};
-
-// 🧪 テストシーズンの模擬を「8〜9 割の人から届いた」状態にする (未提出 1 割 = 全部消す / 一部だけ 0.5 割 = 2 属性だけ残す)。
-//   ★ 動いているのがテストシーズン (seasonId) のときだけ。本番の模擬は消さない (テストの終了時にスナップショットから戻る)
-window.supabaseThinTestMocks = async function (seasonId) {
-    const dom = window.testSeasonDomain;
-    if (!dom) throw new Error('js/domain/testSeason.js が読み込まれていません');
-    // ★ 消す直前ごとに「いま動いているのがこのテストシーズンか」を確かめ直す (別の運営がテストを終えて本番の模擬が戻った直後に消さない: Codex 監査)。
-    //   確かめてから消すまでの数十ミリ秒の競合は残る (テストの作成直後に別の運営が終了する場合だけ・承知)
-    const stillTest = async () => {
-        const { data: act, error: aErr } = await supabase.from('seasons').select('id, is_test').eq('is_active', true).maybeSingle();
-        if (aErr) throw aErr;
-        if (!act || !act.is_test || Number(act.id) !== Number(seasonId)) throw new Error('テストシーズンが動いていないので模擬を間引きません');
-    };
-    await stillTest();
-    const { data: rows, error } = await supabase.from('player_damages').select('player_id, attribute');
-    if (error) throw error;
-    // 母集団は「届いていない人」の一覧と同じ = 書庫の人を除く (Codex 監査)
-    const { data: ps, error: pErr } = await supabase.from('players').select('id, archived');
-    if (pErr) throw pErr;
-    const live = new Set((ps || []).filter(p => !p.archived).map(p => Number(p.id)));
-    const ids = (rows || []).map(r => Number(r.player_id)).filter(id => live.has(id));
-    const pick = dom.thinMocks(ids, { seed: Number(seasonId) });
-    if (pick.none.length) {
-        await stillTest();
-        const { error: e1 } = await supabase.from('player_damages').delete().in('player_id', pick.none);
-        if (e1) throw e1;
-    }
-    for (const pid of pick.partial) {   // 2 属性だけ残す (水冷・鉄甲以外を消す = 「あと 灼熱・電撃・風圧」に見える)
-        await stillTest();
-        const { error: e2 } = await supabase.from('player_damages').delete().eq('player_id', pid).in('attribute', ['fire', 'electric', 'wind']);
-        if (e2) throw e2;
-    }
-    return { none: pick.none.length, partial: pick.partial.length, total: new Set(ids).size };
-};
-
+// ★ 動いているシーズンがあれば作れない (supabaseCreateSeason の _assertNoActiveSeason)。「本番のボスでテスト」は 2026-10-30 に外した (本番の上に作らない)
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     const testScenario = opts.scenario === 'fresh' ? 'fresh' : 'midraid';
     const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];
@@ -4293,6 +4233,18 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
     if (sErr) throw sErr;
     if (!season) throw new Error('アクティブなテストシーズンがありません');
 
+    // ★ 模擬を戻す前に、最後の「シーズンの行を消す」が通るかを確かめる (2026-10-30)。予約が 1 件でもあると、57 の無い DB では
+    //   予約の履歴 (39 の append-only) で削除が止まり、模擬だけ戻ってテストが動いたまま、になっていた
+    {
+        const { error: rpcErr } = await supabase.rpc('delete_season', { p_season_id: -1 });   // 無い id = 何も消さずに NULL を返す
+        if (rpcErr && rpcErr.code !== 'PGRST202') throw rpcErr;
+        if (rpcErr) {
+            const { count, error: cErr } = await supabase.from('plan_reservations').select('id', { count: 'exact', head: true }).eq('season_id', season.id);
+            if (cErr && !_isMissingTableErr(cErr, 'plan_reservations')) throw cErr;
+            if ((count || 0) > 0) throw new Error('予約のあるテストシーズンを消すには SQL 57_season_rules.sql の実行が必要です (何も変えていません)');
+        }
+    }
+
     // player_damages をスナップショットから復元 (characters カラムも一緒に)
     const snapshot = season.metadata?.damages_snapshot;
     if (Array.isArray(snapshot)) {
@@ -4362,12 +4314,12 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
         } catch (e) { console.warn('[test cleanup] nikke_characters', e?.message || e); }
     }
 
-    // テストシーズン削除 (CASCADE で bosses / attacks も消える)
-    const { error: dErr } = await supabase.from('seasons').delete().eq('id', season.id);
-    if (dErr) throw dErr;
+    // テストシーズン削除 (CASCADE で bosses / attacks / 予約と履歴 も消える = 履歴に残さない)
+    await _deleteSeasonRow(season.id, 'テストシーズンの削除に失敗');
     _invalidateActiveTestSeasonCache();   // 削除済み id を OCR のタグに使わない
 
     // テスト作成前にアクティブだったシーズンのみ復活させる。
+    // ★ 2026-10-30 からは本番の上にテストを作らないので previous_active_season_id は書かない (= ここは古い版で作ったテストのためだけ)。
     // 手動で 🏁 シーズン終了 していたなら restore せず、シーズン無しの状態に戻る。
     let restoredKey = null;
     const prevActiveId = season.metadata?.previous_active_season_id;
@@ -4387,10 +4339,16 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
 // アクティブシーズンを終了 (is_active=false + unionRank保存)
 window.supabaseEndActiveSeason = async function (unionRank) {
     const ur = (unionRank === '' || unionRank == null) ? null : Number(unionRank);
+    // ★ テストシーズンは止めない (2026-10-30 の決まり「テストシーズンは履歴に残さない」)。止めるだけだと行とテスト用の模擬が残り、
+    //   本番の上に作った古いテストなら本番も止まったまま (10/27)。テストは 🧪 ✕ 終了 (supabaseDeleteActiveTestSeason) で消して元に戻す
+    const { data: act, error: aErr } = await supabase.from('seasons').select('id, is_test').eq('is_active', true);
+    if (aErr) throw aErr;
+    if ((act || []).some(x => x.is_test)) throw new Error('テストシーズンは「🧪 ✕ 終了」で終えてください (消して元の状態に戻します)');
     const { error } = await supabase
         .from('seasons')
         .update({ is_active: false, union_rank: ur })
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_test', false);
     if (error) throw error;
 };
 

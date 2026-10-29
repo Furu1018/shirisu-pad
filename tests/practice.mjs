@@ -858,8 +858,8 @@ test('見張り: js/supabase-client.js が使う 表・RPC・問い合わせの�
     for (const t of tables) assert.ok(SCHEMA[t], `本番が使う表 ${t} を偽のサーバが知らない`);
     const rpcs = new Set([...CLIENT.matchAll(/\.rpc\('([a-z_0-9]+)'/g)].map(m => m[1]));
     const implemented = [...SERVER.matchAll(/\n        ([a-z_]+)\(a\) \{/g)].map(m => m[1]);
-    // 練習で使えない RPC (運営の シーズン編集・復元)。「見つからない」と返す → クライアントは未適用として扱う
-    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences', 'restore_insert_published_plans'];
+    // 練習で使えない RPC (運営の シーズン編集・復元・シーズンを消す (57))。「見つからない」と返す → クライアントは未適用として扱う
+    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences', 'restore_insert_published_plans', 'delete_season'];
     assert.deepEqual([...rpcs].sort(), [...implemented, ...NOT_IN_PRACTICE].sort(), '本番が使う RPC と、偽のサーバの対応が食い違っている');
     // 問い合わせの口: PostgREST の口のうち本番が使っているもの ⊆ 偽のサーバが持つもの
     const POSTGREST = ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'likeAllOf', 'likeAnyOf', 'ilikeAllOf', 'ilikeAnyOf',

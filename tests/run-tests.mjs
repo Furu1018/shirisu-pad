@@ -14350,7 +14350,7 @@ console.log('\n月キー (同じ月の 2 回目・テストで本番を消さな
         assert.equal((html.match(/!\/\^\\d\{4\}-\(0\[1-9\]\|1\[0-2\]\)\[b-z\]\?\$\/\.test\(monthKey\)\)/g) || []).length, 2, '作成と編集の両方で b を受けていない');
         const fn = client.slice(client.indexOf('window.supabaseCreateSeason = async function'), client.indexOf('window.supabaseQuickCreateTestSeason'));
         assert.ok(/\.select\('id, month_key, is_active, is_test'\)\s*\n\s*\.eq\('month_key', payload\.monthKey\)/.test(fn), '既存のシーズンが本番かテストかを読んでいない');
-        const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test !== true))'), d = fn.indexOf(".from('seasons').delete().eq('id', existing.id)");
+        const g = fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test !== true))'), d = fn.indexOf("_deleteSeasonRow(existing.id");
         assert.ok(g > 0 && d > g, 'テストの作成で本番 / 稼働中のシーズンを消せる (止めが削除より前に無い)');
         assert.ok(/「\$\{payload\.monthKey\}b」のように末尾に b を付けてください/.test(fn), '凸のある月キーで b を案内していない');
         assert.ok(/\}\)\.flatMap\(k => \[k, `\$\{k\}b`\]\);/.test(html), '分析の月次 JSON で 2 回目 (YYYY-MMb) を探していない');
@@ -14360,87 +14360,97 @@ console.log('\n月キー (同じ月の 2 回目・テストで本番を消さな
     });
 }
 
-console.log('\n🧪 本番のボスでテスト:');
+console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 つだけ・テストシーズンは履歴に残さない):');
 {
     const _fs6 = await import('node:fs');
     const html = _fs6.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs6.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
-    await testAsync('★ supabaseCreateTestFromActive: 本番のボス 5 体・区切りを写し、月キー TEST-…・ハード日は明日 (前日から) / きょう (当日)・凸なし。テスト中・本番なし・ボス不足は止める', async () => {
-        const src = client.slice(client.indexOf('window.supabaseCreateTestFromActive = async function'), client.indexOf('window.supabaseQuickCreateTestSeason = async function'));
-        const run = async (active, bosses, opts) => {
-            let got = null;
-            const q = (data) => { const o = { select: () => o, eq: () => o, order: () => Promise.resolve({ data, error: null }), maybeSingle: () => Promise.resolve({ data, error: null }) }; return o; };
-            const supabase = { from: (t) => t === 'seasons' ? q(active) : q(bosses) };
-            const win = { supabaseCreateSeason: async (p) => { got = p; return { month_key: p.monthKey }; } };
-            const fn = new Function('supabase', 'window', src + '\nreturn window.supabaseCreateTestFromActive;')(supabase, win);
-            await fn(opts); return got;
+    const fnOf = (src, head, next) => { const i = src.indexOf(head); assert.ok(i >= 0, head); const j = src.indexOf(next, i + head.length); return src.slice(i, j > i ? j : undefined); };
+    const helpers = fnOf(client, 'async function _assertNoActiveSeason()', 'window.supabaseCreateSeason = async function');
+    const mk = (supabase) => new Function('supabase', helpers + '\nreturn { _assertNoActiveSeason, _deleteSeasonRow };')(supabase);
+    await testAsync('★ 作成の前: 動いているシーズンがあれば止める (テストなら「🧪 ✕ 終了」・本番なら「シーズン終了」を案内) / 無ければ通す', async () => {
+        const sb = (rows, error = null) => { const o = { select: () => o, eq: () => o, limit: () => Promise.resolve({ data: rows, error }) }; return { from: () => o }; };
+        await assert.rejects(() => mk(sb([{ id: 39, month_key: 'TEST-1', is_test: true }]))._assertNoActiveSeason(), /いま動いているシーズン \(🧪 TEST-1\) があります。先に「🧪 ✕ 終了」で/);
+        await assert.rejects(() => mk(sb([{ id: 38, month_key: '2026-10b', is_test: false }]))._assertNoActiveSeason(), /\(2026-10b\) があります。先に「シーズン終了」で/);
+        await mk(sb([]))._assertNoActiveSeason();
+        await assert.rejects(() => mk(sb(null, { message: 'net' }))._assertNoActiveSeason(), (e) => e && e.message === 'net', '読めないのに作っている');
+    });
+    await testAsync('★ シーズンの行を消す: RPC delete_season (57) / 57 が無い (PGRST202) ときだけ素の delete・append-only で止まったら 57 を案内 / ほかの失敗は素の delete に落とさない', async () => {
+        const run = async (rpcErr, delErr) => {
+            const calls = [];
+            const q = { delete: () => { calls.push('delete'); return q; }, eq: () => Promise.resolve({ error: delErr }) };
+            const supabase = { rpc: (name, args) => { calls.push(`rpc:${name}:${args.p_season_id}`); return Promise.resolve({ error: rpcErr }); }, from: (t) => { calls.push(`from:${t}`); return q; } };
+            let err = null;
+            try { await mk(supabase)._deleteSeasonRow(7, '消せない'); } catch (e) { err = e; }
+            return { calls, err };
         };
-        const B = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, boss_code: ['Z.E.U.S.', 'P.S.I.D.', 'A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.'][n - 1], name: 'ボス' + n, tier: n === 3 || n === 5 ? 'tyrant' : 'lord' }));
-        const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
-        const p = await run({ id: 38, month_key: '2026-10b', is_test: false, metadata: { blocks, member_input: 'full' } }, B, { day: 'pre' });
-        assert.ok(/^TEST-\d{14}-[a-z0-9-]{4,8}$/.test(p.monthKey), p.monthKey); assert.notEqual(p.monthKey, (await run({ id: 38, is_test: false, metadata: {} }, B, {})).monthKey, '同じ秒に 2 回で月キーが衝突する'); assert.equal(p.isTest, true); assert.equal(p.testScenario, 'fresh', '凸を入れている');
-        assert.deepEqual(p.bosses.map(b => [b.bossNumber, b.bossCode, b.name, b.tier]), B.map(b => [b.boss_number, b.boss_code, b.name, b.tier]), 'ボスを写していない');
-        assert.deepEqual(p.copyMeta, { blocks, member_input: 'full' }, '区切り・メンバーの入力を写していない');
-        const t = new Date(); const tm = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1); const p2 = n => String(n).padStart(2, '0');
-        assert.equal(p.hardDate, `${tm.getFullYear()}-${p2(tm.getMonth() + 1)}-${p2(tm.getDate())}`, '前日から = ハード日は明日');
-        const pd = await run({ id: 38, is_test: false, metadata: {} }, B, { day: 'day' });
-        assert.equal(pd.hardDate, `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`, '当日 = ハード日はきょう'); assert.deepEqual(pd.copyMeta, {});
-        await assert.rejects(() => run({ id: 39, is_test: true, metadata: {} }, B, {}), /テストシーズン中/);
-        await assert.rejects(() => run(null, B, {}), /本番シーズンがありません/);
-        await assert.rejects(() => run({ id: 38, is_test: false, metadata: {} }, B.slice(0, 4), {}), /5 体そろっていません/);
+        let r = await run(null, null);
+        assert.deepEqual(r.calls, ['rpc:delete_season:7']); assert.equal(r.err, null);
+        r = await run({ code: 'PGRST202', message: 'Could not find' }, null);
+        assert.deepEqual(r.calls, ['rpc:delete_season:7', 'from:seasons', 'delete']); assert.equal(r.err, null);
+        r = await run({ code: 'PGRST202' }, { message: '予約の履歴は書き換え・削除できません (append-only)' });
+        assert.match(r.err.message, /^消せない: 予約の履歴.*57_season_rules\.sql を実行してください/);
+        r = await run({ code: 'P0001', message: 'いま動いている本番シーズン (2026-10b) は消せません' }, null);
+        assert.deepEqual(r.calls, ['rpc:delete_season:7'], 'RPC の断り (本番を守る) を素の delete に落としている');
+        assert.match(r.err.message, /^消せない: いま動いている本番シーズン/);
     });
-    test('★ 配線: 写した区切りを metadata に入れる / ボタンは前日・当日・終了で出て、テスト中は隠す / ハンドラは確認してから作る', () => {
-        // copyMeta は白リスト (blocks / member_input) で、復元に使う鍵より前 — 実行して確かめる
-        const endTok = 'previous_active_season_id: previousActiveSeasonId,\n        };';
-        const mm = client.slice(client.indexOf('const cm = payload.copyMeta'), client.indexOf(endTok) + endTok.length);
-        const build = new Function('payload', 'dmgs', 'charNames', 'previousActiveSeasonId', 'let metadata;\n' + mm + '\nreturn metadata;');
-        const evil = build({ copyMeta: { blocks: [1], member_input: 'full', is_test: false, damages_snapshot: 'x', previous_active_season_id: 999, nikke_characters_snapshot: 'y', foo: 1 } }, ['d'], ['c'], 38);
-        assert.deepEqual(evil, { blocks: [1], member_input: 'full', is_test: true, damages_snapshot: ['d'], nikke_characters_snapshot: ['c'], previous_active_season_id: 38 }, 'copyMeta が復元の鍵を上書きできる / 白リスト外を入れている');
-        assert.deepEqual(build({}, [], [], null), { is_test: true, damages_snapshot: [], nikke_characters_snapshot: [], previous_active_season_id: null });
-        assert.ok(/if \(_opsTestFromActiveBusy\) return;/.test(html) && /_opsTestFromActiveBusy = true;\s*\n\s*try \{/.test(html) && /\} finally \{\s*\n\s*_opsTestFromActiveBusy = false;/.test(html), '二重押しで 2 つ作れる');
-        assert.equal((html.match(/onclick="handleOpsTestFromActive\('(pre|day)'\)" class="dc-ops-action" data-stage="pre day end" data-test-from-active/g) || []).length, 2, 'ボタン 2 つが前日・当日・終了で出ない');
-        assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-test-from-active\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にも出る');
-        const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
-        assert.ok(h.indexOf('if (!confirm(msg)) return;') > 0 && h.indexOf('if (!confirm(msg)) return;') < h.indexOf('supabaseCreateTestFromActive('), '確認せずに作っている');
-    });
-}
-
-console.log('\n🧪 模擬を 8〜9 割に / 未提出の札:');
-{
-    const _fs7 = await import('node:fs');
-    const html = _fs7.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs7.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
-    test('★ thinMocks: 未提出 1 割・一部 0.5 割 (重ならない・決まった選び方・種で変わる) / 19 人なら 2 人と 1 人', () => {
-        const ts = globalThis.testSeasonDomain;
-        const ids = Array.from({ length: 19 }, (_, i) => i + 1);
-        const a = ts.thinMocks([...ids, 3, 3], { seed: 40 });
-        assert.equal(a.none.length, 2); assert.equal(a.partial.length, 1);
-        assert.equal(new Set([...a.none, ...a.partial]).size, 3, '未提出と一部が重なっている');
-        assert.ok([...a.none, ...a.partial].every(x => ids.includes(x)));
-        assert.deepEqual(ts.thinMocks(ids, { seed: 40 }), a, '同じ種で選び方が変わる');
-        const others = [41, 42, 43, 44, 45].map(sd => JSON.stringify(ts.thinMocks(ids, { seed: sd })));
-        assert.ok(new Set(others).size > 1, '種で選ぶ人が変わらない');
-        assert.deepEqual(ts.thinMocks([], {}), { none: [], partial: [] });
-        assert.equal(ts.thinMocks(Array.from({ length: 40 }, (_, i) => i), { seed: 1 }).none.length, 4);
-    });
-    await testAsync('★ 配線: 間引くのは動いているテストシーズンだけ / 未提出は全部消す・一部は 3 属性を消す / ハンドラは聞いてから / 未提出の札にボス 5 の注記を付けない', async () => {
-        const fn = client.slice(client.indexOf('window.supabaseThinTestMocks = async function'), client.indexOf('window.supabaseQuickCreateTestSeason = async function'));
-        assert.ok(/if \(!act \|\| !act\.is_test \|\| Number\(act\.id\) !== Number\(seasonId\)\) throw new Error/.test(fn), '本番の模擬を消せる');
-        // 消す呼び出しの直前には必ず stillTest() (実行して確かめる: 途中で本番に戻ったら消さない)
-        const dels = []; let active = { id: 50, is_test: true }; let n = 0;
-        const q = (table) => {
-            const o = { _del: false, select: () => o, eq: () => o, in: () => o, delete: () => { o._del = true; dels.push(table); return o; },
-                maybeSingle: () => Promise.resolve({ data: active, error: null }),
-                then: (ok) => ok(table === 'players' ? { data: [{ id: 1 }, { id: 2 }, { id: 3, archived: true }, ...Array.from({ length: 17 }, (_, i) => ({ id: 10 + i }))], error: null }
-                    : o._del ? (n++, active = n === 1 ? { id: 38, is_test: false } : active, { error: null }) : { data: [1, 2, 3, ...Array.from({ length: 17 }, (_, i) => 10 + i)].flatMap(id => ['fire', 'water', 'electric', 'iron', 'wind'].map(a => ({ player_id: id, attribute: a }))), error: null }) };
-            return o;
+    await testAsync('★ シーズン終了: テストシーズンは止めない (🧪 ✕ 終了 を案内) / 本番は is_test=false の行だけ止める', async () => {
+        const src = fnOf(client, 'window.supabaseEndActiveSeason = async function', '\n};') + '\n};';
+        const run = async (active) => {
+            const log = [];
+            const sel = { select: () => sel, eq: () => Promise.resolve({ data: active, error: null }) };
+            const upd = { _f: [], eq: (k, v) => { upd._f.push([k, v]); return upd; }, then: (ok) => { log.push(['update', upd._f]); return ok({ error: null }); } };
+            const supabase = { from: () => ({ select: sel.select, update: (v) => { log.push(['set', v]); upd._f = []; return upd; } }) };
+            const win = {};
+            new Function('supabase', 'window', src)(supabase, win);
+            let err = null;
+            try { await win.supabaseEndActiveSeason('0.27'); } catch (e) { err = e; }
+            return { log, err };
         };
-        const thin = new Function('supabase', 'window', fn + '\nreturn window.supabaseThinTestMocks;')({ from: q }, { testSeasonDomain: globalThis.testSeasonDomain });
-        await assert.rejects(() => thin(50), /テストシーズンが動いていない/, '途中で本番に戻っても消し続けた');
-        assert.equal(dels.length, 1, `本番に戻ったあとに消している (${dels.length} 回)`);
-        assert.ok(/const live = new Set\(\(ps \|\| \[\]\)\.filter\(p => !p\.archived\)/.test(fn), '書庫の人も母集団に入れている');
-        assert.ok(/\.delete\(\)\.in\('player_id', pick\.none\)/.test(fn) && /\.delete\(\)\.eq\('player_id', pid\)\.in\('attribute', \['fire', 'electric', 'wind'\]\)/.test(fn));
-        const h = html.slice(html.indexOf('async function handleOpsTestFromActive(day)'), html.indexOf('async function handleOpsQuickCreateTestSeason('));
-        assert.ok(/if \(seedTotal > 0 && confirm\('模擬を「8〜9 割の人から届いた」状態にしますか？/.test(h) && /await window\.supabaseThinTestMocks\(r\.id\);/.test(h), '8〜9 割を選べない');
-        assert.ok(/a === b5Weak && r\.b5Short > 0 && list\.length/.test(html) && !/r\.missing\.length === 5 \? '未提出'/.test(html), '未提出の人にもボス 5 の注記が付く (表では出した人のマスにだけ)');
+        let r = await run([{ id: 39, is_test: true }]);
+        assert.match(String(r.err?.message), /テストシーズンは「🧪 ✕ 終了」で終えてください/); assert.equal(r.log.length, 0, 'テストを止めている');
+        r = await run([{ id: 38, is_test: false }]);
+        assert.equal(r.err, null);
+        assert.deepEqual(r.log, [['set', { is_active: false, union_rank: 0.27 }], ['update', [['is_active', true], ['is_test', false]]]]);
+    });
+    test('★ 配線 (クライアント): 作成は先に止めの確かめ・黙って止めない・前のアクティブを書かない / テスト終了は模擬を戻す前に 57 を確かめ、行は delete_season で消す', () => {
+        const fn = fnOf(client, 'window.supabaseCreateSeason = async function', 'window.supabaseQuickCreateTestSeason');
+        const g = fn.indexOf('await _assertNoActiveSeason();');
+        assert.ok(g > 0 && g < fn.indexOf("from('player_damages').select(sel)") && g < fn.indexOf(".from('seasons')\n        .insert("), '止めの確かめがスナップショット・作成より前に無い');
+        assert.ok(!/\.update\(\{ is_active: false \}\)\.eq\('is_active', true\)/.test(fn), '動いているシーズンを黙って止めている');
+        assert.ok(!/previous_active_season_id:|previousActiveSeasonId|copyMeta/.test(fn), '前のアクティブ / 本番から写す口が残っている');
+        assert.ok(/sErr\.code === '23505' && \/uq_seasons_one_active\/\.test/.test(fn), '同時に作られたときの断りを日本語にしていない');
+        assert.ok(fn.indexOf("_deleteSeasonRow(existing.id, '既存の空シーズン削除に失敗')") > fn.indexOf('if (existing.is_active || (payload.isTest && existing.is_test !== true))'));
+        assert.ok(!/supabaseCreateTestFromActive|supabaseThinTestMocks/.test(client), '本番のボスでテスト / 模擬の間引き が残っている');
+        assert.ok(!('thinMocks' in globalThis.testSeasonDomain), 'testSeasonDomain.thinMocks が残っている');
+        const del = fnOf(client, 'window.supabaseDeleteActiveTestSeason = async function', 'window.supabaseEndActiveSeason');
+        const pre = del.indexOf("supabase.rpc('delete_season', { p_season_id: -1 })"), restore = del.indexOf("from('player_damages').delete()");
+        assert.ok(pre > 0 && restore > pre, '模擬を戻す前に 57 (消せるか) を確かめていない');
+        assert.ok(/if \(\(count \|\| 0\) > 0\) throw new Error\('予約のあるテストシーズンを消すには SQL 57_season_rules\.sql/.test(del));
+        assert.ok(del.indexOf("await _deleteSeasonRow(season.id, 'テストシーズンの削除に失敗');") > restore && !/from\('seasons'\)\.delete\(\)/.test(del), 'テストシーズンの行を素の delete で消している');
+        assert.equal((client.match(/from\('seasons'\)\.delete\(\)/g) || []).length, 1, 'seasons の素の delete は _deleteSeasonRow の 57 未適用の道だけ');
+    });
+    test('★ 配線 (画面): 本番のボスでテストを外した / シーズン終了 はテスト中に出さず、押せてもテストは ✕ 終了 のシートへ / 作成の確認に「非アクティブ化」と言わない', () => {
+        assert.ok(!/TestFromActive|test-from-active|本番のボスでテスト|ThinTestMocks/.test(html), '本番のボスでテスト が画面に残っている');
+        assert.equal((html.match(/<button onclick="handleOpsEndSeason\(\)" class="dc-ops-action" data-stage="end" data-prod-only /g) || []).length, 1);
+        assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-prod-only\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にシーズン終了が出る');
+        const end = fnOf(html, 'async function handleOpsEndSeason()', 'async function handleOpsResetDamages()');
+        const ti = end.indexOf('if (ctx.season.is_test) { await openOpsTestEndModal(); return; }');
+        assert.ok(ti > 0 && ti < end.indexOf('prompt(') && ti < end.indexOf('supabaseEndActiveSeason'), 'テストを止める道が残っている');
+        assert.ok(!/既存のアクティブシーズンは非アクティブ化されます/.test(html));
+    });
+    test('★ PC で「シーズン作成」が出ない: 段階のシーズンは運営の盤面を先に信じる (盤面がシーズン無しなら軽い写しを見ない) / 盤面と違う写しは捨てる', () => {
+        const src = fnOf(html, 'function _opsStageSeason() {', '\n        }') + '\n        }';
+        const run = (ops, ss) => new Function('opsStore', 'seasonStore', src + '\nreturn _opsStageSeason();')({ get: () => ops }, { get: () => ss });
+        assert.equal(run({ season: null }, { season: { id: 39 } }), null, '盤面がシーズン無しなのに古い写し (終わったテスト) を使う');
+        assert.deepEqual(run({ season: { id: 40 } }, { season: { id: 39 } }), { id: 40 });
+        assert.deepEqual(run(null, { season: { id: 39 } }), { id: 39 }, '盤面を読む前は写しで');
+        assert.equal(run(null, null), null);
+        const dash = fnOf(html, 'async function renderOpsDashboard()', 'const testBanner = document.getElementById');
+        assert.ok(/const _ss = seasonStore\.get\(\);\s*\n\s*if \(_ss && \(_ss\.season\?\.id \?\? null\) !== \(season\?\.id \?\? null\)\) seasonStore\.invalidate\(\);/.test(dash), '盤面と違うシーズンの写しを捨てていない');
+        assert.ok(dash.indexOf('seasonStore.invalidate()') > dash.indexOf('const { season, bosses, players } = snapshot;'));
+    });
+    test('模擬の表: 未提出の人にボス 5 の注記を付けない (表では出した人のマスにだけ)', () => {
+        assert.ok(/a === b5Weak && r\.b5Short > 0 && list\.length/.test(html) && !/r\.missing\.length === 5 \? '未提出'/.test(html));
     });
 }
 

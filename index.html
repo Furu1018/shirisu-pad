@@ -4924,9 +4924,7 @@
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:var(--t-ink);color:var(--card);"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
                     <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 テスト (序盤・凸ゼロ)</button>
                     <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-testlink" data-stage="prep">🧪 クイックテスト (中盤)</button>
-                    <button onclick="handleOpsTestFromActive('pre')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (前日から)</button>
-                    <button onclick="handleOpsTestFromActive('day')" class="dc-ops-action" data-stage="pre day end" data-test-from-active style="background:var(--ops-bg);color:var(--ops-on);">🧪 本番のボスでテスト (当日)</button>
-                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
+                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" data-prod-only style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
                 <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>テスト (序盤・凸ゼロ)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 の 1 周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
@@ -18265,6 +18263,9 @@
             }
 
             const { season, bosses, players } = snapshot;
+            // 軽い写し (seasonStore) が別のシーズンのままなら捨てる (ホーム・レイド予定表も次に開いたとき取り直す)。別の端末でシーズンを作る・終えると、この端末の写しは古いまま残る
+            const _ss = seasonStore.get();
+            if (_ss && (_ss.season?.id ?? null) !== (season?.id ?? null)) seasonStore.invalidate();
             const testBanner = document.getElementById('opsTestBanner');
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';
@@ -20650,42 +20651,6 @@
                 _growthNote('err', e?.message || String(e));
             } finally {
                 _growth.busy = false;
-            }
-        }
-
-        // 🧪 いまの本番のボスでテスト (1 タップ・段階を切り替えなくてよい)。終了すると本番に戻る
-        let _opsTestFromActiveBusy = false;
-        async function handleOpsTestFromActive(day) {
-            if (_opsTestFromActiveBusy) return;   // 二重押しで 2 つ作らない
-            const pre = day !== 'day';
-            const msg = `🧪 いまの本番シーズンのボスでテストを始めますか？\n\n`
-                + `・ボス 5 体と区切りは本番と同じ / 月キーは TEST-… (本番は消えません)\n`
-                + `・${pre ? 'ハード日は明日 = 前日の流れ (⏰ 登録 → 📸 模擬 → 🔒 予約 → 朝を組んで配信) から' : 'ハード日はきょう = 当日の流れ (HP → 結果の取り込み → 組む → 配信) から'}\n`
-                + `・凸ゼロ・全ボス満タン。模擬はテスト用にシード (いまの模擬は終了時に元へ戻ります)\n`
-                + `・テスト中に登録した模擬・凸・予約・配信は、🧪 ✕ 終了 で消えて本番に戻ります\n`
-                + `・通知は 運営担当 と「🧪 テスト通知も受け取る」を ON にした人だけに届きます`;
-            if (!confirm(msg)) return;
-            _opsTestFromActiveBusy = true;
-            try {
-                const r = await window.supabaseCreateTestFromActive({ day: pre ? 'pre' : 'day' });
-                seasonStore.invalidate();
-                opsStore.invalidate();
-                const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
-                // 模擬は全員ぶん入る。8〜9 割の人から届いた状態 (未提出・一部だけの人がいる) で練習するなら間引く
-                let thin = '';
-                if (seedTotal > 0 && confirm('模擬を「8〜9 割の人から届いた」状態にしますか？\n\nOK = 約 1 割を未提出・約 0.5 割を 2 属性だけにする\nキャンセル = 全員ぶんのまま')) {
-                    try {
-                        const t = await window.supabaseThinTestMocks(r.id);
-                        opsStore.invalidate();
-                        thin = ` · ${t.total - t.none - t.partial}/${t.total} 人の模擬がそろった状態 (未提出 ${t.none}・一部 ${t.partial})`;
-                    } catch (e) { thin = ` · 模擬を間引けませんでした (${e?.message || e})`; }
-                }
-                showNotification(`✅ ${r.month_key} (本番のボス・${pre ? '前日から' : '当日'}) を作成しました${seedTotal > 0 ? ` · 模擬 ${seedTotal}件シード` : ''}${thin}`);
-                renderOpsDashboard();
-            } catch (e) {
-                alert(`❌ テストを作れませんでした: ${e?.message || e}`);
-            } finally {
-                _opsTestFromActiveBusy = false;
             }
         }
 
@@ -27616,7 +27581,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
             const confirmMsg = isTest
                 ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。\n模擬戦データはテスト用に自動シードされます (前回実績 + ランダム補完)。`
-                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}`;
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}`;
             if (!confirm(confirmMsg)) return;
 
             try {
@@ -27635,6 +27600,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         async function handleOpsEndSeason() {
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) { alert('アクティブなシーズンがありません'); return; }
+            // テストは止めずに消して元に戻す (🧪 ✕ 終了 と同じシート)。ボタンはテスト中に出していないが、段階の切り替えの合間に押せても止めない
+            if (ctx.season.is_test) { await openOpsTestEndModal(); return; }
             // ★ レイド当日 (自動判定が「当日」) は終了させない (Codex指摘 2026-09-08)。
             //   手動で段階を「終了」に上書きしていても、実時間が当日なら止める — 終了するとホームが結果に変わり、
             //   凸報告も締め凸も止まる。翌日5時以降に「終了」の段階で行う
@@ -31813,7 +31780,14 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         let _opsPublishedFailed = false; // 直近の配信の取得が失敗したか (✓ 凸の記録の文の出し分け)
         let _opsEtcRendered = false;     // その他 › メンテナンス を描いたか (開いたときに1回)
         const _OPS_BACKUP_AT_KEY = 'shirisuko_backup_saved_at_v1';
-        function _opsStageSeason() { return opsStore.get()?.season || seasonStore.get()?.season || null; }
+        // ★ 運営の盤面 (opsStore) を読めていれば、シーズンが無い (null) もそのまま信じる (2026-10-30)。以前は `opsStore… || seasonStore…` で、
+        //   盤面が「シーズン無し」でも軽い写し (seasonStore = 書き込みと下に引くときしか取り直さない) に終わったテストが残っていると
+        //   そちらを使い、段階が「終了」のまま「シーズン作成」が出なかった (PC = 下に引く更新が無い)
+        function _opsStageSeason() {
+            const snap = opsStore.get();
+            if (snap) return snap.season || null;
+            return seasonStore.get()?.season || null;
+        }
         // ★ 配信の有無は**そのシーズンの**配信だけを見る (Codex指摘 2026-09-08)。
         //   シーズンを切り替えた直後は前シーズンの配信が手元に残っていて、「配信済み」と誤表示する。
         //   null = まだ取得できていない (「未配信」と混同させない)。段階のチェックリストとコックピットの両方がこれを使う
@@ -31916,8 +31890,9 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             document.querySelectorAll('#tab-ops [data-stage]').forEach(el => {
                 el.style.display = String(el.dataset.stage || '').split(/\s+/).includes(st.stage) ? '' : 'none';
             });
-            // 🧪 本番のボスでテスト は本番シーズンのときだけ (テスト中は 🧪 ✕ 終了 で戻ってから)
-            if (season && season.is_test) document.querySelectorAll('#tab-ops [data-test-from-active]').forEach(el => { el.style.display = 'none'; });
+            // 「シーズン終了」は本番のときだけ。テストは上の「🧪 テスト稼働中 ✕ 終了」で消して元に戻す (2026-10-30 の決まり「テストシーズンは履歴に残さない」。
+            //   テストを「シーズン終了」で止めると行とテスト用の模擬が残っていた)
+            if (season && season.is_test) document.querySelectorAll('#tab-ops [data-prod-only]').forEach(el => { el.style.display = 'none'; });
         }
         function _opsStageBarHtml(st, season) {
             const dom = window.opsStageDomain, esc = escapeHtml;

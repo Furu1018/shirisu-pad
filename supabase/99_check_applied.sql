@@ -374,6 +374,23 @@ SELECT * FROM (
         AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_published_plans_no_rewrite'
                        AND tgrelid = to_regclass('public.published_plans') AND tgenabled IN ('O', 'A')),
         '✓ 凸しました (attacks.source / planned_damage_raw / plan_key・RPC mark_attack_done = ダメージ 0・HP を動かさない) と ✅ 決定の配信 (publish_decided_plan・決定のあとの従来の配信を拒むトリガー)。未適用だと ✓ と決定が止まる'
+    UNION ALL SELECT '57_season_rules',
+        -- 索引は seasons の is_active の一意・部分索引 (WHERE is_active) そのもの (pg_get_indexdef の文字列で丸ごと比べる: Codex 監査)
+        COALESCE(pg_get_indexdef(to_regclass('public.uq_seasons_one_active'))
+                 = 'CREATE UNIQUE INDEX uq_seasons_one_active ON public.seasons USING btree (is_active) WHERE is_active', false)
+        -- 関数の中身 (順序つきの型): delete_season は 印を立てる → 消す → 印を外す / 2 つのトリガー関数は 印が 'on' なら通す → それ以外は断る
+        AND COALESCE((SELECT pg_get_functiondef(f) LIKE '%PERFORM set_config(''app.season_delete'', ''on'', true);%DELETE FROM seasons WHERE id = p_season_id;%PERFORM set_config(''app.season_delete'', '''', true);%'
+                      FROM to_regprocedure('public.delete_season(bigint)') AS f WHERE f IS NOT NULL), false)
+        AND COALESCE((SELECT pg_get_functiondef(f) LIKE '%IF TG_OP = ''DELETE'' AND COALESCE(current_setting(''app.season_delete'', true), '''') = ''on'' THEN%RETURN OLD;%END IF;%RAISE EXCEPTION%'
+                      FROM to_regprocedure('public.plan_reservation_events_append_only()') AS f WHERE f IS NOT NULL), false)
+        AND COALESCE((SELECT pg_get_functiondef(f) LIKE '%IF COALESCE(current_setting(''app.season_delete'', true), '''') = ''on'' THEN%RETURN OLD;%END IF;%RAISE EXCEPTION%'
+                      FROM to_regprocedure('public.seasons_delete_via_rpc()') AS f WHERE f IS NOT NULL), false)
+        -- トリガーはその関数を BEFORE で呼び、ふだんのセッションで動くこと (O = 有効 / A = いつも)
+        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_plan_reservation_events_append_only' AND tgenabled IN ('O', 'A')
+                       AND pg_get_triggerdef(oid) LIKE '%BEFORE DELETE OR UPDATE ON public.plan_reservation_events FOR EACH ROW EXECUTE FUNCTION plan_reservation_events_append_only()%')
+        AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_seasons_delete_via_rpc' AND tgenabled IN ('O', 'A')
+                       AND pg_get_triggerdef(oid) LIKE '%BEFORE DELETE ON public.seasons FOR EACH ROW EXECUTE FUNCTION seasons_delete_via_rpc()%'),
+        'シーズンの決まり (アクティブは 1 つだけの一意索引・シーズンを消す RPC delete_season・予約の履歴の append-only と seasons の DELETE はその中だけ通す)。未適用だと予約のあるテストシーズンを 🧪 ✕ 終了 で消せない'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
