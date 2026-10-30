@@ -1070,11 +1070,14 @@
         .dc-mb-c.mute { color:var(--t-muted); background:var(--s2)}
         .dc-mb-c.acc { color:var(--ops); background:rgba(108,66,240,.10)}
         .dc-mb-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
-        .dc-mb-strip { display:grid; grid-template-columns:repeat(24,1fr); gap:1px; height:12px; width:130px; }
-        .dc-mb-strip i { display:block; background:var(--s2); border-radius:2px}
-        .dc-mb-strip i.on { background:var(--ops-solid)}
-        .dc-mb-strip i.now { outline:1.5px solid var(--attr-fire-solid); outline-offset:-1px}
-        .dc-mb-tz { font-size:10px; color:var(--t-muted); white-space:nowrap}
+        /* 👥 行の時間はブロックのタイル (A から順 = 5 時始まり・ホームと同じ並び・2026-10-31 ふるり)。ブロックは最大 12 個なので幅は詰められるようにする (minmax(0,…)) */
+        .dc-mb-time { min-width:0; max-width:100%; }
+        .dc-mb-blks { display:grid; grid-template-columns:repeat(var(--mb-n,6),minmax(0,20px)); gap:2px; }
+        .dc-mb-blks i { display:block; min-width:0; height:18px; line-height:18px; border-radius:4px; font-style:normal; font-size:10px; font-weight:900; text-align:center; overflow:hidden; background:var(--s2); color:var(--t-muted); }
+        .dc-mb-blks i.on { background:var(--ops-solid); color:var(--on-fill); }
+        .dc-mb-blks i.part { background:var(--ops-bg); color:var(--ops-on); }
+        .dc-mb-blks i.now { outline:1.5px solid var(--attr-fire-solid); outline-offset:-1px; }
+        .dc-mb-tz { margin-top:2px; font-size:10px; font-weight:700; color:var(--t-muted); overflow-wrap:anywhere; }
         .dc-mb-atk { display:inline-flex; gap:3px; }
         .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:900; background:var(--s2); color:var(--t-muted)}
         .dc-mb-atk i.d { background:var(--t-ink); color:var(--card)}
@@ -19104,19 +19107,24 @@
                 `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}${s.sub ? `<small style="margin-left:6px;color:var(--t-muted);">${escapeHtml(s.sub)}</small>` : ''}</div></div>`).join('');
             // 行
             const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || 'var(--ghost)'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
+            // 🧱 シーズンのブロック。行の時間はブロックの文字で出す (A から順 = 5 時始まり。24 個の点は 0 時始まりで、ホームの ⏰ と並びが違って読みにくかった: 2026-10-31 ふるり)
+            const _mbRb = window.raidBlocksDomain, _mbAv = window.availabilityDomain;
+            const _mbBlocks = _mbRb ? _mbRb.blocksOfSeason(_mb.season || null) : [];
+            const _mbNowBlk = (isDay && _mbRb) ? _mbRb.blockIndexOfHour(_mbBlocks, nowH) : -1;
             const strip = (r) => {
                 if (r.availUnavailable) return '<span class="dc-mb-c mute" title="今回は参加が難しいと伝えている人 (候補にも催促にも入れません)">✋ 今回は難しい</span>';
                 if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err" title="時間が未登録の人は最適凸プランの候補にしません (段階 2b)">時間帯 未登録</span>';
-                const on = new Set(r.slots.map(s => parseInt(String(s).slice(1), 10)).filter(Number.isFinite));
-                let cells = '';
-                for (let i = 0; i < 24; i++) cells += `<i class="${on.has(i) ? 'on' : ''}${isDay && i === nowH ? ' now' : ''}" title="${i}時"></i>`;
-                const hrs = [...on].sort((a, b) => a - b);
-                const label = hrs.length ? `${hrs[0]}-${hrs[hrs.length - 1] + 1}時` : '';
-                return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}</div></div>`;
+                // 下の時刻はホームの ⏰ と同じ読み方 (5 時始まり・翌の言い方)。間が空いていても「5〜9時・13〜17時」と分けて出す
+                const label = _mbAv ? _mbAv.rangesOf(r.slots).map(_mbAv.rangeLabel).join('・') : '';
+                const cells = _mbRb ? _mbRb.blockStates(_mbBlocks, r.slots).map((b) => {
+                    const cls = [b.state === 'on' ? 'on' : b.state === 'partial' ? 'part' : '', b.idx === _mbNowBlk ? 'now' : ''].filter(Boolean).join(' ');
+                    const tip = `${b.label}${b.state === 'partial' ? ` (一部 ${b.on}/${b.hours} 時間)` : ''}`;
+                    return `<i${cls ? ` class="${cls}"` : ''} title="${escapeHtml(tip)}">${escapeHtml(b.letter)}</i>`;
+                }).join('') : '';
+                const grid = cells ? `<div class="dc-mb-blks" style="--mb-n:${_mbBlocks.length};" role="img" aria-label="${escapeHtml(_mbRb.blocksLabel(_mbBlocks, r.slots))}">${cells}</div>` : '';
+                return `<div class="dc-mb-time">${grid}<div class="dc-mb-tz">${escapeHtml(label)}</div></div>`;
             };
             // 🧱 段階 2b: 本人が決めたブロックごとの凸数 (算出の上限)。入れていない人は出さない (= おまかせ)
-            const _mbRb = window.raidBlocksDomain;
-            const _mbBlocks = _mbRb ? _mbRb.blocksOfSeason(_mb.season || null) : [];
             const counts = (r) => {
                 const p = (_mb.players || []).find(x => Number(x.id) === Number(r.id));
                 const lbl = (_mbRb && p && p.blockCounts) ? _mbRb.countsLabel(p.blockCounts, _mbBlocks) : '';
@@ -19193,8 +19201,8 @@
                 </div>`;
             }).join('') : '<p style="color:var(--t-body);font-size:12px;margin:6px 0;">要対応のメンバーはいません 🎉</p>';
             if (legEl) legEl.innerHTML = isDay
-                ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:var(--ops);">紫 = 代理登録</span><span>赤枠 = 現在時刻 (${nowH}時)</span><span>● 得意属性</span>`
-                : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の参加可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
+                ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:var(--ops);">紫 = 代理登録</span><span>紫 = 出られるブロック・薄い紫 = 一部の時間だけ</span>${_mbNowBlk >= 0 ? `<span>赤枠 = いまのブロック (${escapeHtml(_mbBlocks[_mbNowBlk].label)})</span>` : ''}<span>● 得意属性</span>`
+                : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>A・B… = ブロック (左が 5 時始まり)。紫 = 出られる・薄い紫 = 一部の時間だけ</span><span>🔕 = Push未購読 (催促が届かない)</span>';
         }
         // ========== 🔒 凸の予約 (L2 / 課題E・運営ONのみ) ==========
         // 承認するとソルバーの固定制約になる。承認は運営の誰か1人でよく、

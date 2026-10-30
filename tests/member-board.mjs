@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import '../js/domain/mockLevels.js';     // globalThis.mockLevelsDomain (charKey の委譲先 — 本番と同じ読み込み順)
 import '../js/domain/memberStatus.js';   // globalThis.memberStatusDomain
+import '../js/domain/raidBlocks.js';     // globalThis.raidBlocksDomain (行の時間のタイル)
+import '../js/domain/availability.js';   // globalThis.availabilityDomain (タイルの下の時刻)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -116,7 +118,7 @@ test('前日・全員: 完了の行は ✓ で出る / アバター画像は src
     assert.ok(out.includes('完了さん'));
     assert.ok(out.includes('src="https://x/y.png"'));
     assert.ok(out.includes('⏳隙間型'), '隙間型の表示が無い');
-    assert.ok(out.includes('dc-mb-strip'), '時間帯バーが無い');
+    assert.ok(out.includes('class="dc-mb-blks"'), '時間のタイルが無い');
 });
 
 test('当日: 凸 L1 表示・代理バッジ・締め凸未返答・代理凸ボタン (凸3未満のみ)', () => {
@@ -141,6 +143,69 @@ test('当日: 凸 L1 表示・代理バッジ・締め凸未返答・代理凸�
     _mbPaint('day');
     assert.ok(el('opsMbSummary').innerHTML.includes('3凸 完了'), '当日の集計が出ていない');
     assert.ok(!/undefined|NaN/.test(out));
+});
+
+// 👥 行の時間はブロックのタイル (2026-10-31 ふるり「ホームは 5 時スタートなのに 24 時スタートで見づらい。24 時間分の点をやめて A や B のブロックに」)
+const paintOne = (slots, phase = 'pre', over = {}) => {
+    _mb.filter = 'all';
+    _mb.rows = dom.buildRows({ players: [P({ id: 9, name: '時間さん', availableSlots: slots, ...over })], extras, phase });
+    _mbPaint(phase);
+    return el('opsMbRows').innerHTML;
+};
+const tiles = (out) => [...out.matchAll(/<i(?: class="([^"]*)")? title="([^"]*)">([^<]*)<\/i>/g)].map(m => ({ cls: m[1] || '', title: m[2], letter: m[3] }));
+const tzOf = (out) => /<div class="dc-mb-tz">([^<]*)<\/div>/.exec(out)?.[1];
+
+test('★ 行の時間: A から順 (5 時始まり) のタイル / 出られる = 紫・出られない = 無地 / 下の時刻は間が空いても分けて出す', () => {
+    const out = paintOne(['h05', 'h06', 'h07', 'h08', 'h13', 'h14', 'h15', 'h16']);
+    const t = tiles(out);
+    assert.deepEqual(t.map(x => x.letter), ['A', 'B', 'C', 'D', 'E', 'F'], `5 時始まりの A から順でない: ${t.map(x => x.letter).join('')}`);
+    assert.deepEqual(t.map(x => x.cls), ['on', '', 'on', '', '', ''], '出られるブロックの印が違う');
+    assert.equal(t[0].title, 'A 朝 5〜9時', 'タイルの title がブロックの言い方でない');
+    assert.equal(tzOf(out), '5〜9時・13〜17時', '間の空いた時間が「5-17時」のようにつながっている');
+    assert.ok(out.includes('style="--mb-n:6;"') && out.includes('aria-label="A 朝・C 午後"'), 'タイルの数 / 読み上げの文が違う');
+    assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
+});
+test('★ 行の時間: 1 時間刻みの古い登録はブロックの一部 (薄い紫) / 夜をまたぐ時間は 5 時始まりで読む', () => {
+    const part = paintOne(['h21', 'h22']);
+    const t = tiles(part);
+    assert.deepEqual(t.map(x => x.cls), ['', '', '', '', 'part', ''], '一部のブロックの印が違う');
+    assert.equal(t[4].title, 'E 夜 21〜翌1時 (一部 2/4 時間)', '一部の title が違う');
+    assert.equal(tzOf(part), '21〜23時');
+    // 0 時始まりの読み方だと「0-24時」になっていた人
+    const night = paintOne(['h23', 'h00', 'h01']);
+    assert.equal(tzOf(night), '23〜翌2時', `夜をまたぐ時間が 0 時始まりで読まれている: ${tzOf(night)}`);
+    assert.deepEqual(tiles(night).map(x => x.cls), ['', '', '', '', 'part', 'part']);
+});
+test('★ 行の時間: シーズンの区切りのとおりのタイル (数・名前は escape)', () => {
+    _mb.season = { metadata: { blocks: [{ name: '<b>', from: 5, to: 12 }, { name: '', from: 13, to: 4 }] } };
+    try {
+        const out = paintOne(['h05', 'h06', 'h07', 'h08', 'h09', 'h10', 'h11', 'h12']);
+        const t = tiles(out);
+        assert.deepEqual(t.map(x => [x.letter, x.cls]), [['A', 'on'], ['B', '']], 'シーズンのブロックの数でない');
+        assert.ok(out.includes('style="--mb-n:2;"'), 'タイルの列の数がブロックの数でない');
+        assert.ok(t[0].title.includes('&lt;b&gt;') && !/(title|aria-label)="[^"]*<b>/.test(out), 'ブロックの名前が escape されていない');
+    } finally { _mb.season = null; }
+});
+test('★ 行の時間: 当日はいまのブロックに赤枠 (時計で決める)・前日は出さない / 凡例も同じブロック', () => {
+    const RealDate = Date;
+    globalThis.Date = class extends RealDate { getHours() { return 18; } };   // 18 時 = D (17〜21時)
+    try {
+        const day = paintOne(['h05', 'h17'], 'day');
+        assert.deepEqual(tiles(day).map(x => x.cls), ['part', '', '', 'part now', '', ''], 'いまのブロックに赤枠が付いていない');
+        assert.ok(el('opsMbLegend').innerHTML.includes('赤枠 = いまのブロック (D 夕方 17〜21時)'), '当日の凡例にいまのブロックが無い');
+        const pre = paintOne(['h17'], 'pre');
+        assert.ok(!tiles(pre).some(x => /now/.test(x.cls)), '前日に赤枠が出ている');
+        assert.ok(el('opsMbLegend').innerHTML.includes('左が 5 時始まり') && !el('opsMbLegend').innerHTML.includes('0〜23時'), '凡例が古い (0 時始まり)');
+    } finally { globalThis.Date = RealDate; }
+});
+test('★ 行の時間: 時間が未登録・今回は難しい の人はタイルを出さない / 24 個の点に戻さない', () => {
+    const none = paintOne([]);
+    assert.ok(none.includes('時間帯 未登録') && !none.includes('dc-mb-blks'), '未登録の人にタイルを出している');
+    _mb.rows = dom.buildRows({ players: [P({ id: 9, name: '難しいさん', availableSlots: [] })], extras: { ...extras, availConfirmations: [{ player_id: 9, confirmed_at: '2026-09-06T00:00:00Z', unavailable: true, slot_count: 0 }] }, phase: 'pre' });
+    _mbPaint('pre');
+    const hard = el('opsMbRows').innerHTML;
+    assert.ok(hard.includes('✋ 今回は難しい') && !hard.includes('dc-mb-blks') && !hard.includes('時間帯 未登録'), '今回は難しい の札が無い / タイルを出している');
+    assert.ok(!html.includes('dc-mb-strip') && !/for \(let i = 0; i < 24; i\+\+\) cells \+= `<i class=/.test(html), '24 個の点が残っている');
 });
 
 test('行が0件のときは案内文だけ', () => {
