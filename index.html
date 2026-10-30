@@ -10296,7 +10296,7 @@
                 }).join('');
                 return `<div class="mt-blk ${r.state}">${head}${mineHtml}</div>`;
             }).join('');
-            const rest = tt.filter(r => !r.decided && r.state !== 'past').map(r => r.name).filter(Boolean);
+            const rest = tt.filter(r => !r.decided && r.state !== 'past').map(r => r.short || r.name || r.letter).filter(Boolean);
             const empty = mineBlocks.length ? '' : '<p class="mt-none">決まったブロックに、あなたの凸はありません</p>';
             const restHtml = rest.length ? `<p class="mt-none">まだ決まっていない: ${esc(rest.join('・'))} (運営が組んで決定します)</p>` : '';
             body.innerHTML = html + empty + restHtml
@@ -23275,7 +23275,7 @@
                     _ob.dec = { row: latest, basisId: latest ? Number(latest.id) : 0 };
                     _ob.seededFrom = null;   // 次の描画でブロックごとに読み戻す (この端末の組みかけのあるブロックは残す)
                     const keepMine = [..._ob.plans].filter(([, p]) => p.fromDecided == null).map(([k]) => k).sort((a, b) => a - b);
-                    const names = window.raidBlocksDomain ? keepMine.map(i => window.raidBlocksDomain.blocksOfSeason(snap.season)[i]?.name).filter(Boolean) : [];
+                    const names = window.raidBlocksDomain ? keepMine.map(i => window.raidBlocksDomain.blocksOfSeason(snap.season)[i]?.short).filter(Boolean) : [];
                     alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。'
                         + (names.length ? `\nただし、あなたが組みかけていた ${names.join('・')} はそのまま残しています (このまま決定すると、相手の決定のそのブロックを置き換えます)。` : '')
                         + '\n\n確かめてから、もう一度決定してください。');

@@ -14647,6 +14647,9 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
         assert.ok(!/blocks\[(i|first|p\.placedIdx)\]\??\.name\b/.test(build), '決定の流れに blocks[i].name が残っている (名前なしで A が消える)');
         for (const k of ['escapeHtml(blocks[i].short)', 'blocks[first]?.short', 'replaced.map(i => blocks[i].short)', "range.map(i => blocks[i].short).join('・')} を決定しました", 'blocks[p.placedIdx]?.short']) assert.ok(build.includes(k), k);
         assert.ok(/map\(e => \(\{ e, name: x\.short \|\| x\.name \|\| x\.letter \}\)\)/.test(html), '★ あなたの凸 にブロックの文字が出ない');
+        assert.ok(html.includes('blocksOfSeason(snap.season)[i]?.short).filter(Boolean)'), '別の運営の決定の警告で組みかけのブロックを名前だけで出している');
+        assert.ok(html.includes("tt.filter(r => !r.decided && r.state !== 'past').map(r => r.short || r.name || r.letter)"), 'まだ決まっていないブロックを名前だけで出している');
+        assert.ok(!/blocksOfSeason\([^)]*\)\[[^\]]+\]\?\.name\b/.test(html), 'blocksOfSeason(…)[i].name が残っている');
         assert.equal((html.match(/b\.short \|\| b\.name \|\| b\.letter \|\| b\.label/g) || []).length, 2, '古い決定 (short なし) の予備に letter が無い (ホームの決定の文・組むの決定の文)');
     });
     test('★ 保存中はカードの部品を押せなくする (押しても何も起きない部品を置かない)', () => {
