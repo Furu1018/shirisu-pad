@@ -15646,7 +15646,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/document\.body\.classList\.toggle\('resv-live', rows\.some\(r => rv\.isActive\(r\) \|\| \(rv\.isPin\(r\) && \(r\.asked_at != null \|\| r\.time_mode !== 'block'\)\)\)\);/.test(html), '生きている予約を数えていない');
         assert.ok(/body:not\(\.resv-hidden\) \[data-resv-hidden-only\] \{ display: none !important; \}/.test(html) && /<p data-resv-hidden-only /.test(html), '隠しているときだけの案内');
         assert.ok(/<button type="button" data-resv-ui onclick="openOpsResvCreate\(\)"/.test(html), '「＋ 予約を登録」を隠していない (カードを出したときに新しい予約が作れる)');
-        assert.ok(/const resv = !pin && a\.fromReservation && a\.reservationId != null;/.test(html) && /'🔒 予約 \(外すには 🔒 凸の予約 の「取り下げる」\)'/.test(html), '盤の 🔒 予約の駒が「自動で置いた」に見える');
+        assert.ok(/const resv = !pin && a\.fromReservation && a\.reservationId != null;/.test(html) && /'🔒 予約です \(外すには 🔒 凸の予約 の「取り下げる」\)'/.test(html), '盤の 🔒 予約の駒が「自動で置いた」に見える');
         assert.ok(/pinRow && pinRow\.status !== 'pinned' \? '🔒 予約です/.test(html), 'ピースを押したときの外し方が 📌 のまま');
         // RS-2: 隠しているシーズンでは 🔒 確定する を出さない・押させない
         assert.ok(/\+ \(typeof _resvUiHidden === 'function' && _resvUiHidden\(\) \? '' : `<button type="button" class="act ask" onclick="_opsPlanConfirmPin\(/.test(html), '🔒 確定する が隠れていない');
@@ -15990,6 +15990,33 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
         assert.ok(!guide.includes('練習をやめる'), '練習のおしまいに上の帯の「やめる」と同じボタンがある');
         assert.ok(/_myTeamEditHasRow = !isNew;/.test(html) && /if \(!_myTeamEditHasRow\) \{ showNotification\('この編成はまだ提出されていません'\); return; \}/.test(html), '未提出の編成に「削除」を出す');
         assert.ok(html.includes("_popularTeamsHtml(attrKey, { copyable: true, skipTop: true })") && html.includes("${opts.skipTop ? '' : `"), '模擬シートに同じ人気PTが 2 回並ぶ');
+    });
+}
+
+console.log('\n🧱 組む: 手で置いた駒を外す (2026-10-31 ふるり「嵌めたピースを外すことができない」= 本番の記録に 1 個だけ外した跡が無い。外せることが画面から分からなかった):');
+{
+    const _fsUp = await import('node:fs');
+    const html = _fsUp.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
+    const fnU = (start, end) => { const a = html.indexOf(start); const b = html.indexOf(end, a + start.length); return a >= 0 && b > a ? html.slice(a, b) : ''; };
+    test('★ 📌 の駒は本物のボタンで ✕ が見える / 外せない駒は押すと理由を言う / 盤の近くに案内', () => {
+        const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
+        assert.ok(/if \(pin\) return `<button type="button" class="obpc pin\$\{over\}" \$\{box\} data-ob-unpin="\$\{Number\(a\.reservationId\)\}"/.test(r), '📌 の駒がボタンでない');
+        assert.ok(/<span class="obpc-x" aria-hidden="true">✕<\/span><\/button>/.test(r) && /aria-label="\$\{nm\} の駒を外す"/.test(r), '✕ が見えない / 読み上げの名前が無い');
+        assert.ok(/data-ob-note="\$\{why\}"/.test(r) && r.includes('自動で置いた駒です。1 つだけは外せません'), '外せない駒に理由が無い');
+        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.some\(a => a\.pinned && a\.reservationId != null\)\)/.test(r) && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
+        assert.ok(/button\.obpc \{ min-width: 34px;/.test(html), '細い駒で ✕ が押せない');
+        const d = fnU('function _obDelegate(host)', "host.addEventListener('dragstart'");
+        assert.ok(d.indexOf('[data-ob-unpin]') > 0 && d.indexOf('[data-ob-unpin]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf('[data-ob-boss]'), '押したときの順が違う (外す → 理由 → 行)');
+        assert.ok(/if \(nt && !_ob\.sel\) \{ showNotification\(nt\.dataset\.obNote\); return; \}/.test(d), 'ピースを選んでいるのに自動の駒の上の行に置けない');
+    });
+    test('★ 置いたピースをもう一度押すと外れる (このブロックの 📌 だけ・別のブロックは開いてから) / 自動の分が消えることを知らせる', () => {
+        const s0 = fnU('function _obSelect(key)', '// 置いたら / 外したら');
+        assert.ok(/if \(pinRow && pinRow\.status === 'pinned' && p\.placedIdx === ctx\.idx\) \{ _obUnpin\(Number\(pinRow\.id\)\); return; \}/.test(s0), '置いたピースを押しても外れない / 別のブロックの駒まで外す');
+        assert.ok(s0.indexOf('_obUnpin(Number(pinRow.id))') < s0.indexOf('showNotification(p.pinId == null'), '外す前にトーストで止まる');
+        const t = fnU('const trayHtml = tray.length', 'const err = _ob.pinsErr');
+        assert.ok(/const undo = used && p\.placedIdx === idx && \(_ob\.pins \|\| \[\]\)\.some\(r => Number\(r\.id\) === Number\(p\.pinId\) && r\.status === 'pinned'\);/.test(t) && /undo \? '置いた · 押すと外す'/.test(t), 'ピースに「押すと外す」が出ていない');
+        const u = fnU('async function _obUnpin(resId)', 'async function _obAuto(');
+        assert.ok(/const hadAuto = idx >= 0 && _ob\.plans\.has\(idx\);/.test(u) && /done: hadAuto \? '📌 駒を外しました。自動で組んだ分は 🧮 でもう一度組みます'/.test(u), '自動の結果が黙って消える');
     });
 }
 
