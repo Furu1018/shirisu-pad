@@ -15999,6 +15999,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
     const html = _fsUp.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
     const fnU = (start, end) => { const a = html.indexOf(start); const b = html.indexOf(end, a + start.length); return a >= 0 && b > a ? html.slice(a, b) : ''; };
     await import('../js/domain/blockBuild.js');
+    await import('../js/domain/decidePlan.js');
     const bb = globalThis.blockBuildDomain;
     const planOf = () => ({ note: 'keep', levels: [{ level: 1, bosses: [
         { bossNumber: 1, attacks: [{ memberId: 1, loadoutSlot: 1, hourIdx: 0, dmgB: 30 }, { memberId: 2, loadoutSlot: 2, hourIdx: 1, dmgB: 20 }] },
@@ -16076,6 +16077,17 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/Number\(un\.dataset\.obBossN \?\? un\.closest\('\[data-ob-boss\]'\)\?\.dataset\.obBoss\)/.test(html), '行の外の駒のボスが渡らない');
         // 後ろの決定は残す (振り回さない) が、HP の見積もりがずれたことは確認で言う (Codex 監査)
         assert.ok(/const staleKept = kept\.filter\(b => _ob\.stale\.has\(b\.idx\)\);/.test(html) && /の HP の見積もりはずれています/.test(html), '前のブロックを変えたのに、後ろの決定の見積もりがずれたことを言わない');
+        assert.ok(/const conflicts = dp\.conflictsOf\(plan\);/.test(html) && /\(conflicts\.length \? `\\n\\n⚠ 組み合わせを確かめてください/.test(html), '4 凸・同じキャラの決定を黙って配信する');
+    });
+    test('★ conflictsOf: 1 人 3 凸を超える / 同じキャラを 2 回 を名前で返す (ブロックをまたいで数える)・3 凸までで被りが無ければ何も返さない', () => {
+        const A = (memberId, memberName, team) => ({ memberId, memberName, team });
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [A(1, 'あ', ['a']), A(1, 'あ', ['b']), A(2, 'い', ['x'])] }, { bossNumber: 2, attacks: [A(1, 'あ', ['c']), A(2, 'い', ['y'])] }] },
+            { level: 2, bosses: [{ bossNumber: 3, attacks: [A(1, 'あ', ['d']), A(2, 'い', ['x', 'z']), A(3, 'う', ['p'])] }] }] };
+        const dp = globalThis.decidePlanDomain;
+        assert.deepEqual(dp.conflictsOf(plan), [{ memberId: 1, name: 'あ', attacks: 4, dupChars: [] }, { memberId: 2, name: 'い', attacks: 3, dupChars: ['x'] }]);
+        assert.deepEqual(dp.conflictsOf({ levels: [{ bosses: [{ attacks: [A(1, 'あ', ['a']), A(1, 'あ', ['b']), A(1, 'あ', ['c'])] }] }] }), [], '3 凸までで被りが無いのに言う');
+        assert.deepEqual(dp.conflictsOf(null), []);
+        assert.deepEqual(dp.conflictsOf({ levels: [{ bosses: [{ attacks: [A(1, 'あ', ['', null]), A(1, 'あ', ['', null])] }] }] }), [], '空のキャラを被りに数える');
     });
 }
 

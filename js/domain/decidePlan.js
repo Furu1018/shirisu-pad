@@ -336,5 +336,29 @@
         return { notices: out, unchanged };
     }
 
-    root.decidePlanDomain = { keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, SLOT_JP };
+    /**
+     * 決定の中身を人ごとに確かめる: 1 人 3 凸を超える / 同じキャラを 2 回使う。
+     * 手前のブロックだけ 🧮 し直すと、ソルバーは後ろの決定 (kept) を知らないので起こり得る (Codex 監査 2026-10-31)。
+     * 決定は止めない (後ろまで組み直すとメンバーを振り回す) — 確認で運営に言うための材料
+     * @returns {{ memberId:any, name:string, attacks:number, dupChars:string[] }[]}
+     */
+    function conflictsOf(plan) {
+        const by = new Map();
+        for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
+            for (const b of (lv && Array.isArray(lv.bosses) ? lv.bosses : [])) {
+                for (const a of (b && Array.isArray(b.attacks) ? b.attacks : [])) {
+                    if (!a || a.memberId == null) continue;
+                    const k = String(a.memberId);
+                    if (!by.has(k)) by.set(k, { memberId: a.memberId, name: a.memberName || '', attacks: 0, chars: new Map() });
+                    const m = by.get(k);
+                    m.attacks += 1;
+                    for (const c of (Array.isArray(a.team) ? a.team.filter(Boolean) : [])) m.chars.set(String(c), (m.chars.get(String(c)) || 0) + 1);
+                }
+            }
+        }
+        return [...by.values()].map(m => ({ memberId: m.memberId, name: m.name, attacks: m.attacks, dupChars: [...m.chars].filter(([, n]) => n > 1).map(([c]) => c) }))
+            .filter(m => m.attacks > 3 || m.dupChars.length);
+    }
+
+    root.decidePlanDomain = { conflictsOf, keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

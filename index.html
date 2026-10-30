@@ -23341,6 +23341,7 @@
                 plan.seasonId = sid;
                 const kept = plan.decided.blocks.filter(b => b.kept && b.idx >= first);
                 const staleKept = kept.filter(b => _ob.stale.has(b.idx));
+                const conflicts = dp.conflictsOf(plan);
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
                 const msg = `${fresh.map(i => blocks[i].short).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
@@ -23348,6 +23349,8 @@
                     + (kept.length ? `\n\n${kept.map(b => b.short || b.name || b.letter).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
                     // 後ろの決定を黙って変えない (振り回さない) が、前のブロックを変えると HP の前提はずれる — 運営が判断できるように言う (Codex 監査)
                     + (staleKept.length ? `\n\n⚠ 前のブロックを変えたので、${staleKept.map(b => b.short || b.name || b.letter).join('・')} の HP の見積もりはずれています。必要ならそのブロックも組み直してください。` : '')
+                    // 手前だけ 🧮 し直すと、ソルバーは後ろの決定を知らない — 決定は止めず (振り回さない)、起きていれば名前で言う (Codex 監査)
+                    + (conflicts.length ? `\n\n⚠ 組み合わせを確かめてください:\n${conflicts.map(c => `・${c.name || '?'}: ${c.attacks > 3 ? `${c.attacks} 凸` : ''}${c.attacks > 3 && c.dupChars.length ? ' / ' : ''}${c.dupChars.length ? `同じキャラ ${c.dupChars.join('・')}` : ''}`).join('\n')}` : '')
                     + '\n\nメンバーの 📅 レイド予定表 に出て、割当のある人のうち変わった人に通知が届きます。';
                 if (!confirm(msg)) return;
                 if (!_obSame(epoch, sid)) return;
