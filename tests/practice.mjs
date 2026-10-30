@@ -1035,7 +1035,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     // 運営役の「組んで決定」は本物のソルバー (🧱 組む の「残りを自動で組む」と同じ渡し方) → blockBuild.overview → decidePlan.build → 本物の決定の配信
     const code = GUIDE.replace(/\/\/[^\n]*/g, '');
     const autoCall = 'computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: ';
-    assert.ok(code.includes(autoCall + '[] }, o.startBoard);') && HTML.includes(autoCall + 'resv }, o.startBoard);'), '運営役の組み方が画面の「残りを自動で組む」とずれた');
+    assert.ok(code.includes(autoCall + '[] }, o.startBoard);') && HTML.includes(autoCall + 'resv }, skipKeys && skipKeys.size ? window.blockBuildDomain.withoutPieces(o.startBoard, skipKeys) : o.startBoard);'), '運営役の組み方が画面の「残りを自動で組む」とずれた');   // 画面は ✕ で外した駒だけ除く (練習の運営役は外さない)
     assert.match(code, /var plan = dp\.build\(\{ blocks: blocks, ov: ov, newIdxs: want, prevPlan: prev \? prev\.plan : null, bosses: snapshot\.bosses, at: new Date\(\)\.toISOString\(\), hpOf: hpOf \}\);/, '運営役の決定が decidePlan.build でない (始まりの HP の頭打ちも画面と同じ hpOf)');
     assert.match(code, /await window\.supabasePublishDecidedPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema, prev \? prev\.id : 0\);/, '運営役の決定が本物の関数でない');
     // 運営があなたの凸に ✓ を付けた (本物の ✓ の関数・運営の名前で・ダメージ 0)
