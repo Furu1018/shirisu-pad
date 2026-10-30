@@ -91,11 +91,11 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
 <div class="wrap">
   <div class="crumb">運営 › 👑 マスター › シーズン制御 › 🧱 ブロックの設定</div>
   <h1>🧱 ブロックの設定 <span style="font-size:12px;font-weight:800;color:var(--muted);">2026-10b · レイド 10/31 (土)</span></h1>
-  <p class="sub">レイド日 (朝 5 時〜翌 4 時) を区切ります。ブロックの名前は順に A・B・C…。メンバーには「A 5〜8時」のように見えます。</p>
+  <p class="sub">レイド日 (朝 5 時〜翌 5 時) を区切ります。ブロックの名前は順に A・B・C…。メンバーには「A 5〜9時」のように見えます (時計の目盛りと同じ言い方。いまのアプリは同じ 4 時間を「5〜8時」と書く)。</p>
 
   <div class="card">
     <h2>🕔 24 時間の時計 <span class="tag">朝 5 時が基準</span></h2>
-    <p class="note">色の帯を押すとそのブロックを選べます。上 (12 時の位置) が朝 5 時で、時計回りに翌 4 時まで。</p>
+    <p class="note">色の帯を押すとそのブロックを選べます。上 (12 時の位置) が朝 5 時で、時計回りに翌 5 時まで。</p>
     <div class="clock">
       <svg id="clock" viewBox="0 0 360 360" role="img" aria-label="ブロックの時計"></svg>
       <div class="legend" id="legend"></div>
@@ -104,7 +104,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
 
   <div class="card">
     <h2>📋 ブロック <span id="cnt" style="font-size:11px;font-weight:800;color:var(--muted);"></span></h2>
-    <p class="note">終わりの時刻を変えると次のブロックの始まりも動きます (隙間も重なりもできません)。最初は 5 時・最後は翌 4 時で固定。</p>
+    <p class="note">終わりの時刻を変えると次のブロックの始まりも動きます (隙間も重なりもできません)。最初は 5 時・最後は翌 5 時で固定。</p>
     <div class="presets">
       <button class="btn sm" onclick="setPreset(4)">4 つ (6 時間)</button>
       <button class="btn sm" onclick="setPreset(6)">6 つ (4 時間)</button>
@@ -117,7 +117,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
 
   <div class="card">
     <h2>👀 メンバー・運営にはこう見える</h2>
-    <p class="note">名前を付けなければ文字だけ (A 5〜8時)。付ければ「A 朝 5〜8時」。</p>
+    <p class="note">名前を付けなければ文字だけ (A 5〜9時)。付ければ「A 朝 5〜9時」。</p>
     <div class="pv">
       <div>
         <div class="k">⏰ 参加可能時間 (運営が登録するシート) · 例: A と D に出られる人</div>
@@ -152,6 +152,8 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
     const HOUR_ORDER = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
     const idx = (h) => HOUR_ORDER.indexOf(h);
     const wrap = (h) => (h >= 0 && h <= 4) ? '翌' + h : String(h);
+    // 終わりは「時刻」で言う (5〜9時 = 5:00〜9:00 = 4 時間)。内部の to は含む時 (8) のまま。翌4 の次は 翌5 (レイド日の終わり)
+    const endOf = (to) => { const k = idx(to) + 1; return k < HOUR_ORDER.length ? wrap(HOUR_ORDER[k]) : '翌5'; };
     const LETTERS = 'ABCDEFGHIJKL';
     const MIN = 2, MAX = 12;
     const NAMED = [['朝',5,8],['午前',9,12],['午後',13,16],['夕方',17,20],['夜',21,0],['深夜',1,4]];
@@ -165,7 +167,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
         return out;
     }
     const lenOf = (b) => idx(b.to) - idx(b.from) + 1;
-    const rangeOf = (b) => (b.from === b.to) ? wrap(b.from) + '時' : wrap(b.from) + '〜' + wrap(b.to) + '時';
+    const rangeOf = (b) => wrap(b.from) + '〜' + endOf(b.to) + '時';
     const labelOf = (b, i) => LETTERS[i] + ' ' + (b.name ? b.name + ' ' : '') + rangeOf(b);
     const col = (i) => 'var(--b' + (i % 12) + ')';
     const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -220,12 +222,12 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
             // 終わりに選べるのは 自分の始まり 〜 次のブロックの終わりの 1 つ前 (次を 1 時間は残す)
             const hi = last ? idx(b.to) : idx(next.to) - 1;
             let opts = '';
-            for (let k = idx(b.from); k <= hi; k++) opts += '<option value="' + HOUR_ORDER[k] + '"' + (HOUR_ORDER[k] === b.to ? ' selected' : '') + '>' + wrap(HOUR_ORDER[k]) + '時</option>';
+            for (let k = idx(b.from); k <= hi; k++) opts += '<option value="' + HOUR_ORDER[k] + '"' + (HOUR_ORDER[k] === b.to ? ' selected' : '') + '>' + endOf(HOUR_ORDER[k]) + '時</option>';
             return '<div class="row' + (i === sel ? ' on' : '') + '" data-i="' + i + '">'
                 + '<button class="badge" style="background:' + col(i) + '" data-sel="' + i + '" aria-label="ブロック ' + LETTERS[i] + ' を選ぶ">' + LETTERS[i] + '</button>'
                 + '<div class="mid"><input class="name" maxlength="6" placeholder="名前 (任意) 例: 朝" value="' + esc(b.name) + '" data-name="' + i + '">'
                 + '<div class="when"><span>' + wrap(b.from) + '時 〜</span>'
-                + (last ? '<span>翌4時 <span class="len">(固定)</span></span>' : '<select data-to="' + i + '" aria-label="終わりの時刻">' + opts + '</select>')
+                + (last ? '<span>翌5時 <span class="len">(固定)</span></span>' : '<select data-to="' + i + '" aria-label="終わりの時刻">' + opts + '</select>')
                 + '<span class="len">' + lenOf(b) + ' 時間</span></div></div>'
                 + '<div class="acts"><button class="btn sm" data-split="' + i + '"' + (lenOf(b) < 2 || blocks.length >= MAX ? ' disabled' : '') + ' title="2 つに分ける">分ける</button>'
                 + '<button class="btn sm" data-del="' + i + '"' + (blocks.length <= MIN ? ' disabled' : '') + ' title="消して前のブロックに合わせる">✕ 消す</button></div>'
@@ -271,7 +273,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
             + '<span class="d' + (on.has(i) ? '' : ' none') + '">' + (i === 0 ? 'B3 灼熱PT 編成①' : on.has(i) ? 'B1 鉄甲PT 編成① / B5 電撃PT 編成②' : '—') + '</span>').join('');
     }
     function renderBar() {
-        document.getElementById('sum').innerHTML = '<b>' + blocks.length + ' ブロック</b> · 5時〜翌4時 · ' + esc(blocks.map((b, i) => LETTERS[i] + (b.name ? ' ' + b.name : '')).join(' / '));
+        document.getElementById('sum').innerHTML = '<b>' + blocks.length + ' ブロック</b> · 5時〜翌5時 · ' + esc(blocks.map((b, i) => LETTERS[i] + (b.name ? ' ' + b.name : '')).join(' / '));
     }
     function render() { renderClock(); renderRows(); renderPreview(); renderBar(); }
 
