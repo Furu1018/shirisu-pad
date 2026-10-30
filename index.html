@@ -5569,7 +5569,7 @@
                             <li><strong>5体のボス</strong>がいて、それぞれ弱点属性を持ちます (弱点の PT で凸すると大ダメージ)。ボス自身の属性と、持っていく PT の属性は別物です</li>
                             <li>各レベルで<strong>5体すべてを倒すと次のレベル</strong>に進み、HP が上がります (Lv1 → Lv2 → Lv3)。<strong>Lv3 を踏破するとその日のうちに「Lv4 = ボス5だけ・HP無限」</strong>が開き、そこへの凸は全額スコアに入ります</li>
                             <li>1人<strong>3凸</strong>。いちど出撃したキャラはそのレイド中は使えません (= 同じキャラを含む編成は1回だけ)</li>
-                            <li>レイドの1日は <strong>5時から翌4時まで</strong>。「翌2時」はまだ同じ日です</li>
+                            <li>レイドの1日は <strong>朝5時から翌朝5時まで</strong>。「翌2時」はまだ同じ日です</li>
                         </ul>
                         <div class="help-callout tip">
                             <span class="ico">💡</span>
@@ -6645,6 +6645,10 @@
                     🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
                     新シーズンの最適プランや締め凸候補は、提出された模擬に基づいて算出されます。
                 </div>
+                <label id="opsSeasonResetAvailRow" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="opsSeasonResetAvail" checked style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
+                    <span>⏰ 全員の参加可能時間を空にする<br><span style="font-size:11px;color:var(--t-body);">前のシーズンの時間を持ち越さない (運営が Discord の報告から 👥 › ⏰ で登録し直す)。🧪 テストでは空にしません。</span></span>
+                </label>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged()" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
                     <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--t-body);">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
@@ -22983,7 +22987,7 @@
         }
 
         // ===== ▶︎ 凸プランを組む (シンプル化 S2・2026-10-26 ふるりの構想・設計案 docs/シンプル化_設計案_2026-10-26.md §6) =====
-        // 「朝 5〜8時」などの大きなボタン → 押したブロックに 出られる人の模擬 を手で置く (📌 ブロックの仮置き = 予約の代わり) → 残りを自動で組む。
+        // 「A 朝 5〜9時」などの大きなボタン → 押したブロックに 出られる人の模擬 を手で置く (📌 ブロックの仮置き = 予約の代わり) → 残りを自動で組む。
         // ★ レベルはブロックの頭でしか変わらない (blockBuildDomain.overview + ソルバーの levelStartsAtBlock)。
         // ★ 前のブロックで組んだ凸は「模擬どおり削れた」と仮定して次のブロックの盤面に進める (projectBoard)。自動で組むのはそのブロックの始まりの盤面から。
         // 手で置いた駒は DB (plan_reservations の 📌 / time_mode 'block') に残る (別の運営・別の端末でも見える)。自動で組んだ結果はこの端末だけ (決定するまで)
@@ -23411,7 +23415,7 @@
             if (sent) showNotification(`📣 ${sent} 人に通知しました${failed ? ` / ${failed} 人には送れませんでした` : ''}`);
             else if (failed) showNotification(`⚠️ 決定はできましたが、${failed} 人に通知を送れませんでした`);
         }
-        // ブロックの時間の言い方: 「5〜8時」「21〜翌0時」「翌1〜4時」(5 時始まりのレイド日)
+        // ブロックの時間の言い方: 「5〜9時」「21〜翌1時」「翌1〜翌5時」(時計の言い方 = 終わりは時刻・2026-10-30)
         // 「5〜9時」(時計の言い方・終わりは時刻)。出どころは raidBlocksDomain.rangeOf だけ (2026-10-30)
         const _obHours = (b) => (b && b.range) || (window.raidBlocksDomain ? window.raidBlocksDomain.rangeOf(b) : '');
         function _obDelegate(host) {
@@ -23762,7 +23766,7 @@
             //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
                 who: plan.availableAtLabel ? 'block' : (onlyNow ? 'now' : 'all'),
-                block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「夕方 17〜20時」)
+                block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「D 夕方 17〜21時」)
                 // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む。🧱 は起点がブロックの頭なら 'block'、ブロックの途中 (今 > 頭) なら 'now' (Codex指摘)
                 from: blk ? (plan.currentSlot === _hourKey(blk.from) ? 'block' : 'now') : (plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode),
                 prev: (_opsPlanSticky && previousPlan) ? 'keep' : 'fresh',   // 別のブロックの配信は尊重していない = ゼロから
@@ -27213,7 +27217,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AI のおまかせではなく、決まった手順の計算**です (同じ材料なら何度組んでも同じ結果)。
 
 **🧱 1 日をブロックに分けて、見通しのつくところまで決定**
-レイドの日 (5時〜翌4時) を 朝 / 午前 / 午後 / 夕方 / 夜 / 深夜 に区切り、運営は朝から順に「そのブロックに出られる人だけ」で組んで、見通しのつくブロックまで決定します。先のブロックは見通しがついたら決定し直します (変わった人にだけ通知)。レベルはブロックの頭でしか変わりません。
+レイドの日 (朝5時〜翌朝5時) を A・B・C… のブロック (例: A 朝 5〜9時) に区切り、運営は A から順に「そのブロックに出られる人だけ」で組んで、見通しのつくブロックまで決定します。先のブロックは見通しがついたら決定し直します (変わった人にだけ通知)。レベルはブロックの頭でしか変わりません。
 
 **📥 材料にしているもの (5 つ)**
 参加可能時間と凸数 / 登録された模擬 (属性ごとに編成①・②・③) / 凸先の希望 (運営が先に置いた凸) / ボスの残り HP / 済んだ凸 (運営が ✓ を付けた凸)
@@ -27749,6 +27753,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const on = !!document.getElementById('opsSeasonIsTest')?.checked;
             const mk = document.getElementById('opsSeasonMonthKey');
             if (mk) { mk.disabled = on; mk.style.opacity = on ? '0.5' : ''; mk.title = on ? 'テストシーズンの月キーは自動で付きます' : ''; }
+            const ra = document.getElementById('opsSeasonResetAvailRow');
+            if (ra) ra.style.display = on ? 'none' : '';   // テストでは参加可能時間を空にしない (テストの終了は模擬しか戻さない)
         }
         async function handleOpsSeasonCreateSave() {
             const hardDate = document.getElementById('opsSeasonHardDate').value;
@@ -27785,15 +27791,22 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     if (n > 0) mockWarn = `\n\n⚠️ 現在 ${n}名分の模擬戦データが提出済みです。シーズン作成で全てクリアされ、復元できません。本当に作成しますか？`;
                 } catch { /* noop */ }
             }
+            // ⏰ 本番だけ・スイッチが ON のときだけ参加可能時間を空にする (人数を確認に出す)
+            const resetAvail = !isTest && !!document.getElementById('opsSeasonResetAvail')?.checked;
+            let availWarn = '';
+            if (resetAvail) {
+                const nAv = typeof window.supabaseCountAvailabilityPlayers === 'function' ? await window.supabaseCountAvailabilityPlayers() : null;
+                availWarn = `\n\n⏰ 全員の参加可能時間${nAv != null ? ` (いま ${nAv} 人ぶん)` : ''}を空にします。Discord で聞いて 👥 › ⏰ で登録し直してください。`;
+            }
             const confirmMsg = isTest
                 ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。\n模擬戦データはテスト用に自動シードされます (前回実績 + ランダム補完)。`
-                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}`;
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}${availWarn}`;
             if (!confirm(confirmMsg)) return;
 
             try {
                 set('作成中...'); msg.style.color = 'var(--t-body)';
-                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
-                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
+                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, resetAvailability: resetAvail });
+                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました${r?.availabilityCleared ? ' (参加可能時間を空にしました)' : ''}`);
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);

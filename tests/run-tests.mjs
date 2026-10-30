@@ -14527,6 +14527,129 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
     });
 }
 
+console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文字 A・B・C / 時計 3 つ / 変えられる期間 / 作成時の参加可能時間のリセット):');
+{
+    const _fs9 = await import('node:fs');
+    const html = _fs9.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n'), client = _fs9.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
+    const d = globalThis.raidBlocksDomain;
+    const fnOf = (src, head, next) => { const i = src.indexOf(head); assert.ok(i >= 0, head); const j = src.indexOf(next, i + head.length); return src.slice(i, j > i ? j : undefined); };
+    test('★ ドメイン: splitAt (前半を長めに・後ろは名前なし) / setEndAt (次の始まりが連動・次を 1 時間は残す) / どちらも normalize を通る形', () => {
+        const def = d.toConfig(d.normalize(null).blocks);
+        const s = d.splitAt(def, 3);   // D 夕方 17〜21 (4 時間) → 17〜19 / 19〜21
+        assert.deepEqual(d.normalize(s).blocks.map(b => b.label).slice(3, 5), ['D 夕方 17〜19時', 'E 19〜21時']);
+        assert.equal(d.normalize(s).blocks.length, 7);
+        assert.equal(d.splitAt(d.evenSplit(12), 0), null, '12 個でも分けた');
+        assert.equal(d.splitAt([{ name: '', from: 5, to: 5 }, { name: '', from: 6, to: 4 }], 0), null, '1 時間のブロックを分けた');
+        assert.deepEqual(d.normalize(d.splitAt(d.evenSplit(2), 1)).blocks.map(b => b.range), ['5〜17時', '17〜23時', '23〜翌5時'], '後ろのブロックを半分に分けていない');
+        const e = d.setEndAt(def, 3, 21);   // D の終わりを 22 時 (含む時 21) に → E は 22 時から
+        assert.deepEqual(d.normalize(e).blocks.slice(3, 5).map(b => b.label), ['D 夕方 17〜22時', 'E 夜 22〜翌1時']);
+        assert.equal(d.setEndAt(def, 3, 0), null, '次のブロックを 0 時間にした');
+        assert.equal(d.setEndAt(def, 3, 15), null, '始まりより前にした');
+        assert.equal(d.setEndAt(def, 5, 4), null, '最後のブロックの終わりを動かした');
+    });
+    await testAsync('★ 使われ方 (supabaseLoadSeasonBlockUsage): 空でない凸数・生きているブロックの予約・決定 を数える / 読めなければ null', async () => {
+        const src = fnOf(client, 'const _LIVE_RESV = ', '// 🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すか');
+        const run = async (rows, err = null) => {
+            const q = (t) => { const o = { select: () => o, eq: () => Promise.resolve({ data: rows[t], error: err && err[t] ? err[t] : null }) }; return o; };
+            const win = {}; new Function('supabase', 'window', src)({ from: q }, win);
+            return win.supabaseLoadSeasonBlockUsage(38);
+        };
+        const rows = {
+            availability_confirmations: [{ block_counts: { '5-8': 1 } }, { block_counts: {} }, { block_counts: null }, { block_counts: [1] }],
+            plan_reservations: [{ time_mode: 'block', status: 'pinned' }, { time_mode: 'block', status: 'released' }, { time_mode: 'fixed', status: 'approved' }, { time_mode: 'block', status: 'approved' }],
+            published_plans: [{ plan: { decided: { blocks: [] } } }, { plan: { levels: [] } }, { plan: { decided: null } }],
+        };
+        assert.deepEqual(await run(rows), { counts: 1, resv: 2, decided: 1 });
+        assert.equal(await run(rows, { plan_reservations: { message: 'x' } }), null, '読めないのに 0 件扱い');
+        assert.equal(await (async () => { const win = {}; new Function('supabase', 'window', src)({}, win); return win.supabaseLoadSeasonBlockUsage(null); })(), null);
+    });
+    test('★ 変えられる期間 (_obkLockReason): 確かめ中・確かめられない・使われている は理由を返す / 0 件だけ null', () => {
+        const fn = new Function(fnOf(html, 'function _obkLockReason(usage) {', '        function renderOpsBlocks(') + '\nreturn _obkLockReason;')();
+        assert.match(fn(undefined), /確かめています/);
+        assert.match(fn(null), /確かめられませんでした/);
+        assert.equal(fn({ counts: 0, resv: 0, decided: 0 }), null);
+        assert.match(fn({ counts: 3, resv: 0, decided: 1 }), /^参加可能時間の凸数の登録 3 件・✅ 決定 1 件があるので、このシーズンのブロックは変えられません/);
+        assert.match(fn({ counts: 0, resv: 2, decided: 0 }), /^ブロックの予約 2 件があるので/);
+    });
+    test('★ 時計 3 つ (_obkClockSvg): 既定の 6 つ = 朝の時計に A・B / 昼〜夜に B・C・D・E / 深夜に E・F・5 時は 5 の位置 (150°)・選んだブロックは真ん中に', () => {
+        const src = fnOf(html, '        const _OBK_FACES = [', '        function _obkPaint() {');
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const { faces, svg } = new Function('window', 'escapeHtml', src + '\nreturn { faces: _OBK_FACES, svg: _obkClockSvg };')({ raidBlocksDomain: d }, esc);
+        const blocks = d.normalize(null).blocks;
+        const letters = (s) => [...s.matchAll(/<text class="obk-seg-l"[^>]*>([A-L])<\/text>/g)].map(m => m[1]);
+        assert.deepEqual(faces.map(f => [f.lo, f.hi]), [[0, 7], [7, 19], [19, 24]], '時計の受け持ち (5〜12 / 12〜翌0 / 翌0〜翌5) が違う');
+        assert.deepEqual(faces.map(f => letters(svg(f, blocks, 0))), [['A', 'B'], ['B', 'C', 'D', 'E'], ['E', 'F']]);
+        // 朝の時計: 「▶ 5時から」は 5 の位置 (150°) の内側。目盛りの「5」は 150° (右下)
+        const am = svg(faces[0], blocks, 0);
+        assert.ok(/<text class="obk-hn b" x="([\d.]+)" y="([\d.]+)"[^>]*>5<\/text>/.test(am));
+        const [, x5, y5] = am.match(/<text class="obk-hn b" x="([\d.]+)" y="([\d.]+)"[^>]*>5<\/text>/);
+        assert.ok(Number(x5) > 180 && Number(y5) > 180, '5 時が時計の 5 の位置 (右下) に無い');
+        assert.ok(am.includes('>▶ 5時から<') && am.includes('obk-cl obk-c0') && am.includes('>5〜9時 · 4 時間<'), '選んだ A を真ん中に出していない');
+        assert.ok(svg(faces[2], blocks, 0).includes('class="obk-face"'), '選んだブロックが無い時計に名前を出していない');
+        // 1 周まるごと 1 ブロック (昼〜夜が 1 つ) でも path が潰れない
+        const two = d.normalize([{ name: '', from: 5, to: 11 }, { name: '', from: 12, to: 23 }, { name: '', from: 0, to: 4 }]).blocks;
+        assert.ok(/<path class="obk-seg obk-c1[^"]*" d="M[^"]+ A128 128 0 1 1 /.test(svg(faces[1], two, 1)), '12 時間まるごとのブロックが描けていない');
+        // 名前を onclick に埋めない (添字だけ)
+        assert.ok(!/onclick="_obkSel\([^)]*[^\d)]/.test(svg(faces[0], blocks, 0)));
+    });
+    await testAsync('★ 作成時の参加可能時間のリセット: 本番 + スイッチ ON だけ消す / 消す → 作る の順 / 消せなければ作らない / 作れなければ「もう空にしてあります」', async () => {
+        const src = fnOf(client, 'window.supabaseCreateSeason = async function', 'window.supabaseQuickCreateTestSeason');
+        const run = async ({ isTest = false, reset = true, avErr = null, insErr = null } = {}) => {
+            const log = [];
+            const from = (t) => {
+                const ops = [];
+                const res = () => {
+                    log.push(`${t}:${ops.join('.')}`);
+                    if (t === 'availability') return { error: avErr };
+                    if (t === 'seasons' && ops.includes('insert')) return insErr ? { data: null, error: insErr } : { data: { id: 9, hard_date: '2099-01-10', month_key: '2099-01', is_test: isTest }, error: null };
+                    return { data: null, error: null, count: 0 };
+                };
+                const o = new Proxy({}, { get(_, k) {
+                    if (k === 'then') { const r = res(); return (ok) => ok(r); }
+                    return () => { ops.push(k); return (k === 'maybeSingle' || k === 'single') ? Promise.resolve(res()) : o; };
+                } });
+                return o;
+            };
+            const win = { supabaseLogActivity: () => {}, supabaseSeedTestMockDamages: async () => ({}), supabaseSeedTestMockAttacks: async () => ({}) };
+            const codes = { C1: 'fire', C2: 'water', C3: 'wind', C4: 'iron', C5: 'electric' };
+            const fn = new Function('supabase', 'window', '_assertNoActiveSeason', '_deleteSeasonRow', 'SEASON_ATTR_FROM_CODE', 'SEASON_WEAKNESS_BY_ATTR', '_invalidateActiveTestSeasonCache', '_assertSlotsWithinThisBuild', src + '\nreturn window.supabaseCreateSeason;')(
+                { from }, win, async () => {}, async () => {}, codes, { fire: 'wind', water: 'fire', wind: 'iron', iron: 'electric', electric: 'water' }, () => {}, () => {});
+            let err = null, out = null;
+            try { out = await fn({ hardDate: '2099-01-10', monthKey: '2099-01', isTest, resetAvailability: reset, bosses: Object.keys(codes).map((c, i) => ({ bossNumber: i + 1, bossCode: c, tier: 'lord' })) }); } catch (e) { err = e; }
+            return { log, err, out };
+        };
+        let r = await run();
+        const iDel = r.log.indexOf('availability:delete.gte'), iIns = r.log.findIndex(x => x.startsWith('seasons:insert'));
+        assert.ok(iDel >= 0 && iIns > iDel, `消す → 作る の順でない: ${r.log.join(' / ')}`);
+        assert.equal(r.out.availabilityCleared, true);
+        r = await run({ reset: false }); assert.ok(!r.log.includes('availability:delete.gte') && r.out.availabilityCleared === false, 'スイッチ OFF でも消した');
+        r = await run({ isTest: true }); assert.ok(!r.log.includes('availability:delete.gte'), 'テストで参加可能時間を消した (テストの終了は戻さない)');
+        r = await run({ avErr: { message: 'busy' } });
+        assert.match(String(r.err?.message), /^参加可能時間を空にできませんでした \(シーズンはまだ作っていません\): busy/);
+        assert.ok(!r.log.some(x => x.startsWith('seasons:insert')), '消せなかったのに作った');
+        r = await run({ insErr: { message: 'dup', code: 'X' } });
+        assert.match(String(r.err?.message), /dup \(参加可能時間はもう空にしてあります\)/, '作れなかったときに「もう空にしてある」と言っていない');
+    });
+    test('★ 見張り: name から文を組まない (label.slice 0 件) / ブロックを写す所が 5 つの欄を持つ (決定の控え・時間割・blockScope 3 か所・〆・blockStates / todayRows)', () => {
+        const dom = ['decidePlan', 'raidBlocks', 'mockIntake', 'reservations', 'blockBuild', 'resultIntake', 'planBoard', 'publishedPlans'].map(n => _fs9.readFileSync(`js/domain/${n}.js`, 'utf8').replace(/\r\n/g, '\n')).join('\n');
+        assert.equal((html.match(/label\.slice\(/g) || []).length + (dom.match(/label\.slice\(/g) || []).length, 0, 'label.slice が残っている (先頭に文字が付くと崩れる)');
+        const dp = _fs9.readFileSync('js/domain/decidePlan.js', 'utf8').replace(/\r\n/g, '\n');
+        assert.equal((dp.match(/letter: blk\.letter \|\| null, name: blk\.name \|\| null, short: blk\.short \|\| blk\.name \|\| null, range: blk\.range \|\| null, label: blk\.label \|\| key/g) || []).length, 2, '決定の控え・時間割に 5 つの欄を写していない');
+        assert.ok(/letter: r\.letter, name: r\.name, short: r\.short, range: r\.range, label: r\.label/.test(dp), '盤 (boardView) に写していない');
+        assert.equal((html.match(/letter: blk\.letter, name: blk\.name, short: blk\.short, range: blk\.range, label: blk\.label,/g) || []).length, 3, 'blockScope (3 か所) に 5 つの欄を写していない');
+        const mi = _fs9.readFileSync('js/domain/mockIntake.js', 'utf8').replace(/\r\n/g, '\n');
+        assert.equal((mi.match(/short: String\(bl\[idxs\[0\]\]\.short \|\| bl\[idxs\[0\]\]\.name \|\| ''\), range: String\(bl\[idxs\[0\]\]\.range \|\| ''\)/g) || []).length, 2, '〆 に short / range を写していない');
+        const st = d.blockStates(d.normalize(null).blocks, ['h05'])[0], tr = d.todayRows({ blocks: d.normalize(null).blocks, nowHour: 6, plans: [], attacks: [] }).rows[0];
+        for (const x of [st, tr]) assert.deepEqual([x.letter, x.short, x.range, x.label], ['A', 'A 朝', '5〜9時', 'A 朝 5〜9時']);
+    });
+    test('★ 配線 (作成シート): スイッチは既定 ON・🧪 テストでは隠す / 本番 + ON のときだけ resetAvailability を渡す / 確認に人数', () => {
+        assert.ok(/<input type="checkbox" id="opsSeasonResetAvail" checked /.test(html), 'スイッチが既定 ON でない');
+        assert.ok(/const ra = document\.getElementById\('opsSeasonResetAvailRow'\);\s*\n\s*if \(ra\) ra\.style\.display = on \? 'none' : '';/.test(html), '🧪 テストでスイッチを隠していない');
+        assert.ok(/const resetAvail = !isTest && !!document\.getElementById\('opsSeasonResetAvail'\)\?\.checked;/.test(html) && /supabaseCreateSeason\(\{ hardDate, monthKey, bosses, isTest, resetAvailability: resetAvail \}\)/.test(html), 'resetAvailability の渡し方が違う');
+        assert.ok(/\$\{mockWarn\}\$\{availWarn\}`;/.test(html), '確認に参加可能時間のことを出していない');
+    });
+}
+
 console.log('\n🧪 シーズン作成のシートでテスト: 月キーは自動:');
 {
     const _fs8 = await import('node:fs');

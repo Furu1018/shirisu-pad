@@ -444,6 +444,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   落とせる間は `.player-select-content.drop-over` の点線と「📷 ここに落として読み取る」
 - **月キー** (`seasons.month_key`・一意): `YYYY-MM`。**同じ月の 2 回目のレイドは末尾に b〜z** (`2026-10b`・2026-10-25 に 10 月 2 回目で必要になった)。分析の月次 JSON (`data/YYYY-MM.json`) の自動読み込みは YYYY-MM だけを探すので、b の回の JSON は手で名前を合わせる。
   `supabaseCreateSeason` は同じ月キーの凸 0 件のシーズンを消して作り直すが、**稼働中のシーズンと、テストの作成で本番のシーズンは消さない** (止めて別の月キーを案内)
+- **🧱 ブロックの設定 (A・B・C + 時計 3 つ・2026-10-30 ふるり・設計図 `docs/ブロック設定_設計図_2026-10-30.md`・モック `docs/ブロック設定モック_2026-10-30.html`)**:
+  ブロックの文字は**並び順から作る** (保存しない)・名前は任意 (付けた名前どうしは重ねない)・時刻は**時計の言い方「5〜9時」**(= 5:00〜9:00。`to` は含む時のまま・翌4 の次は「翌5」)。
+  `raidBlocksDomain.normalize` の出力は 5 つの欄 `letter` / `name` / `short` (「A 朝」) / `range` (「5〜9時」) / `label` (「A 朝 5〜9時」) — **読む側は name から文を組まない** (`label.slice(name.length)` は 0 件)。
+  ブロックを写す所 (決定の控え `decided.blocks[]`・時間割・`blockScope`・〆 `deadline`) にも写す (古い控えは `short || name || letter`)。参加可能時間の区間 (`availabilityDomain.labelOf`) と予約の言い方 (`reservationsDomain.blockLabelOf`) も同じ時計の言い方。
+  設定は 運営 › 👑 マスター の **「🧱 ブロックの設定」カード** (`opsSecBlocks`・`data-master-only`・描くのは `renderOpsBlocks` / `_obkPaint`) — ✏️ シーズン編集からはブロックの行を外した (入口は 1 つ)。
+  時計 3 つ (`_OBK_FACES` = 朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5・5 時は時計の 5 の位置)・行 (終わりの時刻で次の始まりが連動)・数のステッパー (`evenSplit`)・分ける (`splitAt`)・消す (`removeAt`)・終わり (`setEndAt`)。形を変えるのはドメインだけ。色は `--blk-0〜11`。
+  ★ **凸数の登録・ブロックの予約・✅ 決定 が 1 件でもあるシーズンは変えない** (足し引きで文字と鍵 `from-to` がずれる): 画面は `supabaseLoadSeasonBlockUsage` で読み取り専用 + 理由 (押した時点でも確かめ直す)、DB は **`58_season_blocks_guard.sql`** (`ops_set_season_blocks` が断る・PGlite で確かめた)。
+  ★ **本番シーズンの作成で全員の参加可能時間を空にする** (作成シートのスイッチ `#opsSeasonResetAvail`・既定 ON・🧪 テストでは隠して消さない)。`supabaseCreateSeason({ resetAvailability })` は**作る前に**消し、消せなければ作らない (作れなかったら「参加可能時間はもう空にしてあります」)
 - **★ シーズンの決まり** (2026-10-30 ふるり「本番のうえにテストを作成するのが良くない」・**`57_season_rules.sql`・10/30 適用済み**): ① **アクティブなシーズンは 1 つだけ** — 作成 (`supabaseCreateSeason`) は動いているシーズンがあれば `_assertNoActiveSeason` で断る
   (以前は黙って止めてから作っていた)・DB の一意索引 `uq_seasons_one_active` が同時の 2 つ目を拒む。「🧪 本番のボスでテスト」と模擬の間引き (thinMocks) は外した。
   ② **テストシーズンは履歴に残さない** — 終えるのは 🧪 ✕ 終了 (`supabaseDeleteActiveTestSeason` = 消して模擬を元に戻す) だけ。「シーズン終了」はテスト中に出さず (`data-prod-only`)、押せてもテストは ✕ 終了 のシートへ、`supabaseEndActiveSeason` も断る。

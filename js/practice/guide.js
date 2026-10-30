@@ -348,7 +348,7 @@
                     }
                     var b1 = c.T.bosses.filter(function (b) { return eq(b.season_id, c.season.id) && eq(b.boss_number, 1); })[0];
                     return stray(c, []) || (c.tab !== 'ops' ? nav('navOps', '運営')
-                        : { text: '夕方 (17〜20時) のブロックの頭です。まずボスの残HPを BlaBlaLINK の画像と合わせます。PAD の B1 は ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」を押します。',
+                        : { text: 'D 夕方 (17〜21時) のブロックの頭です。まずボスの残HPを BlaBlaLINK の画像と合わせます。PAD の B1 は ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」を押します。',
                             real: '✓ にはダメージが入らないので、PAD の残HPは 30 分〜1 時間おきに画像で合わせます。古い HP で組むと、無駄凸や取りこぼしが出ます。', target: pick('bossHpOpen') });
                 } },
             { key: 'tap', title: '✓ Discord の報告を見て ✓ を付ける',

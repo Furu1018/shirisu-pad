@@ -1998,6 +1998,13 @@ window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     return cfg;
 };
 
+// ⏰ 参加可能時間を登録している人の数 (シーズン作成の確認に出す)。読めなければ null
+window.supabaseCountAvailabilityPlayers = async function () {
+    const { data, error } = await supabase.from('availability').select('player_id');
+    if (error) return null;
+    return new Set((data || []).map(r => r && r.player_id)).size;
+};
+
 // 🧱 ブロックを変えてよいか (2026-10-30 設計図 Q5): そのシーズンの 凸数の登録 (確認の block_counts)・生きているブロックの予約・✅ 決定 の件数。
 //   1 件でもあれば、ブロックの足し引きで文字がずれて登録・予約・決定の鍵と合わなくなるので、画面は変えさせない (DB も 58 で断る)。
 //   読めなければ null (= 分からない → 画面は保存させない)
@@ -2968,6 +2975,18 @@ window.supabaseCreateSeason = async function (payload) {
         await _deleteSeasonRow(existing.id, '既存の空シーズン削除に失敗');
     }
 
+    // ⏰ 本番の作成で全員の参加可能時間を空にする (2026-10-30 ふるり「シーズンのたびに全員の戦闘可能時間をリセットする必要がある」・設計図 Q4)。
+    //   availability はシーズンをまたいで残り、盤面は確認の有無に関係なく読むので、前のシーズンの時間がそのまま組む計算に入っていた。
+    //   ★ 作る**前**に消す。消せなければ作らない (新しいシーズンだけできて古い時間が残る、を作らない)。テストでは消さない (テストの終了は模擬しか戻さない)
+    let availabilityCleared = false;
+    if (!isTest && payload.resetAvailability === true) {
+        const { error: avErr } = await supabase.from('availability').delete().gte('player_id', 0);
+        if (avErr) throw new Error(`参加可能時間を空にできませんでした (シーズンはまだ作っていません): ${avErr.message}`);
+        availabilityCleared = true;
+        window.supabaseLogActivity?.('ops', `シーズン ${payload.monthKey} の作成で、全員の参加可能時間を空にしました`);
+    }
+    const afterClear = (e) => (availabilityCleared ? new Error(`${e?.message || e} (参加可能時間はもう空にしてあります)`) : e);
+
     // シーズン挿入
     const { data: season, error: sErr } = await supabase
         .from('seasons')
@@ -2983,8 +3002,8 @@ window.supabaseCreateSeason = async function (payload) {
         .single();
     if (sErr) {
         // 確かめてから入れるまでの間に別の運営が作った (57 の一意索引)
-        if (sErr.code === '23505' && /uq_seasons_one_active/.test(String(sErr.message))) throw new Error('別の運営が先にシーズンを作りました。画面を更新してください');
-        throw sErr;
+        if (sErr.code === '23505' && /uq_seasons_one_active/.test(String(sErr.message))) throw afterClear(new Error('別の運営が先にシーズンを作りました。画面を更新してください'));
+        throw afterClear(sErr);
     }
     _invalidateActiveTestSeasonCache();   // テスト開始/本番作成のどちらでも OCR のタグ判定を即時に切り替える
 
@@ -3007,7 +3026,7 @@ window.supabaseCreateSeason = async function (payload) {
         };
     });
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
-    if (bErr) throw bErr;
+    if (bErr) throw afterClear(bErr);
 
     // 模擬戦データ (player_damages) をクリア → メンバーが新シーズン期間中に再提出する運用
     // テストシーズンの場合は metadata.damages_snapshot に保存済みなのでテスト終了時に復元される。
@@ -3038,7 +3057,7 @@ window.supabaseCreateSeason = async function (payload) {
         }
     }
 
-    return { ...season, mockSeed, attackSeed, testScenario: isTest ? (payload.testScenario || 'midraid') : null };
+    return { ...season, mockSeed, attackSeed, availabilityCleared, testScenario: isTest ? (payload.testScenario || 'midraid') : null };
 };
 
 // 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る

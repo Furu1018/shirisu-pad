@@ -392,6 +392,12 @@ SELECT * FROM (
                        AND pg_get_triggerdef(oid) LIKE '%BEFORE DELETE ON public.seasons FOR EACH ROW EXECUTE FUNCTION seasons_delete_via_rpc()%'),
         'シーズンの決まり (アクティブは 1 つだけの一意索引・シーズンを消す RPC delete_season・予約の履歴の append-only と seasons の DELETE はその中だけ通す)。未適用だと予約のあるテストシーズンを 🧪 ✕ 終了 で消せない'
 
+    UNION ALL SELECT '58_season_blocks_guard',
+        COALESCE((SELECT pg_get_functiondef(f) LIKE '%availability_confirmations%' AND pg_get_functiondef(f) LIKE '%plan_reservations%'
+                             AND pg_get_functiondef(f) LIKE '%plan->''decided''%' AND pg_get_functiondef(f) LIKE '%このシーズンのブロックは変えられません%'
+                      FROM to_regprocedure('public.ops_set_season_blocks(bigint,jsonb)') AS f WHERE f IS NOT NULL), false),
+        '🧱 ブロックの設定のガード (凸数の登録・ブロックの予約・決定があるシーズンは ops_set_season_blocks が断る)。未適用でも画面は読み取り専用にする (DB の断りが無いだけ)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
