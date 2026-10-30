@@ -15220,7 +15220,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const un = fn('async function _obUnpin(resId)', 'async function _obAuto(');
         assert.ok(/_resvTransition\(Number\(resId\), 'released', \{ expectFrom: 'pinned'/.test(un), '外すのが released でない');
         const au = fn('async function _obAuto()', 'async function _obReset(');
-        assert.ok(/computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan: null, reservations: resv \}, o\.startBoard\)/.test(au), 'そのブロックの始まりの盤面で組んでいない');
+        assert.ok(/computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan: null, reservations: resv \}, skipKeys && skipKeys\.size \? window\.blockBuildDomain\.withoutPieces\(o\.startBoard, skipKeys\) : o\.startBoard\)/.test(au), 'そのブロックの始まりの盤面で組んでいない / 外した駒を 🧮 で戻す');
         assert.ok(/const executed = new Set\(ov\.slice\(0, idx\)\.flatMap\(x => \(x\.done \|\| \[\]\)\.map\(d => d\.reservationId\)\)/.test(au) && /rows\.filter\(r => !executed\.has\(Number\(r\.id\)\)\)/.test(au), '前のブロックで実行した 📌 を拘束に渡している');
         assert.ok(/for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]\) if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); \}/.test(au), '組んだあとに後ろのブロックを要組み直しにしていない');
         // レビュー対応: 外す・やり直すの後は盤面を取り直す / 読めなかった駒は 15 秒おきに取り直す / 置けなかった数はこのブロックの駒だけ / やり直しで約束は外さない
@@ -15646,7 +15646,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/document\.body\.classList\.toggle\('resv-live', rows\.some\(r => rv\.isActive\(r\) \|\| \(rv\.isPin\(r\) && \(r\.asked_at != null \|\| r\.time_mode !== 'block'\)\)\)\);/.test(html), '生きている予約を数えていない');
         assert.ok(/body:not\(\.resv-hidden\) \[data-resv-hidden-only\] \{ display: none !important; \}/.test(html) && /<p data-resv-hidden-only /.test(html), '隠しているときだけの案内');
         assert.ok(/<button type="button" data-resv-ui onclick="openOpsResvCreate\(\)"/.test(html), '「＋ 予約を登録」を隠していない (カードを出したときに新しい予約が作れる)');
-        assert.ok(/const resv = !pin && a\.fromReservation && a\.reservationId != null;/.test(html) && /'🔒 予約です \(外すには 🔒 凸の予約 の「取り下げる」\)'/.test(html), '盤の 🔒 予約の駒が「自動で置いた」に見える');
+        assert.ok(/const resv = !pin && a\.fromReservation && a\.reservationId != null;/.test(html) && /data-ob-note="🔒 予約です \(外すには 🔒 凸の予約 の「取り下げる」\)"/.test(html), '盤の 🔒 予約の駒が「自動で置いた」に見える');
         assert.ok(/pinRow && pinRow\.status !== 'pinned' \? '🔒 予約です/.test(html), 'ピースを押したときの外し方が 📌 のまま');
         // RS-2: 隠しているシーズンでは 🔒 確定する を出さない・押させない
         assert.ok(/\+ \(typeof _resvUiHidden === 'function' && _resvUiHidden\(\) \? '' : `<button type="button" class="act ask" onclick="_opsPlanConfirmPin\(/.test(html), '🔒 確定する が隠れていない');
@@ -15993,34 +15993,83 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
     });
 }
 
-console.log('\n🧱 組む: 手で置いた駒を外す (2026-10-31 ふるり「嵌めたピースを外すことができない」= 本番の記録に 1 個だけ外した跡が無い。外せることが画面から分からなかった):');
+console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌めたピースを外すことができない」「ピースは 1 つずつ外したい」。本番の記録に 1 個だけ外した跡が無かった):');
 {
     const _fsUp = await import('node:fs');
     const html = _fsUp.readFileSync('index.html', 'utf8').replace(/\r\n/g, '\n');
     const fnU = (start, end) => { const a = html.indexOf(start); const b = html.indexOf(end, a + start.length); return a >= 0 && b > a ? html.slice(a, b) : ''; };
-    test('★ 📌 の駒は本物のボタンで ✕ が見える / 外せない駒は押すと理由を言う / 盤の近くに案内', () => {
+    await import('../js/domain/blockBuild.js');
+    const bb = globalThis.blockBuildDomain;
+    const planOf = () => ({ note: 'keep', levels: [{ level: 1, bosses: [
+        { bossNumber: 1, attacks: [{ memberId: 1, loadoutSlot: 1, hourIdx: 0, dmgB: 30 }, { memberId: 2, loadoutSlot: 2, hourIdx: 1, dmgB: 20 }] },
+        { bossNumber: 2, attacks: [{ memberId: 1, loadoutSlot: 2, hourIdx: 0, dmgB: 25 }, { memberId: 3, loadoutSlot: 1, hourIdx: 9, dmgB: 40 }] },
+    ] }] });
+    test('★ dropPiece: 人 × ボス × 編成の 1 個だけ外し、ほかの駒と元のプランは変えない / 別のブロックの凸は外さない / 無ければ何もしない', () => {
+        const p = planOf();
+        const r = bb.dropPiece(p, { memberId: '1', bossNumber: 1, loadoutSlot: 1, fromIdx: 0, toIdx: 3 });
+        assert.equal(r.removed.dmgB, 30, '狙った駒を外していない');
+        assert.deepEqual(r.plan.levels[0].bosses[0].attacks.map(a => a.memberId), [2], '同じボスのほかの駒まで外した');
+        assert.deepEqual(r.plan.levels[0].bosses[1].attacks.map(a => a.memberId), [1, 3], '別のボスの同じ人の駒まで外した');
+        assert.equal(r.plan.note, 'keep', 'プランのほかの欄を落とした');
+        assert.equal(p.levels[0].bosses[0].attacks.length, 2, '元のプランを書き換えた');
+        const other = bb.dropPiece(p, { memberId: 3, bossNumber: 2, loadoutSlot: 1, fromIdx: 0, toIdx: 3 });
+        assert.equal(other.removed, null, '別のブロックの凸を外した (決定から読み戻したプランは全ブロックの凸を持つ)');
+        assert.equal(other.plan, p, '外さないときは同じプランを返す');
+        assert.equal(bb.dropPiece(p, { memberId: 1, bossNumber: 1, loadoutSlot: 3 }).removed, null, '別の編成の駒を外した');
+        assert.equal(bb.dropPiece(null, { memberId: 1, bossNumber: 1, loadoutSlot: 1 }).removed, null);
+    });
+    test('★ withoutPieces: 外したカードだけ盤面から除く (元の盤面は変えない・ほかの人と同じ人の別の編成は残す・属性が空なら旧形式からも落とす)', () => {
+        const board = { season: 1, players: [
+            { id: 1, damagesByAttr: { fire: 30, water: 20 }, loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30 }, { slot: 2, dmgB: 10 }], water: [{ slot: 1, dmgB: 20 }] } },
+            { id: 2, damagesByAttr: { fire: 25 }, loadoutsByAttr: { fire: [{ slot: 1, dmgB: 25 }] } },
+        ] };
+        const out = bb.withoutPieces(board, new Set(['1:fire:1', '1:water:1']));
+        assert.deepEqual(out.players[0].loadoutsByAttr, { fire: [{ slot: 2, dmgB: 10 }] }, '外したカードが残っている / 別の編成まで消えた');
+        assert.deepEqual(out.players[0].damagesByAttr, { fire: 30 }, '属性が空になったのに旧形式のダメージが残る (ソルバーの予備の読み方で戻る)');
+        assert.equal(out.players[1], board.players[1], '関係ない人まで作り直した');
+        assert.equal(board.players[0].loadoutsByAttr.fire.length, 2, '元の盤面を書き換えた');
+        assert.equal(out.season, 1);
+        assert.equal(bb.withoutPieces(board, new Set()), board, '外した駒が無いのに作り直した');
+        assert.equal(bb.withoutPieces(board, null), board);
+    });
+    test('★ 駒は ✕ で 1 個ずつ外せる (手で置いた駒も自動の駒も) / 外せないのは 🔒 予約だけ / 下線 = 手で置いた駒 / 盤の近くに案内', () => {
         const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
-        assert.ok(/if \(pin\) return `<button type="button" class="obpc pin\$\{over\}" \$\{box\} data-ob-unpin="\$\{Number\(a\.reservationId\)\}"/.test(r), '📌 の駒がボタンでない');
+        assert.ok(/if \(resv\) return `<span class="obpc\$\{over\}" \$\{box\} data-ob-note=/.test(r), '🔒 予約が押すと外せる形になっている');
+        assert.ok(/return `<button type="button" class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}" \$\{box\} \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\}/.test(r), '駒がボタンでない / 自動の駒に外す印が無い');
+        assert.ok(/const pieceKey = escapeHtml\(`\$\{a\.memberId\}:\$\{r\.weakness\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\);/.test(r), '駒の鍵がピースの鍵と違う');
         assert.ok(/<span class="obpc-x" aria-hidden="true">✕<\/span><\/button>/.test(r) && /aria-label="\$\{nm\} の駒を外す"/.test(r), '✕ が見えない / 読み上げの名前が無い');
-        assert.ok(/data-ob-note="\$\{why\}"/.test(r) && r.includes('自動で置いた駒です。1 つだけは外せません'), '外せない駒に理由が無い');
-        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.some\(a => a\.pinned && a\.reservationId != null\)\)/.test(r) && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
-        assert.ok(/button\.obpc \{ min-width: 34px;/.test(html), '細い駒で ✕ が押せない');
+        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の ✕ で 1 個ずつ外せます') && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
+        assert.ok(/button\.obpc \{ min-width: 34px;/.test(html) && /button\.obpc\.hand \{ border-bottom:/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
         // 最小幅の駒が並ぶと行の右で切れて ✕ に届かない (overflow: hidden) → 🧱 組む の盤だけ折り返す (Codex 指摘)
         assert.ok(/#opsBuild \.obr-bar \{ flex-wrap: wrap; height: auto; min-height: 28px; \}/.test(html) && /#opsBuild \.obpc \{ height: 28px; \}/.test(html), '行に収まらない駒が切れて ✕ を押せない');
         const d = fnU('function _obDelegate(host)', "host.addEventListener('dragstart'");
-        assert.ok(d.indexOf('[data-ob-unpin]') > 0 && d.indexOf('[data-ob-unpin]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf('[data-ob-boss]'), '押したときの順が違う (外す → 理由 → 行)');
-        assert.ok(/if \(nt && !_ob\.sel\) \{ showNotification\(nt\.dataset\.obNote\); return; \}/.test(d), 'ピースを選んでいるのに自動の駒の上の行に置けない');
+        assert.ok(/if \(un && \(!_ob\.sel \|\| !un\.classList\.contains\('obpc'\) \|\| e\.target\.closest\('\.obpc-x'\)\)\) \{/.test(d), 'ピースを選んでいるのに駒の本体で外れる (埋まった行に置けない) / ✕ で外れない');
+        assert.ok(d.indexOf('[data-ob-unpin],[data-ob-drop]') > 0 && d.indexOf('[data-ob-unpin],[data-ob-drop]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf("const row = e.target.closest('[data-ob-boss]')"), '押したときの順が違う (外す → 理由 → 行)');
+        assert.ok(/if \(nt && !_ob\.sel\) \{ showNotification\(nt\.dataset\.obNote\); return; \}/.test(d), 'ピースを選んでいるのに 🔒 の駒の上の行に置けない');
         const d2 = fnU('function _obDelegate(host)', "host.addEventListener('dragover'");
         assert.ok(/host\.addEventListener\('click', \(e\) => \{\s*\n\s*if \(_ob\.busy\) return;/.test(d2) && /host\.addEventListener\('dragstart', \(e\) => \{ if \(_ob\.busy\) \{ e\.preventDefault\(\); return; \}/.test(d2), '処理の途中に選択・ドラッグ・ブロックの切り替えができる');
     });
-    test('★ 置いたピースをもう一度押すと外れる (このブロックの 📌 だけ・別のブロックは開いてから) / 自動の分が消えることを知らせる', () => {
+    test('★ 外したあとも ほかの駒は残る (指紋を付け直す・決定のままでなくなる・後ろは要組み直し) / 🧮 で戻さない / 置き直す・やり直す で戻る / ピースをもう一度押しても外れる', () => {
+        const rm = fnU('function _obRemoveFromPlan(idx, blocks, piece, rows)', 'const _obSkipAdd');
+        assert.ok(/const \{ fromDecided: _fd, obBlockFp: _fp, \.\.\.mine \} = plan;\s*\n\s*_ob\.plans\.set\(idx, mine\);/.test(rm), '手を入れたブロックが「決定のまま」に見える (決定し直せない)');
+        assert.ok(/if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); later = true; \}/.test(rm), '後ろのブロックを要組み直しにしていない');
+        assert.ok(/if \(p\.fromDecided == null\) _ob\.plans\.set\(k, \{ \.\.\.p, obPinsFp: _obPinsFp\(rows, blocks, k\) \}\);/.test(rm), '指紋を付け直さないと、外した直後に全部消える');
+        const un = fnU('async function _obUnpin(resId)', 'async function _obAuto(');
+        assert.ok(/if \(hadPlan && row && blocks\) \{/.test(un) && /_obRemoveFromPlan\(idx, blocks, \{ memberId: row\.player_id, bossNumber: row\.boss_number, loadoutSlot: slot \}, _ob\.pins\);/.test(un), '📌 を外すと自動の駒まで全部消える');
+        assert.ok(/_ob\.pins = \(_ob\.pins \|\| \[\]\)\.map\(r => Number\(r\.id\) === Number\(resId\) \? \{ \.\.\.r, status: 'released' \} : r\);/.test(un), '外した駒の状態で指紋を作っていない');
+        assert.ok(/\} else _obAfterChange\(idx >= 0 \? idx : 0\);/.test(un), '組む前に外したときの従来の動きが無い');
+        const dr = fnU('function _obDropAuto(key, bossNumber)', 'async function _obPlace(');
+        assert.ok(/if \(_ob\.busy\) return;/.test(dr) && /_obSkipAdd\(ctx\.idx, String\(key\)\);/.test(dr) && !/supabase/.test(dr), '自動の駒を外すのに DB を触る / 🧮 で戻る');
+        const pl = fnU('async function _obPlace(bossNumber)', 'async function _obUnpin(');
+        assert.ok(/_ob\.skip\.get\(idx\)\?\.delete\(piece\.key\);/.test(pl), '手で置き直しても「外した」のまま');
+        assert.ok(/_ob\.skip\.delete\(ctx\.idx\);/.test(fnU('async function _obReset()', '// 🔗 前回を尊重')), 'やり直しても「外した」が残る');
+        assert.ok(/_ob\.plans\.clear\(\); _ob\.stale\.clear\(\); _ob\.skip\.clear\(\);/.test(html), 'シーズンが変わっても「外した」が残る');
         const s0 = fnU('function _obSelect(key)', '// 置いたら / 外したら');
-        assert.ok(/if \(pinRow && pinRow\.status === 'pinned' && p\.placedIdx === ctx\.idx\) \{ _obUnpin\(Number\(pinRow\.id\)\); return; \}/.test(s0), '置いたピースを押しても外れない / 別のブロックの駒まで外す');
-        assert.ok(s0.indexOf('_obUnpin(Number(pinRow.id))') < s0.indexOf('showNotification(p.pinId == null'), '外す前にトーストで止まる');
+        assert.ok(/if \(p\.placedIdx === ctx\.idx\) \{\s*\n\s*if \(pinRow && pinRow\.status === 'pinned'\) \{ _obUnpin\(Number\(pinRow\.id\)\); return; \}/.test(s0), '置いたピースを押しても外れない / 別のブロックの駒まで外す');
+        assert.ok(/if \(bossRow\) \{ _obDropAuto\(p\.key, bossRow\.bossNumber\); return; \}/.test(s0), '自動で置いたピースを押しても外れない');
         const t = fnU('const trayHtml = tray.length', 'const err = _ob.pinsErr');
-        assert.ok(/const undo = used && p\.placedIdx === idx && \(_ob\.pins \|\| \[\]\)\.some\(r => Number\(r\.id\) === Number\(p\.pinId\) && r\.status === 'pinned'\);/.test(t) && /undo \? '置いた · 押すと外す'/.test(t), 'ピースに「押すと外す」が出ていない');
-        const u = fnU('async function _obUnpin(resId)', 'async function _obAuto(');
-        assert.ok(/const hadAuto = idx >= 0 && _ob\.plans\.has\(idx\);/.test(u) && /done: hadAuto \? '📌 駒を外しました。自動で組んだ分は 🧮 でもう一度組みます'/.test(u), '自動の結果が黙って消える');
+        assert.ok(/const undo = used && p\.placedIdx === idx && \(p\.pinId == null \|\| \(_ob\.pins \|\| \[\]\)\.some\(r => Number\(r\.id\) === Number\(p\.pinId\) && r\.status === 'pinned'\)\);/.test(t) && /undo \? '置いた · 押すと外す'/.test(t), 'ピースに「押すと外す」が出ていない (🔒 予約に出している)');
+        assert.ok(/外した · 🧮 では使わない/.test(t), '外した駒が分からない');
     });
 }
 

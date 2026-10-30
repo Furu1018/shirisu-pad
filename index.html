@@ -3636,6 +3636,7 @@
         #opsBuild .obr-bar { flex-wrap: wrap; height: auto; min-height: 28px; }
         #opsBuild .obpc { height: 28px; }
         button.obpc { min-width: 34px; padding: 0 5px; border-width: 0 2px 0 0; border-style: solid; border-color: var(--card); font-family: inherit; cursor: pointer; }
+        button.obpc.hand { border-bottom: 3px solid rgba(var(--ink-rgb), 0.6); }   /* 手で置いた駒の印 (🧮 でも動かない)。自動の駒と見分ける */
         .obpc-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
         .obpc-x { flex: none; margin-left: 4px; font-size: 12px; }
         /* 決定の盤 (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28): 組むと同じ部品。過ぎたブロックも押せる (.was)・行は押せない (.ro)・
@@ -3668,7 +3669,7 @@
         .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 10.5px; }
         .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
         .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
-        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dup { border-color: var(--bad); }
+        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
         .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 900; } .obt small { font-size: 9.5px; color: var(--t-muted); }
         .obt .rigid { font-size: 10px; font-weight: 900; color: var(--bad-deep); } .obt .flex, .obt .where { font-size: 10px; color: var(--t-muted); }
         .ob-warn { color: var(--warn-deep); } .ob-skip { display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px 2px 0; font-weight: 800; }
@@ -5744,7 +5745,7 @@
                         <h3>① ブロックを押す → 置く → 自動</h3>
                         <ul>
                             <li>ブロックのボタンを押すと、そのブロックの始まりのボスの HP と、<strong>その時間帯に出られる人の模擬</strong>のピースが出ます (🔒 = この時間帯しか出られない人 = 先に置く / ほか: 出られる別のブロック)</li>
-                            <li>ピースを押してボスの行を押す (PC はドラッグ) → <strong>📌 仮置き</strong>。幅 = ダメージで、ボスの残り HP が減るのが見えます。置いた駒は <strong>✕</strong> を押すと外せます (下のピースをもう一度押しても同じ)。置けないときは理由が出ます</li>
+                            <li>ピースを押してボスの行を押す (PC はドラッグ) → <strong>📌 仮置き</strong>。幅 = ダメージで、ボスの残り HP が減るのが見えます。駒は <strong>✕</strong> で 1 個ずつ外せます (手で置いた駒も自動の駒も・ほかの駒はそのまま・下のピースをもう一度押しても同じ)。外した駒は 🧮 では使いません (置き直すか「このブロックをやり直す」で戻ります)。置けないときは理由が出ます</li>
                             <li><strong>🧮 残りを自動で組む</strong> — 手で置いた 📌 は動かさず、そのブロックの始まりの盤面から本物のソルバーが組みます。本人の凸数 (ブロックごとの上限)・ボス 5 の 2 編成目は Lv4 だけ・時間未登録の人は候補にしない、も自動で効きます</li>
                             <li>次のブロックは、前のブロックを組んだとおりに削れたとして残り HP を引き継ぎます。5 体倒したブロックの次から Lv が上がります</li>
                         </ul>
@@ -23007,7 +23008,8 @@
         // ★ 前のブロックで組んだ凸は「模擬どおり削れた」と仮定して次のブロックの盤面に進める (projectBoard)。自動で組むのはそのブロックの始まりの盤面から。
         // 手で置いた駒は DB (plan_reservations の 📌 / time_mode 'block') に残る (別の運営・別の端末でも見える)。自動で組んだ結果はこの端末だけ (決定するまで)
         const _ob = { idx: null, plans: new Map(), stale: new Set(), pins: null, pinsSeason: null, pinsErr: null, pinsTriedAt: 0, sel: null, busy: false, seq: 0, epoch: 0, delegated: false,
-            dec: null, decErr: null, decTriedAt: 0, decSeq: 0, seededFrom: null };   // dec = { row: 最新の決定の行 | null, basisId } (シンプル化 S4)
+            dec: null, decErr: null, decTriedAt: 0, decSeq: 0, seededFrom: null,   // dec = { row: 最新の決定の行 | null, basisId } (シンプル化 S4)
+            skip: new Map() };   // ブロックの添字 → 外した駒の鍵 (人:属性:編成) の Set。🧮 で戻さない (端末のメモリだけ・置き直すか やり直す で消える: 2026-10-31 ふるり)
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
@@ -23166,7 +23168,7 @@
             if (!snap) return;   // 取り直しの最中 — 完了が描く
             if (!snap.season) { host.innerHTML = '<p class="ob-note">アクティブシーズンがありません。</p>'; return; }
             if (_ob.pinsSeason !== snap.season.id) {
-                _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.sel = null; _ob.idx = null;
+                _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.skip.clear(); _ob.sel = null; _ob.idx = null;
                 _ob.dec = null; _ob.decErr = null; _ob.seededFrom = null;
                 _obLoadPins(snap.season.id);
                 _obLoadDecided(snap.season.id);
@@ -23207,10 +23209,10 @@
                     const resv = !pin && a.fromReservation && a.reservationId != null;
                     const dmgTxt = (Number(a.dmgB) || 0).toFixed(1);
                     const box = `style="width:${w}%;background:${fill};color:${ink};"`, over = acc > 100.5 ? ' over' : '';
-                    if (pin) return `<button type="button" class="obpc pin${over}" ${box} data-ob-unpin="${Number(a.reservationId)}" title="${nm} ${dmgTxt}B — 押すと外れます" aria-label="${nm} の駒を外す"><span class="obpc-nm">${nm} ${dmgTxt}</span><span class="obpc-x" aria-hidden="true">✕</span></button>`;
-                    // 外せない駒は、押したときに理由を言う (以前は下の行の処理に落ちて「先に右のピースを押して」と言っていた)
-                    const why = resv ? '🔒 予約です (外すには 🔒 凸の予約 の「取り下げる」)' : '自動で置いた駒です。1 つだけは外せません (「このブロックをやり直す」で全部外れます)';
-                    return `<span class="obpc${over}" ${box} data-ob-note="${why}" title="${nm} ${dmgTxt}B — ${resv ? '🔒 予約' : '自動で置いた'}">${resv ? '🔒 ' : ''}${nm} ${dmgTxt}</span>`;
+                    // 手で置いた駒も自動の駒も ✕ で 1 個ずつ外せる (2026-10-31 ふるり)。外せないのは 🔒 予約だけ — 押すと理由を言う
+                    if (resv) return `<span class="obpc${over}" ${box} data-ob-note="🔒 予約です (外すには 🔒 凸の予約 の「取り下げる」)" title="${nm} ${dmgTxt}B — 🔒 予約">🔒 ${nm} ${dmgTxt}</span>`;
+                    const pieceKey = escapeHtml(`${a.memberId}:${r.weakness}:${Number(a.loadoutSlot) || 1}`);
+                    return `<button type="button" class="obpc pin${pin ? ' hand' : ''}${over}" ${box} ${pin ? `data-ob-unpin="${Number(a.reservationId)}"` : `data-ob-drop="${pieceKey}"`} title="${nm} ${dmgTxt}B — ${pin ? '手で置いた駒' : '自動で置いた駒'}。押すと外れます" aria-label="${nm} の駒を外す"><span class="obpc-nm">${nm} ${dmgTxt}</span><span class="obpc-x" aria-hidden="true">✕</span></button>`;
                 }).join('');
                 const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B` : (r.done ? `撃破 ✓${r.gotB - r.startB > 0.05 ? ` 余り ${(r.gotB - r.startB).toFixed(1)}B` : ''}` : `あと ${r.remB.toFixed(1)}B / ${r.startB.toFixed(1)}B`);
                 return `<div class="obr${can === true ? ' can' : (can === false ? ' no' : '')}${r.done ? ' done' : ''}" data-ob-boss="${r.bossNumber}"><div class="obr-h"><span class="obr-pt" style="background:${(_bbFill(r.weakness) || [])[0] || 'var(--s2)'};color:${(_bbFill(r.weakness) || [])[1] || 'var(--t-ink)'};">${escapeHtml(pt(r.weakness))}PT</span><b>B${r.bossNumber} ${escapeHtml(r.name)}</b><span class="hp">${hp}</span></div><div class="obr-bar">${pieces}</div></div>`;
@@ -23221,7 +23223,7 @@
                 return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>` : ' (🔒 予約 — 🔒 凸の予約 で取り下げ)'}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
-            const pinHint = o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null)) ? '<p class="ob-note"><b>手で置いた駒は ✕ を押すと外せます</b></p>' : '';
+            const pinHint = o.rows.some(r => r.pieces.length) ? '<p class="ob-note"><b>駒の ✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)</p>' : '';
             const note = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
                 : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`);
             // ③ ピース (このブロックに出られる人の模擬だけ)
@@ -23231,11 +23233,12 @@
                 const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
                 const bn = (opsStore.get()?.bosses || []).find(b => b.weakness === p.attr);
                 const used = p.placedIdx != null, off = used || !!p.blocked || p.remaining <= 0;
-                const undo = used && p.placedIdx === idx && (_ob.pins || []).some(r => Number(r.id) === Number(p.pinId) && r.status === 'pinned');   // 押すと外せる札
+                const undo = used && p.placedIdx === idx && (p.pinId == null || (_ob.pins || []).some(r => Number(r.id) === Number(p.pinId) && r.status === 'pinned'));   // 押すと外せる札 (🔒 予約は除く)
+                const dropped = !used && !!_ob.skip.get(idx)?.has(p.key);   // ✕ で外した駒: 手で置き直せる。🧮 では使わない
                 const where = used ? (undo ? '置いた · 押すと外す' : (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.short || '')}に置いた`)) : (p.blocked === 'used' ? 'キャラ使用済み' : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '凸なし' : '')));
                 const flex = p.rigid ? '<span class="rigid">🔒 この時間だけ</span>' : `<span class="flex">ほか: ${escapeHtml(p.others.join('・'))}</span>`;
-                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${off ? ' off' : ''}${undo ? ' undo' : ''}${p.dup ? ' dup' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}">`
-                    + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${where ? `<span class="where">${where}</span>` : flex}</button>`;
+                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${off ? ' off' : ''}${undo ? ' undo' : ''}${dropped ? ' dropped' : ''}${p.dup ? ' dup' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}">`
+                    + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${where ? `<span class="where">${where}</span>` : (dropped ? '<span class="where">外した · 🧮 では使わない</span>' : flex)}</button>`;
             }).join('') : '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>';
             const err = _ob.pinsErr ? `<p class="ob-note" style="color:var(--bad);">${escapeHtml(_ob.pinsErr)}</p>` : (_ob.pins == null ? '<p class="ob-note">手で置いた駒を読み込んでいます…</p>' : '');
             // ④ 決定: いまのブロックから、組めたブロックが続くところまで
@@ -23446,8 +23449,13 @@
                 if (_ob.busy) return;   // 処理の途中はブロックの切り替えもピースの選択も受けない (終わったあとの選択が古くなる: Codex 指摘)
                 const blkBtn = e.target.closest('[data-ob-blk]');
                 if (blkBtn) { _ob.idx = Number(blkBtn.dataset.obBlk); _ob.sel = null; renderOpsBuild(); return; }
-                const un = e.target.closest('[data-ob-unpin]');
-                if (un) { _obUnpin(Number(un.dataset.obUnpin)); return; }
+                const un = e.target.closest('[data-ob-unpin],[data-ob-drop]');
+                // ピースを選んでいるときに駒の本体を押すのは「この行に置く」(埋まった行にも置ける)。✕ と 下の「実行されない駒」の ✕ 外す はいつでも外す
+                if (un && (!_ob.sel || !un.classList.contains('obpc') || e.target.closest('.obpc-x'))) {
+                    if (un.dataset.obUnpin) _obUnpin(Number(un.dataset.obUnpin));
+                    else _obDropAuto(un.dataset.obDrop, Number(un.closest('[data-ob-boss]')?.dataset.obBoss));
+                    return;
+                }
                 const pc = e.target.closest('[data-ob-piece]');
                 if (pc) { _obSelect(pc.dataset.obPiece); return; }
                 const nt = e.target.closest('[data-ob-note]');
@@ -23466,10 +23474,15 @@
             if (p.placedIdx != null) {
                 // pinId は承認済みの予約 (🔒) のこともある — 盤に 📌 は無いので外し方を言い分ける (S5 レビュー RS-1)
                 const pinRow = p.pinId != null ? (_ob.pins || []).find(r => Number(r.id) === Number(p.pinId)) : null;
-                // 📌 手で置いたピースをもう一度押す = 外す (置いたときと同じ所で外せるように: 2026-10-31 ふるり)。別のブロックの駒はそのブロックを開いてから (見えていない所を変えない)
-                if (pinRow && pinRow.status === 'pinned' && p.placedIdx === ctx.idx) { _obUnpin(Number(pinRow.id)); return; }
-                showNotification(p.pinId == null ? '自動で置いた駒です (このブロックをやり直すと外れます)'
-                    : (pinRow && pinRow.status !== 'pinned' ? '🔒 予約です (外すには 🧱 組む の「🔒 凸の予約」で取り下げる)' : `${ctx.blocks[p.placedIdx]?.short || '別のブロック'} に置いてあります (そのブロックを開いて ✕ を押すと外せます)`));
+                // 置いたピースをもう一度押す = 外す (置いたときと同じ所で外せるように: 2026-10-31 ふるり)。別のブロックの駒はそのブロックを開いてから (見えていない所を変えない)
+                if (p.placedIdx === ctx.idx) {
+                    if (pinRow && pinRow.status === 'pinned') { _obUnpin(Number(pinRow.id)); return; }
+                    if (p.pinId == null) {
+                        const bossRow = ctx.ov[ctx.idx].rows.find(r => r.weakness === p.attr && r.pieces.some(a => String(a.memberId) === String(p.memberId) && (Number(a.loadoutSlot) || 1) === p.slot));
+                        if (bossRow) { _obDropAuto(p.key, bossRow.bossNumber); return; }
+                    }
+                }
+                showNotification(pinRow && pinRow.status !== 'pinned' ? '🔒 予約です (外すには 🧱 組む の「🔒 凸の予約」で取り下げる)' : `${ctx.blocks[p.placedIdx]?.short || '別のブロック'} に置いてあります (そのブロックを開いて ✕ を押すと外せます)`);
                 return;
             }
             if (p.blocked === 'dup') { showNotification('別の編成とキャラが被るので使えません (同じキャラは 1 日 1 回)'); return; }
@@ -23483,6 +23496,33 @@
         function _obAfterChange(idx) {
             for (const k of [..._ob.plans.keys()]) if (k >= idx) { _ob.plans.delete(k); if (k > idx) _ob.stale.add(k); }
             _ob.stale.delete(idx);
+        }
+        // 組んだ結果 (自動・決定から読み戻した) から駒を 1 個だけ外す。ほかの駒は残す (2026-10-31 ふるり「ピースは 1 つずつ外したい」)。
+        //   ★ 手を入れたブロックは「決定のまま」ではない → fromDecided を外す = 決定し直せる。メンバーに届くのは ✅ 決定のときだけ
+        //   ★ 指紋を付け直す: 外しただけで、このブロックと前のブロックの結果を「要組み直し」にしない。後ろのブロックは前提の HP が変わるので要組み直し
+        function _obRemoveFromPlan(idx, blocks, piece, rows) {
+            const cur = _ob.plans.get(idx), blk = blocks[idx];
+            if (!cur || !blk) return null;
+            const { plan, removed } = window.blockBuildDomain.dropPiece(cur, { ...piece, fromIdx: blk.fromIdx, toIdx: blk.toIdx });
+            const { fromDecided: _fd, obBlockFp: _fp, ...mine } = plan;
+            _ob.plans.set(idx, mine);
+            let later = false;
+            for (const k of [..._ob.plans.keys()]) if (k > idx) { _ob.plans.delete(k); _ob.stale.add(k); later = true; }
+            for (const [k, p] of [..._ob.plans]) if (p.fromDecided == null) _ob.plans.set(k, { ...p, obPinsFp: _obPinsFp(rows, blocks, k) });
+            return { removed, later };
+        }
+        const _obSkipAdd = (idx, key) => { if (!_ob.skip.has(idx)) _ob.skip.set(idx, new Set()); _ob.skip.get(idx).add(key); };
+        // 自動の駒を外す: DB には何も書かない (自動の結果は端末のメモリだけ)。🧮 を押し直しても戻らないよう覚える
+        function _obDropAuto(key, bossNumber) {
+            if (_ob.busy) return;
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx) return;
+            const [memberId, , slot] = String(key).split(':');
+            const r = _obRemoveFromPlan(ctx.idx, ctx.blocks, { memberId, bossNumber, loadoutSlot: Number(slot) || 1 }, _ob.pins);
+            if (!r || !r.removed) { showNotification('この駒を外せませんでした。もう一度「残りを自動で組む」を押してください'); renderOpsBuild(); return; }
+            _obSkipAdd(ctx.idx, String(key));
+            showNotification(`${r.removed.memberName || ''} の駒を外しました${r.later ? '。後ろのブロックは組み直しが要ります' : ''}`);
+            renderOpsBuild();
         }
         async function _obPlace(bossNumber) {
             if (_ob.busy) return;
@@ -23517,9 +23557,11 @@
                 window.supabaseLogActivity?.('ops', `📌 ${piece.name} を ${blk.short} の B${row.bossNumber} に手で置きました`);
                 if (!_obSame(epoch, sid)) return;
                 _ob.sel = null;
+                _ob.skip.get(idx)?.delete(piece.key);   // 手で置き直したら「外した」は取り消し
+                const hadPlan = _ob.plans.has(idx);
                 _obAfterChange(idx);
                 try { const r2 = await window.supabaseLoadReservations(snap.season.id); if (Array.isArray(r2) && _obSame(epoch, sid)) { _ob.pins = r2; _ob.pinsErr = null; } } catch (_) { /* 次の描画で取り直す */ }
-                showNotification(`📌 ${piece.name} を ${blk.short} の B${row.bossNumber} に置きました`);
+                showNotification(`📌 ${piece.name} を ${blk.short} の B${row.bossNumber} に置きました${hadPlan ? '。自動の分は 🧮 でもう一度組みます' : ''}`);
             } catch (e) {
                 showNotification(`❌ 置けませんでした: ${e?.message || e}`);
             } finally {
@@ -23534,11 +23576,21 @@
             const snap = opsStore.get();
             const idx = row && snap?.season && bb && rb ? bb.pinBlockIdx(row, rb.blocksOfSeason(snap.season)) : -1;
             const epoch = _ob.epoch, sid = snap?.season?.id;
-            const hadAuto = idx >= 0 && _ob.plans.has(idx);   // 外すと、そのブロックの自動の結果は前提が変わるので消える (_obAfterChange) — 黙って全部消えたように見せない
+            const blocks = (snap?.season && rb) ? rb.blocksOfSeason(snap.season) : null;
+            const hadPlan = idx >= 0 && _ob.plans.has(idx);
+            const weak = (snap?.bosses || []).find(b => Number(b.boss_number) === Number(row?.boss_number))?.weakness;
             _ob.busy = true;
             try {
-                const ok = await _resvTransition(Number(resId), 'released', { expectFrom: 'pinned', reason: 'ops', done: hadAuto ? '📌 駒を外しました。自動で組んだ分は 🧮 でもう一度組みます' : '📌 手で置いた駒を外しました' });
-                if (ok && _obSame(epoch, sid)) _obAfterChange(idx >= 0 ? idx : 0);
+                const ok = await _resvTransition(Number(resId), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 手で置いた駒を外しました' });
+                if (ok && _obSame(epoch, sid)) {
+                    if (hadPlan && row && blocks) {
+                        // 組んだあとは、この駒だけ外す (ほかの駒は残す)。🧮 を押し直しても戻さない
+                        const slot = Number(row.loadout_slot) || 1;
+                        _ob.pins = (_ob.pins || []).map(r => Number(r.id) === Number(resId) ? { ...r, status: 'released' } : r);
+                        _obRemoveFromPlan(idx, blocks, { memberId: row.player_id, bossNumber: row.boss_number, loadoutSlot: slot }, _ob.pins);
+                        if (weak) _obSkipAdd(idx, `${row.player_id}:${weak}:${slot}`);
+                    } else _obAfterChange(idx >= 0 ? idx : 0);
+                }
             } finally {
                 _ob.busy = false;
                 // ★ _resvTransition は盤面 (opsStore) を invalidate する → 取り直してから描く (取り直さないと画面が止まる: レビュー高)。取り直しの最後で手で置いた駒も読み直し、描く
@@ -23571,7 +23623,8 @@
                 const executed = new Set(ov.slice(0, idx).flatMap(x => (x.done || []).map(d => d.reservationId)).filter(v => v != null).map(Number));
                 const resv = rows.filter(r => !executed.has(Number(r.id)));
                 await _yieldToPaint();
-                const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: resv }, o.startBoard);
+                const skipKeys = _ob.skip.get(idx);   // ✕ で外した駒は 🧮 でも使わない (置き直すか やり直す で戻る)
+                const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: resv }, skipKeys && skipKeys.size ? window.blockBuildDomain.withoutPieces(o.startBoard, skipKeys) : o.startBoard);
                 if (!plan) { showNotification(`❌ ${blk.short} を組めませんでした`); return; }
                 plan.seasonId = snap.season.id;
                 plan.blockScope = { idx, letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
@@ -23585,7 +23638,7 @@
                 // 置けなかった駒は「このブロックに手で置いた駒」だけ数える (ほかのブロック・過ぎた時間の予約まで数えると毎回出る: レビュー)
                 const mineIds = new Set(rows.filter(r => r.status === 'pinned' && window.blockBuildDomain.pinBlockIdx(r, blocks) === idx).map(r => Number(r.id)));
                 const unmet = (plan.unmetReservations || []).filter(u => mineIds.has(Number(u.reservationId))).length;
-                showNotification(`🧮 ${blk.short} を組みました (${n} 凸)${unmet ? ` — ⚠ 手で置いた駒のうち ${unmet} 件は置けませんでした` : ''}`);
+                showNotification(`🧮 ${blk.short} を組みました (${n} 凸)${unmet ? ` — ⚠ 手で置いた駒のうち ${unmet} 件は置けませんでした` : ''}${skipKeys && skipKeys.size ? ` (外した ${skipKeys.size} 個は使っていません)` : ''}`);
             } finally {
                 _ob.busy = false;
                 renderOpsBuild();
@@ -23603,7 +23656,7 @@
             try {
                 const epoch = _ob.epoch, sid = snap.season.id;
                 for (const r of mine) if (r.status === 'pinned') await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ops', quiet: true });
-                if (_obSame(epoch, sid)) _obAfterChange(ctx.idx);
+                if (_obSame(epoch, sid)) { _obAfterChange(ctx.idx); _ob.skip.delete(ctx.idx); }
                 showNotification(`${blk.short} をやり直しました`);
             } finally {
                 _ob.busy = false;

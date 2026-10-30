@@ -228,5 +228,44 @@
         return { ok: true };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, EPS };
+    /**
+     * 組んだプランから駒を 1 個だけ外す (元のプランは変えない・2026-10-31 ふるり「ピースは 1 つずつ外したい」)。
+     * 同じカード (人 × ボス × 編成) はきょう 1 回なので、これで 1 個に決まる。fromIdx / toIdx = そのブロックの時間 (決定から読み戻したプランは全ブロックの凸を持つ)
+     * @returns {{ plan:Object, removed:Object|null }}
+     */
+    function dropPiece(plan, { memberId, bossNumber, loadoutSlot, fromIdx = null, toIdx = null } = {}) {
+        let removed = null;
+        const inBlock = (a) => !Number.isInteger(a.hourIdx) || fromIdx == null || toIdx == null || (a.hourIdx >= fromIdx && a.hourIdx <= toIdx);
+        const levels = (plan && Array.isArray(plan.levels) ? plan.levels : []).map(lv => {
+            if (removed || !lv || !Array.isArray(lv.bosses)) return lv;
+            return { ...lv, bosses: lv.bosses.map(b => {
+                if (removed || !b || Number(b.bossNumber) !== Number(bossNumber) || !Array.isArray(b.attacks)) return b;
+                const i = b.attacks.findIndex(a => a && String(a.memberId) === String(memberId) && (Number(a.loadoutSlot) || 1) === (Number(loadoutSlot) || 1) && inBlock(a));
+                if (i < 0) return b;
+                removed = b.attacks[i];
+                return { ...b, attacks: b.attacks.filter((_, k) => k !== i) };
+            }) };
+        });
+        return removed ? { plan: { ...plan, levels }, removed } : { plan, removed: null };
+    }
+    /** 盤面から模擬のカードを除く (鍵 'memberId:attr:slot')。🧮 に「外した駒」を使わせないため。元の盤面は変えない */
+    function withoutPieces(board, keys) {
+        const set = keys instanceof Set ? keys : new Set(Array.isArray(keys) ? keys : []);
+        if (!board || !set.size) return board;
+        return { ...board, players: (Array.isArray(board.players) ? board.players : []).map(p => {
+            const lo = p && p.loadoutsByAttr;
+            if (!lo || typeof lo !== 'object') return p;
+            let changed = false;
+            const nextLo = {}, nextD = { ...(p.damagesByAttr || {}) };
+            for (const attr of Object.keys(lo)) {
+                const list = Array.isArray(lo[attr]) ? lo[attr] : [];
+                const kept = list.filter(l => !set.has(`${p.id}:${attr}:${Number(l && l.slot) || 1}`));
+                if (kept.length !== list.length) changed = true;
+                if (kept.length) nextLo[attr] = kept; else delete nextD[attr];   // その属性の編成が無くなったら旧形式のダメージからも落とす (ソルバーの予備の読み方で戻らないように)
+            }
+            return changed ? { ...p, loadoutsByAttr: nextLo, damagesByAttr: nextD } : p;
+        }) };
+    }
+
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, dropPiece, withoutPieces, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);
