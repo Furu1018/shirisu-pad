@@ -14645,7 +14645,7 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
     test('★ 名前なしのブロックでも文字が残る: 決定のボタン・確認・ログ・トースト・まだ組んでいない案内・置いた先・★ あなたの凸 は short を読む (name を読まない)', () => {
         const build = html.slice(html.indexOf('function renderOpsBuild()'), html.indexOf('async function _obDecide()') + 20000);
         assert.ok(!/blocks\[(i|first|p\.placedIdx)\]\??\.name\b/.test(build), '決定の流れに blocks[i].name が残っている (名前なしで A が消える)');
-        for (const k of ['escapeHtml(blocks[i].short)', 'blocks[first]?.short', 'replaced.map(i => blocks[i].short)', "range.map(i => blocks[i].short).join('・')} を決定しました", 'blocks[p.placedIdx]?.short']) assert.ok(build.includes(k), k);
+        for (const k of ['escapeHtml(blocks[i].short)', 'replaced.map(i => blocks[i].short)', "range.map(i => blocks[i].short).join('・')} を決定しました", 'blocks[p.placedIdx]?.short']) assert.ok(build.includes(k), k);
         assert.ok(/map\(e => \(\{ e, name: x\.short \|\| x\.name \|\| x\.letter \}\)\)/.test(html), '★ あなたの凸 にブロックの文字が出ない');
         assert.ok(html.includes('blocksOfSeason(snap.season)[i]?.short).filter(Boolean)'), '別の運営の決定の警告で組みかけのブロックを名前だけで出している');
         assert.ok(html.includes("tt.filter(r => !r.decided && r.state !== 'past').map(r => r.short || r.name || r.letter)"), 'まだ決まっていないブロックを名前だけで出している');
@@ -15024,6 +15024,11 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         assert.deepEqual(dp.rangeToDecide({ first: 1, count: 6, built: built([1, 2, 4]) }), [1, 2]);
         assert.deepEqual(dp.rangeToDecide({ first: 0, count: 6, built: built([1, 2]) }), []);
         assert.deepEqual(dp.rangeToDecide({ first: 4, count: 6, built: built([4, 5]) }), [4, 5]);
+        // 空のブロックは飛ばす (朝を空けて夜に温存: 2026-10-31 ふるり)。組み直しが要るブロック (built でも skip でもない) の先は決めない
+        const skip = (l) => (i) => l.includes(i);
+        assert.deepEqual(dp.rangeToDecide({ first: 0, count: 6, built: built([1, 4]), skip: skip([0, 2, 3, 5]) }), [1, 4], '空のブロックを飛ばせない');
+        assert.deepEqual(dp.rangeToDecide({ first: 0, count: 6, built: built([1, 4]), skip: skip([0, 2]) }), [1], '組み直しが要るブロックの先まで決める');
+        assert.deepEqual(dp.rangeToDecide({ first: 0, count: 3, built: built([]), skip: skip([0, 1, 2]) }), [], '全部空なら何も決めない');
     });
     test('★ latestDecided / currentDecided: 最新の決定の行 / 最新の行が決定のときだけ', () => {
         const d = { id: 5, plan: { decided: { blocks: [{ key: '5-8' }] } } }, old = { id: 3, plan: { decided: { blocks: [{ key: '5-8' }] } } }, blk = { id: 6, plan: { blockScope: { from: 5, to: 8 } } };
@@ -15222,7 +15227,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const au = fn('async function _obAuto()', 'async function _obReset(');
         assert.ok(/computeOptimalPlan\(\{ onlyAvailableNow: true, availableAtSlots: blk\.slots, availableAtLabel: blk\.label, blockStartSlot: _hourKey\(blk\.from\), previousPlan: null, reservations: resv \}, skipKeys && skipKeys\.size \? window\.blockBuildDomain\.withoutPieces\(o\.startBoard, skipKeys\) : o\.startBoard\)/.test(au), 'そのブロックの始まりの盤面で組んでいない / 外した駒を 🧮 で戻す');
         assert.ok(/const executed = new Set\(ov\.slice\(0, idx\)\.flatMap\(x => \(x\.done \|\| \[\]\)\.map\(d => d\.reservationId\)\)/.test(au) && /rows\.filter\(r => !executed\.has\(Number\(r\.id\)\)\)/.test(au), '前のブロックで実行した 📌 を拘束に渡している');
-        assert.ok(/for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]\) if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); \}/.test(au), '組んだあとに後ろのブロックを要組み直しにしていない');
+        assert.ok(/for \(const k of \[\.\.\._ob\.plans\.keys\(\)\]\) if \(k > idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(!hand\) _ob\.stale\.add\(k\); \}/.test(au), '組んだあとに後ろのブロックを要組み直しにしていない');
         // レビュー対応: 外す・やり直すの後は盤面を取り直す / 読めなかった駒は 15 秒おきに取り直す / 置けなかった数はこのブロックの駒だけ / やり直しで約束は外さない
         assert.ok(/finally \{\s*\n\s*_ob\.busy = false;\s*\n\s*\/\/[^\n]*\n\s*await _opsReloadBoardCards\(\);/.test(un), '外したあとに盤面を取り直していない (画面が止まる)');
         const rs = fn('async function _obReset()', '\n\n');
@@ -15230,7 +15235,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/const unmet = \(plan\.unmetReservations \|\| \[\]\)\.filter\(u => mineIds\.has\(Number\(u\.reservationId\)\)\)\.length;/.test(au), '置けなかった数にほかのブロックの予約を数えている');
         assert.ok(/if \(\(_ob\.pinsErr \|\| _ob\.pins == null\) && Date\.now\(\) - _ob\.pinsTriedAt > 15000\) _obLoadPins\(snap\.season\.id\);/.test(html) && /if \(!_ob\.busy && Date\.now\(\) - _ob\.decTriedAt > \(\(_ob\.decErr \|\| _ob\.dec == null\) \? 15000 : 30000\)\) _obLoadDecided\(snap\.season\.id\);/.test(html), '読めなかった駒・決定を取り直していない / 決定を 30 秒おきに取り直していない (S4 レビュー [27])');
         const ac = fn('function _obAfterChange(idx)');
-        assert.ok(/if \(k >= idx\) \{ _ob\.plans\.delete\(k\); if \(k > idx\) _ob\.stale\.add\(k\); \}/.test(ac));
+        assert.ok(/if \(k >= idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(k > idx && !hand\) _ob\.stale\.add\(k\); \}/.test(ac));
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
         assert.ok(/const planOf = \(idx, level, cur\) => \{ const p = _ob\.plans\.get\(idx\); return p \? _obStripDone\(p, blocks\[idx\], doneKeys\) : bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\); \};/.test(cx) &&/bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
         assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse \}\)/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
@@ -15254,7 +15259,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
     test('★ 決定 (S4) の配線: 押した時点の DB で 駒と決定を読み直す → 別の運営の決定なら止める → 組めた範囲 → 確認 → もう一度照合 → 版 4 で 1 行 → 通知 (decide|)', () => {
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         const order = ['await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans()])', 'if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0))',
-            'const ctx = _obCtx(', 'dp.rangeToDecide(', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', 'if (!confirm(msg)) return;', '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
+            'const ctx = _obCtx(', '_obDecideRange(first, blocks.length, ov)', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', 'if (!confirm(msg)) return;', '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
             'Number(latest2?.id || 0) !== basis0', 'fpSig(rows2) !== sig0', 'window.supabasePublishDecidedPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan), basis0)', 'await _obNotifyDecide('];
         // S4 Codex 監査 A・B: 決定はサーバでも前提 (basis0) を照合して入れる (シーズンごとに直列化)。食い違い・56 未適用は通知の前に止める
         assert.ok(/if \(e\?\.code === 'CONFLICT'\) \{ alert\(/.test(d) && /if \(e\?\.code === 'NO_RPC'\) \{ alert\(/.test(d) && !/window\.supabasePublishPlan\(/.test(d), '決定を素の insert で入れている / 食い違いで止めない');
@@ -16053,7 +16058,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
     test('★ 外したあとも ほかの駒は残る (指紋を付け直す・決定のままでなくなる・後ろは要組み直し) / 🧮 で戻さない / 置き直す・やり直す で戻る / ピースをもう一度押しても外れる', () => {
         const rm = fnU('function _obRemoveFromPlan(idx, blocks, piece, rows)', 'const _obSkipAdd');
         assert.ok(/const \{ fromDecided: _fd, obBlockFp: _fp, \.\.\.mine \} = plan;\s*\n\s*_ob\.plans\.set\(idx, mine\);/.test(rm), '手を入れたブロックが「決定のまま」に見える (決定し直せない)');
-        assert.ok(/if \(k > idx\) \{ _ob\.plans\.delete\(k\); _ob\.stale\.add\(k\); later = true; \}/.test(rm), '後ろのブロックを要組み直しにしていない');
+        assert.ok(/if \(k > idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(!hand\) \{ _ob\.stale\.add\(k\); later = true; \} \}/.test(rm), '後ろのブロックを要組み直しにしていない / 手で置いただけのブロックまで要組み直しにする');
         assert.ok(/if \(p\.fromDecided == null\) _ob\.plans\.set\(k, \{ \.\.\.p, obPinsFp: _obPinsFp\(rows, blocks, k\) \}\);/.test(rm), '指紋を付け直さないと、外した直後に全部消える');
         const un = fnU('async function _obUnpin(resId)', 'async function _obAuto(');
         assert.ok(/if \(hadPlan && row && blocks\) \{/.test(un) && /_obRemoveFromPlan\(idx, blocks, \{ memberId: row\.player_id, bossNumber: row\.boss_number, loadoutSlot: slot \}, _ob\.pins\);/.test(un), '📌 を外すと自動の駒まで全部消える');
@@ -16078,6 +16083,20 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         // 後ろの決定は残す (振り回さない) が、HP の見積もりがずれたことは確認で言う (Codex 監査)
         assert.ok(/const staleKept = kept\.filter\(b => _ob\.stale\.has\(b\.idx\)\);/.test(html) && /の HP の見積もりはずれています/.test(html), '前のブロックを変えたのに、後ろの決定の見積もりがずれたことを言わない');
         assert.ok(/const conflicts = dp\.conflictsOf\(plan\);/.test(html) && /\(conflicts\.length \? `\\n\\n⚠ 組み合わせを確かめてください/.test(html), '4 凸・同じキャラの決定を黙って配信する');
+    });
+    test('★ 手で置いただけのブロックも ✅ 決定できる (🧮 を押さなくてよい) / 空のブロックは飛ばす / 決定のあとは読み戻した扱い / 凸が減ると確認で言う', () => {
+        const rg = fnU('function _obDecideRange(first, count, ov)', '// 範囲のうち、今回決めるブロック');
+        assert.ok(/built: \(i\) => !_ob\.stale\.has\(i\) && \(_ob\.plans\.has\(i\) \|\| has\(i\)\),/.test(rg), '手で置いただけのブロックを決定できない');
+        assert.ok(/skip: \(i\) => !_ob\.stale\.has\(i\) && !_ob\.plans\.has\(i\) && !has\(i\) \}\);/.test(rg), '空のブロックで止まる / 組み直しが要るブロックを飛ばす');
+        assert.equal((html.match(/_obDecideRange\(/g) || []).length, 3, '画面と決定で範囲の決め方が違う');
+        // 手で置いた駒だけのブロックは 🧮 が要らない — 前のブロックを直しても要組み直しにしない (その先を決定できなくなる)。自動の駒が 1 個でもあれば要組み直し
+        const ho = fnU('function _obHandOnly(k)', 'async function _obPlace(');
+        assert.ok(/return a\.length > 0 && a\.every\(x => x && x\.pinned && x\.reservationId != null\);/.test(ho) && /if \(!p \|\| !blk \|\| !pc\) return false;/.test(ho), '手で置いただけのブロックの見分け方が違う');
+        assert.ok(/const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(k > idx && !hand\) _ob\.stale\.add\(k\);/.test(html) && /const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(!hand\) _ob\.stale\.add\(k\);/.test(html), '手で置いただけのブロックを要組み直しにする経路が残っている');
+        assert.ok(/_ob\.blocks = blocks;/.test(html), '_obHandOnly がブロックを読めない');
+        assert.ok(/else _ob\.plans\.set\(i, \{ \.\.\.plan, fromDecided: Number\(pub\.id\), obBlockFp: _obBlockFp\(rows, blocks, i\) \}\);/.test(html), '手で組んだブロックが決定のあとも「決定できる」のまま');
+        assert.ok(/const fewer = plan\.decided\.blocks\.filter\(b => !b\.kept && prevDec\.has\(b\.key\) && Number\(b\.attacks\) < Number\(prevDec\.get\(b\.key\)\.attacks\)\)/.test(html) && /\(fewer\.length \? `\\n\\n⚠ 前の決定より凸が減ります/.test(html), '自動の駒が消えたまま決め直しても言わない');
+        assert.ok(html.includes('駒を手で置くか「残りを自動で組む」で組むと決定できます') && !html.includes('を「残りを自動で組む」で組むと決定できます'), '案内が 🧮 だけを言っている');
     });
     test('★ conflictsOf: 1 人 3 凸を超える / 同じキャラを 2 回 を名前で返す (ブロックをまたいで数える)・3 凸までで被りが無ければ何も返さない', () => {
         const A = (memberId, memberName, team) => ({ memberId, memberName, team });

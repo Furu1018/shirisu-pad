@@ -23129,6 +23129,7 @@
             const rb = window.raidBlocksDomain, bb = window.blockBuildDomain, pcd = window.planChainDomain;
             if (!rb || !bb || !pcd || !snap?.season) return null;
             const blocks = rb.blocksOfSeason(snap.season);
+            _ob.blocks = blocks;   // _obHandOnly が読む
             const first = _obFirstIdx(snap.season, blocks);
             const rv = window.reservationsDomain;
             const pins = bb.blockPins(_ob.pins || [], rv && rv.isFixed ? rv.isFixed : null);   // 📌 手で置いた駒 + 承認済みのブロックの約束 (外せない)
@@ -23248,7 +23249,7 @@
             }).join('') : '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>';
             const err = _ob.pinsErr ? `<p class="ob-note" style="color:var(--bad);">${escapeHtml(_ob.pinsErr)}</p>` : (_ob.pins == null ? '<p class="ob-note">手で置いた駒を読み込んでいます…</p>' : '');
             // ④ 決定: いまのブロックから、組めたブロックが続くところまで
-            const range = window.decidePlanDomain.rangeToDecide({ first: ctx.first, count: blocks.length, built: (i) => _ob.plans.has(i) && !_ob.stale.has(i) });
+            const range = _obDecideRange(ctx.first, blocks.length, ov);
             const decRow = _ob.dec?.row || null;
             // 決めるのは組み直したブロックだけ (決定から読み戻したまま触っていないブロックは前の決定のまま写す: S4 レビュー [2])
             const fresh = _obFreshOf(range, decRow);
@@ -23261,7 +23262,7 @@
                 : `<button type="button" class="ob-decide-btn" disabled>✅ 決定</button>`;
             const decideHint = fresh.length ? '決定すると、メンバーの 📅 レイド予定表 と ホームの「きょうの凸」に出て、割当のある人に通知が届きます'
                 : (range.length ? '決定のあと組み直したブロックはありません (組み直すと決定し直せます)'
-                : `いまのブロック (${escapeHtml(blocks[ctx.first]?.short || '')}) を「残りを自動で組む」で組むと決定できます`);
+                : '駒を手で置くか「残りを自動で組む」で組むと決定できます');
             const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
             const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${decNote}<p class="ob-note">${decideHint}</p></div>`;
             host.innerHTML = `<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${decideHtml}
@@ -23275,6 +23276,14 @@
                             <div class="ob-tray-list">${trayHtml}</div></div></div>
                 </div>`;
             _obDelegate(host);
+        }
+        // 決定できるブロック: 🧮 で組んだ、または駒を手で置いた (2026-10-31 ふるり「全部手動で組みたい。朝と夜に出られる人の凸を朝に温存して夜まで取っておきたい」)。
+        //   だれも置いていない空のブロックは飛ばす (後ろのブロックを決められる)。組み直しが要るブロックの先は決めない
+        function _obDecideRange(first, count, ov) {
+            const has = (i) => !!(ov[i] && Array.isArray(ov[i].rows) && ov[i].rows.some(r => r.pieces.length));
+            return window.decidePlanDomain.rangeToDecide({ first, count,
+                built: (i) => !_ob.stale.has(i) && (_ob.plans.has(i) || has(i)),
+                skip: (i) => !_ob.stale.has(i) && !_ob.plans.has(i) && !has(i) });
         }
         // 範囲のうち、今回決めるブロック = 決定から読み戻したまま (前の決定と同じ) でないもの
         function _obFreshOf(range, prevRow) {
@@ -23326,8 +23335,8 @@
                 const ctx = _obCtx(snap2);
                 if (!ctx) return;
                 const { blocks, ov, first } = ctx;
-                const range = dp.rangeToDecide({ first, count: blocks.length, built: (i) => _ob.plans.has(i) && !_ob.stale.has(i) });
-                if (!range.length) { showNotification(`いまのブロック (${blocks[first]?.short || ''}) を組んでから決定してください (駒が変わって組み直しが要るかもしれません)`); return; }
+                const range = _obDecideRange(first, blocks.length, ov);
+                if (!range.length) { showNotification('決定できるブロックがありません。駒を置くか「残りを自動で組む」で組んでください (駒が変わって組み直しが要るかもしれません)'); return; }
                 const prev = _ob.dec?.row || null;
                 // ★ 決めるのは組み直したブロックだけ。決定から読み戻したまま触っていないブロックは前の決定のまま写す (いまの盤面で作り直すとレベルの付け替え・外れが黙って起きる: S4 レビュー [2])
                 const fresh = _obFreshOf(range, prev);
@@ -23341,6 +23350,10 @@
                 plan.seasonId = sid;
                 const kept = plan.decided.blocks.filter(b => b.kept && b.idx >= first);
                 const staleKept = kept.filter(b => _ob.stale.has(b.idx));
+                // 🧮 を押さずに決定すると、自動の駒が消えたまま決め直すことがある (手で置くと自動の結果は捨てる) — 凸が減るブロックは言う
+                const prevDec = prev ? dp.decidedBlocks(prev.plan) : new Map();
+                const fewer = plan.decided.blocks.filter(b => !b.kept && prevDec.has(b.key) && Number(b.attacks) < Number(prevDec.get(b.key).attacks))
+                    .map(b => `${b.short || b.name || b.letter} ${Number(prevDec.get(b.key).attacks)} → ${Number(b.attacks)} 凸`);
                 const conflicts = dp.conflictsOf(plan);
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
@@ -23349,6 +23362,7 @@
                     + (kept.length ? `\n\n${kept.map(b => b.short || b.name || b.letter).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
                     // 後ろの決定を黙って変えない (振り回さない) が、前のブロックを変えると HP の前提はずれる — 運営が判断できるように言う (Codex 監査)
                     + (staleKept.length ? `\n\n⚠ 前のブロックを変えたので、${staleKept.map(b => b.short || b.name || b.letter).join('・')} の HP の見積もりはずれています。必要ならそのブロックも組み直してください。` : '')
+                    + (fewer.length ? `\n\n⚠ 前の決定より凸が減ります: ${fewer.join('・')} (外れた人に通知が届きます)` : '')
                     // 手前だけ 🧮 し直すと、ソルバーは後ろの決定を知らない — 決定は止めず (振り回さない)、起きていれば名前で言う (Codex 監査)
                     + (conflicts.length ? `\n\n⚠ 組み合わせを確かめてください:\n${conflicts.map(c => `・${c.name || '?'}: ${c.attacks > 3 ? `${c.attacks} 凸` : ''}${c.attacks > 3 && c.dupChars.length ? ' / ' : ''}${c.dupChars.length ? `同じキャラ ${c.dupChars.join('・')}` : ''}`).join('\n')}` : '')
                     + '\n\nメンバーの 📅 レイド予定表 に出て、割当のある人のうち変わった人に通知が届きます。';
@@ -23379,7 +23393,12 @@
                 if (_obSame(epoch, sid)) {
                     _ob.dec = { row: { id: pub.id, season_id: sid, plan, published_at: pub.published_at || new Date().toISOString(), published_by_name: me?.name || null }, basisId: Number(pub.id) };
                     // 決めた・写したブロックは、この決定から読み戻したものとして扱う (照合はそのブロックの駒: 決定したときの指紋)
-                    for (const i of range) { const p = _ob.plans.get(i); if (p) { p.fromDecided = Number(pub.id); p.obBlockFp = _obBlockFp(rows, blocks, i); } }
+                    //   手で置いただけのブロックには組んだ結果が無いので、決定の中身をそのブロックの結果にする (無いと決定のあとも「決定できる」のまま)
+                    for (const i of range) {
+                        const p = _ob.plans.get(i);
+                        if (p) { p.fromDecided = Number(pub.id); p.obBlockFp = _obBlockFp(rows, blocks, i); }
+                        else _ob.plans.set(i, { ...plan, fromDecided: Number(pub.id), obBlockFp: _obBlockFp(rows, blocks, i) });
+                    }
                     _ob.decNote = null;
                     _ob.seededFrom = Number(pub.id);
                 }
@@ -23506,8 +23525,15 @@
         }
         // 置いたら / 外したら: そのブロックから後ろの「自動で組んだ結果」は前提が変わったので捨てる (後ろは要組み直し)
         function _obAfterChange(idx) {
-            for (const k of [..._ob.plans.keys()]) if (k >= idx) { _ob.plans.delete(k); if (k > idx) _ob.stale.add(k); }
+            for (const k of [..._ob.plans.keys()]) if (k >= idx) { const hand = _obHandOnly(k); _ob.plans.delete(k); if (k > idx && !hand) _ob.stale.add(k); }
             _ob.stale.delete(idx);
+        }
+        // 手で置いた駒だけのブロックか: 🧮 が要らないので「要組み直し」にしない (全部手で組む運用で、前のブロックを直すと後ろが決定できなくなる: 2026-10-31 ふるり)。分からなければ false (要組み直しに倒す)
+        function _obHandOnly(k) {
+            const p = _ob.plans.get(k), blk = (_ob.blocks || [])[k], pc = window.planChainDomain;
+            if (!p || !blk || !pc) return false;
+            const a = pc.attacksIn(p, blk);
+            return a.length > 0 && a.every(x => x && x.pinned && x.reservationId != null);
         }
         // 組んだ結果 (自動・決定から読み戻した) から駒を 1 個だけ外す。ほかの駒は残す (2026-10-31 ふるり「ピースは 1 つずつ外したい」)。
         //   ★ 手を入れたブロックは「決定のまま」ではない → fromDecided を外す = 決定し直せる。メンバーに届くのは ✅ 決定のときだけ
@@ -23519,7 +23545,7 @@
             const { fromDecided: _fd, obBlockFp: _fp, ...mine } = plan;
             _ob.plans.set(idx, mine);
             let later = false;
-            for (const k of [..._ob.plans.keys()]) if (k > idx) { _ob.plans.delete(k); _ob.stale.add(k); later = true; }
+            for (const k of [..._ob.plans.keys()]) if (k > idx) { const hand = _obHandOnly(k); _ob.plans.delete(k); if (!hand) { _ob.stale.add(k); later = true; } }
             for (const [k, p] of [..._ob.plans]) if (p.fromDecided == null) _ob.plans.set(k, { ...p, obPinsFp: _obPinsFp(rows, blocks, k) });
             return { removed, later };
         }
@@ -23645,7 +23671,7 @@
                 if (!_obSame(epoch, sid)) return;
                 _ob.plans.set(idx, plan);
                 _ob.stale.delete(idx);
-                for (const k of [..._ob.plans.keys()]) if (k > idx) { _ob.plans.delete(k); _ob.stale.add(k); }   // 後ろのブロックは前提が変わった
+                for (const k of [..._ob.plans.keys()]) if (k > idx) { const hand = _obHandOnly(k); _ob.plans.delete(k); if (!hand) _ob.stale.add(k); }   // 後ろのブロックは前提が変わった (手で置いただけのブロックは 🧮 が要らない)
                 const n = window.planChainDomain.attacksIn(plan, blk).length;
                 // 置けなかった駒は「このブロックに手で置いた駒」だけ数える (ほかのブロック・過ぎた時間の予約まで数えると毎回出る: レビュー)
                 const mineIds = new Set(rows.filter(r => r.status === 'pinned' && window.blockBuildDomain.pinBlockIdx(r, blocks) === idx).map(r => Number(r.id)));

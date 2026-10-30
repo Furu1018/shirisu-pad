@@ -162,11 +162,12 @@
      * 決めるブロック: いまのブロック (first) から、組めた (built) ブロックが続くところまで。途中に組んでいないブロックがあればそこで止める
      * @returns {number[]}
      */
-    function rangeToDecide({ first = 0, count = 0, built } = {}) {
+    function rangeToDecide({ first = 0, count = 0, built, skip = null } = {}) {
         const out = [];
         for (let i = Math.max(0, first); i < count; i++) {
-            if (!(typeof built === 'function' && built(i))) break;
-            out.push(i);
+            if (typeof built === 'function' && built(i)) { out.push(i); continue; }
+            if (typeof skip === 'function' && skip(i)) continue;   // 空のブロック (だれも置かない) は飛ばす: 朝を空けて夜に温存できる (2026-10-31 ふるり)
+            break;   // 組み直しが要るブロックの先は決めない
         }
         return out;
     }
