@@ -4329,12 +4329,16 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
     let restoredKey = null;
     const prevActiveId = season.metadata?.previous_active_season_id;
     if (prevActiveId) {
-        const { data: prev } = await supabase
+        // ★ テストの行はもう消えている = ✕ 終了 を押し直しても戻らない。失敗は黙らず、何が戻っていないかを言う (Codex 監査)
+        const stuck = (why) => new Error(`テストシーズンは消しましたが、テストの前に動いていたシーズン (id ${prevActiveId}) を戻せませんでした: ${why}\n\n運営タブを開き直しても「シーズン無し」なら、Supabase の SQL Editor で update seasons set is_active = true where id = ${prevActiveId}; を実行してください (開発側に相談)`);
+        const { data: prev, error: pErr } = await supabase
             .from('seasons').select('id, month_key, is_active')
             .eq('id', prevActiveId)
             .maybeSingle();
+        if (pErr) throw stuck(pErr.message);
         if (prev) {
-            await supabase.from('seasons').update({ is_active: true }).eq('id', prev.id);
+            const { error: uErr } = await supabase.from('seasons').update({ is_active: true }).eq('id', prev.id);
+            if (uErr) throw stuck(uErr.message);
             restoredKey = prev.month_key;
         }
     }
