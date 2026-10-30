@@ -30,7 +30,12 @@ h1 { font-size: 17px; font-weight: 900; margin: 0 0 2px; }
 .btn.sm { font-size: 11.5px; padding: 6px 10px; }
 .btn[disabled] { opacity: .45; cursor: default; }
 .btn:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible, .badge:focus-visible { outline: 2px solid var(--ops); outline-offset: 2px; }
-.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; align-items: center; }
+.stp { display: inline-flex; align-items: center; gap: 2px; background: var(--s2); border-radius: 10px; padding: 3px; }
+.stp button { width: 34px; height: 30px; border: 0; border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; }
+.stp button[disabled] { opacity: .35; cursor: default; }
+.stp b { min-width: 58px; text-align: center; font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.stp .lbl { font-size: 11.5px; font-weight: 800; color: var(--body); padding: 0 6px 0 8px; }
 /* ---- 時計 ---- */
 .clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 12px; margin-bottom: 8px; }
 .unused { fill: var(--s2); }
@@ -112,8 +117,9 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
 
   <div class="card">
     <h2>📋 ブロック <span id="cnt" style="font-size:11px;font-weight:800;color:var(--muted);"></span></h2>
-    <p class="note">終わりの時刻を変えると次のブロックの始まりも動きます (隙間も重なりもできません)。最初は 5 時・最後は翌 5 時で固定。</p>
+    <p class="note">ブロックの数を変えると 24 時間を均等に分け直します (割り切れない数は前のブロックから 1 時間ずつ長く)。そのあと終わりの時刻で調整できます (次のブロックの始まりも動く・隙間も重なりもできません)。最初は 5 時・最後は翌 5 時で固定。</p>
     <div class="presets">
+      <span class="stp" role="group" aria-label="ブロックの数"><span class="lbl">ブロックの数</span><button type="button" id="cntDec" onclick="setCount(blocksCount() - 1)" aria-label="減らす">−</button><b id="cntN">6 つ</b><button type="button" id="cntInc" onclick="setCount(blocksCount() + 1)" aria-label="増やす">＋</button></span>
       <button class="btn sm" onclick="setPreset(4)">4 つ (6 時間)</button>
       <button class="btn sm" onclick="setPreset(6)">6 つ (4 時間)</button>
       <button class="btn sm" onclick="setPreset(8)">8 つ (3 時間)</button>
@@ -169,9 +175,11 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
     let blocks = preset(6);
     let sel = 0;
 
+    // 24 時間を n 個に均等に分ける。割り切れない余りは前のブロックから 1 時間ずつ (5 つなら 5・5・5・5・4 時間)
     function preset(n) {
-        const len = 24 / n, out = [];
-        for (let i = 0; i < n; i++) out.push({ name: '', from: HOUR_ORDER[i * len], to: HOUR_ORDER[i * len + len - 1] });
+        const base = Math.floor(24 / n), extra = 24 % n, out = [];
+        let k = 0;
+        for (let i = 0; i < n; i++) { const len = base + (i < extra ? 1 : 0); out.push({ name: '', from: HOUR_ORDER[k], to: HOUR_ORDER[k + len - 1] }); k += len; }
         return out;
     }
     const lenOf = (b) => idx(b.to) - idx(b.from) + 1;
@@ -271,6 +279,9 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
                 + '</div>';
         }).join('');
         document.getElementById('cnt').textContent = blocks.length + ' つ · 2〜12 つまで';
+        document.getElementById('cntN').textContent = blocks.length + ' つ';
+        document.getElementById('cntDec').disabled = blocks.length <= MIN;
+        document.getElementById('cntInc').disabled = blocks.length >= MAX;
         host.querySelectorAll('[data-sel]').forEach(el => el.addEventListener('click', () => { sel = Number(el.dataset.sel); render(); }));
         host.querySelectorAll('[data-name]').forEach(el => el.addEventListener('input', () => { blocks[Number(el.dataset.name)].name = el.value.trim(); renderClock(); renderPreview(); renderBar(); }));
         host.querySelectorAll('[data-to]').forEach(el => el.addEventListener('change', () => {
@@ -321,6 +332,13 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
         clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
     }
     window.setPreset = (n) => { blocks = preset(n); sel = 0; render(); };
+    window.blocksCount = () => blocks.length;
+    window.setCount = (n) => {
+        if (n < MIN) return toast('ブロックは 2 つ以上です');
+        if (n > MAX) return toast('ブロックは 12 個までです');
+        blocks = preset(n); sel = Math.min(sel, n - 1); render();
+        toast(n + ' つに均等に分け直しました (名前は消えます)');
+    };
     window.setNamed = () => { blocks = NAMED.map(([name, from, to]) => ({ name, from, to })); sel = 0; render(); };
     window.save = () => toast('保存しました (モック) — 本物は seasons.metadata.blocks に入り、👥 の ⏰ と 🧱 組む に効きます');
     render();
