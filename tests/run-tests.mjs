@@ -16005,9 +16005,13 @@ console.log('\n🧱 組む: 手で置いた駒を外す (2026-10-31 ふるり「
         assert.ok(/data-ob-note="\$\{why\}"/.test(r) && r.includes('自動で置いた駒です。1 つだけは外せません'), '外せない駒に理由が無い');
         assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.some\(a => a\.pinned && a\.reservationId != null\)\)/.test(r) && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
         assert.ok(/button\.obpc \{ min-width: 34px;/.test(html), '細い駒で ✕ が押せない');
+        // 最小幅の駒が並ぶと行の右で切れて ✕ に届かない (overflow: hidden) → 🧱 組む の盤だけ折り返す (Codex 指摘)
+        assert.ok(/#opsBuild \.obr-bar \{ flex-wrap: wrap; height: auto; min-height: 28px; \}/.test(html) && /#opsBuild \.obpc \{ height: 28px; \}/.test(html), '行に収まらない駒が切れて ✕ を押せない');
         const d = fnU('function _obDelegate(host)', "host.addEventListener('dragstart'");
         assert.ok(d.indexOf('[data-ob-unpin]') > 0 && d.indexOf('[data-ob-unpin]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf('[data-ob-boss]'), '押したときの順が違う (外す → 理由 → 行)');
         assert.ok(/if \(nt && !_ob\.sel\) \{ showNotification\(nt\.dataset\.obNote\); return; \}/.test(d), 'ピースを選んでいるのに自動の駒の上の行に置けない');
+        const d2 = fnU('function _obDelegate(host)', "host.addEventListener('dragover'");
+        assert.ok(/host\.addEventListener\('click', \(e\) => \{\s*\n\s*if \(_ob\.busy\) return;/.test(d2) && /host\.addEventListener\('dragstart', \(e\) => \{ if \(_ob\.busy\) \{ e\.preventDefault\(\); return; \}/.test(d2), '処理の途中に選択・ドラッグ・ブロックの切り替えができる');
     });
     test('★ 置いたピースをもう一度押すと外れる (このブロックの 📌 だけ・別のブロックは開いてから) / 自動の分が消えることを知らせる', () => {
         const s0 = fnU('function _obSelect(key)', '// 置いたら / 外したら');

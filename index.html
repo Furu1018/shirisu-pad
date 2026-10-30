@@ -3632,6 +3632,9 @@
         .obpc { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; white-space: nowrap; overflow: hidden; border-right: 2px solid var(--card); flex: none; }
         .obpc.over { opacity: .6; }
         /* 📌 手で置いた駒はボタン + 見える ✕ (押すと外す・2026-10-31 ふるり「嵌めたピースを外すことができない」= 外せることが画面から分からなかった) */
+        /* 🧱 組む の盤は行に収まらない駒を次の段へ折り返す (切れた駒の ✕ は押せない: Codex 指摘)。⚔️ / 📅 の盤 (.db) の帯は見るだけなので 1 段のまま */
+        #opsBuild .obr-bar { flex-wrap: wrap; height: auto; min-height: 28px; }
+        #opsBuild .obpc { height: 28px; }
         button.obpc { min-width: 34px; padding: 0 5px; border-width: 0 2px 0 0; border-style: solid; border-color: var(--card); font-family: inherit; cursor: pointer; }
         .obpc-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
         .obpc-x { flex: none; margin-left: 4px; font-size: 12px; }
@@ -23440,6 +23443,7 @@
             if (_ob.delegated) return;
             _ob.delegated = true;
             host.addEventListener('click', (e) => {
+                if (_ob.busy) return;   // 処理の途中はブロックの切り替えもピースの選択も受けない (終わったあとの選択が古くなる: Codex 指摘)
                 const blkBtn = e.target.closest('[data-ob-blk]');
                 if (blkBtn) { _ob.idx = Number(blkBtn.dataset.obBlk); _ob.sel = null; renderOpsBuild(); return; }
                 const un = e.target.closest('[data-ob-unpin]');
@@ -23451,7 +23455,7 @@
                 const row = e.target.closest('[data-ob-boss]');
                 if (row) { if (!_ob.sel) { showNotification('先に右 (下) のピースを押してください'); return; } _obPlace(Number(row.dataset.obBoss)); }
             });
-            host.addEventListener('dragstart', (e) => { const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
+            host.addEventListener('dragstart', (e) => { if (_ob.busy) { e.preventDefault(); return; } const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
             host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
             host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
         }
