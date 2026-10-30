@@ -4336,11 +4336,10 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
             .eq('id', prevActiveId)
             .maybeSingle();
         if (pErr) throw stuck(pErr.message);
-        if (prev) {
-            const { error: uErr } = await supabase.from('seasons').update({ is_active: true }).eq('id', prev.id);
-            if (uErr) throw stuck(uErr.message);
-            restoredKey = prev.month_key;
-        }
+        if (!prev) throw new Error(`テストシーズンは消しましたが、テストの前に動いていたシーズン (id ${prevActiveId}) が見つからないので戻せませんでした (もう消されています)。必要ならシーズン作成から作り直してください`);
+        const { error: uErr } = await supabase.from('seasons').update({ is_active: true }).eq('id', prev.id);
+        if (uErr) throw stuck(uErr.message);
+        restoredKey = prev.month_key;
     }
     return { ok: true, restoredKey, charsRemoved };
 };

@@ -14415,7 +14415,7 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
     });
     await testAsync('★ テスト終了を実際に動かす: 57 が無い・確かめに失敗 = 何も変えずに止める / ふつう = 模擬を戻してから delete_season / 途中の失敗は「もう一度 ✕ 終了」と言い、控えは残る', async () => {
         const src = fnOf(client, 'window.supabaseDeleteActiveTestSeason = async function', '\n};') + '\n};';
-        const run = async ({ probeErr = null, delErr = null, clrErr = null, prevId = null, updErr = null } = {}) => {
+        const run = async ({ probeErr = null, delErr = null, clrErr = null, prevId = null, updErr = null, prevRow = undefined, selErr = null } = {}) => {
             const log = [];
             const season = { id: 77, is_test: true, month_key: 'TEST-X', metadata: { damages_snapshot: [{ player_id: 1, attribute: 'fire', damage_b: 30, slot: 1, characters: ['a'] }], nikke_characters_snapshot: ['a'], ...(prevId ? { previous_active_season_id: prevId } : {}) } };
             let selects = 0;
@@ -14426,7 +14426,8 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
                     delete: () => { o._op = 'delete'; return o; },
                     update: () => { o._op = 'update'; return o; },
                     gte: () => { log.push(`delete:${table}`); return Promise.resolve({ error: table === 'player_damages' ? clrErr : null }); },
-                    maybeSingle: () => Promise.resolve({ data: table === 'seasons' ? (selects++ === 0 ? season : { id: prevId, month_key: '2026-10b', is_active: false }) : null, error: null }) };
+                    maybeSingle: () => Promise.resolve(table !== 'seasons' ? { data: null, error: null } : selects++ === 0 ? { data: season, error: null }
+                        : { data: selErr ? null : (prevRow === undefined ? { id: prevId, month_key: '2026-10b', is_active: false } : prevRow), error: selErr }) };
                 return o;
             };
             const supabase = {
@@ -14465,6 +14466,10 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
         assert.equal(r.err, null); assert.equal(r.out.restoredKey, '2026-10b'); assert.ok(r.log.indexOf('update:seasons') > r.log.indexOf('rpc:delete_season:77'));
         r = await run({ prevId: 38, updErr: { message: 'dup' } });
         assert.match(String(r.err?.message), /テストシーズンは消しましたが、テストの前に動いていたシーズン \(id 38\) を戻せませんでした: dup[\s\S]*update seasons set is_active = true where id = 38;/);
+        r = await run({ prevId: 38, selErr: { message: 'net' } });
+        assert.match(String(r.err?.message), /\(id 38\) を戻せませんでした: net/); assert.ok(!r.log.includes('update:seasons'));
+        r = await run({ prevId: 38, prevRow: null });
+        assert.match(String(r.err?.message), /\(id 38\) が見つからないので戻せませんでした/, '元のシーズンが無いのに成功扱い'); assert.ok(!r.log.includes('update:seasons'));
     });
     test('★ 配線 (クライアント): 作成は先に止めの確かめ・黙って止めない・前のアクティブを書かない / テスト終了は模擬を戻す前に 57 を確かめ、行は delete_season で消す', () => {
         const fn = fnOf(client, 'window.supabaseCreateSeason = async function', 'window.supabaseQuickCreateTestSeason');
