@@ -16070,6 +16070,12 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         const t = fnU('const trayHtml = tray.length', 'const err = _ob.pinsErr');
         assert.ok(/const undo = used && p\.placedIdx === idx && \(p\.pinId == null \|\| \(_ob\.pins \|\| \[\]\)\.some\(r => Number\(r\.id\) === Number\(p\.pinId\) && r\.status === 'pinned'\)\);/.test(t) && /undo \? '置いた · 押すと外す'/.test(t), 'ピースに「押すと外す」が出ていない (🔒 予約に出している)');
         assert.ok(/外した · 🧮 では使わない/.test(t), '外した駒が分からない');
+        // 実行されない駒: 自動の駒も外せる・🔒 予約と言わない / 行の外なのでボスを渡す (Codex 監査)
+        const r2 = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
+        assert.ok(/data-ob-drop="\$\{escapeHtml\(`\$\{a\.memberId\}:\$\{weak\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\)\}" data-ob-boss-n="\$\{Number\(a\.bossNumber\)\}"/.test(r2) && /const resv = !pin && a\.fromReservation && a\.reservationId != null;\s*\n\s*\/\/ 自動の駒もここから外せる/.test(r2), '実行されない自動の駒を外せない / 🔒 予約と言う');
+        assert.ok(/Number\(un\.dataset\.obBossN \?\? un\.closest\('\[data-ob-boss\]'\)\?\.dataset\.obBoss\)/.test(html), '行の外の駒のボスが渡らない');
+        // 後ろの決定は残す (振り回さない) が、HP の見積もりがずれたことは確認で言う (Codex 監査)
+        assert.ok(/const staleKept = kept\.filter\(b => _ob\.stale\.has\(b\.idx\)\);/.test(html) && /の HP の見積もりはずれています/.test(html), '前のブロックを変えたのに、後ろの決定の見積もりがずれたことを言わない');
     });
 }
 

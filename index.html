@@ -23220,7 +23220,13 @@
             const skipped = (o.skipped || []).map(a => {
                 const nm = escapeHtml(a.memberName || '');
                 const pin = a.pinned && a.reservationId != null;
-                return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>` : ' (🔒 予約 — 🔒 凸の予約 で取り下げ)'}</span>`;
+                const resv = !pin && a.fromReservation && a.reservationId != null;
+                // 自動の駒もここから外せる (🔒 予約と言っていた: Codex 指摘)。行の外なのでボスは data-ob-boss-n で渡す
+                const weak = (snap.bosses || []).find(b => Number(b.boss_number) === Number(a.bossNumber))?.weakness;
+                const act = pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>`
+                    : (resv ? ' (🔒 予約 — 🔒 凸の予約 で取り下げ)'
+                    : (weak ? ` <button type="button" data-ob-drop="${escapeHtml(`${a.memberId}:${weak}:${Number(a.loadoutSlot) || 1}`)}" data-ob-boss-n="${Number(a.bossNumber)}" title="外す">✕ 外す</button>` : ''));
+                return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${act}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
             const pinHint = o.rows.some(r => r.pieces.length) ? '<p class="ob-note"><b>駒の ✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)</p>' : '';
@@ -23334,11 +23340,14 @@
                     done: _obDoneOf(snap2), fpOf: (i) => _obBlockFp(rows, blocks, i) });
                 plan.seasonId = sid;
                 const kept = plan.decided.blocks.filter(b => b.kept && b.idx >= first);
+                const staleKept = kept.filter(b => _ob.stale.has(b.idx));
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
                 const msg = `${fresh.map(i => blocks[i].short).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
                     + (replaced.length ? `\n\n${replaced.map(i => blocks[i].short).join('・')} は前の決定 (${prev.published_by_name || '運営'} ${_obTimeOf(prev.published_at)}) を、いま組んだ結果で置き換えます。` : '')
                     + (kept.length ? `\n\n${kept.map(b => b.short || b.name || b.letter).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
+                    // 後ろの決定を黙って変えない (振り回さない) が、前のブロックを変えると HP の前提はずれる — 運営が判断できるように言う (Codex 監査)
+                    + (staleKept.length ? `\n\n⚠ 前のブロックを変えたので、${staleKept.map(b => b.short || b.name || b.letter).join('・')} の HP の見積もりはずれています。必要ならそのブロックも組み直してください。` : '')
                     + '\n\nメンバーの 📅 レイド予定表 に出て、割当のある人のうち変わった人に通知が届きます。';
                 if (!confirm(msg)) return;
                 if (!_obSame(epoch, sid)) return;
@@ -23453,7 +23462,7 @@
                 // ピースを選んでいるときに駒の本体を押すのは「この行に置く」(埋まった行にも置ける)。✕ と 下の「実行されない駒」の ✕ 外す はいつでも外す
                 if (un && (!_ob.sel || !un.classList.contains('obpc') || e.target.closest('.obpc-x'))) {
                     if (un.dataset.obUnpin) _obUnpin(Number(un.dataset.obUnpin));
-                    else _obDropAuto(un.dataset.obDrop, Number(un.closest('[data-ob-boss]')?.dataset.obBoss));
+                    else _obDropAuto(un.dataset.obDrop, Number(un.dataset.obBossN ?? un.closest('[data-ob-boss]')?.dataset.obBoss));
                     return;
                 }
                 const pc = e.target.closest('[data-ob-piece]');
