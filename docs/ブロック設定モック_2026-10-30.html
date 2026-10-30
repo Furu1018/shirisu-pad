@@ -17,7 +17,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 14px; line-height: 1.5; padding: 12px 16px 96px; }
-.wrap { max-width: 560px; margin: 0 auto; }
+.wrap { max-width: 720px; margin: 0 auto; }
 .crumb { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .02em; margin: 2px 0 2px; }
 h1 { font-size: 17px; font-weight: 900; margin: 0 0 2px; }
 .sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
@@ -32,7 +32,9 @@ h1 { font-size: 17px; font-weight: 900; margin: 0 0 2px; }
 .btn:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible, .badge:focus-visible { outline: 2px solid var(--ops); outline-offset: 2px; }
 .presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
 /* ---- 時計 ---- */
-.clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 14px; margin-bottom: 8px; }
+.clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 12px; margin-bottom: 8px; }
+.unused { fill: var(--s2); }
+.tick.faint { stroke: var(--line); opacity: .6; }
 .clk { margin: 0; }
 .clk svg { width: 100%; max-width: 340px; height: auto; display: block; margin: 0 auto; }
 .clk figcaption { text-align: center; font-size: 12.5px; font-weight: 900; color: var(--body); margin-bottom: 2px; }
@@ -82,7 +84,7 @@ label.sw input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(-
 label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
 /* ---- 固定の帯 ---- */
 .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 18px var(--shadow); }
-.bar .in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+.bar .in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
 .bar .sum { flex: 1; font-size: 12px; font-weight: 800; color: var(--body); min-width: 0; }
 .bar .sum b { color: var(--ink); }
 .toast { position: fixed; left: 50%; top: 14px; transform: translate(-50%, -40px); opacity: 0; background: var(--ink); color: var(--card); font-size: 12.5px; font-weight: 800; padding: 9px 14px; border-radius: 999px; box-shadow: 0 8px 20px var(--shadow); transition: transform .2s, opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
@@ -98,11 +100,12 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
   <p class="sub">レイド日 (朝 5 時〜翌 5 時) を区切ります。ブロックの名前は順に A・B・C…。メンバーには「A 5〜9時」のように見えます (時計の目盛りと同じ言い方。いまのアプリは同じ 4 時間を「5〜8時」と書く)。</p>
 
   <div class="card">
-    <h2>🕔 時計 2 つ <span class="tag">5 時も 17 時も「5」の位置</span></h2>
-    <p class="note">上が 12 時の、ふつうの時計です。レイド日は <b>昼の時計 (5時〜17時)</b> → <b>夜の時計 (17時〜翌5時)</b> の順。午後と夜の時刻も時計の位置どおり (13 時は 1 の位置・17 時は 5 の位置・翌0 時は 12 の位置) なので、どちらの時計も 5 の位置から時計回りに読みます。17 時をまたぐブロックは両方の時計に同じ色で出ます。色の帯を押すとそのブロックを選べます。</p>
+    <h2>🕔 時計 3 つ <span class="tag">5 時は「5」の位置</span></h2>
+    <p class="note">上が 12 時の、ふつうの時計です。レイド日は <b>朝 (5時〜12時)</b> → <b>昼〜夜 (12時〜翌0時・1 周)</b> → <b>深夜 (翌0時〜翌5時)</b> の順。使わない部分は薄い灰色。12 時・翌0 時をまたぐブロックは両方の時計に同じ色で出ます。色の帯を押すとそのブロックを選べます。</p>
     <div class="clocks">
-      <figure class="clk"><figcaption>🌞 昼 <b>5時〜17時</b></figcaption><svg id="clockDay" viewBox="0 0 360 360" role="img" aria-label="昼の時計 (5時〜17時)"></svg></figure>
-      <figure class="clk"><figcaption>🌙 夜 <b>17時〜翌5時</b></figcaption><svg id="clockNight" viewBox="0 0 360 360" role="img" aria-label="夜の時計 (17時〜翌5時)"></svg></figure>
+      <figure class="clk"><figcaption>🌅 朝 <b>5時〜12時</b></figcaption><svg id="clockAm" viewBox="0 0 360 360" role="img" aria-label="朝の時計 (5時〜12時)"></svg></figure>
+      <figure class="clk"><figcaption>☀️ 昼〜夜 <b>12時〜翌0時</b></figcaption><svg id="clockPm" viewBox="0 0 360 360" role="img" aria-label="昼〜夜の時計 (12時〜翌0時)"></svg></figure>
+      <figure class="clk"><figcaption>🌙 深夜 <b>翌0時〜翌5時</b></figcaption><svg id="clockLate" viewBox="0 0 360 360" role="img" aria-label="深夜の時計 (翌0時〜翌5時)"></svg></figure>
     </div>
     <div class="legend" id="legend"></div>
   </div>
@@ -177,7 +180,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
     const col = (i) => 'var(--b' + (i % 12) + ')';
     const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    // ---- 時計 (12 時間 × 2: 昼 = HOUR_ORDER の 0..11 (5〜16) / 夜 = 12..23 (17〜翌4)。どちらも 5 の位置 (150°) から時計回り) ----
+    // ---- 時計 (ふつうの 12 時間の時計 × 3: 朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5。時刻はその時計の位置に置く = 5 時は 5 の位置) ----
     const C = 180, R = 128, r = 82;
     const pol = (rad, deg) => { const a = (deg - 90) * Math.PI / 180; return [C + rad * Math.cos(a), C + rad * Math.sin(a)]; };
     function arcPath(a0, a1) {
@@ -185,20 +188,24 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
         const big = (a1 - a0) > 180 ? 1 : 0;
         return 'M' + x0 + ' ' + y0 + ' A' + R + ' ' + R + ' 0 ' + big + ' 1 ' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2 + ' A' + r + ' ' + r + ' 0 ' + big + ' 0 ' + x3 + ' ' + y3 + ' Z';
     }
+    // lo / hi = HOUR_ORDER の添字 [lo, hi)。5 時 = 添字 0 / 12 時 = 7 / 翌0 時 = 19
     const FACES = [
-        { id: 'clockDay', name: '昼', lo: 0, hi: 12 },
-        { id: 'clockNight', name: '夜', lo: 12, hi: 24 },
+        { id: 'clockAm', name: '朝', lo: 0, hi: 7, endLabel: '12' },
+        { id: 'clockPm', name: '昼〜夜', lo: 7, hi: 19, endLabel: null },   // 1 周 (終わりの 翌0 は始まりの 12 と同じ位置)
+        { id: 'clockLate', name: '深夜', lo: 19, hi: 24, endLabel: '翌5' },
     ];
-    const faceAngle = (k, face) => 150 + (k - face.lo) * 30;   // 添字 → 角度 (5 の位置 = 150°・1 時間 = 30°)
+    const startDeg = (face) => (HOUR_ORDER[face.lo] % 12) * 30;              // その時計での始まりの位置 (5 時 = 150° / 12 時・翌0 時 = 0°)
+    const faceAngle = (k, face) => startDeg(face) + (k - face.lo) * 30;   // 添字 → 角度 (1 時間 = 30°)
     function renderFace(face) {
         const svg = document.getElementById(face.id);
         const starts = new Set(blocks.map(b => b.from));
-        const parts = [];   // この文字盤に出るブロックの切れ端 [k0, k1)
+        const parts = [];   // この時計に出るブロックの切れ端 [k0, k1)
         blocks.forEach((b, i) => {
             const k0 = Math.max(idx(b.from), face.lo), k1 = Math.min(idx(b.to) + 1, face.hi);
             if (k1 > k0) parts.push({ i, k0, k1 });
         });
-        let s = '';
+        // 使わない部分は薄い輪 (時計の形は保つ)
+        let s = '<circle class="unused" cx="' + C + '" cy="' + C + '" r="' + ((R + r) / 2) + '" fill="none" stroke="var(--s2)" stroke-width="' + (R - r) + '"></circle>';
         parts.forEach(p => {
             const a0 = faceAngle(p.k0, face);
             let a1 = faceAngle(p.k1, face);
@@ -210,14 +217,18 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
             const [x, y] = pol((R + r) / 2, (faceAngle(p.k0, face) + faceAngle(p.k1, face)) / 2);
             s += '<text class="seg-l" x="' + x + '" y="' + (y + 5) + '" text-anchor="middle">' + LETTERS[p.i] + '</text>';
         });
+        // 12 の位置の目盛り: この時計の時刻には数字、使わない位置は薄い目盛りだけ
+        const used = new Map();   // 位置 (0..11) → 表示する時刻
+        for (let k = face.lo; k < face.hi; k++) used.set(((HOUR_ORDER[k] % 12) + 12) % 12, { label: wrap(HOUR_ORDER[k]), bold: starts.has(HOUR_ORDER[k]) || k === face.lo });
+        if (face.endLabel) used.set(((HOUR_ORDER[face.hi - 1] + 1) % 12 + 12) % 12, { label: face.endLabel, bold: true });
         for (let j = 0; j < 12; j++) {
-            const h = HOUR_ORDER[face.lo + j], deg = 150 + j * 30, b = starts.has(h) || j === 0;
-            const [x0, y0] = pol(R + 3, deg), [x1, y1] = pol(R + (b ? 11 : 8), deg), [tx, ty] = pol(R + 24, deg);
-            s += '<line class="tick' + (b ? ' b' : '') + '" x1="' + x0 + '" y1="' + y0 + '" x2="' + x1 + '" y2="' + y1 + '"></line>';
-            s += '<text class="hn' + (b ? ' b' : '') + '" x="' + tx + '" y="' + (ty + 4.5) + '" text-anchor="middle">' + wrap(h) + '</text>';
+            const deg = j * 30, u = used.get(j);
+            const [x0, y0] = pol(R + 3, deg), [x1, y1] = pol(R + (u && u.bold ? 11 : 8), deg), [tx, ty] = pol(R + 24, deg);
+            s += '<line class="tick' + (u ? (u.bold ? ' b' : '') : ' faint') + '" x1="' + x0 + '" y1="' + y0 + '" x2="' + x1 + '" y2="' + y1 + '"></line>';
+            if (u) s += '<text class="hn' + (u.bold ? ' b' : '') + '" x="' + tx + '" y="' + (ty + 4.5) + '" text-anchor="middle">' + u.label + '</text>';
         }
-        // 始まりの印 (5 の位置の内側)
-        const [sx, sy] = pol(r - 22, 150);
+        // 始まりの印 (始まりの位置の内側)
+        const [sx, sy] = pol(r - 22, startDeg(face));
         s += '<text class="base" x="' + sx + '" y="' + (sy + 4) + '" text-anchor="middle">▶ ' + wrap(HOUR_ORDER[face.lo]) + '時から</text>';
         const here = parts.some(p => p.i === sel), b = blocks[sel];
         if (here) {
@@ -225,8 +236,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
             s += '<text class="c-t" x="' + C + '" y="' + (C + 18) + '" text-anchor="middle">' + esc(rangeOf(b)) + ' · ' + lenOf(b) + ' 時間</text>';
             s += '<text class="c-n" x="' + C + '" y="' + (C + 34) + '" text-anchor="middle">' + esc(b.name || '(名前なし)') + '</text>';
         } else {
-            s += '<text class="c-l face" x="' + C + '" y="' + (C + 4) + '" text-anchor="middle">' + face.name + '</text>';
-            s += '<text class="c-n" x="' + C + '" y="' + (C + 24) + '" text-anchor="middle">' + LETTERS[sel] + ' はこちらに無い</text>';
+            s += '<text class="c-l face" x="' + C + '" y="' + (C + 8) + '" text-anchor="middle">' + face.name + '</text>';
         }
         svg.innerHTML = s;
         svg.querySelectorAll('.seg').forEach(el => {
@@ -240,7 +250,7 @@ label.sw small { display: block; font-weight: 400; font-size: 11.5px; color: var
         document.getElementById('legend').innerHTML = blocks.map((b, i) => '<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:' + col(i) + ';vertical-align:-1px;margin-right:4px;"></span>' + esc(labelOf(b, i)) + '</span>').join('');
     }
 
-
+    // ---- 行 ----
     function renderRows() {
         const host = document.getElementById('rows');
         host.innerHTML = blocks.map((b, i) => {
