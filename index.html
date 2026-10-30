@@ -5592,7 +5592,7 @@
                             <li>報告していない人は、運営の算出の候補に入りません (催促が届きます)。出られないシーズンは「今回は難しい」と一言 — 算出・催促のすべてから外れます</li>
                         </ul>
                         <h3>③ 📅 きょうの凸 と 📅 レイド予定表</h3>
-                        <p>運営は見通しのつくブロックまで組んで<strong>決定</strong>します。決まると<strong>割当のある人に通知</strong>が届き (「🧱 あなたの凸が決まりました — 朝 5〜8時 Lv1 B3 灼熱PT 編成②」)、<strong>📅 レイド予定表</strong> タブに出ます。読んだら <strong>✅ 確認しました</strong> を押してください (運営が「見た人 / まだの人」を知るためです。押していなくても、割当が変わったら通知が届きます)。</p>
+                        <p>運営は見通しのつくブロックまで組んで<strong>決定</strong>します。決まると<strong>割当のある人に通知</strong>が届き (「🧱 あなたの凸が決まりました — A 朝 5〜9時 Lv1 B3 灼熱PT 編成②」)、<strong>📅 レイド予定表</strong> タブに出ます。読んだら <strong>✅ 確認しました</strong> を押してください (運営が「見た人 / まだの人」を知るためです。押していなくても、割当が変わったら通知が届きます)。</p>
                         <ul>
                             <li><strong>📅 レイド予定表</strong> (タブ): ブロックのボタンを押すと、そのブロックでボスごとに誰が行くかが出ます (帯の幅 = ダメージ・下に名前の札。★ と太い枠があなた・札の頭に「✓ 完了」/「未完了」)。上の「★ あなたの凸」に全部のブロックのあなたの凸。決まっていないブロックは「まだ決まっていません」。下の<strong>みんなの模擬</strong>で、ほかの人の編成とダメージも見られます</li>
                             <li><strong>📅 きょうの凸</strong> (ホーム): あなたの凸だけ (ブロック・ボス・PT・編成と 5 キャラ)。凸が済んだもの (運営が ✓ を付けたか、結果を登録した) は「✓ 完了」、まだの凸は「未完了」</li>
@@ -7969,7 +7969,7 @@
         function _raidMineLineHtml(view, bossNameOf, identity, doneKnown = true) {
             const esc = escapeHtml;
             if (identity?.id == null) return '<p class="rt-note">名乗ると、あなたの凸がここにまとめて出ます。</p>';
-            const mineAll = view.flatMap(x => x.entries.filter(e => e.mine).map(e => ({ e, name: x.name })));
+            const mineAll = view.flatMap(x => x.entries.filter(e => e.mine).map(e => ({ e, name: x.short || x.name || x.letter })));
             if (!mineAll.length) return '<p class="rt-note">決まったブロックに、あなたの凸はありません。</p>';
             return `<p class="db-mine">★ あなたの凸: ${mineAll.map(({ e, name }) => `${esc(name || '')} B${Number(e.bossNumber)} ${esc(bossNameOf(e.bossNumber) || e.bossName || '')} (${esc(PT_ATTRS.find(x => x.key === e.weakness)?.name || '')}PT 編成${SLOT_JP[e.loadoutSlot] || '①'})${doneKnown ? ` ${e.done ? '✓ 完了' : '未完了'}` : ''}`).join(' / ')}</p>`;
         }
@@ -8051,7 +8051,7 @@
                     : '<div class="rt-state">まだ配信されていません</div><p class="rt-note">運営が凸プランを組んで決定すると、ここにブロックごとの凸が出ます。決まったら通知でお知らせします。</p>';
             } else {
                 const plan = decRow.plan;
-                const names = plan.decided.blocks.map(b => b.short || b.name || b.label).filter(Boolean);
+                const names = plan.decided.blocks.map(b => b.short || b.name || b.letter || b.label).filter(Boolean);
                 const decidedKeys = new Set(plan.decided.blocks.map(b => String(b.key)));
                 const rest = blocks.filter((b, i) => !decidedKeys.has(dp.keyOf(b)) && i >= Math.max(0, nowIdx)).map(b => b.short);
                 let when = '';
@@ -23211,7 +23211,7 @@
                 const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
                 const bn = (opsStore.get()?.bosses || []).find(b => b.weakness === p.attr);
                 const used = p.placedIdx != null, off = used || !!p.blocked || p.remaining <= 0;
-                const where = used ? (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.name || '')}に置いた`) : (p.blocked === 'used' ? 'キャラ使用済み' : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '凸なし' : '')));
+                const where = used ? (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.short || '')}に置いた`) : (p.blocked === 'used' ? 'キャラ使用済み' : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '凸なし' : '')));
                 const flex = p.rigid ? '<span class="rigid">🔒 この時間だけ</span>' : `<span class="flex">ほか: ${escapeHtml(p.others.join('・'))}</span>`;
                 return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${off ? ' off' : ''}${p.dup ? ' dup' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}">`
                     + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${where ? `<span class="where">${where}</span>` : flex}</button>`;
@@ -23222,12 +23222,12 @@
             const decRow = _ob.dec?.row || null;
             // 決めるのは組み直したブロックだけ (決定から読み戻したまま触っていないブロックは前の決定のまま写す: S4 レビュー [2])
             const fresh = _obFreshOf(range, decRow);
-            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b && (b.short || b.name || b.label)).filter(Boolean) : [];
+            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b && (b.short || b.name || b.letter || b.label)).filter(Boolean) : [];
             const decState = _ob.decErr ? `<span style="color:var(--bad);">決定を読めませんでした (${escapeHtml(_ob.decErr)})</span>`
                 : (_ob.dec == null ? '決定を読み込んでいます…'
                 : (decRow ? `決定済み: <b>${escapeHtml(decNames.join('・') || 'なし')}</b>${decRow.published_by_name ? ` (${escapeHtml(decRow.published_by_name)}` : ' ('}${decRow.published_at ? ` ${escapeHtml(_obTimeOf(decRow.published_at))}` : ''})` : 'まだ決定していません'));
             const decideBtn = fresh.length
-                ? `<button type="button" class="ob-decide-btn" onclick="_obDecide()"${_ob.busy || _ob.dec == null ? ' disabled' : ''}>✅ ${fresh.map(i => escapeHtml(blocks[i].name)).join('・')} を決定してメンバーに配信</button>`
+                ? `<button type="button" class="ob-decide-btn" onclick="_obDecide()"${_ob.busy || _ob.dec == null ? ' disabled' : ''}>✅ ${fresh.map(i => escapeHtml(blocks[i].short)).join('・')} を決定してメンバーに配信</button>`
                 : `<button type="button" class="ob-decide-btn" disabled>✅ 決定</button>`;
             const decideHint = fresh.length ? '決定すると、メンバーの 📅 レイド予定表 と ホームの「きょうの凸」に出て、割当のある人に通知が届きます'
                 : (range.length ? '決定のあと組み直したブロックはありません (組み直すと決定し直せます)'
@@ -23297,7 +23297,7 @@
                 if (!ctx) return;
                 const { blocks, ov, first } = ctx;
                 const range = dp.rangeToDecide({ first, count: blocks.length, built: (i) => _ob.plans.has(i) && !_ob.stale.has(i) });
-                if (!range.length) { showNotification(`いまのブロック (${blocks[first]?.name || ''}) を組んでから決定してください (駒が変わって組み直しが要るかもしれません)`); return; }
+                if (!range.length) { showNotification(`いまのブロック (${blocks[first]?.short || ''}) を組んでから決定してください (駒が変わって組み直しが要るかもしれません)`); return; }
                 const prev = _ob.dec?.row || null;
                 // ★ 決めるのは組み直したブロックだけ。決定から読み戻したまま触っていないブロックは前の決定のまま写す (いまの盤面で作り直すとレベルの付け替え・外れが黙って起きる: S4 レビュー [2])
                 const fresh = _obFreshOf(range, prev);
@@ -23312,9 +23312,9 @@
                 const kept = plan.decided.blocks.filter(b => b.kept && b.idx >= first);
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
-                const msg = `${fresh.map(i => blocks[i].name).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
-                    + (replaced.length ? `\n\n${replaced.map(i => blocks[i].name).join('・')} は前の決定 (${prev.published_by_name || '運営'} ${_obTimeOf(prev.published_at)}) を、いま組んだ結果で置き換えます。` : '')
-                    + (kept.length ? `\n\n${kept.map(b => b.short || b.name).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
+                const msg = `${fresh.map(i => blocks[i].short).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
+                    + (replaced.length ? `\n\n${replaced.map(i => blocks[i].short).join('・')} は前の決定 (${prev.published_by_name || '運営'} ${_obTimeOf(prev.published_at)}) を、いま組んだ結果で置き換えます。` : '')
+                    + (kept.length ? `\n\n${kept.map(b => b.short || b.name || b.letter).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
                     + '\n\nメンバーの 📅 レイド予定表 に出て、割当のある人のうち変わった人に通知が届きます。';
                 if (!confirm(msg)) return;
                 if (!_obSame(epoch, sid)) return;
@@ -23339,7 +23339,7 @@
                     throw e;
                 }
                 if (!pub?.id) throw new Error('配信の行を作れませんでした');
-                window.supabaseLogActivity?.('ops', `✅ ${fresh.map(i => blocks[i].name).join('・')} を決定しました (${n} 凸)`);
+                window.supabaseLogActivity?.('ops', `✅ ${fresh.map(i => blocks[i].short).join('・')} を決定しました (${n} 凸)`);
                 if (_obSame(epoch, sid)) {
                     _ob.dec = { row: { id: pub.id, season_id: sid, plan, published_at: pub.published_at || new Date().toISOString(), published_by_name: me?.name || null }, basisId: Number(pub.id) };
                     // 決めた・写したブロックは、この決定から読み戻したものとして扱う (照合はそのブロックの駒: 決定したときの指紋)
@@ -23347,7 +23347,7 @@
                     _ob.decNote = null;
                     _ob.seededFrom = Number(pub.id);
                 }
-                showNotification(`✅ ${range.map(i => blocks[i].name).join('・')} を決定しました`);
+                showNotification(`✅ ${range.map(i => blocks[i].short).join('・')} を決定しました`);
                 if (typeof _invalidateTabRenderCache === 'function') { _invalidateTabRenderCache('raid'); _invalidateTabRenderCache('mypage'); }   // 30 秒の描画キャッシュで前の決定を見せない (S5)
                 // 3. 確認 (✅) の引き継ぎと通知
                 await _obNotifyDecide({ pub, plan, prev, seasonId: sid, me, blocks, pubRows: Array.isArray(pubs2) ? pubs2.filter(r => Number(r.season_id) === Number(sid)) : [] });
@@ -27474,22 +27474,23 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     + `<p class="obk-lock">${esc(lock)}</p>`;
             } else {
                 const HO = rb.HOUR_ORDER, wrap = (h) => (h >= 0 && h <= 4 ? `翌${h}` : String(h));
+                const off = _obk.busy ? ' disabled' : '';   // 保存中は形を変えさせない (押しても _obkCanEdit が断るだけになる)
                 const tools = `<div class="obk-tools"><span class="obk-stp" role="group" aria-label="ブロックの数"><span>ブロックの数</span>`
-                    + `<button type="button" onclick="_obkCount(${n - 1})" ${n <= rb.MIN_BLOCKS ? 'disabled' : ''} aria-label="減らす">−</button><b>${n} つ</b>`
-                    + `<button type="button" onclick="_obkCount(${n + 1})" ${n >= rb.MAX_BLOCKS ? 'disabled' : ''} aria-label="増やす">＋</button></span>`
-                    + [4, 6, 8, 12].map(k => `<button type="button" class="obk-btn" onclick="_obkCount(${k})">${k} つ (${24 / k} 時間)</button>`).join('')
-                    + `<button type="button" class="obk-btn" onclick="_obkDefault()">いまの既定 (朝・午前…)</button></div>`;
+                    + `<button type="button" onclick="_obkCount(${n - 1})" ${n <= rb.MIN_BLOCKS || _obk.busy ? 'disabled' : ''} aria-label="減らす">−</button><b>${n} つ</b>`
+                    + `<button type="button" onclick="_obkCount(${n + 1})" ${n >= rb.MAX_BLOCKS || _obk.busy ? 'disabled' : ''} aria-label="増やす">＋</button></span>`
+                    + [4, 6, 8, 12].map(k => `<button type="button" class="obk-btn" onclick="_obkCount(${k})"${off}>${k} つ (${24 / k} 時間)</button>`).join('')
+                    + `<button type="button" class="obk-btn" onclick="_obkDefault()"${off}>いまの既定 (朝・午前…)</button></div>`;
                 const rows = blocks.map((b, i) => {
                     const last = i === n - 1;
                     let opts = '';
                     if (!last) for (let k = b.fromIdx; k <= blocks[i + 1].toIdx - 1; k++) opts += `<option value="${HO[k]}"${HO[k] === b.to ? ' selected' : ''}>${esc(rb.endLabel(HO[k]))}時</option>`;
                     return `<div class="obk-row${i === _obk.sel ? ' on' : ''}"><button type="button" class="obk-badge obk-bg${i % 12}" onclick="_obkSel(${i})" aria-label="${esc(b.letter)} を選ぶ">${esc(b.letter)}</button>`
-                        + `<div class="obk-mid"><input class="obk-name" type="text" maxlength="${rb.MAX_NAME}" placeholder="名前 (任意) 例: 朝" value="${esc(b.name)}" oninput="_obkName(${i}, this.value)" aria-label="${esc(b.letter)} の名前">`
+                        + `<div class="obk-mid"><input class="obk-name" type="text" maxlength="${rb.MAX_NAME}" placeholder="名前 (任意) 例: 朝" value="${esc(b.name)}" oninput="_obkName(${i}, this.value)" aria-label="${esc(b.letter)} の名前"${off}>`
                         + `<div class="obk-when"><span>${esc(wrap(b.from))}時 〜</span>`
-                        + (last ? `<span>翌5時 <span class="obk-len">(固定)</span></span>` : `<select onchange="_obkEnd(${i}, this.value)" aria-label="${esc(b.letter)} の終わりの時刻">${opts}</select>`)
+                        + (last ? `<span>翌5時 <span class="obk-len">(固定)</span></span>` : `<select onchange="_obkEnd(${i}, this.value)" aria-label="${esc(b.letter)} の終わりの時刻"${off}>${opts}</select>`)
                         + `<span class="obk-len">${b.hours.length} 時間</span></div></div>`
-                        + `<div class="obk-acts"><button type="button" class="obk-btn" onclick="_obkSplit(${i})" ${b.hours.length < 2 || n >= rb.MAX_BLOCKS ? 'disabled' : ''}>分ける</button>`
-                        + `<button type="button" class="obk-btn" onclick="_obkDel(${i})" ${n <= rb.MIN_BLOCKS ? 'disabled' : ''}>✕ 消す</button></div></div>`;
+                        + `<div class="obk-acts"><button type="button" class="obk-btn" onclick="_obkSplit(${i})" ${b.hours.length < 2 || n >= rb.MAX_BLOCKS || _obk.busy ? 'disabled' : ''}>分ける</button>`
+                        + `<button type="button" class="obk-btn" onclick="_obkDel(${i})" ${n <= rb.MIN_BLOCKS || _obk.busy ? 'disabled' : ''}>✕ 消す</button></div></div>`;
                 }).join('');
                 const sum = `<b>${n} ブロック</b> · ${esc(blocks.map(b => b.short).join(' / '))}${_obk.dirty ? ' · <b>保存していない変更があります</b>' : ''}`;
                 body = tools + `<div class="obk-rows">${rows}</div>`

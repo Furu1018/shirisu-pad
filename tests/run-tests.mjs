@@ -14619,11 +14619,11 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
             return { log, err, out };
         };
         let r = await run();
-        const iDel = r.log.indexOf('availability:delete.gte'), iIns = r.log.findIndex(x => x.startsWith('seasons:insert'));
+        const iDel = r.log.findIndex(x => x.startsWith('availability:delete.gte')), iIns = r.log.findIndex(x => x.startsWith('seasons:insert'));
         assert.ok(iDel >= 0 && iIns > iDel, `消す → 作る の順でない: ${r.log.join(' / ')}`);
         assert.equal(r.out.availabilityCleared, true);
-        r = await run({ reset: false }); assert.ok(!r.log.includes('availability:delete.gte') && r.out.availabilityCleared === false, 'スイッチ OFF でも消した');
-        r = await run({ isTest: true }); assert.ok(!r.log.includes('availability:delete.gte'), 'テストで参加可能時間を消した (テストの終了は戻さない)');
+        r = await run({ reset: false }); assert.ok(!r.log.some(x => x.startsWith('availability:delete')) && r.out.availabilityCleared === false, 'スイッチ OFF でも消した');
+        r = await run({ isTest: true }); assert.ok(!r.log.some(x => x.startsWith('availability:delete')), 'テストで参加可能時間を消した (テストの終了は戻さない)');
         r = await run({ avErr: { message: 'busy' } });
         assert.match(String(r.err?.message), /^参加可能時間を空にできませんでした \(シーズンはまだ作っていません\): busy/);
         assert.ok(!r.log.some(x => x.startsWith('seasons:insert')), '消せなかったのに作った');
@@ -14641,6 +14641,19 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
         assert.equal((mi.match(/short: String\(bl\[idxs\[0\]\]\.short \|\| bl\[idxs\[0\]\]\.name \|\| ''\), range: String\(bl\[idxs\[0\]\]\.range \|\| ''\)/g) || []).length, 2, '〆 に short / range を写していない');
         const st = d.blockStates(d.normalize(null).blocks, ['h05'])[0], tr = d.todayRows({ blocks: d.normalize(null).blocks, nowHour: 6, plans: [], attacks: [] }).rows[0];
         for (const x of [st, tr]) assert.deepEqual([x.letter, x.short, x.range, x.label], ['A', 'A 朝', '5〜9時', 'A 朝 5〜9時']);
+    });
+    test('★ 名前なしのブロックでも文字が残る: 決定のボタン・確認・ログ・トースト・まだ組んでいない案内・置いた先・★ あなたの凸 は short を読む (name を読まない)', () => {
+        const build = html.slice(html.indexOf('function renderOpsBuild()'), html.indexOf('async function _obDecide()') + 20000);
+        assert.ok(!/blocks\[(i|first|p\.placedIdx)\]\??\.name\b/.test(build), '決定の流れに blocks[i].name が残っている (名前なしで A が消える)');
+        for (const k of ['escapeHtml(blocks[i].short)', 'blocks[first]?.short', 'replaced.map(i => blocks[i].short)', "range.map(i => blocks[i].short).join('・')} を決定しました", 'blocks[p.placedIdx]?.short']) assert.ok(build.includes(k), k);
+        assert.ok(/map\(e => \(\{ e, name: x\.short \|\| x\.name \|\| x\.letter \}\)\)/.test(html), '★ あなたの凸 にブロックの文字が出ない');
+        assert.equal((html.match(/b\.short \|\| b\.name \|\| b\.letter \|\| b\.label/g) || []).length, 2, '古い決定 (short なし) の予備に letter が無い (ホームの決定の文・組むの決定の文)');
+    });
+    test('★ 保存中はカードの部品を押せなくする (押しても何も起きない部品を置かない)', () => {
+        const paint = html.slice(html.indexOf('function _obkPaint() {'), html.indexOf('function _obkEdit(next) {'));
+        assert.ok(/const off = _obk\.busy \? ' disabled' : '';/.test(paint));
+        for (const k of ['_obkCount(${k})"${off}>', '_obkDefault()"${off}>', 'の名前"${off}>', 'の終わりの時刻"${off}>']) assert.ok(paint.includes(k), k);
+        assert.equal((paint.match(/\|\| _obk\.busy \? 'disabled' : ''/g) || []).length, 4, '数の − ＋・分ける・消す が保存中に押せる');
     });
     test('★ 配線 (作成シート): スイッチは既定 ON・🧪 テストでは隠す / 本番 + ON のときだけ resetAvailability を渡す / 確認に人数', () => {
         assert.ok(/<input type="checkbox" id="opsSeasonResetAvail" checked /.test(html), 'スイッチが既定 ON でない');

@@ -1127,9 +1127,9 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   と ⏳隙間は動かさない。`tests/bench-block.mjs` の A (1日ぶんを1回) が 2474B → 2929B・未使用 13.8 → 3.0 凸。厳守 OFF は不変 (指紋 120 盤面)
   ★ **🧱 ブロック制 ② (2026-10-18)**: レイド日 (5時〜翌4時) をブロック (時間帯の区切り) に分け、運営は**次のブロックだけ**を約束する
   (`docs/第45期_ブロック制の検討_2026-10-17.md`)。区切りは **`js/domain/raidBlocks.js`** が唯一 (`normalize` が検査: 5時〜翌4時を隙間も重なりも無く・2〜12 個・名前 6 文字まで)。
-  シーズンごとに `seasons.metadata.blocks` = `[{ name, from, to }]` (無ければ既定 6 つ = 5 時から 4 時間ずつ: 朝 5〜8 / 午前 9〜12 / 午後 13〜16 / 夕方 17〜20 / 夜 21〜翌0 / 深夜 翌1〜4 — 2026-10-24 ふるりの決定。それまでは 7 つ)。✏️ シーズン編集で行を足す・消す・既定に戻す
+  シーズンごとに `seasons.metadata.blocks` = `[{ name, from, to }]` (無ければ既定 6 つ = 5 時から 4 時間ずつ: A 朝 5〜9時 / B 午前 9〜13時 / C 午後 13〜17時 / D 夕方 17〜21時 / E 夜 21〜翌1時 / F 深夜 翌1〜翌5時 — 2026-10-24 ふるりの決定。それまでは 7 つ)。**2026-10-30 から文字 A・B・C は並び順・名前は任意・時計の言い方 (下の「🧱 ブロックの設定」)。決めるのは 👑 マスターのカード** (✏️ シーズン編集の行は外した)
   (`supabaseUpdateSeasonBlocks`: 入口で normalize・本線は RPC `ops_set_season_blocks` (**`50_season_blocks_rpc.sql`**・DB 側で `metadata || {blocks}` の 1 文 = 同時編集でも他の鍵を消さない)・
-  50 未適用は「読んで混ぜて書く」にフォールバック・既定と同じなら鍵を消す。行の足し引きは `addSplit` (後ろから 2 時間以上のブロックを割る) / `removeAt` (隣に吸わせる))。**内部の時間は 1 時間刻み `hXX` のまま**。
+  50 未適用は「読んで混ぜて書く」にフォールバック・既定と同じなら鍵を消す。形を変えるのは `evenSplit` / `splitAt` / `setEndAt` / `removeAt` (と旧 `addSplit`) だけ)。**内部の時間は 1 時間刻み `hXX` のまま**。
   条件パネルの対象に 3 つ目「🧱 ブロックの人」+ ブロックの選択肢 (`_opsPlanBlock()`: 既定はいまの時刻のブロック・「(いま)」「(次)」の印)。
   算出は `computeOptimalPlanCore({ onlyAvailableNow: true, availableAtSlots: block.slots, availableAtLabel })` — その時間帯のどれかに出られる人 + ⏳隙間型 + 未登録 (= いつでも)
   に絞る (ベンチ H と同じ読み方)。1 時間の「今動ける人だけ」(`availableAtSlot`) は従来どおり。出力に `availableAtSlots` / `availableAtLabel` が載るのはブロックのときだけ (指紋を保つ)。

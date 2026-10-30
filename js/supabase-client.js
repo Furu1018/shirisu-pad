@@ -2980,10 +2980,11 @@ window.supabaseCreateSeason = async function (payload) {
     //   ★ 作る**前**に消す。消せなければ作らない (新しいシーズンだけできて古い時間が残る、を作らない)。テストでは消さない (テストの終了は模擬しか戻さない)
     let availabilityCleared = false;
     if (!isTest && payload.resetAvailability === true) {
-        const { error: avErr } = await supabase.from('availability').delete().gte('player_id', 0);
+        const { data: avDel, error: avErr } = await supabase.from('availability').delete().gte('player_id', 0).select('player_id');
         if (avErr) throw new Error(`参加可能時間を空にできませんでした (シーズンはまだ作っていません): ${avErr.message}`);
         availabilityCleared = true;
-        window.supabaseLogActivity?.('ops', `シーズン ${payload.monthKey} の作成で、全員の参加可能時間を空にしました`);
+        const nAv = new Set((Array.isArray(avDel) ? avDel : []).map(r => r && r.player_id)).size;
+        window.supabaseLogActivity?.('ops', `シーズン ${payload.monthKey} の作成で、全員の参加可能時間を空にしました (${nAv} 人ぶん)`);
     }
     const afterClear = (e) => (availabilityCleared ? new Error(`${e?.message || e} (参加可能時間はもう空にしてあります)`) : e);
 
