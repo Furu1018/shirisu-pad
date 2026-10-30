@@ -3903,7 +3903,7 @@ console.log('\nopsLayoutDomain:');
         // 段階4 (2026-09-11): 📈ペース / 🔁直近 は当日に開く (交代した運営が最初に読む2枚)
         assert.deepEqual(openDay, ['opsSecActions', 'opsSecAttackCheck', 'opsSecAttackTap', 'opsSecBoss', 'opsSecMembers', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining']);   // S5: ✓ 凸の記録も当日に開く   // ✅ 凸報告の確認 (③-f) は当日の主作業 → 開く
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
-        assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecMockIntake', 'opsSecPlan', 'opsSecReserve']);   // 📸 模擬の取り込み (③-e) は前日に開く・当日は畳む
+        assert.deepEqual(openPre, ['opsSecActions', 'opsSecBlocks', 'opsSecMembers', 'opsSecMockIntake', 'opsSecPlan', 'opsSecReserve']);   // 🧱 ブロックの設定 (👑) は前日に開く (メンバーに聞く前に決める)   // 📸 模擬の取り込み (③-e) は前日に開く・当日は畳む
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
         assert.equal(dom.resolveOpen('opsSecActions', 'day', { day: { opsSecActions: false } }, true), true, 'always は畳めない');
         assert.equal(dom.resolveOpen('unknown', 'day', null, true), true);
@@ -4171,12 +4171,12 @@ console.log('\nopsStageDomain:');
         // ★ 順番も見る — 2列/12カラムでは並び順が行の組み方を決める (各行が 12 に揃うかは別のテスト)
         const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
         // 📸 模擬の取り込み (③-e) は 12 で単独の行: 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭
-        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
+        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan', 'opsSecBlocks']);
         // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
         // ✅ 凸報告の確認 (③-f) も 12 で単独の行: 当日は 残り12 の次 (取り込みの前)、終了は先頭
         assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecAttackTap', 'opsSecAttackCheck', 'opsSecMockIntake', 'opsSecPlan']);   // S5: ✓ 凸の記録 (12) は 結果の取り込み の前
         // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
-        assert.deepEqual(vis('prep'), ['opsSecMockIntake', 'opsSecSeason', 'opsSecPush', 'opsSecGrowth']);
+        assert.deepEqual(vis('prep'), ['opsSecMockIntake', 'opsSecSeason', 'opsSecBlocks', 'opsSecPush', 'opsSecGrowth']);
         assert.deepEqual(vis('end'), ['opsSecAttackTap', 'opsSecAttackCheck', 'opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
@@ -9613,18 +9613,19 @@ console.log('\ngrowthDomain:');
         // ピル (画面・共有画像)
         assert.ok(/pill\(`🧱 \$\{esc\(plan\.availableAtLabel\)\} に出られる人 · \$\{plan\.candidateCount\}名`, 'var\(--ops\)', 'var\(--ops-bg\)'\)/.test(html), '画面のピルが無い (色はトークンで)');
         assert.equal((html.match(/plan\.availableAtLabel \? `🧱 \$\{plan\.availableAtLabel\} に出られる人 \$\{plan\.candidateCount\}名`/g) || []).length, 2, '共有画像のピル (2 か所) が無い');
-        // シーズン編集: 行 / 足す / 消す / 既定に戻す / 保存時に normalize で検査 → supabaseUpdateSeasonBlocks (既定なら null)
-        assert.ok(/id="opsSeasonEditBlockRows"/.test(html) && /onclick="_opsSeasonEditAddBlock\(\)"/.test(html) && /onclick="_opsSeasonEditResetBlocks\(\)"/.test(html), 'ブロックの編集 UI が無い');
-        const save = html.match(/async function handleOpsSeasonEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const r = rbd\.normalize\(blockCfg\);\s*\n\s*if \(!r\.blocks\) \{ set\(`❌ ブロック: \$\{r\.error\}`, true\); return; \}/.test(save), '保存前に検査していない');
-        assert.ok(/blocksToSave = isDefault \? null : rbd\.toConfig\(r\.blocks\);/.test(save), '既定と同じなら null (= metadata.blocks を消す) にしていない');
-        assert.ok(/if \(blocksChanged\) \{\s*\n\s*await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);/.test(save), '保存していない');
-        assert.ok(/&& !blocksChanged[^\n]*\) \{ set\('変更はありません'\); return; \}/.test(save), 'ブロックだけ変えたとき「変更はありません」で止まる');
-        // 足す・消す はドメイン (addSplit / removeAt)。画面に独自の計算を持たない (以前は末尾を重複させていた — Codex指摘)
-        assert.ok(/dom\.addSplit\(_opsSeasonEditReadBlocks\(\)\)/.test(html) && /dom\.removeAt\(_opsSeasonEditReadBlocks\(\), i\)/.test(html), '足す・消す をドメインに任せていない');
+        // 2026-10-30: 区切りは ✏️ シーズン編集ではなく 👑 マスターのカード「🧱 ブロックの設定」で決める (入口を 1 つに)。編集シートには案内の 1 行だけ
+        assert.ok(!/id="opsSeasonEditBlockRows"|_opsSeasonEdit(Render|Read|Add|Remove|Reset)Block|blocksChanged/.test(html), '✏️ シーズン編集にブロックの行が残っている (入口が 2 つ)');
+        assert.ok(/🧱 時間のブロック \(A・B・C…\) は 運営 › 👑 マスター › <b>🧱 ブロックの設定<\/b> で決めます。/.test(html), '編集シートにカードへの案内が無い');
+        assert.ok(/<div class="dc-card" data-ops-only data-master-only>\s*\n\s*<div[^>]*>\s*\n\s*<div[^>]*>🧱 ブロックの設定<\/div>/.test(html) && /<div id="opsBlocksBody">/.test(html), 'カードが無い / マスターだけにしていない');
+        // 形を変えるのはドメインの関数だけ (画面に独自の計算を持たない) / 保存は押した時点でもう一度確かめてから supabaseUpdateSeasonBlocks
+        const card = html.slice(html.indexOf('const _obk = {'), html.indexOf('async function _obkSave()') + 3000);
+        for (const fn of ['evenSplit(Number(n))', 'splitAt(_obk.cfg, i)', 'setEndAt(_obk.cfg, i, Number(to))', 'removeAt(_obk.cfg, i)']) assert.ok(card.includes(`window.raidBlocksDomain.${fn}`), `${fn} をドメインに任せていない`);
         assert.ok(!/cur\[i - 1\]\.to = gone\.to/.test(html), '画面に独自の吸わせる計算が残っている');
-        // 区切りを保存したら、条件パネルで選んでいたブロックの添字を戻す / select は変わったときだけ描き直す
-        assert.ok(/await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);\s*\n\s*_opsPlanBlockIdx = null;/.test(html), '保存後に選択中のブロックを戻していない');
+        const sv = card.slice(card.indexOf('async function _obkSave()'));
+        const iU = sv.indexOf('await window.supabaseLoadSeasonBlockUsage(sid)'), iW = sv.indexOf('await window.supabaseUpdateSeasonBlocks(sid, rb.toConfig(nb.blocks));');
+        assert.ok(iU > 0 && iW > iU && /if \(why\) \{ showNotification/.test(sv.slice(iU, iW)), '押した時点の使われ方を確かめずに保存している');
+        assert.ok(/await window\.supabaseUpdateSeasonBlocks\(sid, rb\.toConfig\(nb\.blocks\)\);[\s\S]{0,400}_opsPlanBlockIdx = null;/.test(sv), '保存後に選択中のブロックを戻していない');
+        assert.ok(/function _obkCanEdit\(\) \{ return !_obk\.busy && !_obkLockReason\(_obk\.usage\) && _obk\.cfg && _opsIsMasterNow\(\); \}/.test(html), 'マスター以外・ロック中にも変えられる');
         assert.ok(/if \(sel\.innerHTML !== html\) sel\.innerHTML = html;/.test(html), 'select を毎回描き直している');
         // クライアント: アクティブシーズンの読み出しに metadata / 保存は 入口で normalize → RPC (50) → 無ければ読んで混ぜて書く
         assert.ok(/\.select\('id, month_key, hard_date, current_level, union_rank, is_active, is_test, metadata'\)/.test(client), 'アクティブシーズンの metadata を読んでいない');
@@ -10565,7 +10566,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く / Discord 用の文面も (2026-10-23)');
         assert.deepEqual(byTab('build'), ['opsSecReserve', 'opsSecPlan']);
         assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定) / S5: ✓ 凸の記録 は 結果の取り込み の前');
-        assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecGrowth']);
+        assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecBlocks', 'opsSecGrowth']);
         assert.deepEqual(L.CARDS.filter(c => c.tab === null).map(c => c.id).sort(),
             ['opsSecActions', 'opsSecCoord', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining'], '画面から外すカードが違う');
         assert.ok(L.CARDS.every(c => c.tab === null || L.TAB_KEYS.includes(c.tab)), '知らないタブのカードがある');

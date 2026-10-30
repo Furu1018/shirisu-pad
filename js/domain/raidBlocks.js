@@ -198,6 +198,29 @@
         }
         return out;
     }
+    /** i 番目のブロックを 2 つに分ける (前半を長めに: 5 時間なら 3 + 2)。後ろは名前なし。1 時間しかない・MAX に達しているなら null */
+    function splitAt(config, i) {
+        const cfg = (Array.isArray(config) ? config : []).map(b => ({ name: b.name, from: toHour(b.from), to: toHour(b.to) }));
+        const b = cfg[i];
+        if (!b || cfg.length >= MAX_BLOCKS || b.from === null || b.to === null) return null;
+        const a = idxOfHour(b.from), z = idxOfHour(b.to);
+        if (a < 0 || z <= a) return null;
+        const half = Math.ceil((z - a + 1) / 2);
+        cfg.splice(i + 1, 0, { name: '', from: HOUR_ORDER[a + half], to: b.to });
+        b.to = HOUR_ORDER[a + half - 1];
+        return cfg;
+    }
+    /** i 番目のブロックの終わり (含む時) を変え、次のブロックの始まりを合わせる。次のブロックを 1 時間は残す。動かせなければ null */
+    function setEndAt(config, i, to) {
+        const cfg = (Array.isArray(config) ? config : []).map(b => ({ name: b.name, from: toHour(b.from), to: toHour(b.to) }));
+        const b = cfg[i], nx = cfg[i + 1], t = toHour(to);
+        if (!b || !nx || t === null) return null;
+        const a = idxOfHour(b.from), k = idxOfHour(t), nz = idxOfHour(nx.to);
+        if (k < a || k >= nz) return null;
+        b.to = t;
+        nx.from = HOUR_ORDER[k + 1];
+        return cfg;
+    }
     /** ブロックを 1 つ消す。消した時間は前のブロック (無ければ次) に吸わせる。MIN 未満になるなら null */
     function removeAt(config, i) {
         const cfg = (Array.isArray(config) ? config : []).map(b => ({ ...b }));
@@ -401,7 +424,7 @@
 
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
-        normalize, blocksOfSeason, toConfig, sameConfig, labelOf, shortOf, rangeOf, letterOf, endLabel, toHour, addSplit, removeAt, evenSplit,
+        normalize, blocksOfSeason, toConfig, sameConfig, labelOf, shortOf, rangeOf, letterOf, endLabel, toHour, addSplit, removeAt, evenSplit, splitAt, setEndAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
         scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel, todayRows,
         countKey, countsTotal, normalizeCounts, stepCount, countsLabel, capsOf,

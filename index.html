@@ -148,6 +148,8 @@
            生成: scratchpad/build-theme2.mjs (色相と彩度を保ち、明度だけ地に合わせる)
            ============================================================ */
         :root, :root[data-theme="light"] {
+            /* 🧱 ブロックの色 (時計 3 つ・2026-10-30)。並び順で A=0 から */
+            --blk-0: #d7432f; --blk-1: #d8731a; --blk-2: #2f9e5b; --blk-3: #138f8c; --blk-4: #2c76d2; --blk-5: #6a4fd8; --blk-6: #b03ad1; --blk-7: #d4397f; --blk-8: #8c6a2f; --blk-9: #466f7f; --blk-10: #c04a1e; --blk-11: #3b8f3b;
             /* ★ メニュー帯 (上の帯と下のナビ) は**地と反対の色**にする (2026-09-10 ユーザー要望)。
                本文から浮いて見え、どこを触ればいいかが一目で分かる。
                ライト = 黒い帯に白文字 / ダーク = 白い帯に黒文字 (下の dark 側で裏返す) */
@@ -278,6 +280,7 @@
             --bbl-ring: #E8B048;
         }
         :root[data-theme="dark"] {
+            --blk-0: #e0604d; --blk-1: #e08a3a; --blk-2: #3fb06d; --blk-3: #22a3a0; --blk-4: #4a8ce0; --blk-5: #8169e6; --blk-6: #c056e0; --blk-7: #e0558f; --blk-8: #a8844a; --blk-9: #5f8a9b; --blk-10: #d6643a; --blk-11: #55a855;
             --nav-surface: #EEF1F4;
             --nav-ink: #14161A;
             --nav-dim: #5C626A;
@@ -719,6 +722,64 @@
         /* ---- 運営モードの段階 (準備/前日/当日/終了) — 運営UI再設計 2026-09-08 ---- */
         body.ops-mode .ops-group-label { display: none; }   /* グループ見出しは段階の出し分けに置き換えた */
         body.ops-mode:not(.ops-stage-day) #opsCockpit, body.ops-mode:not(.ops-stage-day) #opsOverviewChips { display: none; }
+/* 🧱 ブロックの設定 (👑 マスター・2026-10-30)。時計 3 つ = 朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5 */
+        .obk-note { margin: 0 0 8px; font-size: 11.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
+        .obk-clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 12px; margin: 2px 0 6px; }
+        .obk-clk { margin: 0; }
+        .obk-clk svg { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+        .obk-clk figcaption { text-align: center; font-size: 12px; font-weight: 900; color: var(--t-body); }
+        .obk-seg { cursor: pointer; stroke: var(--card); stroke-width: 2; }
+        .obk-seg.on { stroke: var(--t-ink); stroke-width: 3; }
+        .obk-seg:focus-visible { outline: none; stroke: var(--ops); stroke-width: 4; }
+        .obk-seg-l { font-weight: 900; fill: var(--on-fill); font-size: 15px; pointer-events: none; }
+        .obk-ring { fill: none; stroke: var(--s2); }
+        .obk-tick { stroke: var(--line); stroke-width: 1.5; }
+        .obk-tick.b { stroke: var(--t-ink); stroke-width: 2.5; }
+        .obk-tick.faint { opacity: .6; }
+        .obk-hn { font-size: 12px; font-weight: 700; fill: var(--t-muted); }
+        .obk-hn.b { fill: var(--t-ink); font-weight: 900; font-size: 13px; }
+        .obk-base { font-size: 10px; font-weight: 900; fill: var(--t-ink); }
+        .obk-cl { font-size: 30px; font-weight: 900; }
+        .obk-ct { font-size: 11.5px; font-weight: 800; fill: var(--t-body); }
+        .obk-cn { font-size: 11px; font-weight: 700; fill: var(--t-muted); }
+        .obk-face { fill: var(--t-muted); font-size: 22px; font-weight: 900; }
+        .obk-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; font-size: 11px; font-weight: 700; color: var(--t-muted); margin-bottom: 8px; }
+        .obk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+        .obk-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+        .obk-stp { display: inline-flex; align-items: center; gap: 2px; background: var(--s2); border-radius: 10px; padding: 3px; }
+        .obk-stp button { width: 34px; height: 30px; border: 0; border-radius: 8px; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; }
+        .obk-stp button[disabled] { opacity: .35; cursor: default; }
+        .obk-stp b { min-width: 52px; text-align: center; font-size: 13px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .obk-stp span { font-size: 11.5px; font-weight: 800; color: var(--t-body); padding: 0 6px 0 8px; }
+        .obk-btn { font: inherit; font-weight: 800; font-size: 11.5px; padding: 6px 10px; border-radius: 9px; border: 0; cursor: pointer; background: var(--s2); color: var(--t-ink); white-space: nowrap; }
+        .obk-btn[disabled] { opacity: .45; cursor: default; }
+        .obk-rows { display: flex; flex-direction: column; gap: 6px; }
+        .obk-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--s1); border: 2px solid transparent; }
+        .obk-row.on { border-color: var(--t-ink); background: var(--card); }
+        .obk-badge { width: 34px; height: 34px; border-radius: 10px; border: 0; color: var(--on-fill); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+        .obk-mid { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        .obk-name { font: inherit; font-weight: 700; font-size: 13px; padding: 6px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); width: 100%; max-width: 180px; box-sizing: border-box; }
+        .obk-when { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; font-weight: 800; color: var(--t-body); font-variant-numeric: tabular-nums; }
+        .obk-when select { font: inherit; font-weight: 800; font-size: 12.5px; padding: 5px 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); }
+        .obk-len { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .obk-acts { display: flex; flex-direction: column; gap: 4px; }
+        .obk-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+        .obk-bar .sum { flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--t-body); }
+        .obk-bar .save { font: inherit; font-weight: 900; font-size: 13px; padding: 9px 16px; border-radius: 10px; border: 0; cursor: pointer; background: var(--t-ink); color: var(--card); }
+        .obk-bar .save[disabled] { opacity: .45; cursor: default; }
+        .obk-lock { margin: 8px 0 0; padding: 9px 11px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-on); font-size: 12px; font-weight: 800; line-height: 1.6; }
+        .obk-c0 { fill: var(--blk-0); } .obk-bg0 { background: var(--blk-0); }
+        .obk-c1 { fill: var(--blk-1); } .obk-bg1 { background: var(--blk-1); }
+        .obk-c2 { fill: var(--blk-2); } .obk-bg2 { background: var(--blk-2); }
+        .obk-c3 { fill: var(--blk-3); } .obk-bg3 { background: var(--blk-3); }
+        .obk-c4 { fill: var(--blk-4); } .obk-bg4 { background: var(--blk-4); }
+        .obk-c5 { fill: var(--blk-5); } .obk-bg5 { background: var(--blk-5); }
+        .obk-c6 { fill: var(--blk-6); } .obk-bg6 { background: var(--blk-6); }
+        .obk-c7 { fill: var(--blk-7); } .obk-bg7 { background: var(--blk-7); }
+        .obk-c8 { fill: var(--blk-8); } .obk-bg8 { background: var(--blk-8); }
+        .obk-c9 { fill: var(--blk-9); } .obk-bg9 { background: var(--blk-9); }
+        .obk-c10 { fill: var(--blk-10); } .obk-bg10 { background: var(--blk-10); }
+        .obk-c11 { fill: var(--blk-11); } .obk-bg11 { background: var(--blk-11); }
         .ops-stage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 2px 2px 4px; }
         .ops-stage-name { font-size: 13px; font-weight: 900; color: var(--t-ink)}
         .ops-stage-seg button { padding: 4px 9px; font-size: 11px; }
@@ -4930,6 +4991,15 @@
                 <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>テスト (序盤・凸ゼロ)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 の 1 周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
             </div>
 
+            <!-- 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり「A,B,C…とブロックを作って 5～9 時と設定・時計で分かりやすく」)。描くのは renderOpsBlocks / 判定は raidBlocksDomain -->
+            <div class="dc-card" data-ops-only data-master-only>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🧱 ブロックの設定</div>
+                </div>
+                <p class="obk-note">レイド日 (朝 5 時〜翌 5 時) を区切ります。ブロックは並び順に A・B・C…。メンバーには「A 5〜9時」のように見えます。<b>メンバーに出られるブロックを聞く前に</b>決めてください。</p>
+                <div id="opsBlocksBody"><p class="obk-note">読み込み中…</p></div>
+            </div>
+
             <!-- 🧬 育成データの取り込み (43 / 運営ON・段階「終了」のみ)。純ロジックは js/domain/growth.js -->
             <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
@@ -6614,15 +6684,7 @@
                 <div id="opsSeasonEditBossRows"></div>
             </div>
 
-            <div>
-                <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">🧱 時間のブロック — レイド日 (5時〜翌4時) をいくつに区切るか。運営は次のブロックだけを約束する</label>
-                <p style="margin:0 0 6px;font-size:11px;color:var(--t-muted);">区切りはそのときのメンバー次第。隙間も重なりも無く 5時 から 翌4時 まで並べる (2〜12 個)。時間の登録・「🧱 ブロックの人」で組む条件・配信の単位がこの区切りになります</p>
-                <div id="opsSeasonEditBlockRows"></div>
-                <div style="display:flex;gap:8px;margin-top:6px;">
-                    <button type="button" onclick="_opsSeasonEditAddBlock()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;cursor:pointer;">＋ ブロックを足す</button>
-                    <button type="button" onclick="_opsSeasonEditResetBlocks()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;cursor:pointer;">既定 (6 つ・4 時間ずつ) に戻す</button>
-                </div>
-            </div>
+            <p style="margin:0;font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;">🧱 時間のブロック (A・B・C…) は 運営 › 👑 マスター › <b>🧱 ブロックの設定</b> で決めます。</p>
 
             <div>
                 <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
@@ -18274,6 +18336,7 @@
                 finishListEl.innerHTML = '';
                 if (testBanner) testBanner.style.display = 'none';
                 renderOpsSeasonCtlSummary(null, []);
+                renderOpsBlocks(null);
                 if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snapshot);   // 👥 も「シーズン無し」に
                 if (typeof renderOpsReservations === 'function') renderOpsReservations();           // 🔒 も同様
                 renderOpsPace(); renderOpsRecent();                                                 // 📈🔁 も「シーズン無し」に
@@ -18308,6 +18371,7 @@
                 _setOpsPlanPicks(null, null);
             }
             renderOpsSeasonCtlSummary(season, bosses);
+            renderOpsBlocks(season);
             renderOpsBossSummary();
             renderOpsRemainingList();
             renderOpsPace();                       // 📈 消化のペース (盤面と同じ鮮度)
@@ -27293,10 +27357,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="grid-column:2/-1;${field}">
                 </div>`;
             }).join('');
-            // 🧱 ブロック (時間帯の区切り): いまの設定 (無ければ既定) を行にして出す。保存時に normalize で検査する
-            _opsSeasonEditCtx.blocks = window.raidBlocksDomain ? window.raidBlocksDomain.toConfig(window.raidBlocksDomain.blocksOfSeason(season)) : [];
-            _opsSeasonEditCtx.blocksIsDefault = !(Array.isArray(season.metadata?.blocks) && season.metadata.blocks.length > 0);
-            _opsSeasonEditRenderBlocks(_opsSeasonEditCtx.blocks);
             // 🧱 ③-d メンバーの入力 (既定は出さない)
             _opsSeasonEditCtx.memberInputFull = season.metadata?.member_input === 'full';
             const mi = document.getElementById('opsSeasonEditMemberInput');
@@ -27304,45 +27364,206 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             document.getElementById('opsSeasonEditMessage').textContent = '';
             document.getElementById('opsSeasonEditModal').classList.add('open');
         }
-        // 🧱 ブロックの行: 名前 / 始まり / 終わり / ✕。時刻の選択肢は 5時始まり (翌0〜翌4 は「翌」付き)
-        function _opsSeasonEditRenderBlocks(config) {
-            const host = document.getElementById('opsSeasonEditBlockRows');
-            if (!host) return;
-            const wrap = (h) => (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
-            const hourOpts = (cur) => HOUR_ORDER.map(h => `<option value="${h}" ${h === cur ? 'selected' : ''}>${wrap(h)}</option>`).join('');
-            const field = 'min-width:0;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12.5px;';
-            host.innerHTML = (config || []).map((b, i) => `
-                <div data-blk="${i}" style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 14px minmax(0,1fr) 30px;gap:6px;align-items:center;padding:4px 0;">
-                    <input class="ops-se-blk-name" type="text" maxlength="6" value="${escapeHtml(b.name || '')}" placeholder="名前" style="${field}font-weight:700;">
-                    <select class="ops-se-blk-from" style="${field}">${hourOpts(Number(b.from))}</select>
-                    <span style="text-align:center;color:var(--t-muted);font-size:12px;">〜</span>
-                    <select class="ops-se-blk-to" style="${field}">${hourOpts(Number(b.to))}</select>
-                    <button type="button" onclick="_opsSeasonEditRemoveBlock(${i})" title="このブロックを消す" style="padding:4px 0;border-radius:8px;border:none;background:var(--s2);color:var(--t-muted);font-size:12px;cursor:pointer;">✕</button>
-                </div>`).join('');
+        // ===== 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり・設計図 docs/ブロック設定_設計図_2026-10-30.md) =====
+        //   時計 3 つ (朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5) + 行 (文字は並び順・名前は任意・終わりの時刻) + 数のステッパー + 一括。
+        //   形を変えるのは raidBlocksDomain (evenSplit / splitAt / setEndAt / removeAt) だけ・検査は normalize だけ。保存は supabaseUpdateSeasonBlocks (RPC 50 / 58)。
+        //   ★ 凸数の登録・ブロックの予約・✅ 決定 が 1 件でもあるシーズンは変えない (ブロックの足し引きで文字と鍵がずれる)。読み取り専用で理由を出す (押せないボタンは置かない)
+        //   ★ 名前を onclick に埋めない (添字だけ)
+        const _obk = { seasonId: null, season: null, cfg: null, sel: 0, dirty: false, usage: undefined, usageSeq: 0, busy: false, msg: '' };
+        // 変えてはいけない理由 (null = 変えてよい)。usage: undefined = 確かめ中 / null = 確かめられない / { counts, resv, decided }
+        function _obkLockReason(usage) {
+            if (usage === undefined) return 'このシーズンでブロックが使われているかを確かめています…';
+            if (usage === null) return 'このシーズンでブロックが使われているかを確かめられませんでした。上の ↻ で取り直してください (確かめられるまで変えられません)。';
+            const parts = [];
+            if (usage.counts > 0) parts.push(`参加可能時間の凸数の登録 ${usage.counts} 件`);
+            if (usage.resv > 0) parts.push(`ブロックの予約 ${usage.resv} 件`);
+            if (usage.decided > 0) parts.push(`✅ 決定 ${usage.decided} 件`);
+            return parts.length ? `${parts.join('・')}があるので、このシーズンのブロックは変えられません (ブロックを足し引きすると A・B・C がずれて、登録と合わなくなるため)。変えるならシーズンを作り直してください。` : null;
         }
-        // 画面の行 → 設定 ([{ name, from, to }])。検査は保存時 (normalize)
-        function _opsSeasonEditReadBlocks() {
-            return Array.from(document.querySelectorAll('#opsSeasonEditBlockRows > div[data-blk]')).map(row => ({
-                name: row.querySelector('.ops-se-blk-name')?.value.trim() || '',
-                from: Number(row.querySelector('.ops-se-blk-from')?.value),
-                to: Number(row.querySelector('.ops-se-blk-to')?.value),
-            }));
+        function renderOpsBlocks(season) {
+            const el = document.getElementById('opsBlocksBody');
+            const rb = window.raidBlocksDomain;
+            if (!el) return;
+            if (!season || !rb) {
+                _obk.seasonId = null; _obk.season = null; _obk.cfg = null; _obk.dirty = false; _obk.usage = undefined; _obk.usageSeq++;
+                el.innerHTML = '<p class="obk-note">シーズンを作ってから設定できます (作ると既定の 6 つで始まります)。</p>';
+                return;
+            }
+            const same = String(_obk.seasonId) === String(season.id);
+            _obk.season = season;
+            if (!same) { _obk.seasonId = season.id; _obk.sel = 0; _obk.dirty = false; _obk.msg = ''; }
+            // 手元で変えていなければ、いつも保存済みの区切りから描く (別の端末で変えた分も拾う)
+            if (!same || !_obk.dirty) _obk.cfg = rb.toConfig(rb.blocksOfSeason(season));
+            if (!_obk.busy) {
+                const seq = ++_obk.usageSeq;
+                if (!same) _obk.usage = undefined;
+                const sid = season.id;
+                (typeof window.supabaseLoadSeasonBlockUsage === 'function' ? window.supabaseLoadSeasonBlockUsage(sid) : Promise.resolve(null)).then(u => {
+                    if (seq !== _obk.usageSeq || String(_obk.seasonId) !== String(sid)) return;   // 追い越された / シーズンが変わった
+                    _obk.usage = u;
+                    _obkPaint();
+                });
+            }
+            _obkPaint();
         }
-        // 足す・消す の中身はドメイン (raidBlocksDomain.addSplit / removeAt)。常に 5時〜翌4時 が埋まった状態を保つ
-        function _opsSeasonEditAddBlock() {
-            const dom = window.raidBlocksDomain;
-            const next = dom ? dom.addSplit(_opsSeasonEditReadBlocks()) : null;
-            if (!next) { showNotification(`これ以上は分けられません (${dom?.MAX_BLOCKS || 12} 個まで・2 時間以上のブロックが要る)`); return; }
-            _opsSeasonEditRenderBlocks(next);
+        // 時計 1 つ (ふつうの 12 時間の時計)。lo / hi = HOUR_ORDER の添字 [lo, hi)。時刻はその時計の位置 (5 時 = 5 の位置)
+        const _OBK_FACES = [
+            { name: '朝', icon: '🌅', cap: '5時〜12時', lo: 0, hi: 7, endLabel: '12' },
+            { name: '昼〜夜', icon: '☀️', cap: '12時〜翌0時', lo: 7, hi: 19, endLabel: null },
+            { name: '深夜', icon: '🌙', cap: '翌0時〜翌5時', lo: 19, hi: 24, endLabel: '翌5' },
+        ];
+        function _obkClockSvg(face, blocks, sel) {
+            const rb = window.raidBlocksDomain, HO = rb.HOUR_ORDER, esc = escapeHtml;
+            const C = 180, R = 128, r = 82, wrap = (h) => (h >= 0 && h <= 4 ? `翌${h}` : String(h));
+            const pol = (rad, deg) => { const a = (deg - 90) * Math.PI / 180; return [C + rad * Math.cos(a), C + rad * Math.sin(a)]; };
+            const f = (n) => Math.round(n * 100) / 100;
+            const arc = (a0, a1) => {
+                const [x0, y0] = pol(R, a0), [x1, y1] = pol(R, a1), [x2, y2] = pol(r, a1), [x3, y3] = pol(r, a0), big = (a1 - a0) > 180 ? 1 : 0;
+                return `M${f(x0)} ${f(y0)} A${R} ${R} 0 ${big} 1 ${f(x1)} ${f(y1)} L${f(x2)} ${f(y2)} A${r} ${r} 0 ${big} 0 ${f(x3)} ${f(y3)} Z`;
+            };
+            const startDeg = (HO[face.lo] % 12) * 30;
+            const ang = (k) => startDeg + (k - face.lo) * 30;
+            const parts = [];
+            blocks.forEach((b, i) => { const k0 = Math.max(b.fromIdx, face.lo), k1 = Math.min(b.toIdx + 1, face.hi); if (k1 > k0) parts.push({ i, k0, k1 }); });
+            let s = `<circle class="obk-ring" cx="${C}" cy="${C}" r="${(R + r) / 2}" stroke-width="${R - r}"></circle>`;
+            for (const p of parts) {
+                let a1 = ang(p.k1); const a0 = ang(p.k0);
+                if (a1 - a0 >= 360) a1 = a0 + 359.99;
+                s += `<path class="obk-seg obk-c${p.i % 12}${p.i === sel ? ' on' : ''}" d="${arc(a0, a1)}" tabindex="0" role="button" aria-label="${esc(blocks[p.i].label)}" onclick="_obkSel(${p.i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_obkSel(${p.i})}"></path>`;
+            }
+            for (const p of parts) { const [x, y] = pol((R + r) / 2, (ang(p.k0) + ang(p.k1)) / 2); s += `<text class="obk-seg-l" x="${f(x)}" y="${f(y + 5)}" text-anchor="middle">${esc(blocks[p.i].letter)}</text>`; }
+            const starts = new Set(blocks.map(b => b.from)), used = new Map();
+            for (let k = face.lo; k < face.hi; k++) used.set(HO[k] % 12, { label: wrap(HO[k]), bold: starts.has(HO[k]) || k === face.lo });
+            if (face.endLabel) used.set((HO[face.hi - 1] + 1) % 12, { label: face.endLabel, bold: true });
+            for (let j = 0; j < 12; j++) {
+                const u = used.get(j), deg = j * 30;
+                const [x0, y0] = pol(R + 3, deg), [x1, y1] = pol(R + (u && u.bold ? 11 : 8), deg), [tx, ty] = pol(R + 24, deg);
+                s += `<line class="obk-tick${u ? (u.bold ? ' b' : '') : ' faint'}" x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}"></line>`;
+                if (u) s += `<text class="obk-hn${u.bold ? ' b' : ''}" x="${f(tx)}" y="${f(ty + 4.5)}" text-anchor="middle">${esc(u.label)}</text>`;
+            }
+            const [sx, sy] = pol(r - 22, startDeg);
+            s += `<text class="obk-base" x="${f(sx)}" y="${f(sy + 4)}" text-anchor="middle">▶ ${esc(wrap(HO[face.lo]))}時から</text>`;
+            const b = blocks[sel];
+            if (b && parts.some(p => p.i === sel)) {
+                s += `<text class="obk-cl obk-c${sel % 12}" x="${C}" y="${C - 2}" text-anchor="middle">${esc(b.letter)}</text>`
+                    + `<text class="obk-ct" x="${C}" y="${C + 18}" text-anchor="middle">${esc(b.range)} · ${b.hours.length} 時間</text>`
+                    + `<text class="obk-cn" x="${C}" y="${C + 34}" text-anchor="middle">${esc(b.name || '(名前なし)')}</text>`;
+            } else {
+                s += `<text class="obk-face" x="${C}" y="${C + 8}" text-anchor="middle">${esc(face.name)}</text>`;
+            }
+            return `<figure class="obk-clk"><figcaption>${face.icon} ${esc(face.name)} <b>${esc(face.cap)}</b></figcaption><svg viewBox="0 0 360 360" role="img" aria-label="${esc(face.name)}の時計 (${esc(face.cap)})">${s}</svg></figure>`;
         }
-        function _opsSeasonEditRemoveBlock(i) {
-            const dom = window.raidBlocksDomain;
-            const next = dom ? dom.removeAt(_opsSeasonEditReadBlocks(), i) : null;
-            if (!next) { showNotification(`ブロックは ${dom?.MIN_BLOCKS || 2} つ以上です`); return; }
-            _opsSeasonEditRenderBlocks(next);
+        function _obkPaint() {
+            const el = document.getElementById('opsBlocksBody'), rb = window.raidBlocksDomain;
+            if (!el || !rb || !_obk.cfg) return;
+            const nb = rb.normalize(_obk.cfg);
+            if (!nb.blocks) { el.innerHTML = `<p class="obk-lock">区切りが読めません: ${escapeHtml(nb.error)}</p>`; return; }   // 操作はドメインの関数を通すので来ない (保険)
+            const blocks = nb.blocks, n = blocks.length, esc = escapeHtml;
+            if (_obk.sel >= n) _obk.sel = n - 1;
+            const lock = _obkLockReason(_obk.usage);
+            const clocks = `<div class="obk-clocks">${_OBK_FACES.map(face => _obkClockSvg(face, blocks, _obk.sel)).join('')}</div>`
+                + `<div class="obk-legend">${blocks.map((b, i) => `<span><i class="obk-bg${i % 12}"></i>${esc(b.label)}</span>`).join('')}</div>`;
+            let body;
+            if (lock) {
+                body = `<div class="obk-rows">${blocks.map((b, i) => `<div class="obk-row${i === _obk.sel ? ' on' : ''}"><button type="button" class="obk-badge obk-bg${i % 12}" onclick="_obkSel(${i})" aria-label="${esc(b.letter)} を選ぶ">${esc(b.letter)}</button>`
+                    + `<div class="obk-mid"><div class="obk-when">${esc(b.short)} ${esc(b.range)} <span class="obk-len">${b.hours.length} 時間</span></div></div><span></span></div>`).join('')}</div>`
+                    + `<p class="obk-lock">${esc(lock)}</p>`;
+            } else {
+                const HO = rb.HOUR_ORDER, wrap = (h) => (h >= 0 && h <= 4 ? `翌${h}` : String(h));
+                const tools = `<div class="obk-tools"><span class="obk-stp" role="group" aria-label="ブロックの数"><span>ブロックの数</span>`
+                    + `<button type="button" onclick="_obkCount(${n - 1})" ${n <= rb.MIN_BLOCKS ? 'disabled' : ''} aria-label="減らす">−</button><b>${n} つ</b>`
+                    + `<button type="button" onclick="_obkCount(${n + 1})" ${n >= rb.MAX_BLOCKS ? 'disabled' : ''} aria-label="増やす">＋</button></span>`
+                    + [4, 6, 8, 12].map(k => `<button type="button" class="obk-btn" onclick="_obkCount(${k})">${k} つ (${24 / k} 時間)</button>`).join('')
+                    + `<button type="button" class="obk-btn" onclick="_obkDefault()">いまの既定 (朝・午前…)</button></div>`;
+                const rows = blocks.map((b, i) => {
+                    const last = i === n - 1;
+                    let opts = '';
+                    if (!last) for (let k = b.fromIdx; k <= blocks[i + 1].toIdx - 1; k++) opts += `<option value="${HO[k]}"${HO[k] === b.to ? ' selected' : ''}>${esc(rb.endLabel(HO[k]))}時</option>`;
+                    return `<div class="obk-row${i === _obk.sel ? ' on' : ''}"><button type="button" class="obk-badge obk-bg${i % 12}" onclick="_obkSel(${i})" aria-label="${esc(b.letter)} を選ぶ">${esc(b.letter)}</button>`
+                        + `<div class="obk-mid"><input class="obk-name" type="text" maxlength="${rb.MAX_NAME}" placeholder="名前 (任意) 例: 朝" value="${esc(b.name)}" oninput="_obkName(${i}, this.value)" aria-label="${esc(b.letter)} の名前">`
+                        + `<div class="obk-when"><span>${esc(wrap(b.from))}時 〜</span>`
+                        + (last ? `<span>翌5時 <span class="obk-len">(固定)</span></span>` : `<select onchange="_obkEnd(${i}, this.value)" aria-label="${esc(b.letter)} の終わりの時刻">${opts}</select>`)
+                        + `<span class="obk-len">${b.hours.length} 時間</span></div></div>`
+                        + `<div class="obk-acts"><button type="button" class="obk-btn" onclick="_obkSplit(${i})" ${b.hours.length < 2 || n >= rb.MAX_BLOCKS ? 'disabled' : ''}>分ける</button>`
+                        + `<button type="button" class="obk-btn" onclick="_obkDel(${i})" ${n <= rb.MIN_BLOCKS ? 'disabled' : ''}>✕ 消す</button></div></div>`;
+                }).join('');
+                const sum = `<b>${n} ブロック</b> · ${esc(blocks.map(b => b.short).join(' / '))}${_obk.dirty ? ' · <b>保存していない変更があります</b>' : ''}`;
+                body = tools + `<div class="obk-rows">${rows}</div>`
+                    + `<div class="obk-bar"><div class="sum">${sum}${_obk.msg ? `<br>${esc(_obk.msg)}` : ''}</div><button type="button" class="save" onclick="_obkSave()" ${_obk.busy || !_obk.dirty ? 'disabled' : ''}>${_obk.busy ? '保存中…' : '保存'}</button></div>`;
+            }
+            el.innerHTML = clocks + body;
         }
-        function _opsSeasonEditResetBlocks() {
-            _opsSeasonEditRenderBlocks(window.raidBlocksDomain ? window.raidBlocksDomain.DEFAULT_BLOCKS : []);
+        function _obkEdit(next) {   // ドメインの関数が返した形だけを受ける (null = 断られた)
+            if (!next) return false;
+            if (!window.raidBlocksDomain.normalize(next).blocks) return false;
+            _obk.cfg = next; _obk.dirty = true; _obk.msg = '';
+            return true;
+        }
+        function _obkCanEdit() { return !_obk.busy && !_obkLockReason(_obk.usage) && _obk.cfg && _opsIsMasterNow(); }
+        function _obkSel(i) { _obk.sel = Number(i) || 0; _obkPaint(); }
+        function _obkName(i, v) {
+            if (!_obkCanEdit() || !_obk.cfg[i]) return;
+            _obk.cfg = _obk.cfg.map((b, k) => (k === i ? { ...b, name: String(v || '').slice(0, window.raidBlocksDomain.MAX_NAME) } : b));
+            _obk.dirty = true; _obk.msg = '';
+            // 入力中は行を描き直さない (焦点が飛ぶ)。時計・凡例・帯だけ
+            const nb = window.raidBlocksDomain.normalize(_obk.cfg);
+            const el = document.getElementById('opsBlocksBody');
+            if (!nb.blocks || !el) return;   // 名前が重なっている間は保存のときに断る
+            const host = el.querySelector('.obk-clocks'), leg = el.querySelector('.obk-legend'), sum = el.querySelector('.obk-bar .sum'), btn = el.querySelector('.obk-bar .save');
+            if (host) host.innerHTML = _OBK_FACES.map(face => _obkClockSvg(face, nb.blocks, _obk.sel)).join('').replace(/^<div[^>]*>|<\/div>$/g, '');
+            if (leg) leg.innerHTML = nb.blocks.map((b, k) => `<span><i class="obk-bg${k % 12}"></i>${escapeHtml(b.label)}</span>`).join('');
+            if (sum) sum.innerHTML = `<b>${nb.blocks.length} ブロック</b> · ${escapeHtml(nb.blocks.map(b => b.short).join(' / '))} · <b>保存していない変更があります</b>`;
+            if (btn) btn.disabled = false;
+        }
+        function _obkEnd(i, to) { if (_obkCanEdit() && _obkEdit(window.raidBlocksDomain.setEndAt(_obk.cfg, i, Number(to)))) { _obk.sel = i; _obkPaint(); } }
+        function _obkSplit(i) {
+            if (!_obkCanEdit()) return;
+            if (!_obkEdit(window.raidBlocksDomain.splitAt(_obk.cfg, i))) { showNotification(`これ以上は分けられません (12 個まで・2 時間以上のブロックだけ)`); return; }
+            _obk.sel = i + 1; _obkPaint();
+        }
+        function _obkDel(i) {
+            if (!_obkCanEdit()) return;
+            if (!_obkEdit(window.raidBlocksDomain.removeAt(_obk.cfg, i))) { showNotification('ブロックは 2 つ以上です'); return; }
+            _obk.sel = Math.max(0, i - 1); _obkPaint();
+        }
+        function _obkCount(n) {
+            if (!_obkCanEdit()) return;
+            if (!_obkEdit(window.raidBlocksDomain.evenSplit(Number(n)))) { showNotification('ブロックは 2〜12 個です'); return; }
+            _obk.sel = 0; _obkPaint();
+            showNotification(`${n} つに均等に分け直しました (名前は消えます・保存するまで反映されません)`);
+        }
+        function _obkDefault() {
+            if (!_obkCanEdit()) return;
+            if (_obkEdit(window.raidBlocksDomain.toConfig(window.raidBlocksDomain.normalize(null).blocks))) { _obk.sel = 0; _obkPaint(); }
+        }
+        async function _obkSave() {
+            const rb = window.raidBlocksDomain;
+            if (!_obk.dirty || !_obkCanEdit()) return;
+            const sid = _obk.seasonId, cfg = _obk.cfg.map(b => ({ ...b }));
+            const nb = rb.normalize(cfg);
+            if (!nb.blocks) { showNotification(`❌ ${nb.error}`); return; }
+            _obk.busy = true; _obk.msg = ''; _obkPaint();
+            try {
+                // ★ 押した時点でもう一度確かめる (開いている間に凸数・予約・決定が入ったら変えない)。DB も 58 で断る
+                const u = typeof window.supabaseLoadSeasonBlockUsage === 'function' ? await window.supabaseLoadSeasonBlockUsage(sid) : null;
+                if (String(_obk.seasonId) !== String(sid)) return;
+                _obk.usage = u;
+                const why = _obkLockReason(u);
+                if (why) { showNotification(`❌ ${why}`); return; }
+                await window.supabaseUpdateSeasonBlocks(sid, rb.toConfig(nb.blocks));
+                window.supabaseLogActivity?.('ops', `🧱 ブロックを ${nb.blocks.length} つに: ${nb.blocks.map(b => b.label).join(' / ')}`);
+                _obk.dirty = false; _obk.msg = '保存しました。👥 › ⏰ の参加可能時間のチップと 🧱 組む がこの区切りになります。';
+                _opsPlanBlockIdx = null;   // 区切りが変わったので、条件パネルで選んでいたブロックの添字は意味を失う → いまの時刻のブロック
+                seasonStore.invalidate();
+                opsStore.invalidate();
+                showNotification('🧱 ブロックを保存しました');
+                renderOpsDashboard();
+            } catch (e) {
+                showNotification(`❌ 保存できませんでした: ${e?.message || e}`);
+            } finally {
+                _obk.busy = false;
+                _obkPaint();
+            }
         }
         function closeOpsSeasonEditModal() {
             document.getElementById('opsSeasonEditModal').classList.remove('open');
@@ -27385,21 +27606,10 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (new Set(finalCodes).size !== finalCodes.length) {
                 set('❌ 同じボスコードを複数のボスに割り当てられません (入替は両方のボスを変更)', true); return;
             }
-            // 🧱 ブロック: 検査して通ったものだけ保存。既定と同じなら metadata.blocks を消す (= 既定)
-            const rbd = window.raidBlocksDomain;
-            const blockCfg = rbd ? _opsSeasonEditReadBlocks() : null;
-            let blocksToSave = null, blocksChanged = false;
-            if (rbd && blockCfg) {
-                const r = rbd.normalize(blockCfg);
-                if (!r.blocks) { set(`❌ ブロック: ${r.error}`, true); return; }
-                const isDefault = rbd.sameConfig(r.blocks, rbd.normalize(null).blocks);
-                blocksToSave = isDefault ? null : rbd.toConfig(r.blocks);
-                blocksChanged = !rbd.sameConfig(r.blocks, ctx.blocks) || (isDefault !== !!ctx.blocksIsDefault);
-            }
             const memberInputFull = !!document.getElementById('opsSeasonEditMemberInput')?.checked;
             const memberInputChanged = memberInputFull !== !!ctx.memberInputFull;
             const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
-            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0 && !blocksChanged && !memberInputChanged) { set('変更はありません'); return; }
+            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0 && !memberInputChanged) { set('変更はありません'); return; }
             if (codeEdits.length > 0) {
                 const lines = codeEdits.map(e => {
                     const an = ATTR_VISUAL[e.attribute]?.name || e.attribute;
@@ -27414,18 +27624,13 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 if (metaChanged || nameEdits.length || codeEdits.length) {
                     await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits, bossCodes: codeEdits });
                 }
-                if (blocksChanged) {
-                    await window.supabaseUpdateSeasonBlocks(ctx.seasonId, blocksToSave);
-                    _opsPlanBlockIdx = null;   // 区切りが変わったので、条件パネルで選んでいたブロックの添字は意味を失う → いまの時刻のブロックに戻す (Codex指摘)
-                    seasonStore.invalidate();  // ホーム側 (時間のモーダル・帯) もこの端末では新しい区切りで描く
-                }
                 if (memberInputChanged) {
                     await window.supabaseUpdateSeasonMemberInput(ctx.seasonId, memberInputFull);
                     seasonStore.invalidate();  // この端末のメンバー画面の見せ方も決め直す
                     // ★ 読み直してすぐ決め直す (待つと、次にホームを描くまで古い見せ方のまま: Codex 全体監査 B 2026-10-23)。失敗しても保存は済んでいる
                     try { await ensureActiveSeasonLoaded(); _applyMemberLite(); } catch { /* 次にホームを描いたときに決め直す */ }
                 }
-                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0) + (memberInputChanged ? 1 : 0)}件)`);
+                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (memberInputChanged ? 1 : 0)}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
                 setTimeout(closeOpsSeasonEditModal, 700);

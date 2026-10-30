@@ -60,6 +60,8 @@
         { id: 'opsSecDiscord',   title: 'Discord 用の文面',      group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 12, tab: 'members' },   // 2026-10-23: 新しい流れの案内とプランの説明 (画面に戻した)
         { id: 'opsSecPlan',      title: '凸プランを組む',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12, tab: 'build' },
         { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12, tab: 'master' },
+        // 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり)。シーズンを作ったあと・メンバーに聞く前に使う
+        { id: 'opsSecBlocks',    title: 'ブロックの設定',        group: '管理・終了', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre'], span: 12, tab: 'master' },
         // 一斉通知は準備段階の道具に (告知を出す段階。2026-09-11 ユーザー判断)
         { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: ['prep'], span: 12, tab: 'members' },
         // 使われたキャラが確定するのはレイド後 (終了・2026-09-09)。準備段階にも出す — 新メンバーが入ったとき、その人のぶんを

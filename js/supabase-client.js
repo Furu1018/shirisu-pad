@@ -1998,6 +1998,26 @@ window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     return cfg;
 };
 
+// 🧱 ブロックを変えてよいか (2026-10-30 設計図 Q5): そのシーズンの 凸数の登録 (確認の block_counts)・生きているブロックの予約・✅ 決定 の件数。
+//   1 件でもあれば、ブロックの足し引きで文字がずれて登録・予約・決定の鍵と合わなくなるので、画面は変えさせない (DB も 58 で断る)。
+//   読めなければ null (= 分からない → 画面は保存させない)
+const _LIVE_RESV = ['requested', 'approved', 'cancel_requested', 'pinned'];
+window.supabaseLoadSeasonBlockUsage = async function (seasonId) {
+    if (!seasonId) return null;
+    try {
+        const [c, r, p] = await Promise.all([
+            supabase.from('availability_confirmations').select('player_id, block_counts').eq('season_id', seasonId),
+            supabase.from('plan_reservations').select('id, time_mode, status').eq('season_id', seasonId),
+            supabase.from('published_plans').select('id, plan').eq('season_id', seasonId),
+        ]);
+        if (c.error || r.error || p.error) return null;
+        const counts = (c.data || []).filter(x => x && x.block_counts && typeof x.block_counts === 'object' && !Array.isArray(x.block_counts) && Object.keys(x.block_counts).length > 0).length;
+        const resv = (r.data || []).filter(x => x && x.time_mode === 'block' && _LIVE_RESV.includes(x.status)).length;
+        const decided = (p.data || []).filter(x => x && x.plan && x.plan.decided && typeof x.plan.decided === 'object' && !Array.isArray(x.plan.decided)).length;
+        return { counts, resv, decided };
+    } catch (_) { return null; }
+};
+
 // 🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すか (③-d・2026-10-18)。seasons.metadata.member_input = 'full' / 鍵なし (既定: 出さない)。
 // 本線は RPC ops_set_season_meta_key (51・DB 側の 1 文)。51 未適用 (PGRST202) だけ「読んで混ぜて書く」にフォールバック。別のエラーは投げる
 window.supabaseUpdateSeasonMemberInput = async function (seasonId, full) {
