@@ -176,6 +176,10 @@
             const push = pushKnown ? pushSet.has(id) : null;          // null = 分からない
             const proxyCount = proxyKnown ? (proxyBy.get(id) || 0) : 0;
             const finish = finishKnown ? (finishBy.get(id) || null) : null;
+            // ★ 当日は 3 凸を済ませた時点でその人は終わり (2026-10-31 ふるり「3回凸が完了した時点でその人の凸は終了としたい」)。
+            //   模擬・SLv・時間帯・通知・締め凸の返事が残っていても当日の要対応にしない (SLv はレイドのあとに月次 JSON で一気に取り込む)。
+            //   前日 (pre) は従来どおり。チップ (模擬・SLv など) は事実なのでそのまま出す
+            const finished = isDay && atkCount >= MAX_ATTACKS;
 
             const reasons = [];
             if (isDay && atkCount < MAX_ATTACKS) reasons.push({ key: 'attacks', label: `凸 残${MAX_ATTACKS - atkCount}` });
@@ -245,7 +249,8 @@
                 attacks, atkCount, proxyCount, finish,
                 // 取得できなかった項目 (画面は「?」を出し、集計は「—」にする)
                 pushUnknown: !pushKnown, slvUnknown: !slvListKnown, finishUnknown: !finishKnown, proxyUnknown: !proxyKnown,
-                reasons, todo: reasons.length > 0,
+                finished,
+                reasons: finished ? [] : reasons, todo: !finished && reasons.length > 0,
             };
         });
     }

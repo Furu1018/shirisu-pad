@@ -609,6 +609,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   シーズンのブロックを A から順に (= 5 時始まり) 並べ、`raidBlocksDomain.blockStates` の on = 紫 / partial = 薄い紫 (古い 1 時間刻みの登録・title に N/M 時間) / off = 無地。当日はいまのブロックに赤枠 (`_mbNowBlk`)。
   下の時刻はホームの ⏰ と同じ読み方 (`availabilityDomain.rangesOf` + `rangeLabel`)。列の数は `--mb-n` (ブロックは最大 12 個・320px 幅でも収まる)。実行テスト `tests/member-board.mjs`。前日 (模擬/SLv/時間帯/通知) と
   当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
+  (★ **当日は 3 凸を済ませた人はそこで完了** (`row.finished`・2026-10-31 ふるり「3回凸が完了した時点でその人の凸は終了としたい」) — 模擬・SLv・時間帯・通知・締め凸の返事が残っていても理由を積まない・未完の数にも催促にも入れない。SLv はレイドのあとに月次 JSON で一気に取り込む。前日は従来どおり)
   (模擬は「キャラ被りなしで3属性」が必要範囲 — 5属性は加点で強制しない・2026-09-01 ユーザー判断)
   (画面側で判定を書き足さない)。盤面は opsStore を再利用し、追加取得は `supabaseLoadMemberStatusExtras`
   の4クエリ (通知購読・今期SLv・締め凸依頼・代理凸ログ)。代理凸は attacks に印が無いので activity_log の

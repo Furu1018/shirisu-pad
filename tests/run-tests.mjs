@@ -4401,6 +4401,34 @@ console.log('\nmemberStatusDomain:');
         const [r2] = dom.buildRows({ players, extras: { ...extras, finishRequests: [{ player_id: 1, status: 'accepted' }, { player_id: 1, status: 'pending' }] }, phase: 'day' });
         assert.equal(r2.finish, 'pending', 'pending が1件でもあれば未返答');
     });
+    test('★ buildRows(当日): 3 凸を済ませた人は完了 — 模擬・SLv・時間帯・通知・締め凸の返事が残っていても要対応にしない (2026-10-31 ふるり) / 前日と 2 凸の人は従来どおり', () => {
+        const three = [{ level: 1, boss_number: 3 }, { level: 1, boss_number: 2 }, { level: 1, boss_number: 5 }];
+        // 本番 10/31 の 翠秋めぐる さんの形: 3 凸済み・今期の SLv が未登録 (前回 726)。ほかの理由も全部積む
+        const p = P({ id: 41, name: 'め', attacks: three, syncLevel: 726, syncLevelEstimated: false, availableSlots: [] });
+        const extras = { pushPlayerIds: [], slvThisSeasonIds: [], finishRequests: [{ player_id: 41, status: 'pending' }], proxyEvents: [],
+            availConfirmations: [], pushCheck: { sentAt: '2026-10-30T00:00:00Z', confirmed: [] } };
+        const [d] = dom.buildRows({ players: [p], extras, phase: 'day' });
+        assert.equal(d.atkCount, 3); assert.equal(d.finished, true);
+        assert.deepEqual(d.reasons, [], '3 凸済みなのに当日の理由が残っている');
+        assert.equal(d.todo, false, '3 凸済みなのに未完のまま');
+        assert.equal(d.slvNow, null, 'チップ用の事実 (SLv 未登録) は消さない');
+        assert.equal(d.slvPrev, 726);
+        assert.equal(dom.nudgeMessage({ ...d, push: true }, 'day'), null, '3 凸済みの人に催促の文面を作らない');
+        // 前日は 3 凸の有無に関係なく従来どおり (前日に凸は無いが、念のため同じ人で)
+        const [pre] = dom.buildRows({ players: [p], extras, phase: 'pre' });
+        assert.equal(pre.finished, false);
+        assert.ok(pre.todo && pre.reasons.some(x => x.key === 'slv'), '前日の SLv の理由まで消えている');
+        // 当日でも 2 凸の人は従来どおり 凸残 + ほかの理由
+        const [two] = dom.buildRows({ players: [P({ ...p, attacks: three.slice(0, 2) })], extras, phase: 'day' });
+        assert.equal(two.finished, false);
+        assert.deepEqual(two.reasons.map(x => x.key).slice(0, 2), ['attacks', 'finish']);
+        assert.ok(two.reasons.some(x => x.key === 'slv'), '2 凸の人の SLv の理由まで消えている');
+        // 3 凸を超える記録 (重複など) でも完了
+        const [four] = dom.buildRows({ players: [P({ ...p, attacks: [...three, { level: 2, boss_number: 1 }] })], extras, phase: 'day' });
+        assert.equal(four.todo, false);
+        // タブの「未完」と未完のみの数も同じ行から数える
+        assert.equal([d, two].filter(r => r.todo).length, 1);
+    });
     test('summarize / sortRows / nudgeMessage', () => {
         const players = [
             P({ id: 1, name: 'い', damagesByAttr: { fire: 1 } }),
