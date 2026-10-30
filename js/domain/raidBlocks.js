@@ -7,6 +7,10 @@
 //
 // ★ 区切りはそのときのユニオンメンバー次第 (ふるりの判断 2026-10-17) — 固定にしない。
 //   シーズンごとに運営が決め、`seasons.metadata.blocks` に [{ name, from, to }] で持つ (無ければ既定の 6 つ = 5 時から 4 時間ずつ)。
+// ★ 2026-10-30 (ふるり「A,B,C,D…とブロックを作ってそれぞれ 5～9 時と設定」・設計図 docs/ブロック設定_設計図_2026-10-30.md):
+//   文字 A・B・C… は**並び順から作る** (保存しない)。名前は任意 (空でよい)。時刻は時計の言い方「5〜9時」(= 5:00〜9:00・to は含む時のまま)。
+//   normalize の出力は 5 つの欄 letter / name / short (「A 朝」か「A」) / range (「5〜9時」) / label (「A 朝 5〜9時」) を持つ。
+//   ★ 読む側は name から文を組まない (short / range / label を読む)。ブロックを写す所 (決定の控え・blockScope・〆 など) にも 5 つを写す
 // ★ 内部の時間は今までどおり 1 時間刻み 'hXX' (HOUR_ORDER)。見せる・聞く・組む単位だけブロックにする。
 //   だからソルバー・時間割・ベンチは区切りを変えても動く。
 //
@@ -34,6 +38,15 @@
     const MIN_BLOCKS = 2, MAX_BLOCKS = 12, MAX_NAME = 6;
 
     const wrap = (h) => (h >= 0 && h <= 4) ? `翌${h}` : String(h);
+    const LETTERS = 'ABCDEFGHIJKL';
+    /** 並び順 → 文字 (0 → A)。範囲外は '' */
+    const letterOf = (i) => (Number.isInteger(i) && i >= 0 && i < LETTERS.length) ? LETTERS[i] : '';
+    /** 終わりの「時刻」= to (含む時) の次の時。翌4 の次はレイド日の終わり「翌5」 */
+    function endLabel(to) {
+        const k = idxOfHour(to);
+        if (k < 0) return '';
+        return k + 1 < HOUR_ORDER.length ? wrap(HOUR_ORDER[k + 1]) : '翌5';
+    }
     /** 「時」として読めるものだけ数にする: 整数 0〜23、または数字だけの文字列。それ以外は null */
     function toHour(v) {
         let n = null;
@@ -41,11 +54,24 @@
         else if (typeof v === 'string' && /^\s*\d{1,2}\s*$/.test(v)) n = Number(v.trim());
         return (n !== null && n >= 0 && n <= 23) ? n : null;
     }
-    /** 「朝 5〜8時」「深夜 翌0〜翌4時」「13時」 */
-    function labelOf(b) {
+    /** 「5〜9時」「翌1〜翌5時」「9〜10時」(1 時間でも) — 時計の言い方 (終わりは時刻) */
+    function rangeOf(b) {
         if (!b) return '';
-        const range = (b.from === b.to) ? `${wrap(b.from)}時` : `${wrap(b.from)}〜${wrap(b.to)}時`;
-        return b.name ? `${b.name} ${range}` : range;
+        const from = toHour(b.from), to = toHour(b.to);
+        if (from === null || to === null) return '';
+        return `${wrap(from)}〜${endLabel(to)}時`;
+    }
+    /** 「A 朝」「A」(i が無く b.letter も無ければ名前だけ) */
+    function shortOf(b, i) {
+        if (!b) return '';
+        const letter = letterOf(i) || (typeof b.letter === 'string' ? b.letter : '');
+        const name = (typeof b.name === 'string') ? b.name.trim() : '';
+        return [letter, name].filter(Boolean).join(' ');
+    }
+    /** 「A 朝 5〜9時」「A 5〜9時」 */
+    function labelOf(b, i) {
+        if (!b) return '';
+        return [shortOf(b, i), rangeOf(b)].filter(Boolean).join(' ');
     }
     /** from..to を 5時始まりの並びで列挙。逆順 (to が from より前) は null */
     function hoursBetween(from, to) {
@@ -57,7 +83,7 @@
     /**
      * 設定 ([{ name, from, to }] / null) を検査して使える形にする。
      * 空・null は既定。壊れていれば error を返し blocks は null (呼び出し側は既定に落とす)。
-     * 条件: 5時から翌4時まで隙間も重なりも無く順に並ぶ / 2〜12 個 / 名前あり (6 文字まで)
+     * 条件: 5時から翌4時まで隙間も重なりも無く順に並ぶ / 2〜12 個 / 名前は任意 (6 文字まで・付けた名前どうしは重ねない)
      * @returns {{ blocks: ({name:string, from:number, to:number, fromIdx:number, toIdx:number, hours:number[], slots:string[], label:string}[]|null), error: string|null, isDefault: boolean }}
      */
     function normalize(config) {
@@ -70,23 +96,26 @@
         const names = new Set();
         let cursor = 0;
         for (const raw of src) {
+            const i = out.length;
             const name = (typeof raw?.name === 'string') ? raw.name.trim() : '';
-            if (!name) return err('名前の無いブロックがあります');
+            const letter = letterOf(i);
+            const short = [letter, name].filter(Boolean).join(' ');
             if (name.length > MAX_NAME) return err(`「${name}」は長すぎます (${MAX_NAME} 文字まで)`);
-            if (names.has(name)) return err(`「${name}」が 2 つあります`);
-            names.add(name);
+            if (name && names.has(name)) return err(`「${name}」が 2 つあります`);   // 名前の無いブロックは何個あってもよい (文字で区別する)
+            if (name) names.add(name);
             // ★ 時刻は整数か数字の文字列だけ (Number() は null / '' / true を 0 や 1 に数値化してしまう — Codex指摘 2026-10-18)
             const from = toHour(raw?.from), to = toHour(raw?.to);
-            if (from === null || to === null) return err(`「${name}」の時刻が読めません`);
+            if (from === null || to === null) return err(`「${short}」の時刻が読めません`);
             const hours = hoursBetween(from, to);
-            if (!hours) return err(`「${name}」は終わりが始まりより前です`);
+            if (!hours) return err(`「${short}」は終わりが始まりより前です`);
             if (idxOfHour(from) !== cursor) {
-                return err(cursor === 0 ? '最初のブロックは 5時 から始めてください' : `「${name}」の前に隙間か重なりがあります`);
+                return err(cursor === 0 ? '最初のブロックは 5時 から始めてください' : `「${short}」の前に隙間か重なりがあります`);
             }
             cursor += hours.length;
-            out.push({ name, from, to, fromIdx: idxOfHour(from), toIdx: idxOfHour(to), hours, slots: hours.map(keyOf), label: labelOf({ name, from, to }) });
+            const range = rangeOf({ from, to });
+            out.push({ letter, name, short, range, label: `${short} ${range}`, from, to, fromIdx: idxOfHour(from), toIdx: idxOfHour(to), hours, slots: hours.map(keyOf) });
         }
-        if (cursor !== HOUR_ORDER.length) return err('最後のブロックは 翌4時 で終えてください');
+        if (cursor !== HOUR_ORDER.length) return err('最後のブロックは 翌5時 で終えてください');
         return { blocks: out, error: null, isDefault };
     }
 
@@ -157,6 +186,18 @@
         }
         return null;
     }
+    /** 24 時間を n 個に均等に分けた設定 (名前なし)。割り切れない余りは前のブロックから 1 時間ずつ (5 つ = 5・5・5・5・4 時間)。範囲外は null */
+    function evenSplit(n) {
+        if (!Number.isInteger(n) || n < MIN_BLOCKS || n > MAX_BLOCKS) return null;
+        const base = Math.floor(HOUR_ORDER.length / n), extra = HOUR_ORDER.length % n, out = [];
+        let k = 0;
+        for (let i = 0; i < n; i++) {
+            const len = base + (i < extra ? 1 : 0);
+            out.push({ name: '', from: HOUR_ORDER[k], to: HOUR_ORDER[k + len - 1] });
+            k += len;
+        }
+        return out;
+    }
     /** ブロックを 1 つ消す。消した時間は前のブロック (無ければ次) に吸わせる。MIN 未満になるなら null */
     function removeAt(config, i) {
         const cfg = (Array.isArray(config) ? config : []).map(b => ({ ...b }));
@@ -219,7 +260,7 @@
         const set = new Set((Array.isArray(slots) ? slots : []).map(String));
         return (Array.isArray(blocks) ? blocks : []).map((b, idx) => {
             const on = b.slots.filter(k => set.has(k)).length;
-            return { idx, name: b.name, label: b.label, hours: b.slots.length, on, state: on === 0 ? 'off' : (on === b.slots.length ? 'on' : 'partial') };
+            return { idx, name: b.name, letter: b.letter || letterOf(idx), short: b.short || shortOf(b, idx), range: b.range || rangeOf(b), label: b.label || labelOf(b, idx), hours: b.slots.length, on, state: on === 0 ? 'off' : (on === b.slots.length ? 'on' : 'partial') };
         });
     }
     /** ブロックを丸ごと ON / OFF にした時間帯 ('hXX' の配列・5時始まりの並び) */
@@ -228,9 +269,9 @@
         for (const k of (block && Array.isArray(block.slots)) ? block.slots : []) { if (on) set.add(k); else set.delete(k); }
         return HOUR_ORDER.map(keyOf).filter(k => set.has(k));
     }
-    /** 「朝・昼・夜 (一部)」。何も無ければ '未登録' */
+    /** 「A 朝・E 夜 (一部)」。何も無ければ '未登録' */
     function blocksLabel(blocks, slots) {
-        const parts = blockStates(blocks, slots).filter(x => x.state !== 'off').map(x => x.state === 'partial' ? `${x.name} (一部)` : x.name);
+        const parts = blockStates(blocks, slots).filter(x => x.state !== 'off').map(x => x.state === 'partial' ? `${x.short} (一部)` : x.short);
         return parts.length ? parts.join('・') : '未登録';
     }
     /**
@@ -277,7 +318,7 @@
             done.push({ block: bi, bossNumber: r.boss_number ?? null, level: r.level ?? null, damageB: Number(r.damage_raw) > 0 ? Number(r.damage_raw) / 1e9 : 0, hour: h });
         }
         const rows = blocks.map((b, i) => ({
-            idx: i, name: b.name, label: b.label,
+            idx: i, name: b.name, letter: b.letter || letterOf(i), short: b.short || shortOf(b, i), range: b.range || rangeOf(b), label: b.label || labelOf(b, i),
             state: nowIdx < 0 ? 'later' : (i < nowIdx ? 'past' : (i === nowIdx ? 'now' : (i === nowIdx + 1 ? 'next' : 'later'))),
             planned: planned.filter(x => x.block === i),
             done: done.filter(x => x.block === i),
@@ -326,12 +367,12 @@
         if (next <= 0) delete out[k]; else out[k] = next;
         return Object.keys(out).length ? out : null;
     }
-    /** 「朝 1 · 夕方 2」(ブロックの順)。無ければ '' */
+    /** 「A 朝 1 · D 2」(ブロックの順)。無ければ '' */
     function countsLabel(counts, blocks) {
         if (!counts || typeof counts !== 'object') return '';
-        return (Array.isArray(blocks) ? blocks : []).map(b => {
+        return (Array.isArray(blocks) ? blocks : []).map((b, i) => {
             const n = Number(counts[countKey(b)]);
-            return Number.isInteger(n) && n > 0 ? `${b.name} ${n}` : '';
+            return Number.isInteger(n) && n > 0 ? `${b.short || shortOf(b, i)} ${n}` : '';
         }).filter(Boolean).join(' · ');
     }
     /**
@@ -360,7 +401,7 @@
 
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
-        normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
+        normalize, blocksOfSeason, toConfig, sameConfig, labelOf, shortOf, rangeOf, letterOf, endLabel, toHour, addSplit, removeAt, evenSplit,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
         scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel, todayRows,
         countKey, countsTotal, normalizeCounts, stepCount, countsLabel, capsOf,

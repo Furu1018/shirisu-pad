@@ -357,12 +357,12 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const rv = globalThis.reservationsDomain, rb = globalThis.raidBlocksDomain;
         const blk = { id: 9, player_id: 3, raid_level: null, boss_number: 2, loadout_slot: 1, status: 'approved', time_mode: 'block', time_slot: null, block_from: 18, block_to: 20, characters_snapshot: ['a'], expected_damage_b: 30 };
         assert.deepEqual(rv.blockWindowOf(blk), { fromIdx: 13, toIdx: 15 });
-        assert.equal(rv.blockLabelOf(blk), '18〜20時');
-        assert.equal(rv.whenOf(blk), '18〜20時のどこか');
-        assert.equal(rv.whenOf({ ...blk, block_from: 0, block_to: 4 }), '翌0〜翌4時のどこか');
+        assert.equal(rv.blockLabelOf(blk), '18〜21時');
+        assert.equal(rv.whenOf(blk), '18〜21時のどこか');
+        assert.equal(rv.whenOf({ ...blk, block_from: 0, block_to: 4 }), '翌0〜翌5時のどこか');
         assert.equal(rv.blockWindowOf({ ...blk, time_mode: 'fixed' }), null);
         assert.equal(rv.blockWindowOf({ ...blk, block_from: 20, block_to: 18 }), null, '窓が逆なら読まない');
-        assert.match(rv.describe(blk), /B2 18〜20時のどこか 編成①/);
+        assert.match(rv.describe(blk), /B2 18〜21時のどこか 編成①/);
         const sc = rv.toSolverConstraints([blk])[0];
         assert.deepEqual([sc.timeSlot, sc.flex, sc.window], [null, false, { fromIdx: 13, toIdx: 15 }]);
         assert.ok(!('window' in rv.toSolverConstraints([{ ...blk, time_mode: 'fixed', time_slot: 'h21', block_from: null, block_to: null }])[0]), '時刻の予約に窓を足した (指紋が変わる)');
@@ -389,7 +389,7 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.deepEqual([d2.draft.flex, d2.draft.timeSlot, d2.draft.block], [false, null, { from: 18, to: 20 }]);
         // ホームの枠: ブロックの言い方と、配信で決まった時刻
         const hs = rv.homeSlots({ plan: { levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: 3, reservationId: 9, hourIdx: 14, loadoutSlot: 1, dmgB: 30 }] }] }] }, viewerId: 3, reservations: [blk] });
-        assert.deepEqual([hs.slots[0].kind, hs.slots[0].blockLabel, hs.slots[0].placedHourIdx, hs.slots[0].timeSlot], ['fixed', '18〜20時', 14, null]);
+        assert.deepEqual([hs.slots[0].kind, hs.slots[0].blockLabel, hs.slots[0].placedHourIdx, hs.slots[0].timeSlot], ['fixed', '18〜21時', 14, null]);
     });
     test('★ 配線 (3): SQL 54 と練習の偽サーバと クライアントが同じ形 (列・CHECK・凍結・未適用の案内) / 申請シートはブロック・lite でも入口', () => {
         const sql = _fs2b.readFileSync(new URL('../supabase/54_reservation_blocks.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -408,7 +408,7 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.ok(/time_mode: blk \? 'block' : \(flex \? 'flex' : 'fixed'\),/.test(client) && /\.\.\.\(blk \? \{ block_from: blk\.from, block_to: blk\.to \} : \{\}\),/.test(client));
         assert.ok(/if \(blk && \(_isMissingBlockCols\(error\) \|\| \/time_mode_check\|chk_plan_reservations_time\/\.test/.test(client), '54 未適用の申請で 54 を案内しない');
         const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-        assert.ok(/rbd\.blockStates\(rbd\.blocksOfSeason\(st\.ctx\.season\), st\.slots\)\.filter\(b => b\.state !== 'off'\)\.map\(b =>\s*\n\s*chip\(!!st\.block && st\.block\.idx === b\.idx, `_resvReqPick\('block', \$\{b\.idx\}\)`, b\.name\)\)/.test(html), '申請シートがブロックで選ばせていない');
+        assert.ok(/rbd\.blockStates\(rbd\.blocksOfSeason\(st\.ctx\.season\), st\.slots\)\.filter\(b => b\.state !== 'off'\)\.map\(b =>\s*\n\s*chip\(!!st\.block && st\.block\.idx === b\.idx, `_resvReqPick\('block', \$\{b\.idx\}\)`, b\.short\)\)/.test(html), '申請シートがブロックで選ばせていない');
         assert.ok(!/_resvReqPick\('flex'\)/.test(html), '⏳ 時刻は約束しない が残っている (隙間型は撤廃)');
         assert.ok(/const _resvReqByBlock = \(\) => !\(typeof window\.supabaseReservationBlockColsMissing === 'function' && window\.supabaseReservationBlockColsMissing\(\) === true\);/.test(html), '54 未適用で「何時に」に戻らない');
         assert.ok(/block: st\.block, loadout: st\.lo, currentLevel: cur \}\);/.test(html), '申請の下書きにブロックを渡していない');
@@ -854,21 +854,32 @@ test('🧱 raidBlocksDomain: 既定 6 つ (5 時から 4 時間ずつ) / 検査 
     assert.equal(typeof d?.normalize, 'function', 'raidBlocksDomain が無い');
     const def = d.normalize(null);
     assert.equal(def.error, null); assert.equal(def.isDefault, true);
-    assert.deepEqual(def.blocks.map(b => b.label), ['朝 5〜8時', '午前 9〜12時', '午後 13〜16時', '夕方 17〜20時', '夜 21〜翌0時', '深夜 翌1〜翌4時']);
+    assert.deepEqual(def.blocks.map(b => b.label), ['A 朝 5〜9時', 'B 午前 9〜13時', 'C 午後 13〜17時', 'D 夕方 17〜21時', 'E 夜 21〜翌1時', 'F 深夜 翌1〜翌5時']);
+    assert.deepEqual(def.blocks.map(b => [b.letter, b.short, b.range]), [['A', 'A 朝', '5〜9時'], ['B', 'B 午前', '9〜13時'], ['C', 'C 午後', '13〜17時'], ['D', 'D 夕方', '17〜21時'], ['E', 'E 夜', '21〜翌1時'], ['F', 'F 深夜', '翌1〜翌5時']]);
     assert.equal(def.blocks.reduce((t, b) => t + b.hours.length, 0), 24, '24 時間を埋めていない');
     assert.deepEqual(def.blocks[5].slots, ['h01', 'h02', 'h03', 'h04']);
     assert.deepEqual(def.blocks[4].slots, ['h21', 'h22', 'h23', 'h00'], '夜は 21〜翌0 (日付をまたぐ)');
     assert.deepEqual(d.normalize([]).blocks.map(b => b.name), def.blocks.map(b => b.name), '空は既定');
     // 区切りはメンバー次第 (ふるりの判断 2026-10-17): 2 つでも 12 個でも
     const two = d.normalize([{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
-    assert.equal(two.error, null); assert.equal(two.isDefault, false); assert.deepEqual(two.blocks.map(b => b.label), ['前半 5〜14時', '後半 15〜翌4時']);
+    assert.equal(two.error, null); assert.equal(two.isDefault, false); assert.deepEqual(two.blocks.map(b => b.label), ['A 前半 5〜15時', 'B 後半 15〜翌5時']);
     assert.equal(d.normalize([{ name: '一日', from: 5, to: 4 }]).error, 'ブロックは 2 つ以上にしてください');
     assert.ok(/隙間か重なり/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '夜', from: 10, to: 4 }]).error), '隙間を見逃している');
     assert.ok(/隙間か重なり/.test(d.normalize([{ name: '朝', from: 5, to: 9 }, { name: '夜', from: 9, to: 4 }]).error), '重なりを見逃している');
     assert.ok(/5時 から/.test(d.normalize([{ name: '朝', from: 6, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
-    assert.ok(/翌4時 で/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '夜', from: 9, to: 3 }]).error));
+    assert.ok(/翌5時 で/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '夜', from: 9, to: 3 }]).error));
     assert.ok(/終わりが始まりより前/.test(d.normalize([{ name: '朝', from: 8, to: 5 }, { name: '夜', from: 9, to: 4 }]).error));
-    assert.ok(/名前の無い/.test(d.normalize([{ name: ' ', from: 5, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
+    // 2026-10-30: 名前は任意 (文字 A・B で区別)。名前の無いブロックは何個あってもよい・付けた名前どうしは重ねない
+    { const nn = d.normalize([{ name: ' ', from: 5, to: 8 }, { name: '', from: 9, to: 4 }]);
+      assert.equal(nn.error, null); assert.deepEqual(nn.blocks.map(b => [b.name, b.short, b.label]), [['', 'A', 'A 5〜9時'], ['', 'B', 'B 9〜翌5時']]); }
+    assert.ok(/「B」の前に隙間か重なり/.test(d.normalize([{ name: '', from: 5, to: 8 }, { name: '', from: 10, to: 4 }]).error), '名前の無いブロックの断りが文字で言えていない');
+    // 均等に分ける (ブロックの数のステッパー): 2〜12 で 5 時始まり・翌5時終わり・隙間なし・名前なし / 範囲外は null
+    for (let n = 2; n <= 12; n++) { const r = d.normalize(d.evenSplit(n)); assert.equal(r.error, null, 'evenSplit ' + n); assert.equal(r.blocks.length, n); assert.ok(r.blocks.every(b => b.name === '')); }
+    assert.deepEqual(d.normalize(d.evenSplit(5)).blocks.map(b => b.range), ['5〜10時', '10〜15時', '15〜20時', '20〜翌1時', '翌1〜翌5時'], '割り切れない余りを前から 1 時間ずつにしていない');
+    assert.equal(d.evenSplit(1), null); assert.equal(d.evenSplit(13), null); assert.equal(d.evenSplit(2.5), null);
+    // 1 時間のブロックも「9〜10時」(終わりは時刻)
+    assert.equal(d.rangeOf({ from: 9, to: 9 }), '9〜10時'); assert.equal(d.rangeOf({ from: 23, to: 23 }), '23〜翌0時'); assert.equal(d.rangeOf({ from: 4, to: 4 }), '翌4〜翌5時');
+    assert.equal(d.labelOf({ name: '', from: 5, to: 8 }, 0), 'A 5〜9時'); assert.equal(d.shortOf({ name: '朝' }, 1), 'B 朝'); assert.equal(d.letterOf(11), 'L'); assert.equal(d.letterOf(12), '');
     assert.ok(/2 つあります/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '朝', from: 9, to: 4 }]).error));
     assert.ok(/長すぎます/.test(d.normalize([{ name: 'とてもながいなまえ', from: 5, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
     assert.ok(/時刻が読めません/.test(d.normalize([{ name: '朝', from: 'x', to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
@@ -947,7 +958,7 @@ test('🧱 raidBlocksDomain: 既定 6 つ (5 時から 4 時間ずつ) / 検査 
     assert.deepEqual(d.toggleBlock(keys, B[0], false), ['h12', 'h21'], '丸ごと OFF になっていない');
     assert.deepEqual(d.toggleBlock(['h23', 'h00'], B[5], true), ['h23', 'h00', 'h01', 'h02', 'h03', 'h04'], '深夜ブロックの ON が壊れている');
     assert.deepEqual(d.toggleBlock(null, B[0], true), ['h05', 'h06', 'h07', 'h08']); assert.deepEqual(d.toggleBlock(keys, null, true), keys);
-    assert.equal(d.blocksLabel(B, keys), '朝・午前 (一部)・夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
+    assert.equal(d.blocksLabel(B, keys), 'A 朝・B 午前 (一部)・E 夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
     assert.deepEqual(d.blockStates([], keys), []);
     // 📅 きょうの凸 (③-c): ブロックごとに 1 行。済んだ凸はその時刻のブロックに / 配信の割当はそのブロックに / いま・次・済・未定 / 決まっているか
     const jst = (iso) => { const dd = new Date(iso); return Number.isNaN(dd.getTime()) ? null : Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(dd)) % 24; };
@@ -7067,11 +7078,11 @@ console.log('\navailabilityDomain (参加可能時間):');
     const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
     test('rangesOf / labelOf: 5時始まりの並びで区間にまとめ、深夜は「翌」で読む', () => {
         assert.deepEqual(av.rangesOf(H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2)).map(r => [r.start, r.end, r.hours]), [[5, 9, 5], [21, 2, 6]]);
-        assert.equal(av.labelOf(H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2)), '5〜9時・21〜翌2時 (11時間)');
-        assert.equal(av.labelOf(H(13)), '13時 (1時間)');
+        assert.equal(av.labelOf(H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2)), '5〜10時・21〜翌3時 (11時間)');   // 時計の言い方 (終わりは時刻・2026-10-30)
+        assert.equal(av.labelOf(H(13)), '13〜14時 (1時間)');
         assert.equal(av.labelOf([]), '未登録');
         assert.equal(av.labelOf([], { flexTime: true }), '⏳ 隙間時間型 (時刻は約束しない)');
-        assert.equal(av.labelOf(H(1, 2)), '翌1〜翌2時 (2時間)');
+        assert.equal(av.labelOf(H(1, 2)), '翌1〜翌3時 (2時間)'); assert.equal(av.labelOf(H(3, 4)), '翌3〜翌5時 (2時間)');
     });
     test('★ windowStartsAt: 区間の始まりだけ真 (途中の時刻では毎時通知しない) / 5時は並びの先頭', () => {
         const s = H(9, 10, 11, 21, 22);
@@ -9694,9 +9705,9 @@ console.log('\ngrowthDomain:');
     test('★ 配線: 🧱 ブロックのぶんだけ配信 — 焼き込み / ボタンの文言 / ホームはその範囲だけ + 案内 / 差分もその範囲 (2026-10-18)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         // 算出時に印を焼き込む (ブロックで組んだときだけ)
-        assert.ok(/if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/.test(html), 'blockScope を焼き込んでいない');
+        assert.ok(/if \(blk\) plan\.blockScope = \{ idx: blk\.idx, letter: blk\.letter, name: blk\.name, short: blk\.short, range: blk\.range, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/.test(html), 'blockScope を焼き込んでいない (5 つの欄も)');
         // 配信ボタンに何を配信するかを書く
-        assert.ok(/pubBtn\.textContent = plan\.blockScope && window\.raidBlocksDomain\s*\n\s*\? `📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(\$\{window\.raidBlocksDomain\.attackCountIn\(plan, plan\.blockScope\)\}凸\)` : '📤 このプランを配信';/.test(html), '配信ボタンの文言が無い');
+        assert.ok(/pubBtn\.textContent = plan\.blockScope && window\.raidBlocksDomain\s*\n\s*\? `📤 \$\{plan\.blockScope\.short \|\| plan\.blockScope\.name\} のぶんを配信 \(\$\{window\.raidBlocksDomain\.attackCountIn\(plan, plan\.blockScope\)\}凸\)` : '📤 このプランを配信';/.test(html), '配信ボタンの文言が無い');
         // ホーム: 配信を読んだ直後にその範囲だけに絞る (以後の 3 つの表示・ヒーローはみな絞ったプランを見る)
         const home = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const pubScope = pubSel \? pubSel\.block : \(pub\.plan\?\.blockScope \|\| null\);\s*\n\s*const plan0 = \(pubScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(pub\.plan, pubScope\) : pub\.plan;/.test(home), 'ホームで範囲に絞っていない (選んだブロック)');
@@ -9832,7 +9843,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(d.stepCount(c, blocks, slots, 0, -1), { '17-20': 2 }, '0 にしたのに鍵が残る');
         assert.deepEqual(d.stepCount(c, blocks, slots, 4, 1) /*夜 OFF*/, { '5-8': 1, '17-20': 2 }, 'OFF のブロックに凸数を入れている');
         assert.equal(d.stepCount({ '5-8': 1 }, blocks, slots, 0, -1), null);
-        assert.equal(d.countsLabel({ '17-20': 2, '5-8': 1 }, blocks), '朝 1 · 夕方 2', 'ブロックの順に並べていない');
+        assert.equal(d.countsLabel({ '17-20': 2, '5-8': 1 }, blocks), 'A 朝 1 · D 夕方 2', 'ブロックの順に並べていない (文字つき)');
         assert.equal(d.countsLabel(null, blocks), ''); assert.equal(d.countsTotal({ a: 1, b: 2 }), 3);
         // capsOf: max = 凸数 − そのブロックで済んだ凸 (朝に 1 凸済み → 朝の残り 0 / 夕方は 2)
         assert.deepEqual(d.capsOf({ '5-8': 1, '17-20': 2 }, blocks, [7, 13]), [{ fromIdx: 0, toIdx: 3, max: 0 }, { fromIdx: 12, toIdx: 15, max: 2 }]);
@@ -13060,7 +13071,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/rv\.fingerprint\(nowRows\) !== fp0/.test(fn), '配信の直前に予約の指紋を照合していない');
         assert.ok(/try \{\s*\n\s*const pub = await window\.supabasePublishPlan\(r\.plan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, _planSchemaOf\(r\.plan\)\);\s*\n\s*pubs\.push\(\{ pub, plan: r\.plan, blk: r\.blk \}\);\s*\n\s*\} catch \(e\) \{ failed = \{ blk: r\.blk, err: e \}; break; \}/.test(fn), 'ブロックごとに配信して、途中の失敗を受け止めていない');
         assert.ok(/if \(pubs\.length\) \{\s*\n\s*showNotification\(`✅ \$\{pubs\.length\} ブロックを配信しました`\);\s*\n\s*await _notifyChainPublish\(\{ pubs, seasonId, me \}\);/.test(fn) && /if \(failed\) \{\s*\n\s*const why = failed\.err\?\.message \|\| failed\.err;/.test(fn), '途中で失敗しても配信できたぶんの通知を送り、知らせていない (Codex 再監査 D)');
-        assert.ok(/alert\(pubs\.length\s*\n\s*\? `⚠️ \$\{results\.length\} ブロックのうち \$\{pubs\.length\} ブロックを配信したところで止まりました/.test(fn) && /: `❌ 配信できませんでした \(\$\{failed\.blk\.name\} のぶん: \$\{why\}\)。通知は送っていません。/.test(fn), '1 件も配信できなかったのに「通知は送りました」と出る (Codex 再監査 D3)');
+        assert.ok(/alert\(pubs\.length\s*\n\s*\? `⚠️ \$\{results\.length\} ブロックのうち \$\{pubs\.length\} ブロックを配信したところで止まりました/.test(fn) && /: `❌ 配信できませんでした \(\$\{failed\.blk\.short\} のぶん: \$\{why\}\)。通知は送っていません。/.test(fn), '1 件も配信できなかったのに「通知は送りました」と出る (Codex 再監査 D3)');
         // 二重押しの印は最初の await より前 / 配信の直前に 盤面 (取り直してから) と ブロックごとに効いている配信 を照合 / ブロックごとに描画へ返す / 配信の行は尊重しなくても読む (照合の基準)
         assert.ok(/_opsChainBusy = true;[\s\S]*?const snap = await opsStore\.load\(\);/.test(fn) && !/const snap = await opsStore\.load\(\);[\s\S]*?_opsChainBusy = true;/.test(fn), '二重押しの印が最初の await より後 (Codex 再監査 D)');
         assert.ok(/const sig0 = pc\.boardSignature\(snap\);/.test(fn) && /opsStore\.invalidate\(\);\s*\n\s*const gen2 = opsStore\.generation\(\);\s*\n\s*const snap2 = await opsStore\.load\(\);\s*\n\s*if \(!opsStore\.isCurrentGeneration\(gen2 \+ 1\)\) \{ alert\(/.test(fn) && /if \(!snap2\?\.season\?\.id \|\| pc\.boardSignature\(snap2\) !== sig0\) \{/.test(fn), '配信の直前に盤面を取り直して (世代も) 照合していない');
@@ -13384,7 +13395,7 @@ console.log('\ngrowthDomain:');
             { id: 9, name: 'あさ3', damagesByAttr: { fire: 1, water: 1 }, availableSlots: ['h06'] },
         ], blocks });
         assert.deepEqual(rows.map(r => r.name), ['あさ', 'あさ2', 'あさ3', 'よる', 'すきま', 'みとうろく'], '並び: 期限 (朝 → 夜) → 足りない数 (5 → 3) → 名前。いつでも は最後');
-        assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝' }); assert.deepEqual(rows[3].deadline, { idx: 4, name: '夜' });
+        assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝', short: 'A 朝', range: '5〜9時', label: 'A 朝 5〜9時' }); assert.deepEqual(rows[3].deadline, { idx: 4, name: '夜', short: 'E 夜', range: '21〜翌1時', label: 'E 夜 21〜翌1時' });
         assert.equal(rows[4].deadline, null); assert.equal(rows[4].noSlots, false, '⏳隙間型は いつでも (時間未登録ではない)');
         assert.equal(rows[5].deadline, null); assert.equal(rows[5].noSlots, true, '時間未登録');
         // ⏳隙間型は時間帯が 0 でも「未登録」ではない (いつでも出られる人として扱う — 変異「noSlots が隙間型でも真」で発覚)
@@ -14542,7 +14553,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.deepEqual(d.attrOrderOfBosses([{ boss_number: 1, weakness: 'WIND' }, { boss_number: 2, weakness: 'x' }]), ['wind', 'fire', 'water', 'electric', 'iron'], '欠けたボスの属性を既定の順で補っていない');
         assert.deepEqual(d.attrOrderOfBosses(null), d.ATTR_KEYS);
         const blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
-        assert.deepEqual(d.deadlineOf({ availableSlots: ['h18', 'h21'] }, blocks), { idx: 3, name: '夕方' }); assert.equal(d.deadlineOf({ availableSlots: [] }, blocks), null); assert.equal(d.deadlineOf({ availableSlots: ['h05'], flexTime: true }, blocks), null);
+        assert.deepEqual(d.deadlineOf({ availableSlots: ['h18', 'h21'] }, blocks), { idx: 3, name: '夕方', short: 'D 夕方', range: '17〜21時', label: 'D 夕方 17〜21時' }); assert.equal(d.deadlineOf({ availableSlots: [] }, blocks), null); assert.equal(d.deadlineOf({ availableSlots: ['h05'], flexTime: true }, blocks), null);
     });
     test('★ tableRows: 人 × 属性 (ボス順) のマス / 被り = 同じ人の別の編成 (属性を問わず) と同じキャラ (キャラの無い編成は判定しない) / 書庫・今回は難しい は除く / 並びは 〆 → 足りない数 → 名前', () => {
         const B = [{ boss_number: 1, weakness: 'iron' }, { boss_number: 2, weakness: 'electric' }, { boss_number: 3, weakness: 'fire' }, { boss_number: 4, weakness: 'wind' }, { boss_number: 5, weakness: 'water' }];
@@ -14562,9 +14573,9 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.deepEqual(a.cells.fire, [{ slot: 1, dmgB: 28.4, team: ['紅蓮', 'ラピ', 'アニス', 'クラウン', 'リター'], dup: true }], '属性をまたぐ被り (リター) を見ていない');
         assert.deepEqual(a.cells.water.map(c => [c.slot, c.dup]), [[1, true], [2, false]], '同じ属性の 2 つ目 (別キャラ) を被りにしている');
         assert.deepEqual(a.cells.iron, [{ slot: 1, dmgB: 22.8, team: [], dup: false }], 'キャラの無い編成を被りにしている');
-        assert.deepEqual([a.submitted, a.missing, a.b5Short, a.deadline], [3, ['electric', 'wind'], 0, { idx: 4, name: '夜' }]);
+        assert.deepEqual([a.submitted, a.missing, a.b5Short, a.deadline], [3, ['electric', 'wind'], 0, { idx: 4, name: '夜', short: 'E 夜', range: '21〜翌1時', label: 'E 夜 21〜翌1時' }]);
         const i = t.rows.find(r => r.name === 'い');
-        assert.deepEqual([i.cells.electric, i.missing.length, i.deadline], [[], 5, { idx: 0, name: '朝' }], 'ダメージ 0・キャラ無しの行を模擬に数えている');
+        assert.deepEqual([i.cells.electric, i.missing.length, i.deadline], [[], 5, { idx: 0, name: '朝', short: 'A 朝', range: '5〜9時', label: 'A 朝 5〜9時' }], 'ダメージ 0・キャラ無しの行を模擬に数えている');
         const u = t.rows.find(r => r.name === 'う'); assert.deepEqual([u.noSlots, u.deadline, u.submitted], [true, null, 0]);
         assert.deepEqual(d.tableRows({}), { attrs: d.ATTR_KEYS, rows: [] });
     });

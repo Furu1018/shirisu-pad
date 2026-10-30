@@ -83,8 +83,8 @@ await test('★ 要約・24コマ・いまの時刻・確認バッジが実際�
     const t = run({ slots: H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2), nowSlot: 'h07' });
     await t.render({ id: 7 });
     const out = t.els.myAvailStripBody.innerHTML;
-    assert.ok(out.includes('5〜9時・21〜翌2時 (11時間)'), `要約が無い: ${out.slice(0, 200)}`);
-    assert.ok(out.includes('いま (7時) は参加可能時間です — 5〜9時'), '今の時刻の説明が無い');
+    assert.ok(out.includes('5〜10時・21〜翌3時 (11時間)'), `要約が無い: ${out.slice(0, 200)}`);
+    assert.ok(out.includes('いま (7時) は参加可能時間です — 5〜10時'), '今の時刻の説明が無い');
     assert.equal((out.match(/height:14px/g) || []).length, 24, '24コマ出ていない');
     assert.equal((out.match(/outline:2px solid var\(--attr-fire-solid\)/g) || []).length, 1, 'いまの時刻の印が1つでない');
     assert.equal((out.match(/background:var\(--ops-solid\)/g) || []).length, 11, 'ON のコマ数が違う');
@@ -104,9 +104,9 @@ await test('時間外 / 未登録 / 隙間型 の説明が出る', async () => {
     assert.ok(!c.els.myAvailStripBody.innerHTML.includes('隙間時間型'), '撤廃した隙間時間型を出している');
 });
 
-await test('★ 🧱 凸数 (段階 2): 確認の行に凸数があれば帯の下に「凸数: 朝 1 · 夕方 2」/ 難しい・未入力なら出さない', async () => {
+await test('★ 🧱 凸数 (段階 2): 確認の行に凸数があれば帯の下に「凸数: A 朝 1 · D 夕方 2」/ 難しい・未入力なら出さない', async () => {
     const a = run({ slots: H(5, 6, 18, 19), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: { '17-20': 2, '5-8': 1 } } }); await a.render({ id: 1 });
-    assert.ok(a.els.myAvailStripBody.innerHTML.includes('凸数: 朝 1 · 夕方 2'), `凸数が出ていない: ${a.els.myAvailStripBody.innerHTML.slice(-200)}`);
+    assert.ok(a.els.myAvailStripBody.innerHTML.includes('凸数: A 朝 1 · D 夕方 2'), `凸数が出ていない: ${a.els.myAvailStripBody.innerHTML.slice(-200)}`);
     const b = run({ slots: H(5, 6), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: true, block_counts: { '5-8': 1 } } }); await b.render({ id: 1 });
     assert.ok(!b.els.myAvailStripBody.innerHTML.includes('凸数:'), '難しいと伝えた人に凸数を出している');
     const c = run({ slots: H(5, 6), nowSlot: 'h13', withBlocks: true, confirm: { unavailable: false, block_counts: null } }); await c.render({ id: 1 });

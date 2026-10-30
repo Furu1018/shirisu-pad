@@ -266,9 +266,10 @@
         const f = idxOfHourB(r.block_from), t = idxOfHourB(r.block_to);
         return (f == null || t == null || f > t) ? null : { fromIdx: f, toIdx: t };
     }
-    /** 「18〜20時」 (ブロックの予約でなければ '') */
+    /** 「17〜21時」(時計の言い方 = 終わりは時刻・block_to は含む時のまま。翌4 の次は「翌5」・2026-10-30)。ブロックの予約でなければ '' */
+    const endHourLabel = (h) => (Number(h) === 4 ? '翌5' : wrapHour((Number(h) + 1) % 24));
     function blockLabelOf(r) {
-        return blockWindowOf(r) ? `${wrapHour(r.block_from)}〜${wrapHour(r.block_to)}時` : '';
+        return blockWindowOf(r) ? `${wrapHour(r.block_from)}〜${endHourLabel(r.block_to)}時` : '';
     }
     /** 予約の時刻の言い方: 「21時」/「18〜20時のどこか」/「⏳隙間」/「時刻未定」 */
     function whenOf(r) {
@@ -687,7 +688,7 @@
         // 🧱 ブロックのぶんの配信 (plan.blockScope): このブロックに置かれなかった残り凸は「出番なし」ではなく、次のブロック以降で組む (2026-10-22)。
         //   1 日ぶんの見込みの理由 (出番なし / 凸先なし / 時間) はブロックの人だけで組んだものなので本人には出さない。
         //   本人の模擬に起因する理由 (未提出 / 編成の使い切り) だけはそのまま伝える
-        const scopeName = (plan && plan.blockScope) ? String(plan.blockScope.name || plan.blockScope.label || '') : '';
+        const scopeName = (plan && plan.blockScope) ? String(plan.blockScope.short || plan.blockScope.name || plan.blockScope.label || '') : '';
         const ownReason = (r) => r === 'no_loadout' || r === 'cards_used_up';
         const noneHere = slots.length === 0;
         while (slots.length < 3) {

@@ -7823,7 +7823,7 @@
                 const on = v.idx === sel;
                 const chip = v.state === 'now' ? '<span class="mt-chip now">いま</span>' : '';
                 const cls = `obb${on ? ' on' : ''}${v.state === 'past' ? ' was' : ''}`;
-                const head = `<span class="nm">${esc(v.name || '')}${chip}</span><span class="hr">${esc(_obHours(blk))}</span>`;
+                const head = `<span class="nm">${esc(v.short || v.name || '')}${chip}</span><span class="hr">${esc(_obHours(blk))}</span>`;
                 if (!v.decided) return `<div class="${cls} nodec" aria-disabled="true" title="${v.state === 'past' ? '決定に入っていないブロック' : 'まだ決まっていません (運営が組んで決定します)'}">${head}<span class="lv idle">${v.state === 'past' ? '—' : 'まだ'}</span></div>`;
                 const ct = ops ? `完了 ${v.doneN} / ${v.entries.length}` : `${v.entries.length} 凸${v.mineN ? ` · ★ ${v.mineN}` : ''}`;
                 const minis = v.rows.map(r => {
@@ -7878,7 +7878,7 @@
                     : (doneKnown ? '★ と太い枠 = あなたの凸・「✓ 完了」= 凸が済んだ (運営が ✓ を付けたか、結果を登録した)・「未完了」= まだ。帯の幅 = ダメージ (決定したときの見積もり)'
                         : '★ と太い枠 = あなたの凸。帯の幅 = ダメージ (決定したときの見積もり)。<b>完了 / 未完了 を読めませんでした</b> (下に引いて更新してください)');
                 const allDone = v.entries.length > 0 && v.doneN === v.entries.length;
-                panel = `<div class="ob-panel db"><div class="ob-head"><b>${esc(v.name || '')} ${esc(_obHours(blocks[v.idx]))} — ${lvOf(v.level)}</b><span class="mt-hr">${ops ? `完了 ${v.doneN} / ${v.entries.length}${allDone ? ' (全部完了)' : ''}` : (doneKnown ? `完了 ${v.doneN} / ${v.entries.length} 凸` : `${v.entries.length} 凸`)}</span></div>`
+                panel = `<div class="ob-panel db"><div class="ob-head"><b>${esc(v.short || v.name || '')} ${esc(_obHours(blocks[v.idx]))} — ${lvOf(v.level)}</b><span class="mt-hr">${ops ? `完了 ${v.doneN} / ${v.entries.length}${allDone ? ' (全部完了)' : ''}` : (doneKnown ? `完了 ${v.doneN} / ${v.entries.length} 凸` : `${v.entries.length} 凸`)}</span></div>`
                     + `<p class="ob-note">${legend}${v.hpExact ? '' : ' (古い決定のため、物差しはそのレベルの最大 HP)'}${frozen ? ' — <b>取り直し中…</b>' : ''}</p><div class="ob-board">${rows || '<p class="ob-note">このブロックの凸はありません。</p>'}${others}</div></div>`;
             }
             return `<div class="obb-grid" role="group" aria-label="ブロック" style="margin-bottom:10px;">${btns}</div>${panel}`;
@@ -7985,9 +7985,9 @@
                     : '<div class="rt-state">まだ配信されていません</div><p class="rt-note">運営が凸プランを組んで決定すると、ここにブロックごとの凸が出ます。決まったら通知でお知らせします。</p>';
             } else {
                 const plan = decRow.plan;
-                const names = plan.decided.blocks.map(b => b.name || b.label).filter(Boolean);
+                const names = plan.decided.blocks.map(b => b.short || b.name || b.label).filter(Boolean);
                 const decidedKeys = new Set(plan.decided.blocks.map(b => String(b.key)));
-                const rest = blocks.filter((b, i) => !decidedKeys.has(dp.keyOf(b)) && i >= Math.max(0, nowIdx)).map(b => b.name);
+                const rest = blocks.filter((b, i) => !decidedKeys.has(dp.keyOf(b)) && i >= Math.max(0, nowIdx)).map(b => b.short);
                 let when = '';
                 try { when = new Date(decRow.published_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { /* noop */ }
                 // ✅ はホームの配信カードと同じ状態 (_myPubState) を使う。読めていなければ出さない (ホームが描くまで)
@@ -10040,7 +10040,7 @@
             const rbd = window.raidBlocksDomain;
             const blocks = rbd ? rbd.blocksOfSeason((typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || null) : null;
             const labels = (blocks && blocks.length)
-                ? blocks.map(b => `<span title="${escapeHtml(b.label)}" style="flex:${b.slots.length};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:9px;font-weight:800;color:var(--t-muted);">${escapeHtml(b.name)}</span>`).join('')
+                ? blocks.map(b => `<span title="${escapeHtml(b.label)}" style="flex:${b.slots.length};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:9px;font-weight:800;color:var(--t-muted);">${escapeHtml(b.short)}</span>`).join('')
                 : [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:9px;font-weight:800;color:var(--t-muted);">${h === 0 ? '翌0' : h}時</span>`).join('');
             const nowOn = set.has(curSlot);
             const summary = dom.labelOf(slots, {});
@@ -10173,13 +10173,13 @@
                     }
                     const frame = r.state === 'now' ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
                     return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:10px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
-                        <div><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${esc(r.name)}</div><div style="font-size:9.5px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.label.slice(r.name.length).trim())}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
+                        <div><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${esc(r.short || r.name)}</div><div style="font-size:9.5px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.range || '')}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
                         <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">${bodyHtml}</div>
                     </div>`;
                 }).join('');
                 body.innerHTML = html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
                 body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
-                if (meta) meta.textContent = `${t.total} / 3 凸 済み${Array.isArray(st?.pubs) && st.pubs.length ? ` · 配信あり: ${st.pubs.map(x => x.block.name).join('・')}` : (st?.plan?.blockScope ? ` · 配信は ${st.plan.blockScope.name} のぶん` : '')}`;
+                if (meta) meta.textContent = `${t.total} / 3 凸 済み${Array.isArray(st?.pubs) && st.pubs.length ? ` · 配信あり: ${st.pubs.map(x => (x.block.short || x.block.name)).join('・')}` : (st?.plan?.blockScope ? ` · 配信は ${(st.plan.blockScope.short || st.plan.blockScope.name)} のぶん` : '')}`;
                 card.style.display = '';
             } catch (e) {
                 console.warn('[きょうの凸] 描画失敗:', e?.message || e);
@@ -10220,7 +10220,7 @@
             let myDone = 0, myAll = 0;
             const mineBlocks = tt.filter(r => r.decided && r.mine.length);
             const html = mineBlocks.map(r => {
-                const head = `<div class="mt-h"><b>${esc(r.name || '')}</b><span class="mt-hr">${esc(_obHours(blocks[r.idx]))}</span>${chip(r)}${Number(r.level) > 0 ? `<span class="mt-lv">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}</div>`;
+                const head = `<div class="mt-h"><b>${esc(r.short || r.name || '')}</b><span class="mt-hr">${esc(_obHours(blocks[r.idx]))}</span>${chip(r)}${Number(r.level) > 0 ? `<span class="mt-lv">${Number(r.level) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(r.level)}</span>` : ''}</div>`;
                 myAll += r.mine.length; myDone += r.mine.filter(e => e.done).length;
                 const mineHtml = r.mine.map(e => {
                     const b = bossOf(e.bossNumber), c = (_bbFill(e.weakness) || [])[0] || 'var(--ops)';
@@ -10510,7 +10510,7 @@
             // 🧱 段階 7: 配信のあるブロックが 2 つ以上ならチップで切り替える。後ろのブロックに配信があれば「まだ決まっていません」とは言わない
             const pubsNow = Array.isArray(_myPubState.pubs) ? _myPubState.pubs : [];
             const chips = pubsNow.length > 1
-                ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" aria-label="配信のあるブロック">${pubsNow.map(x => { const on = x.key === _myPubState.pubKey; return `<button type="button" onclick="setMyPubBlock('${escapeHtml(x.key)}')" aria-pressed="${on}" style="font:inherit;font-size:11.5px;font-weight:${on ? 900 : 800};padding:6px 11px;border-radius:999px;border:1.5px solid ${on ? 'var(--t-ink)' : 'var(--line)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};cursor:pointer;">🧱 ${escapeHtml(x.block.name)}</button>`; }).join('')}</div>`
+                ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" aria-label="配信のあるブロック">${pubsNow.map(x => { const on = x.key === _myPubState.pubKey; return `<button type="button" onclick="setMyPubBlock('${escapeHtml(x.key)}')" aria-pressed="${on}" style="font:inherit;font-size:11.5px;font-weight:${on ? 900 : 800};padding:6px 11px;border-radius:999px;border:1.5px solid ${on ? 'var(--t-ink)' : 'var(--line)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};cursor:pointer;">🧱 ${escapeHtml(x.block.short || x.block.name)}</button>`; }).join('')}</div>`
                 : '';
             // ★ 範囲の終わりは選んでいるブロック (無ければ blockScope.to を時刻の並びで)。blockScope に toIdx は無いので、以前は常に -1 → いつも「ほかのブロックも見られます」+「まだ決まっていません」の両方が出ていた (Codex 再監査 B)
             const selBlk = pubsNow.find(x => x.key === _myPubState.pubKey)?.block || null;
@@ -10952,7 +10952,7 @@
             // 🧱 段階 3: 出られるブロック (全部・一部 ON) から選ぶ。時刻は運営がブロックの中で決める。⏳隙間は撤廃 (2026-10-22)
             const timeChips = byBlock && rbd
                 ? rbd.blockStates(rbd.blocksOfSeason(st.ctx.season), st.slots).filter(b => b.state !== 'off').map(b =>
-                    chip(!!st.block && st.block.idx === b.idx, `_resvReqPick('block', ${b.idx})`, b.name))
+                    chip(!!st.block && st.block.idx === b.idx, `_resvReqPick('block', ${b.idx})`, b.short))
                 : HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
                     chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
             const timeNote = st.slotsFailed
@@ -14693,11 +14693,11 @@
             const curBlockIdx = rbd ? rbd.blockIndexOfHour(blocks, curHour) : -1;
             const blockChips = states.map(st => {
                 const b = blocks[st.idx];
-                const hrs = b.label.slice(b.name.length).trim();
+                const hrs = b.range;
                 const sub = st.state === 'on' ? '✓ 出られる' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間` : '—');
                 const pressed = st.state === 'on' ? 'true' : (st.state === 'partial' ? 'mixed' : 'false');
                 return `<button type="button" class="avail-blk" data-state="${st.state}" aria-pressed="${pressed}" ${_availUI.blocksReady ? '' : 'disabled'} ${st.idx === curBlockIdx ? 'data-now="1"' : ''} onclick="_availToggleBlock(${st.idx})" title="${escapeHtml(b.label)}${st.idx === curBlockIdx ? ' (いま)' : ''}${st.state === 'partial' ? ' — 押すとこのブロックの全時間が ON' : ''}">`
-                    + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(hrs)}</span><span class="st">${sub}</span></button>`;
+                    + `<span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(hrs)}</span><span class="st">${sub}</span></button>`;
             }).join('');
 
             // 🧱 ブロックごとの凸数 (段階 2・2026-10-22): ON のブロックに「− N +」。入れなければ運営におまかせ。合計 3 まで。
@@ -14709,10 +14709,10 @@
                 const n = Number((_availUI.counts || {})[rbd.countKey(b)]) || 0;
                 const dis = _availUI.blocksReady ? '' : 'disabled';
                 return `<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--s2);">`
-                    + `<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(b.name)}</div><div style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${escapeHtml(b.label.slice(b.name.length).trim())}</div></div>`
-                    + `<button type="button" ${dis} ${n > 0 ? '' : 'disabled'} onclick="_availStepCount(${st.idx}, -1)" aria-label="${escapeHtml(b.name)} の凸数を減らす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--s2);color:var(--t-ink);font-size:17px;font-weight:900;cursor:pointer;">−</button>`
+                    + `<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(b.short)}</div><div style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${escapeHtml(b.range)}</div></div>`
+                    + `<button type="button" ${dis} ${n > 0 ? '' : 'disabled'} onclick="_availStepCount(${st.idx}, -1)" aria-label="${escapeHtml(b.short)} の凸数を減らす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--s2);color:var(--t-ink);font-size:17px;font-weight:900;cursor:pointer;">−</button>`
                     + `<span style="min-width:64px;text-align:center;font-size:13px;font-weight:900;color:${n > 0 ? 'var(--ops-deep)' : 'var(--t-muted)'};">${n > 0 ? `${n} 凸` : 'おまかせ'}</span>`
-                    + `<button type="button" ${dis} ${cTotal >= 3 ? 'disabled' : ''} onclick="_availStepCount(${st.idx}, 1)" aria-label="${escapeHtml(b.name)} の凸数を増やす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--ops-solid);color:var(--ops-ink);font-size:17px;font-weight:900;cursor:pointer;">+</button>`
+                    + `<button type="button" ${dis} ${cTotal >= 3 ? 'disabled' : ''} onclick="_availStepCount(${st.idx}, 1)" aria-label="${escapeHtml(b.short)} の凸数を増やす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--ops-solid);color:var(--ops-ink);font-size:17px;font-weight:900;cursor:pointer;">+</button>`
                     + `</div>`;
             }).join('');
             const countsHtml = onRows ? `
@@ -18852,7 +18852,7 @@
             const head = tbl.attrs.map(a => { const b = bossOf(a); const pt = PT_ATTRS.find(x => x.key === a)?.name || a;
                 return `<th style="background:${C[a].bg};color:${C[a].deep};">${b ? `B${Number(b.boss_number)} ${escapeHtml(b.name || b.boss_code || '')}<br>` : ''}<span style="font-weight:900;">${escapeHtml(pt)}PT</span></th>`; }).join('');
             const body2 = tbl.rows.map(r => {
-                const dl = r.deadline ? `〆 ${escapeHtml(r.deadline.name)}の前` : (r.noSlots ? '時間 未登録' : 'いつでも');
+                const dl = r.deadline ? `〆 ${escapeHtml(r.deadline.short || r.deadline.name)}の前` : (r.noSlots ? '時間 未登録' : 'いつでも');
                 const cells = tbl.attrs.map(a => {
                     const list = r.cells[a] || [];
                     const chips = list.map(c => `<button type="button" class="mk-chip${c.dup ? ' dup' : ''}" onclick="_opsMockManual(${Number(r.id)}, '${a}', ${Number(c.slot)})" title="${c.dup ? '同じ人の別の編成とキャラが被っています (1 日に両方は使えません)。' : ''}押すと直す${c.team.length ? ' — ' + escapeHtml(c.team.join('・')) : ' (キャラ未登録)'}">${c.dmgB > 0 ? c.dmgB.toFixed(1) : '—'}<small>B 編成${SLOT_JP[c.slot] || c.slot}${c.team.length ? '' : ' ?'}</small></button>`).join('');
@@ -23100,11 +23100,11 @@
             // ① ブロックの大きなボタン
             const btns = blocks.map((b, i) => {
                 const o = ov[i];
-                if (o.past) return `<div class="obb past" aria-disabled="true" title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">過ぎた</span></div>`;   // 押せない札 (ずっと押せないボタンにしない — 2026-10-29 ボタンの監査)
+                if (o.past) return `<div class="obb past" aria-disabled="true" title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">過ぎた</span></div>`;   // 押せない札 (ずっと押せないボタンにしない — 2026-10-29 ボタンの監査)
                 const built = _ob.plans.has(i);
                 const lvTxt = o.level >= 4 ? 'Lv4 (ボス 5・∞)' : (o.allDone ? `Lv${o.level} 撃破 ✓` : (o.attacks ? `Lv${o.level} を組み中` : `Lv${o.level} から`));
                 const minis = o.rows.map(r => `<i title="B${r.bossNumber} ${escapeHtml(r.name)} ${r.infinite ? '∞' : 'あと ' + r.remB.toFixed(1) + 'B'}"><b style="width:${r.infinite ? (r.gotB > 0 ? 100 : 0) : Math.min(100, r.startB > 0 ? r.gotB / r.startB * 100 : 100)}%;background:${(_bbFill(r.weakness) || [])[0] || 'var(--ops)'};"></b></i>`).join('');
-                return `<button type="button" class="obb${i === idx ? ' on' : ''}" data-ob-blk="${i}" aria-pressed="${i === idx}"><span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(_obHours(b))}</span>`
+                return `<button type="button" class="obb${i === idx ? ' on' : ''}" data-ob-blk="${i}" aria-pressed="${i === idx}"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span>`
                     + `<span class="lv${o.allDone ? ' done' : (o.attacks ? '' : ' idle')}">${lvTxt}</span><span class="ct">${o.attacks ? `${o.attacks} 凸・${o.people} 人${built ? ' · 自動済み' : ''}` : 'まだ空'}${_ob.stale.has(i) ? ' · <b class="ob-stale">要組み直し</b>' : ''}</span><span class="minis">${minis}</span></button>`;
             }).join('');
             // ② 選んだブロックの盤
@@ -23154,7 +23154,7 @@
             const decRow = _ob.dec?.row || null;
             // 決めるのは組み直したブロックだけ (決定から読み戻したまま触っていないブロックは前の決定のまま写す: S4 レビュー [2])
             const fresh = _obFreshOf(range, decRow);
-            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b && (b.name || b.label)).filter(Boolean) : [];
+            const decNames = decRow ? decRow.plan.decided.blocks.map(b => b && (b.short || b.name || b.label)).filter(Boolean) : [];
             const decState = _ob.decErr ? `<span style="color:var(--bad);">決定を読めませんでした (${escapeHtml(_ob.decErr)})</span>`
                 : (_ob.dec == null ? '決定を読み込んでいます…'
                 : (decRow ? `決定済み: <b>${escapeHtml(decNames.join('・') || 'なし')}</b>${decRow.published_by_name ? ` (${escapeHtml(decRow.published_by_name)}` : ' ('}${decRow.published_at ? ` ${escapeHtml(_obTimeOf(decRow.published_at))}` : ''})` : 'まだ決定していません'));
@@ -23163,12 +23163,12 @@
                 : `<button type="button" class="ob-decide-btn" disabled>✅ 決定</button>`;
             const decideHint = fresh.length ? '決定すると、メンバーの 📅 レイド予定表 と ホームの「きょうの凸」に出て、割当のある人に通知が届きます'
                 : (range.length ? '決定のあと組み直したブロックはありません (組み直すと決定し直せます)'
-                : `いまのブロック (${escapeHtml(blocks[ctx.first]?.name || '')}) を「残りを自動で組む」で組むと決定できます`);
+                : `いまのブロック (${escapeHtml(blocks[ctx.first]?.short || '')}) を「残りを自動で組む」で組むと決定できます`);
             const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
             const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${decNote}<p class="ob-note">${decideHint}</p></div>`;
             host.innerHTML = `<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${decideHtml}
                 <div class="ob-panel">
-                    <div class="ob-head"><b>${escapeHtml(blk.name)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
+                    <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
                     <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-board">${rows}</div>
@@ -23246,7 +23246,7 @@
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
                 const msg = `${fresh.map(i => blocks[i].name).join('・')} を決定して、メンバーに配信します (${n} 凸)。`
                     + (replaced.length ? `\n\n${replaced.map(i => blocks[i].name).join('・')} は前の決定 (${prev.published_by_name || '運営'} ${_obTimeOf(prev.published_at)}) を、いま組んだ結果で置き換えます。` : '')
-                    + (kept.length ? `\n\n${kept.map(b => b.name).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
+                    + (kept.length ? `\n\n${kept.map(b => b.short || b.name).join('・')} は前の決定のまま残します (組み直していないため)。` : '')
                     + '\n\nメンバーの 📅 レイド予定表 に出て、割当のある人のうち変わった人に通知が届きます。';
                 if (!confirm(msg)) return;
                 if (!_obSame(epoch, sid)) return;
@@ -23348,7 +23348,8 @@
             else if (failed) showNotification(`⚠️ 決定はできましたが、${failed} 人に通知を送れませんでした`);
         }
         // ブロックの時間の言い方: 「5〜8時」「21〜翌0時」「翌1〜4時」(5 時始まりのレイド日)
-        const _obHours = (b) => (Number(b.from) <= 4 ? `翌${b.from}〜${b.to}時` : `${b.from}〜${Number(b.to) <= 4 ? '翌' + b.to : b.to}時`);
+        // 「5〜9時」(時計の言い方・終わりは時刻)。出どころは raidBlocksDomain.rangeOf だけ (2026-10-30)
+        const _obHours = (b) => (b && b.range) || (window.raidBlocksDomain ? window.raidBlocksDomain.rangeOf(b) : '');
         function _obDelegate(host) {
             if (_ob.delegated) return;
             _ob.delegated = true;
@@ -23419,12 +23420,12 @@
                     loadoutSlot: piece.slot, characters: piece.team, expectedDamageB: piece.dmgB,
                     sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
                 });
-                window.supabaseLogActivity?.('ops', `📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に手で置きました`);
+                window.supabaseLogActivity?.('ops', `📌 ${piece.name} を ${blk.short} の B${row.bossNumber} に手で置きました`);
                 if (!_obSame(epoch, sid)) return;
                 _ob.sel = null;
                 _obAfterChange(idx);
                 try { const r2 = await window.supabaseLoadReservations(snap.season.id); if (Array.isArray(r2) && _obSame(epoch, sid)) { _ob.pins = r2; _ob.pinsErr = null; } } catch (_) { /* 次の描画で取り直す */ }
-                showNotification(`📌 ${piece.name} を ${blk.name} の B${row.bossNumber} に置きました`);
+                showNotification(`📌 ${piece.name} を ${blk.short} の B${row.bossNumber} に置きました`);
             } catch (e) {
                 showNotification(`❌ 置けませんでした: ${e?.message || e}`);
             } finally {
@@ -23476,9 +23477,9 @@
                 const resv = rows.filter(r => !executed.has(Number(r.id)));
                 await _yieldToPaint();
                 const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: resv }, o.startBoard);
-                if (!plan) { showNotification(`❌ ${blk.name} を組めませんでした`); return; }
+                if (!plan) { showNotification(`❌ ${blk.short} を組めませんでした`); return; }
                 plan.seasonId = snap.season.id;
-                plan.blockScope = { idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
+                plan.blockScope = { idx, letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                 plan.builtAt = new Date().toISOString();
                 plan.obPinsFp = _obPinsFp(rows, blocks, idx);   // 駒・拘束が変わったら古い (Codex 監査)
                 if (!_obSame(epoch, sid)) return;
@@ -23489,7 +23490,7 @@
                 // 置けなかった駒は「このブロックに手で置いた駒」だけ数える (ほかのブロック・過ぎた時間の予約まで数えると毎回出る: レビュー)
                 const mineIds = new Set(rows.filter(r => r.status === 'pinned' && window.blockBuildDomain.pinBlockIdx(r, blocks) === idx).map(r => Number(r.id)));
                 const unmet = (plan.unmetReservations || []).filter(u => mineIds.has(Number(u.reservationId))).length;
-                showNotification(`🧮 ${blk.name} を組みました (${n} 凸)${unmet ? ` — ⚠ 手で置いた駒のうち ${unmet} 件は置けませんでした` : ''}`);
+                showNotification(`🧮 ${blk.short} を組みました (${n} 凸)${unmet ? ` — ⚠ 手で置いた駒のうち ${unmet} 件は置けませんでした` : ''}`);
             } finally {
                 _ob.busy = false;
                 renderOpsBuild();
@@ -23502,13 +23503,13 @@
             if (!ctx) return;
             const blk = ctx.blocks[ctx.idx];
             const mine = ctx.pins.filter(r => r.status === 'pinned' && window.blockBuildDomain.pinBlockIdx(r, ctx.blocks) === ctx.idx);   // 約束 (承認済み) は外さない
-            if (!confirm(`${blk.name} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`)) return;
+            if (!confirm(`${blk.short} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`)) return;
             _ob.busy = true;
             try {
                 const epoch = _ob.epoch, sid = snap.season.id;
                 for (const r of mine) if (r.status === 'pinned') await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ops', quiet: true });
                 if (_obSame(epoch, sid)) _obAfterChange(ctx.idx);
-                showNotification(`${blk.name} をやり直しました`);
+                showNotification(`${blk.short} をやり直しました`);
             } finally {
                 _ob.busy = false;
                 await _opsReloadBoardCards();   // ★ 盤面を取り直してから描く (レビュー高)
@@ -23712,7 +23713,7 @@
                 computedAt: new Date().toISOString(),
             }) : null;
             // 🧱 ブロックのぶんだけ配信する印 (2026-10-18)。配信 JSON は 1 日ぶんのまま、メンバーの画面はこの範囲だけを見る
-            if (blk) plan.blockScope = { idx: blk.idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
+            if (blk) plan.blockScope = { idx: blk.idx, letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
             _opsPlanFocus = null;              // 前の算出で選んでいたチップは新しい盤には無いかもしれない
@@ -24158,7 +24159,7 @@
                 //   運営が ⏰ で登録する時間はブロック丸ごとなので、一部になるのは古い 1 時間刻みの登録だけ → ⏰ で丸ごと ON にしてから
                 const off = st.state !== 'on';
                 return `<button type="button" class="avail-blk" data-state="${escapeHtml(st.state)}" aria-pressed="${on}" ${busy || off ? 'disabled' : ''} onclick="_opsResvCreateSet('blockIdx', ${st.idx})" title="${st.state === 'off' ? '出られる時間に入っていません (⏰ で先に登録)' : st.state === 'partial' ? '一部しか出られないブロックには登録できません (⏰ でブロック丸ごと ON にしてから)' : ''}" style="${on ? 'outline:2px solid var(--ops-solid);outline-offset:1px;' : ''}">`
-                    + `<span class="nm">${escapeHtml(b.name)}</span><span class="hr">${escapeHtml(b.label.slice(b.name.length).trim())}</span><span class="st">${st.state === 'off' ? '—' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間 (不可)` : '出られる')}</span></button>`;
+                    + `<span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(b.range)}</span><span class="st">${st.state === 'off' ? '—' : (st.state === 'partial' ? `一部 ${st.on}/${st.hours}時間 (不可)` : '出られる')}</span></button>`;
             }).join('')}</div>${states.every(st => st.state === 'off') ? '<p style="margin:8px 0 0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">参加可能時間が登録されていません。先に 👥 メンバー状況の ⏰ で登録してください。</p>' : (states.some(st => st.state === 'partial') ? '<p style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">「一部」は古い 1 時間刻みの登録。登録するなら ⏰ でそのブロックを丸ごと ON にしてから。</p>' : '')}`;
             // いまの予約 (生きているもの + 📌)
             const mine = (p && rv) ? (_resv.rows || []).filter(r => String(r.player_id) === String(p.id) && (rv.isActive(r) || rv.isPin(r))) : [];
@@ -24545,7 +24546,7 @@
                 const gaps = dom.blockBoardRows(lastPlan, { fromIdx: idxOfHour(blk.from), toIdx: idxOfHour(blk.to) }).filter(r => !r.infinite && r.gapB > 0.05);
                 open = gaps.length ? `未解決: ${gaps.map(r => `B${r.bossNumber} あと ${r.gapB.toFixed(1)}B`).join(' · ')}` : '未解決なし (このブロックで倒し切れる見込み)';
             }
-            const by = pub ? `最終配信 ${_hhmm(pub.published_at)}${pub.published_by_name ? ' · ' + escapeHtml(pub.published_by_name) : ''}${pub.plan?.blockScope ? ` (${escapeHtml(pub.plan.blockScope.name)})` : ''}` : 'まだ配信していません';
+            const by = pub ? `最終配信 ${_hhmm(pub.published_at)}${pub.published_by_name ? ' · ' + escapeHtml(pub.published_by_name) : ''}${pub.plan?.blockScope ? ` (${escapeHtml(pub.plan.blockScope.short || pub.plan.blockScope.name)})` : ''}` : 'まだ配信していません';
             const GO = { hp: "_opsBlockStepGo('hp')", result: "_opsBlockStepGo('result')", build: "_opsBlockStepGo('build')", publish: "_opsBlockStepGo('publish')", finish: "_opsBlockStepGo('finish')" };
             el.style.display = '';
             el.innerHTML = `<div class="bs-h">🧱 ${escapeHtml(blk.label || blk.name)} の手順<small>${open ? escapeHtml(open) + ' · ' : ''}${by}</small></div>`
@@ -24883,7 +24884,7 @@
             // 🧱 ブロックのぶんだけ配信するときは、ボタンに何を配信するかを書く
             const pubBtn = document.getElementById('opsPlanPublishBtn');
             if (pubBtn) pubBtn.textContent = plan.blockScope && window.raidBlocksDomain
-                ? `📤 ${plan.blockScope.name}のぶんを配信 (${window.raidBlocksDomain.attackCountIn(plan, plan.blockScope)}凸)` : '📤 このプランを配信';
+                ? `📤 ${plan.blockScope.short || plan.blockScope.name} のぶんを配信 (${window.raidBlocksDomain.attackCountIn(plan, plan.blockScope)}凸)` : '📤 このプランを配信';
             // チップのタップで「その人の時間」を光らせる (委譲。innerHTML で描き直しても生きる)
             if (!el.dataset.focusDelegated) {
                 el.dataset.focusDelegated = '1';
@@ -25388,7 +25389,7 @@
                 const rest = blocks.filter(b => b.fromIdx >= Number(start.fromIdx));
                 if (!rest.length) { showNotification('組むブロックがありません'); return; }
                 const sticky = !!_opsPlanSticky;   // 押した時点の条件で (待っている間に切り替えても)
-                if (!confirm(`🧱 ${rest.map(b => b.name).join(' → ')} の ${rest.length} ブロックを一気に組みますか？\n\n`
+                if (!confirm(`🧱 ${rest.map(b => b.short).join(' → ')} の ${rest.length} ブロックを一気に組みますか？\n\n`
                     + '・各ブロックは「そのブロックに出られる人」だけで組みます\n'
                     + '・前のブロックの凸は、模擬のスコアどおり削れた**と仮定**して次のブロックの盤面に進めます\n'
                     + '・組んだあと、ブロックごとに配信するかを確認します (予想の印つき)。ずれたら、そのブロックか次のブロックの頭で組み直してください')) return;
@@ -25408,19 +25409,19 @@
                 const results = [];
                 for (let i = 0; i < rest.length; i++) {
                     const blk = rest[i];
-                    progress(`🧱 組んでいます… (${i + 1}/${rest.length} ${blk.name})`);
+                    progress(`🧱 組んでいます… (${i + 1}/${rest.length} ${blk.short})`);
                     await _yieldToPaint();   // ソルバーは同期で画面を止めるので、ブロックごとに 1 回描画へ返す (Codex 再監査 G)
                     const effective = pd.effectiveFor(pubRows, pd.keyOfBlock(blk));
                     const basis = (sticky && effective && Number(effective.season_id) === Number(seasonId)) ? effective : null;
                     const previousPlan = basis ? _scopePreviousPlan(basis.plan || null, blk) : null;
                     const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan, reservations }, board);
-                    if (!plan) { alert(`❌ ${blk.name} のプランを組めませんでした`); return; }
+                    if (!plan) { alert(`❌ ${blk.short} のプランを組めませんでした`); return; }
                     plan.seasonId = seasonId;
                     plan.reservationFingerprint = fp0;
                     plan.basisPlanId = basis ? (basis.id ?? null) : null;
                     plan.stickyOn = sticky;
                     plan.chained = true;   // 🔭 予想 (前のブロックが模擬どおり削れたら)
-                    plan.blockScope = { idx: blocks.indexOf(blk), name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
+                    plan.blockScope = { idx: blocks.indexOf(blk), letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                     plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
                         who: 'block', block: blk.label, from: 'block', prev: (sticky && previousPlan) ? 'keep' : 'fresh', time: plan.timeStrict ? 'strict' : 'damage',
                         reservations: reservations.filter(r => rv.isFixed(r)).length,
@@ -25438,7 +25439,7 @@
                     if (executed.size) reservations = reservations.filter(r => !executed.has(Number(r.id)));
                 }
                 progress(btnLabel);
-                const lines = results.map(r => `・${r.blk.name} (${r.blk.label}): ${r.sum.executed} 凸${r.sum.cleared.length ? ` → Lv${r.sum.cleared.join('・')} 踏破の見込み` : ''}${r.sum.unassigned ? ` · 未割当 ${r.sum.unassigned}` : ''}`);
+                const lines = results.map(r => `・${r.blk.label}: ${r.sum.executed} 凸${r.sum.cleared.length ? ` → Lv${r.sum.cleared.join('・')} 踏破の見込み` : ''}${r.sum.unassigned ? ` · 未割当 ${r.sum.unassigned}` : ''}`);
                 const lastLv = results.length ? results[results.length - 1].sum.levelAfter : null;
                 if (!confirm(`🧱 組めました。ブロックごとに配信しますか？ (${results.length} 件の配信・予想の印つき)\n\n${lines.join('\n')}\n\n1 日の終わりの見込み: Lv${lastLv ?? '?'}\n\n`
                     + '配信すると、割当のある人へ「きょうのあなたの凸」を 1 通ずつ送ります (ブロックごとではなく、人ごとにまとめて)')) {
@@ -25463,7 +25464,7 @@
                 try { rows2 = await window.supabaseGetPublishedPlans(); } catch { rows2 = null; }
                 if (!Array.isArray(rows2)) { alert('⚠️ 配信の一覧を読めないため止めました。もう一度お試しください。'); return; }
                 const moved = results.find(r => Number(pd.effectiveFor(rows2, pd.keyOfBlock(r.blk))?.id ?? 0) !== Number(r.effectiveId ?? 0));
-                if (moved) { alert(`⚠️ 組んでいる間に別の運営が ${moved.blk.name} のぶんを配信しました。その配信を知らずに組んだプランなので積みません。もう一度「一気に組む」を押してください。`); return; }
+                if (moved) { alert(`⚠️ 組んでいる間に別の運営が ${moved.blk.short} のぶんを配信しました。その配信を知らずに組んだプランなので積みません。もう一度「一気に組む」を押してください。`); return; }
                 const me = getCurrentIdentity();
                 // ブロックごとに 1 行ずつ積む (まとめては書けない)。途中で失敗したら、配信できたぶんの通知は送り、どこまで配信できたかを知らせる
                 //   (Codex 再監査 D: 以前は 3 件目で失敗すると 1〜2 件目は配信だけ有効で、通知が 1 通も出なかった)
@@ -25483,8 +25484,8 @@
                 if (failed) {
                     const why = failed.err?.message || failed.err;
                     alert(pubs.length
-                        ? `⚠️ ${results.length} ブロックのうち ${pubs.length} ブロックを配信したところで止まりました (${failed.blk.name} のぶん: ${why})。\n配信できたぶんの通知は送りました。残りはもう一度「一気に組む」を押してください (同じブロックは新しい配信が勝つので二重にはなりません)。`
-                        : `❌ 配信できませんでした (${failed.blk.name} のぶん: ${why})。通知は送っていません。もう一度「一気に組む」を押してください。`);   // 1 件も配信できていないのに「通知は送りました」と言わない (Codex 再監査 D3)
+                        ? `⚠️ ${results.length} ブロックのうち ${pubs.length} ブロックを配信したところで止まりました (${failed.blk.short} のぶん: ${why})。\n配信できたぶんの通知は送りました。残りはもう一度「一気に組む」を押してください (同じブロックは新しい配信が勝つので二重にはなりません)。`
+                        : `❌ 配信できませんでした (${failed.blk.short} のぶん: ${why})。通知は送っていません。もう一度「一気に組む」を押してください。`);   // 1 件も配信できていないのに「通知は送りました」と言わない (Codex 再監査 D3)
                 }
                 _opsLastPlan = results[0].plan; _opsPlanSel = null; _opsPlanFocus = null;
                 renderOpsPlanView();
@@ -25509,12 +25510,12 @@
                 const notices = dom.publishNotices(rb.scopePlan(plan, blk), { label: blk.label, bosses, changedIds: new Set(), ptName: (w) => PT_ATTRS.find(x => x.key === w)?.name || '' });
                 for (const n of notices) {
                     if (!byMember.has(String(n.memberId))) byMember.set(String(n.memberId), { memberId: n.memberId, lines: [] });
-                    byMember.get(String(n.memberId)).lines.push(...n.lines.map(l => `[${blk.name}] ${l}`));
+                    byMember.get(String(n.memberId)).lines.push(...n.lines.map(l => `[${blk.short}] ${l}`));
                 }
             }
             const claim = typeof window.supabaseClaimRaidNotice === 'function' ? window.supabaseClaimRaidNotice : null;
             const out = { sent: 0, failed: 0 };
-            const label = `${pubs[0].blk.name}〜${pubs[pubs.length - 1].blk.name}`;
+            const label = `${pubs[0].blk.short}〜${pubs[pubs.length - 1].blk.short}`;
             for (const m of byMember.values()) {
                 const ref = `chain|${m.memberId}|${m.lines.join(' / ')}`;
                 const st = claim ? await claim(seasonId, 'block_publish', ref, me?.id || null) : 'claimed';
@@ -25882,7 +25883,7 @@
             const stale = (mins != null && mins >= 180) || pending > 0;
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
             el.style.color = stale ? 'var(--warn-deep)' : 'var(--ok-deep)';
-            const blkName = published.plan?.blockScope ? ` (🧱 ${published.plan.blockScope.name || published.plan.blockScope.label || ''})` : '';   // 🧱 段階 7: どのブロックの配信か
+            const blkName = published.plan?.blockScope ? ` (🧱 ${published.plan.blockScope.short || published.plan.blockScope.name || published.plan.blockScope.label || ''})` : '';   // 🧱 段階 7: どのブロックの配信か
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中${blkName}: ${when}${ago}${who}`
                 + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。承認済みの予約を反映して組み直し、配信し直してください`
                     : (stale ? ' — 盤面が動いていないか確認してください' : ''))

@@ -136,7 +136,7 @@
                 hp = cleanHp(prevBlocks.get(key).hp);   // 前の決定の見積もりをそのまま (無い古い行は無し)
             } else return;
             const fp0 = !kept ? (typeof fpOf === 'function' ? fpOf(idx) : null) : prevBlocks.get(key).fp;
-            entries.push({ key, idx, name: blk.name || null, label: blk.label || key, from: Number(blk.from), to: Number(blk.to), level, kept, attacks: atks.length,
+            entries.push({ key, idx, letter: blk.letter || null, name: blk.name || null, short: blk.short || blk.name || null, range: blk.range || null, label: blk.label || key, from: Number(blk.from), to: Number(blk.to), level, kept, attacks: atks.length,
                 ...(typeof fp0 === 'string' ? { fp: fp0 } : {}), ...(hp && Object.keys(hp).length ? { hp } : {}) });
             for (const a of atks) {
                 const lv = Number(a.level) || level || 1;
@@ -221,7 +221,7 @@
                 });
             }
             const placed = new Set(rows.flatMap(x => x.pieces.map(e => e.planKey)));
-            return { idx: r.idx, key: r.key, name: r.name, label: r.label, state: r.state, decided: r.decided, level,
+            return { idx: r.idx, key: r.key, letter: r.letter, name: r.name, short: r.short, range: r.range, label: r.label, state: r.state, decided: r.decided, level,
                 hpExact: rows.length > 0 && rows.every(x => x.infinite || x.exact), rows, entries: r.entries,
                 others: r.entries.filter(e => !placed.has(e.planKey)),   // 盤の行に載らない凸 (別のレベル・Lv4 のボス 1〜4)。数 (doneN・entries) には入れたまま、別に見せる
                 // 撃破 (緑の Lv) は HP のある行だけで見る (無限の行を撃破に数えていた: BD-5)
@@ -271,7 +271,7 @@
                         dmgB: Number(a.dmgB) || 0, reservationId: a.reservationId ?? null, mine: viewerId != null && String(a.memberId) === String(viewerId), done: doneSet.has(k) };
                 }) : [];
             const lv = d ? Number(d.level) : NaN;
-            return { idx, key, name: blk.name || null, label: blk.label || key, state, decided: !!d, level: Number.isInteger(lv) && lv >= 1 && lv <= 4 ? lv : null, entries,   // 数でなければ null (S4 引き継ぎ 2: XSS)
+            return { idx, key, letter: blk.letter || null, name: blk.name || null, short: blk.short || blk.name || null, range: blk.range || null, label: blk.label || key, state, decided: !!d, level: Number.isInteger(lv) && lv >= 1 && lv <= 4 ? lv : null, entries,   // 数でなければ null (S4 引き継ぎ 2: XSS)
                 mine: entries.filter(e => e.mine) };
         });
     }

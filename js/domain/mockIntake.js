@@ -53,7 +53,7 @@
             let deadline = null;
             if (rb && bl.length && slots.length && !p.flexTime) {
                 const idxs = rb.blocksOfSlots(bl, slots);
-                if (idxs.length) deadline = { idx: idxs[0], name: String(bl[idxs[0]].name || '') };
+                if (idxs.length) deadline = { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || '') };
             }
             out.push({
                 id: p.id, name: p.name, missing, missingJp: missing.map(a => ATTR_JP[a]),
@@ -139,7 +139,7 @@
         const slots = Array.isArray(p && p.availableSlots) ? p.availableSlots : [];
         if (!rb || !bl.length || !slots.length || (p && p.flexTime)) return null;
         const idxs = rb.blocksOfSlots(bl, slots);
-        return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || '') } : null;
+        return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || '') } : null;
     }
     /**
      * 人 × 属性 の表。マス = その人のその属性の編成 (slot / dmgB / team / dup)。

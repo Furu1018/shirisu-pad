@@ -42,14 +42,12 @@
         return out;
     }
 
-    // 「5〜9時」「21〜翌2時」のように読む。1時間だけなら「13時」
+    // 「5〜9時」「21〜翌2時」のように読む = 時計の言い方 (終わりは時刻: 5・6・7・8 時の枠 → 5〜9時。1 時間なら「13〜14時」。翌4 の次は「翌5」)。
+    //   ブロック (raidBlocksDomain.rangeOf) と同じ言い方 (2026-10-30 ふるり「5～9時」)
     function rangeLabel(r) {
         const wrap = (h) => (h >= 0 && h <= 4) ? `翌${h}` : String(h);
-        if (r.hours === 1) return `${wrap(r.start)}時`;
-        const startsLate = r.start >= 0 && r.start <= 4;
-        const a = startsLate ? wrap(r.start) : String(r.start);
-        const b = (r.end >= 0 && r.end <= 4 && !startsLate) ? wrap(r.end) : (startsLate ? wrap(r.end) : String(r.end));
-        return `${a}〜${b}時`;
+        const end = r.end === 4 ? '翌5' : wrap((r.end + 1) % 24);
+        return `${wrap(r.start)}〜${end}時`;
     }
 
     /** 「5〜9時・21〜翌2時 (10時間)」 */
