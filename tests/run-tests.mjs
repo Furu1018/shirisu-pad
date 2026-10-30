@@ -14193,7 +14193,8 @@ console.log('\n編成 3 つ (SQL 55):');
         if (ri && typeof ri.discordAsk === 'function') { /* 文面の関数名は版で違う: ここでは印の表だけ固定 */ }
         assert.ok(/function _assertSlotsWithinThisBuild\(rows, verb\) \{\s*\n\s*const beyond = \(Array\.isArray\(rows\) \? rows : \[\]\)\.filter\(r => !isUsableSlot\(r && r\.slot\)\)\.length;\s*\n\s*if \(beyond > 0\) throw new Error\(/.test(client), 'テストシーズンの「この版の上限を超える編成」の止め方が無い');
         assert.ok(/_assertSlotsWithinThisBuild\(dmgs, '始め'\);\s*\n\s*dmgs = dmgs \|\| \[\];/.test(client) && !/dmgs = \(dmgs \|\| \[\]\)\.filter\(d => isUsableSlot\(d\.slot\)\);/.test(client), 'テストシーズンの開始が上限を超える編成を黙って落としている (旧版のタブで③が消える)');
-        assert.ok(/if \(Array\.isArray\(snapshot\)\) \{\s*\n\s*\/\/[^\n]*\n\s*_assertSlotsWithinThisBuild\(snapshot, '終え'\);\s*\n\s*await supabase\.from\('player_damages'\)\.delete\(\)/.test(client), 'テストシーズンの終了が全削除の前に上限を見ていない');
+        { const te = client.slice(client.indexOf('window.supabaseDeleteActiveTestSeason = async function')); const a = te.indexOf("if (Array.isArray(snapshot)) _assertSlotsWithinThisBuild(snapshot, '終え');"), b = te.indexOf("from('player_damages').delete().gte('player_id', 0)");
+          assert.ok(a > 0 && b > a, 'テストシーズンの終了が全削除の前に上限を見ていない'); }
         assert.ok(/_assertSlotsWithinThisBuild\(snapshot, '終え'\);\s*\n\s*let attacks = 0;/.test(client) && !/droppedRows/.test(client) && !/droppedRows/.test(html), '終了の下見が上限を見ていない / 「除外」の表示が残っている');
         assert.ok(!/const kept = snapshot\.filter\(s => isUsableSlot\(s\.slot\)\);/.test(client), 'スナップショットの復元で行を落としている');
         assert.ok(!/編成①が空きなら① \/ 編成②が空きなら②/.test(html) && /空いている枠の若いほう \(① → ② → ③\)/.test(html) && !/属性 × 編成① \/ ②\)/.test(html), 'ヘルプが ①② のまま');
@@ -14412,6 +14413,51 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
         assert.equal(r.err, null);
         assert.deepEqual(r.log, [['set', { is_active: false, union_rank: 0.27 }], ['update', [['is_active', true], ['is_test', false]]]]);
     });
+    await testAsync('★ テスト終了を実際に動かす: 57 が無い・確かめに失敗 = 何も変えずに止める / ふつう = 模擬を戻してから delete_season / 途中の失敗は「もう一度 ✕ 終了」と言い、控えは残る', async () => {
+        const src = fnOf(client, 'window.supabaseDeleteActiveTestSeason = async function', '\n};') + '\n};';
+        const run = async ({ probeErr = null, delErr = null, clrErr = null } = {}) => {
+            const log = [];
+            const season = { id: 77, is_test: true, month_key: 'TEST-X', metadata: { damages_snapshot: [{ player_id: 1, attribute: 'fire', damage_b: 30, slot: 1, characters: ['a'] }], nikke_characters_snapshot: ['a'] } };
+            const chain = (table) => {
+                const o = { _op: 'select',
+                    select: () => o, eq: () => o, in: () => { log.push(`delete:${table}`); return Promise.resolve({ error: null }); },
+                    delete: () => { o._op = 'delete'; return o; },
+                    gte: () => { log.push(`delete:${table}`); return Promise.resolve({ error: table === 'player_damages' ? clrErr : null }); },
+                    maybeSingle: () => Promise.resolve({ data: table === 'seasons' ? season : null, error: null }) };
+                return o;
+            };
+            const supabase = {
+                from: chain,
+                rpc: (name, args) => { log.push(`rpc:${name}:${args.p_season_id}`); return Promise.resolve({ error: args.p_season_id === -1 ? probeErr : delErr }); },
+            };
+            const { _deleteSeasonRow } = new Function('supabase', helpers + '\nreturn { _deleteSeasonRow };')(supabase);
+            const win = { testSeasonDomain: globalThis.testSeasonDomain };
+            const deps = {
+                _assertSlotsWithinThisBuild: () => {}, _normBossLevel: (x) => x ?? null, _deleteSeasonRow,
+                _upsertPlayerDamages: async (rows) => { log.push(`upsert:${rows.length}`); return { error: null }; },
+                _invalidateActiveTestSeasonCache: () => log.push('invalidate'),
+            };
+            new Function('supabase', 'window', ...Object.keys(deps), src)(supabase, win, ...Object.values(deps));
+            let err = null, out = null;
+            try { out = await win.supabaseDeleteActiveTestSeason({ charsToDelete: [] }); } catch (e) { err = e; }
+            return { log, err, out };
+        };
+        let r = await run({ probeErr: { code: 'PGRST202', message: 'Could not find' } });
+        assert.match(String(r.err?.message), /SQL 57_season_rules\.sql の実行が必要です \(何も変えていません\)/);
+        assert.deepEqual(r.log, ['rpc:delete_season:-1'], '57 が無いのに模擬を触った');
+        r = await run({ probeErr: { code: '57014', message: 'timeout' } });
+        assert.match(String(r.err?.message), /テストを終えられません \(何も変えていません\): timeout/);
+        assert.deepEqual(r.log, ['rpc:delete_season:-1']);
+        r = await run();
+        assert.equal(r.err, null); assert.equal(r.out.ok, true);
+        assert.deepEqual(r.log, ['rpc:delete_season:-1', 'delete:player_damages', 'upsert:1', 'rpc:delete_season:77', 'invalidate'], '模擬を戻してから行を消す順でない');
+        r = await run({ delErr: { code: 'P0001', message: 'x' } });
+        assert.match(String(r.err?.message), /テストシーズンの削除に失敗: x\n\nテストシーズンと模擬の控えは残っています。もう一度「✕ 終了」を押すと/);
+        assert.ok(!r.log.includes('invalidate'), '消せなかったのに消えた扱い');
+        r = await run({ clrErr: { message: 'busy' } });
+        assert.match(String(r.err?.message), /^busy\n\nテストシーズンと模擬の控えは残っています/);
+        assert.ok(!r.log.some(x => x.startsWith('upsert')) && !r.log.includes('rpc:delete_season:77'), '模擬を消せないまま入れ直した / 先へ進んだ');
+    });
     test('★ 配線 (クライアント): 作成は先に止めの確かめ・黙って止めない・前のアクティブを書かない / テスト終了は模擬を戻す前に 57 を確かめ、行は delete_season で消す', () => {
         const fn = fnOf(client, 'window.supabaseCreateSeason = async function', 'window.supabaseQuickCreateTestSeason');
         const g = fn.indexOf('await _assertNoActiveSeason();');
@@ -14425,7 +14471,7 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
         const del = fnOf(client, 'window.supabaseDeleteActiveTestSeason = async function', 'window.supabaseEndActiveSeason');
         const pre = del.indexOf("supabase.rpc('delete_season', { p_season_id: -1 })"), restore = del.indexOf("from('player_damages').delete()");
         assert.ok(pre > 0 && restore > pre, '模擬を戻す前に 57 (消せるか) を確かめていない');
-        assert.ok(/if \(\(count \|\| 0\) > 0\) throw new Error\('予約のあるテストシーズンを消すには SQL 57_season_rules\.sql/.test(del));
+        assert.ok(!/plan_reservations/.test(del), '57 が無いとき予約の数を見て素の削除へ逃げている (数えてから消すまでに予約が入ると半端になる)');
         assert.ok(del.indexOf("await _deleteSeasonRow(season.id, 'テストシーズンの削除に失敗');") > restore && !/from\('seasons'\)\.delete\(\)/.test(del), 'テストシーズンの行を素の delete で消している');
         assert.equal((client.match(/from\('seasons'\)\.delete\(\)/g) || []).length, 1, 'seasons の素の delete は _deleteSeasonRow の 57 未適用の道だけ');
     });

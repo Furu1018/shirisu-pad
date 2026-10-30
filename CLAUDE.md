@@ -448,7 +448,8 @@ rm -f .claude/hooks/.codex-on      # OFF
   (以前は黙って止めてから作っていた)・DB の一意索引 `uq_seasons_one_active` が同時の 2 つ目を拒む。「🧪 本番のボスでテスト」と模擬の間引き (thinMocks) は外した。
   ② **テストシーズンは履歴に残さない** — 終えるのは 🧪 ✕ 終了 (`supabaseDeleteActiveTestSeason` = 消して模擬を元に戻す) だけ。「シーズン終了」はテスト中に出さず (`data-prod-only`)、押せてもテストは ✕ 終了 のシートへ、`supabaseEndActiveSeason` も断る。
   シーズンの行を消すのは RPC `delete_season` (`_deleteSeasonRow`。テストはいつでも・本番は止めてあって凸 0 件) — 予約の履歴の append-only (39) と seasons の素の DELETE (`trg_seasons_delete_via_rpc`) はその中だけ通す
-  (予約のあるテストは ✕ 終了 でも消せなかった = 39 からの既存の不具合。10/27 に本番 2026-10b の上のテストを「シーズン終了」で止めて本番が止まったまま残った原因)。テスト終了は模擬を戻す**前に** delete_season(-1) で 57 の有無を確かめる。
+  (予約のあるテストは ✕ 終了 でも消せなかった = 39 からの既存の不具合。10/27 に本番 2026-10b の上のテストを「シーズン終了」で止めて本番が止まったまま残った原因)。テスト終了は何か変える**前に** delete_season(-1) で 57 の有無を確かめ、無ければ何も変えずに止める (1 つのトランザクションではない — 途中で失敗してもテストの行と控えが残り、✕ 終了 を押し直せば続きから同じ結果)。
+  ★ テストを止めないのはアプリ (画面と `supabaseEndActiveSeason`) で、DB は is_active を false にする更新を拒まない (古い版の「シーズン終了」は止められる)。
   ★ 段階のシーズン `_opsStageSeason` は運営の盤面 (opsStore) を読めていればそれを信じる (シーズン無しも)。`renderOpsDashboard` は盤面と違う seasonStore の写しを捨てる — PC (下に引く更新が無い) で終わったテストが残り「シーズン作成」が出なかった。SQL 57 は PGlite で動かして確かめた (scratchpad の test-57.mjs)
 - **🤖 画像認識 (AI Vision) の失敗の説明** (`js/domain/aiVision.js`・2026-10-25): Edge Function `dynamic-service` (リポジトリの `supabase/functions/analyze-image`・モデル `claude-haiku-4-5`) は
   Anthropic の失敗を HTTP 502 の本文 `{ ok:false, error:"Anthropic API error (400): …" }` で返すが、supabase-js の `functions.invoke` は非 2xx を「Edge Function returned a non-2xx status code」の

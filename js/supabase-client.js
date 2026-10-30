@@ -4233,89 +4233,94 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
     if (sErr) throw sErr;
     if (!season) throw new Error('アクティブなテストシーズンがありません');
 
-    // ★ 模擬を戻す前に、最後の「シーズンの行を消す」が通るかを確かめる (2026-10-30)。予約が 1 件でもあると、57 の無い DB では
-    //   予約の履歴 (39 の append-only) で削除が止まり、模擬だけ戻ってテストが動いたまま、になっていた
+    // ★ 何か変える前に、シーズンを消す口 (57 の RPC delete_season) があるかを確かめる (2026-10-30)。無い DB では予約の履歴 (39 の append-only) で
+    //   最後の削除が止まり、模擬だけ戻ってテストが動いたまま、になっていた。無ければ何も変えずに止める (予約の数を見て素の削除へ逃げる道は作らない:
+    //   数えてから消すまでの間に予約が入ると同じ半端になる — Codex 監査)
     {
         const { error: rpcErr } = await supabase.rpc('delete_season', { p_season_id: -1 });   // 無い id = 何も消さずに NULL を返す
-        if (rpcErr && rpcErr.code !== 'PGRST202') throw rpcErr;
-        if (rpcErr) {
-            const { count, error: cErr } = await supabase.from('plan_reservations').select('id', { count: 'exact', head: true }).eq('season_id', season.id);
-            if (cErr && !_isMissingTableErr(cErr, 'plan_reservations')) throw cErr;
-            if ((count || 0) > 0) throw new Error('予約のあるテストシーズンを消すには SQL 57_season_rules.sql の実行が必要です (何も変えていません)');
-        }
+        if (rpcErr) throw new Error(rpcErr.code === 'PGRST202'
+            ? 'テストシーズンを消すには SQL 57_season_rules.sql の実行が必要です (何も変えていません)'
+            : `テストを終えられません (何も変えていません): ${rpcErr.message}`);
     }
 
     // player_damages をスナップショットから復元 (characters カラムも一緒に)
     const snapshot = season.metadata?.damages_snapshot;
-    if (Array.isArray(snapshot)) {
-        // ★ 全削除の前に: この版の上限を超える編成 (新しい版で始めたテストシーズン) があれば止める。落として復元すると消える
-        _assertSlotsWithinThisBuild(snapshot, '終え');
-        await supabase.from('player_damages').delete().gte('player_id', 0);
-        if (snapshot.length > 0) {
-            // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
-            // boss_level / levels は「スナップショットに入っていれば」戻す。
-            // 旧スナップショット (30/31 適用前に作ったテストシーズン) には無いので undefined →
-            // その場合は列ごと落として旧挙動のまま復元する
-            const hasLevel = snapshot.some(s => s.boss_level !== undefined);
-            const hasLevels = snapshot.some(s => s.levels !== undefined);
-            const hasExcl = snapshot.some(s => s.excluded_at !== undefined);   // 運営除外 (35) もテスト前の状態に戻す
-            const exclOf = (s) => (hasExcl ? { excluded_at: s.excluded_at ?? null, excluded_by: s.excluded_by ?? null, excluded_reason: s.excluded_reason ?? null } : {});
-            const kept = snapshot;   // 上限を超える行は上で止めている (落とさない)
-            const rowsWithChars = kept.map(s => ({
-                player_id: s.player_id,
-                attribute: s.attribute,
-                damage_b: s.damage_b,
-                slot: s.slot || 1,
-                characters: Array.isArray(s.characters) ? s.characters : [],
-                ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
-                ...(hasLevels ? { levels: s.levels ?? null } : {}),
-                ...exclOf(s),
-            }));
-            const r1 = await _upsertPlayerDamages(rowsWithChars);
-            if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
-                // characters 列が DB に存在しない環境にフォールバック
-                const rowsBasic = kept.map(s => ({
+    // ★ 全削除の前に: この版の上限を超える編成 (新しい版で始めたテストシーズン) があれば止める。落として復元すると消える
+    if (Array.isArray(snapshot)) _assertSlotsWithinThisBuild(snapshot, '終え');
+    // ★ ここから先は何度やり直しても同じ結果になる (模擬は「全部消して控えを入れ直す」・キャラは名前で消す・最後にシーズンを消す)。
+    //   1 つのトランザクションではない (承知) — 途中で失敗してもテストの行と控え (metadata) は残るので、もう一度 ✕ 終了 を押せば続きから同じ結果になる
+    let charsRemoved = 0;
+    try {
+        if (Array.isArray(snapshot)) {
+            const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
+            if (clrErr) throw clrErr;   // 消せないまま入れ直すと控えと混ざる
+            if (snapshot.length > 0) {
+                // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
+                // boss_level / levels は「スナップショットに入っていれば」戻す。
+                // 旧スナップショット (30/31 適用前に作ったテストシーズン) には無いので undefined →
+                // その場合は列ごと落として旧挙動のまま復元する
+                const hasLevel = snapshot.some(s => s.boss_level !== undefined);
+                const hasLevels = snapshot.some(s => s.levels !== undefined);
+                const hasExcl = snapshot.some(s => s.excluded_at !== undefined);   // 運営除外 (35) もテスト前の状態に戻す
+                const exclOf = (s) => (hasExcl ? { excluded_at: s.excluded_at ?? null, excluded_by: s.excluded_by ?? null, excluded_reason: s.excluded_reason ?? null } : {});
+                const kept = snapshot;   // 上限を超える行は上で止めている (落とさない)
+                const rowsWithChars = kept.map(s => ({
                     player_id: s.player_id,
                     attribute: s.attribute,
                     damage_b: s.damage_b,
                     slot: s.slot || 1,
+                    characters: Array.isArray(s.characters) ? s.characters : [],
                     ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
                     ...(hasLevels ? { levels: s.levels ?? null } : {}),
                     ...exclOf(s),
                 }));
-                const r2 = await _upsertPlayerDamages(rowsBasic);
-                if (r2.error) throw r2.error;
-            } else if (r1.error) {
-                // ★ 復元は「全削除 → 入れ直し」なので、ここで黙って進むと模擬データが消える。
-                //   characters 列以外の失敗も必ず表に出す (Codex指摘 2026-08-12)
-                throw r1.error;
+                const r1 = await _upsertPlayerDamages(rowsWithChars);
+                if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
+                    // characters 列が DB に存在しない環境にフォールバック
+                    const rowsBasic = kept.map(s => ({
+                        player_id: s.player_id,
+                        attribute: s.attribute,
+                        damage_b: s.damage_b,
+                        slot: s.slot || 1,
+                        ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
+                        ...(hasLevels ? { levels: s.levels ?? null } : {}),
+                        ...exclOf(s),
+                    }));
+                    const r2 = await _upsertPlayerDamages(rowsBasic);
+                    if (r2.error) throw r2.error;
+                } else if (r1.error) {
+                    // ★ 復元は「全削除 → 入れ直し」なので、ここで黙って進むと模擬データが消える。
+                    //   characters 列以外の失敗も必ず表に出す (Codex指摘 2026-08-12)
+                    throw r1.error;
+                }
             }
         }
-    }
 
-    // nikke_characters: 運営が確認モーダルで選んだ行だけ削除する (運営改修 #3)。
-    //   安全弁: スナップショットにある名前は指定されても消さない / 配列でなければ何も消さない
-    let charsRemoved = 0;
-    const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
-    const wanted = dom
-        ? dom.filterDeletableChars(charsToDelete, season.metadata?.nikke_characters_snapshot)
-        : [];
-    if (Array.isArray(charsToDelete) && wanted.length !== charsToDelete.length) {
-        console.warn(`[test cleanup] 削除指定 ${charsToDelete.length} 件のうち ${wanted.length} 件だけ削除します (スナップショット内・重複・不正値は除外)`);
-    }
-    if (wanted.length > 0) {
-        try {
-            const { error: cErr } = await supabase
-                .from('nikke_characters')
-                .delete()
-                .in('canonical_name', wanted);
-            if (!cErr) charsRemoved = wanted.length;
-            else console.warn('[test cleanup] nikke_characters', cErr.message);
-        } catch (e) { console.warn('[test cleanup] nikke_characters', e?.message || e); }
-    }
+        // nikke_characters: 運営が確認モーダルで選んだ行だけ削除する (運営改修 #3)。
+        //   安全弁: スナップショットにある名前は指定されても消さない / 配列でなければ何も消さない
+        const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
+        const wanted = dom
+            ? dom.filterDeletableChars(charsToDelete, season.metadata?.nikke_characters_snapshot)
+            : [];
+        if (Array.isArray(charsToDelete) && wanted.length !== charsToDelete.length) {
+            console.warn(`[test cleanup] 削除指定 ${charsToDelete.length} 件のうち ${wanted.length} 件だけ削除します (スナップショット内・重複・不正値は除外)`);
+        }
+        if (wanted.length > 0) {
+            try {
+                const { error: cErr } = await supabase
+                    .from('nikke_characters')
+                    .delete()
+                    .in('canonical_name', wanted);
+                if (!cErr) charsRemoved = wanted.length;
+                else console.warn('[test cleanup] nikke_characters', cErr.message);
+            } catch (e) { console.warn('[test cleanup] nikke_characters', e?.message || e); }
+        }
 
-    // テストシーズン削除 (CASCADE で bosses / attacks / 予約と履歴 も消える = 履歴に残さない)
-    await _deleteSeasonRow(season.id, 'テストシーズンの削除に失敗');
+        // テストシーズン削除 (CASCADE で bosses / attacks / 予約と履歴 も消える = 履歴に残さない)
+        await _deleteSeasonRow(season.id, 'テストシーズンの削除に失敗');
+    } catch (e) {
+        throw new Error(`${e?.message || e}\n\nテストシーズンと模擬の控えは残っています。もう一度「✕ 終了」を押すと、同じ手順を続きからやり直します`);
+    }
     _invalidateActiveTestSeasonCache();   // 削除済み id を OCR のタグに使わない
 
     // テスト作成前にアクティブだったシーズンのみ復活させる。
