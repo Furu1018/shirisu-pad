@@ -1,0 +1,1190 @@
+{
+  "players": [
+    {
+      "player": "イオ",
+      "totalDamage": 261927000000,
+      "attackCount": 3,
+      "syncLevel": 901,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 100612749580,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 83413211270,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 77900778919,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ゆき",
+      "totalDamage": 160972000000,
+      "attackCount": 3,
+      "syncLevel": 815,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 39157877300,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 49409812439,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/b2e4f8b7dd434f5914965b8388fe2395.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 72404482025,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "こーへい",
+      "totalDamage": 158430000000,
+      "attackCount": 3,
+      "syncLevel": 789,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 69544210155,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 43111078797,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/81a33cc568f575e1ed6fdf904a4ac7d6.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b8231297ba3db5cc1150f08c049e4baa.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 45774489358,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるる",
+      "totalDamage": 142847000000,
+      "attackCount": 3,
+      "syncLevel": 781,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 58113987817,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 41261877966,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/412477ea935f5aa492efc63fe3e2bb07.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 43471279407,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/f89d910cb50b1f5bf6b4d294101d8953.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "なべりうす",
+      "totalDamage": 139180000000,
+      "attackCount": 3,
+      "syncLevel": 801,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 49170787259,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 57589244599,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 32420351164,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "パン",
+      "totalDamage": 134787000000,
+      "attackCount": 3,
+      "syncLevel": 776,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 41559509014,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 43791130385,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 49436815429,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "DRアルカード",
+      "totalDamage": 134333000000,
+      "attackCount": 3,
+      "syncLevel": 852,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 34289179312,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 34631029688,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/b2e4f8b7dd434f5914965b8388fe2395.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 65412776089,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/e608505f9845306292e4740c0aeec76b.webp",
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
+            "./character-images/e641c325ff3f6d6fb159fea2eb0a26f7.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ニッサ",
+      "totalDamage": 130632000000,
+      "attackCount": 3,
+      "syncLevel": 790,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 38736982702,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 49036683198,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 42858185712,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "フブキ",
+      "totalDamage": 123372000000,
+      "attackCount": 3,
+      "syncLevel": 765,
+      "attacks": [
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 35998637480,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8503f8fcdf40b4c8051ff93f064ce511.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 52144042383,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 35229430600,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "にま",
+      "totalDamage": 118036000000,
+      "attackCount": 3,
+      "syncLevel": 752,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 42054955013,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 34829365767,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 41151185968,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f89d910cb50b1f5bf6b4d294101d8953.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "みに",
+      "totalDamage": 101754000000,
+      "attackCount": 3,
+      "syncLevel": 725,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 30811798762,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 39159383979,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 31782590011,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
+            "./character-images/b2e4f8b7dd434f5914965b8388fe2395.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "銀狐リン",
+      "totalDamage": 99164000000,
+      "attackCount": 3,
+      "syncLevel": 796,
+      "attacks": [
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 30110356491,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 33446880450,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/b2e4f8b7dd434f5914965b8388fe2395.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 35607164724,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるちゃ",
+      "totalDamage": 97584000000,
+      "attackCount": 3,
+      "syncLevel": 811,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 36573006244,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 32296696223,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 28714131882,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/412477ea935f5aa492efc63fe3e2bb07.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "MIRIN",
+      "totalDamage": 96417000000,
+      "attackCount": 3,
+      "syncLevel": 701,
+      "attacks": [
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 32922583954,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 37759244312,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 25735199747,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "翠秋めぐる",
+      "totalDamage": 93287000000,
+      "attackCount": 3,
+      "syncLevel": 761,
+      "attacks": [
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 26257044061,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/f89d910cb50b1f5bf6b4d294101d8953.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 32606562269,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b2e4f8b7dd434f5914965b8388fe2395.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 34422939780,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "るり",
+      "totalDamage": 79670000000,
+      "attackCount": 3,
+      "syncLevel": 652,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 25344376221,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/e641c325ff3f6d6fb159fea2eb0a26f7.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 29284558920,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 25041029718,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ふるり",
+      "totalDamage": 76540000000,
+      "attackCount": 3,
+      "syncLevel": 621,
+      "attacks": [
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 29931326897,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 32227600328,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14380729747,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ねむねこ",
+      "totalDamage": 63696000000,
+      "attackCount": 3,
+      "syncLevel": 612,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 23762843427,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 23900663311,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16032580676,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "時雨",
+      "totalDamage": 50305000000,
+      "attackCount": 3,
+      "syncLevel": 562,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 17684303232,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 16582920849,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 16037572304,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NAVI01",
+      "totalDamage": 43247000000,
+      "attackCount": 3,
+      "syncLevel": 488,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15233813825,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12026834829,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIアルトアイゼン",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15986075285,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f5ce0f0aa4328238613af76c6de49a84.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ほりっぴー",
+      "totalDamage": 34949000000,
+      "attackCount": 3,
+      "syncLevel": 459,
+      "attacks": [
+        {
+          "bossType": "Iオベリスク",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 12797663478,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグアームズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 11354980613,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Vブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 10796458172,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "extractedAt": "2026-10-31T22:12:38.485Z",
+    "playerCount": 21,
+    "totalDamage": 2341129000000,
+    "source": "BlaBlaLINK Chrome Extension",
+    "version": "2.5",
+    "hasDetailedAttacks": true,
+    "hasKillFlags": true,
+    "imagesDownloaded": true
+  }
+}
