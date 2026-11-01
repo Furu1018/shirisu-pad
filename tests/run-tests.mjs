@@ -13695,11 +13695,15 @@ console.log('\nblablaNameCodes:');
             // 確認済みで、まだ誰も使っていない (= PAD に登録されていない) 新キャラだけ名前つきで通す。
             // PAD に登録されたら node scripts/build-blabla-name-codes.mjs --apply で pad が付く (そのときここから消してよい)
             if (NOT_IN_PAD_YET[nameCode]) {
+                // 例外は厳密に: 名前が一致し、pad が**付いていない**こと (PAD に登録されて pad が付いたら、ここから外す合図)
                 assert.equal(entry.jp, NOT_IN_PAD_YET[nameCode], `name_code ${nameCode} の名前が変わった`);
+                assert.ok(!('pad' in entry), `name_code ${nameCode} (${entry.jp}) に pad が付いた — PAD に登録されたなら NOT_IN_PAD_YET から外す`);
                 continue;
             }
             assert.ok(entry.pad && typeof entry.pad === 'string', `pad が無い: ${nameCode} (${entry.jp})`);
         }
+        // 許可した 3 行は表に残っていること (消えたら CDN 側の変化 — 気づけるように)
+        for (const code of Object.keys(NOT_IN_PAD_YET)) assert.ok(map.data[code], `NOT_IN_PAD_YET の ${code} が表から消えた`);
     });
 
     test('★ 4 周年の新キャラ マリアン：クイーン (5185) は PAD の名前に付いている (育成を取り込める)', () => {
