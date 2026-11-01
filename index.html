@@ -18358,6 +18358,7 @@
                 // 🧬 育成データの取り込みはシーズンに縛らない (レイドのあと = シーズン終了後と、新メンバーの加入時に使う)。
                 //   ここで呼ばないと「準備」の段階でカードの中身が「運営ONで読み込みます…」のまま止まる (2026-11-01 ふるり「入り口がなくなっています」)
                 if (typeof renderOpsGrowth === 'function') renderOpsGrowth();
+                if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();               // 📸 も準備の段階に出るので「アクティブシーズンがありません」に (Codex指摘)
                 _applyOpsCardStates();     // シーズン終了直後も前シーズンの開閉状態を残さない (Codex指摘)
                 _renderOpsCockpitSoon();   // コックピット・見出しサマリーを「シーズン無し」に
                 return;
