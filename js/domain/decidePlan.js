@@ -293,6 +293,12 @@
         return m;
     }
 
+    /** 通知の 1 行 (rowsOf の行): 「A 朝 5〜9時 Lv1 B3 灼熱PT 編成①」。決定の通知と「変わりません」の通知が同じ言い方を使う */
+    function lineText(r, ptName = null) {
+        const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
+        return `${r.blockLabel} Lv${Number(r.level) >= 4 ? 4 : Number(r.level) || 1} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`;
+    }
+
     /**
      * 決定の通知 (人ごとに 1 通)。
      *   ・前の決定にあったブロックの割当が変わった人 → 🔄 変わりました (✅ を押していたかで文を分ける)
@@ -306,8 +312,7 @@
         const prevKeys = new Set(decidedBlocks(prevPlan).keys());
         const acked = ackedIds instanceof Set ? ackedIds : null;
         const has = (set, id) => set.has(Number(id)) || set.has(String(id));
-        const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
-        const lineOf = (r) => `${r.blockLabel} Lv${Number(r.level) >= 4 ? 4 : Number(r.level) || 1} B${r.bossNumber}${pt(r.weakness) ? ` ${pt(r.weakness)}PT` : ''} 編成${SLOT_JP[r.slot] || r.slot}`;
+        const lineOf = (r) => lineText(r, ptName);
         const tailOf = (changed, id) => !changed || !acked ? 'レイド予定表で確認してください'
             : has(acked, id) ? '✅ 確認したあとにプランが変わりました。レイド予定表で新しい凸を確認してください'
             : 'まだ確認していませんが、プランが変わりました。レイド予定表で新しい凸を確認してください';
@@ -338,6 +343,31 @@
     }
 
     /**
+     * 「変更なしでも通知する」(2026-11-02 ふるり Q1 のスイッチ・既定 OFF) の通知。組み直さずに決定し直したときだけ使う — 中身は前の決定と同じなので「変わりません」。
+     *   宛先 = いまのブロック (fromIdx) から後ろに、まだ済んでいない凸がある人。過ぎたブロック・済んだ凸 (done) だけの人には送らない
+     * @param {{ plan:Object, blocks:Object[], fromIdx?:number, done?:Set<string>|null, ptName?:Function|null }} a  done = 済んだ凸の planKey
+     * @returns {Array<{memberId:any, title:string, body:string, lines:string[], changed:false, same:true, sig:'same'}>}
+     */
+    function sameNotices({ plan, blocks, fromIdx = 0, done = null, ptName = null } = {}) {
+        const doneSet = done instanceof Set ? done : new Set();
+        const from = Number.isInteger(Number(fromIdx)) ? Number(fromIdx) : 0;
+        const nBlocks = Array.isArray(blocks) ? blocks.length : 0;
+        const out = [];
+        for (const [id, rows] of rowsOf(plan, blocks)) {
+            const memberId = Number.isFinite(Number(id)) ? Number(id) : id;
+            // order はブロックの添字 (シーズンのブロックに無い鍵は 99 = 過ぎたかどうか分からない → 送らない)
+            const left = rows.filter(r => r.order < nBlocks && r.order >= from
+                && !doneSet.has(planKey({ block: r.block, level: r.level, bossNumber: r.bossNumber, memberId: id, loadoutSlot: r.slot })));
+            if (!left.length) continue;
+            const lines = left.map(r => lineText(r, ptName));
+            out.push({ memberId, lines, changed: false, same: true, sig: 'same',
+                title: '📅 あなたの凸は変わりません',
+                body: `${lines.join(' / ')} — 運営が凸プランを確かめ直しました (前の決定のまま)。レイド予定表で確認できます` });
+        }
+        return out.sort((x, y) => String(x.memberId).localeCompare(String(y.memberId), 'en', { numeric: true }));
+    }
+
+    /**
      * 決定の中身を人ごとに確かめる: 1 人 3 凸を超える / 同じキャラを 2 回使う。
      * 手前のブロックだけ 🧮 し直すと、ソルバーは後ろの決定 (kept) を知らないので起こり得る (Codex 監査 2026-10-31)。
      * 決定は止めない (後ろまで組み直すとメンバーを振り回す) — 確認で運営に言うための材料
@@ -361,5 +391,5 @@
             .filter(m => m.attacks > 3 || m.dupChars.length);
     }
 
-    root.decidePlanDomain = { conflictsOf, keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, SLOT_JP };
+    root.decidePlanDomain = { conflictsOf, keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, sameNotices, lineText, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -15072,6 +15072,39 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         const none = dp.build({ blocks, ov: [ov[0]], newIdxs: [0, 3], bosses });
         assert.deepEqual(none.decided.blocks.map(b => b.key), ['5-8'], '組んでいない (ov に無い) ブロックを入れた');
     });
+    test('★ 変更なしの決定し直し (2026-11-02 ふるり・メモ §1): newIdxs が空の build は前の決定と同じ中身・notices は 0 通 / sameNotices は いまのブロックから後ろに済んでいない凸がある人だけ', () => {
+        const prev = dp.build({ blocks, ov, newIdxs: [0, 1], bosses, at: 'T1' });
+        // 画面は ov を渡すが、newIdxs が空なら ov は読まない (いまの盤面で作り直さない = S4 レビュー [2])
+        const again = dp.build({ blocks, ov: [{ idx: 0, past: false, level: 2, rows: [{ bossNumber: 4, name: 'ボス4', weakness: 'iron', pieces: [piece(8, 99, 0)] }] }], newIdxs: [], prevPlan: prev, bosses, at: 'T2' });
+        assert.deepEqual(again.decided.blocks.map(b => [b.key, b.level, b.attacks, b.kept]), prev.decided.blocks.map(b => [b.key, b.level, b.attacks, true]), 'ブロックが前の決定と違う');
+        const sig = (p) => dp.flat(p).map(a => `${a.block}|${a.level}|${a.bossNumber}|${a.memberId}|${a.loadoutSlot}|${a.hourIdx}|${a.dmgB}|${(a.team || []).join(',')}`).sort().join('\n');
+        assert.equal(sig(again), sig(prev), '凸の中身が前の決定と違う (いまの盤面で作り直した)');
+        assert.equal(again.decided.at, 'T2', '確かめた時刻が残らない');
+        assert.equal(dp.isDecided(again), true);
+        assert.deepEqual(dp.notices({ prevPlan: prev, nextPlan: again, blocks }).notices, [], '変更なしなのに通知が出る');
+        const pt = (w) => ({ fire: '灼熱', water: '水冷', wind: '風圧' })[w] || '';
+        // 朝 (0) に 1・2・3、午前 (1) に 1 (編成②)
+        const all = dp.sameNotices({ plan: again, blocks, fromIdx: 0, ptName: pt });
+        assert.deepEqual(all.map(n => n.memberId), [1, 2, 3]);
+        assert.ok(all.every(n => n.same === true && n.changed === false && n.sig === 'same' && n.title === '📅 あなたの凸は変わりません'));
+        const m1 = all.find(n => n.memberId === 1);
+        assert.deepEqual(m1.lines, [`${blocks[0].label} Lv1 B1 灼熱PT 編成①`, `${blocks[1].label} Lv1 B3 風圧PT 編成②`]);
+        assert.ok(m1.body.startsWith(m1.lines.join(' / ') + ' — ') && /前の決定のまま/.test(m1.body) && /レイド予定表で確認できます$/.test(m1.body));
+        // いまのブロックが午前 (1) なら朝の凸は過ぎた → 午前に凸のある 1 だけ (朝の 1 行は出さない)
+        assert.deepEqual(dp.sameNotices({ plan: again, blocks, fromIdx: 1 }).map(n => [n.memberId, n.lines.length]), [[1, 1]]);
+        // 済んだ凸 (✓ の planKey) は数えない: 2 は全部済み → 送らない / 1 は朝が済み → 午前の 1 行だけ
+        const done = new Set(dp.flat(again).filter(a => a.memberId === 2 || (a.memberId === 1 && a.block === '5-8')).map(a => dp.planKey(a)));
+        assert.deepEqual(dp.sameNotices({ plan: again, blocks, fromIdx: 0, done }).map(n => [n.memberId, n.lines.length]), [[1, 1], [3, 1]]);
+        assert.deepEqual(dp.sameNotices({ plan: again, blocks, fromIdx: blocks.length }), [], 'ブロックが全部過ぎたのに送る');
+        // シーズンのブロックに無い鍵の凸 (過ぎたかどうか分からない) の人には送らない
+        const odd = JSON.parse(JSON.stringify(again));
+        odd.levels[0].bosses[0].attacks.push({ memberId: 7, memberName: 'm7', block: '30-31', blockLabel: '?', loadoutSlot: 1, hourIdx: 0, dmgB: 1 });
+        assert.ok(!dp.sameNotices({ plan: odd, blocks, fromIdx: 0 }).some(n => n.memberId === 7), 'ブロックの分からない凸の人に送る');
+        assert.deepEqual(dp.sameNotices({ plan: null, blocks }), []);
+        // 決定の通知と同じ 1 行の言い方 (lineText を共有・書式を 2 か所に書かない)
+        const first = dp.notices({ prevPlan: null, nextPlan: prev, blocks, ptName: pt }).notices.find(n => n.memberId === 1);
+        assert.deepEqual(first.lines, m1.lines);
+    });
     test('★ rangeToDecide: いまのブロックから組めたブロックが続くところまで (途中で止める)', () => {
         const built = (s) => (i) => s.includes(i);
         assert.deepEqual(dp.rangeToDecide({ first: 1, count: 6, built: built([1, 2, 4]) }), [1, 2]);
@@ -15370,6 +15403,59 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const seed = fn('function _obSeedDecided(', 'function _obCtx(');
         // 組みかけ (決定していない) のあるブロックは読み戻しで上書きしない — ブロックごと (S4 レビュー [6])
         assert.ok(/const mine = _ob\.plans\.get\(i\);\s*\n\s*if \(mine && mine\.fromDecided == null\) continue;/.test(seed), '組みかけを決定の読み戻しで上書きしている');
+    });
+    test('★ 変更なしの決定し直し の配線 (2026-11-02 ふるり・メモ §1 案 A): 組み直していなくても押せる / build は fresh (空) のまま = 前の決定を写す / スイッチは押したときの値 / 確認で人数を言った相手にだけ送る', () => {
+        const r = fn('function renderOpsBuild()', 'function _obDecideRange(');
+        assert.ok(/const same = !fresh\.length && range\.length > 0 && !!decRow;/.test(r), '「変更なし」の判定が無い');
+        assert.ok(/: \(same \? `<button type="button" class="ob-decide-btn" onclick="_obDecide\(\)"\$\{_ob\.busy \? ' disabled' : ''\}>✅ \$\{range\.map\(i => escapeHtml\(blocks\[i\]\.short\)\)\.join\('・'\)\} をこのまま決定し直す \(変更なし\)<\/button>`/.test(r), '変更なしで押せるボタンが無い');
+        assert.ok(!r.includes('組み直すと決定し直せます'), '「組み直さないと決定できない」の古い文が残っている');
+        assert.ok(/const sameOpt = same \? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame\(this\.checked\)"/.test(r) && /\$\{sameOpt\}\$\{decNote\}/.test(r), '変更なしでも通知するスイッチが無い');
+        assert.ok(/function _obSetNotifySame\(on\) \{ _ob\.notifySame = !!on; \}/.test(html) && /notifySame: false \};/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
+        const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
+        assert.ok(!/if \(!fresh\.length\) \{ showNotification\(/.test(d), '組み直していないと止まる');
+        const iSw = d.indexOf('const notifySame = !!_ob.notifySame;'), iAw = d.indexOf('await ');
+        assert.ok(iSw > 0 && iSw < iAw, 'スイッチを最初の await の前に控えていない (待っている間に切り替えると確認と違う相手に送る)');
+        assert.ok(/const same = !fresh\.length;\s*\n\s*if \(same && !prev\) \{/.test(d), '前の決定が無いのに変更なしにする');
+        assert.ok(/dp\.build\(\{ blocks, ov, newIdxs: fresh, prevPlan: prev \? prev\.plan : null,/.test(d), 'build に fresh 以外を渡している (変更なしで range を渡すと、いまの盤面で作り直す: S4 レビュー [2])');
+        assert.ok(/const sameTo = same && notifySame \? dp\.sameNotices\(\{ plan, blocks, fromIdx: first, done: _obDoneKeys\(snap2, blocks\),/.test(d), '変更なしの宛先を確認の前に決めていない');
+        assert.ok(d.indexOf('const sameTo = ') < d.indexOf('if (!confirm(msg)) return;') && /sameTo\.length \? `\\n\\n「変更なしでも通知する」に印があるので、これから凸のある \$\{sameTo\.length\} 人に/.test(d), '確認で人数を言っていない');
+        assert.ok(/pubRows: Array\.isArray\(pubs2\) \? pubs2\.filter\(r => Number\(r\.season_id\) === Number\(sid\)\) : \[\], sameTo \}\);/.test(d), '確認で言った相手を通知に渡していない');
+        assert.ok(/\(kept\.length && !same \?/.test(d), '変更なしで「前の決定のまま残します」を重ねて言う');
+    });
+    await testAsync('★ 変更なしの決定し直し: _obNotifyDecide を実際に動かす — スイッチ OFF は 0 通で ✅ を全員引き継ぐ / ON は確認で言った相手に「変わりません」を 1 通ずつ・その人の ✅ も引き継ぐ・同じ人に 2 通にしない', async () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const bosses = [1, 2, 3].map(n => ({ boss_number: n, name: `ボス${n}`, weakness: ['fire', 'water', 'wind'][n - 1], tier: 'lord' }));
+        const pc = (memberId, dmgB, hourIdx, o = {}) => ({ memberId, memberName: `m${memberId}`, dmgB, team: [`c${memberId}`], loadoutSlot: 1, hourIdx, ...o });
+        const ov = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, name: 'ボス1', weakness: 'fire', pieces: [pc(1, 30, 0), pc(2, 20, 1)] }] },
+            { idx: 1, past: false, level: 1, rows: [{ bossNumber: 3, name: 'ボス3', weakness: 'wind', pieces: [pc(3, 15, 4)] }] }];
+        const prevPlan = dp.build({ blocks, ov, newIdxs: [0, 1], bosses, at: 'T1' });
+        const plan = dp.build({ blocks, ov, newIdxs: [], prevPlan, bosses, at: 'T2' });
+        const prev = { id: 10, plan: prevPlan }, pub = { id: 11 };
+        const run = async (sameTo) => {
+            const sent = [], carried = [], notes = [], refs = [];
+            const win = {
+                decidePlanDomain: dp,
+                supabaseLoadPlanAcks: async () => [{ plan_id: 10, player_id: 1 }, { plan_id: 10, player_id: 3 }, { plan_id: 9, player_id: 2 }],
+                supabaseCarryOverPlanAcks: async (sid, keep, newId, prevId) => { carried.push({ keep: [...keep].map(Number).sort(), newId, prevId }); },
+                supabaseClaimRaidNotice: async (sid, kind, ref) => { refs.push(ref); return 'claimed'; },
+                supabaseMarkRaidNoticeSent: async () => {}, supabaseReleaseRaidNotice: async () => {},
+                sendPushNotification: async (p) => { sent.push(p); return {}; },
+            };
+            const notify = new Function('window', 'PT_ATTRS', 'showNotification', `${fn('async function _obNotifyDecide(', '// ブロックの時間の言い方')}\nreturn _obNotifyDecide;`)(win, [{ key: 'fire', name: '灼熱' }, { key: 'wind', name: '風圧' }], (m) => notes.push(m));
+            await notify({ pub, plan, prev, seasonId: 40, me: { id: 99, name: 'ふるり' }, blocks, pubRows: [], sameTo });
+            return { sent, carried, notes, refs };
+        };
+        const off = await run([]);
+        assert.equal(off.sent.length, 0, 'スイッチ OFF なのに送った');
+        assert.deepEqual(off.carried, [{ keep: [1, 3], newId: 11, prevId: 10 }], '変更なしで ✅ を引き継いでいない');
+        const to = dp.sameNotices({ plan, blocks, fromIdx: 0, ptName: (w) => ({ fire: '灼熱', wind: '風圧' })[w] || '' });
+        const on = await run([...to, { ...to[0] }]);   // 同じ人が 2 回入っても 1 通
+        assert.deepEqual(on.sent.map(p => [p.playerIds[0], p.title]), [[1, '📅 あなたの凸は変わりません'], [2, '📅 あなたの凸は変わりません'], [3, '📅 あなたの凸は変わりません']]);
+        assert.ok(on.sent.every(p => p.url === './?tab=raid'));
+        assert.deepEqual(on.refs, ['decide|1|p11|same', 'decide|2|p11|same', 'decide|3|p11|same'], '二重送信よけの鍵');
+        assert.deepEqual(on.carried, [{ keep: [1, 3], newId: 11, prevId: 10 }], '「変わりません」を送った人の ✅ を引き継いでいない (中身は同じ)');
+        assert.ok(on.notes.some(m => m.includes('3 人に通知しました')));
     });
     test('★ メンバーの時間割 (S4 → S5): 最新の行が決定なら 1 枚 (絞らない) / ホームは自分の凸だけ・✓ ボタンは無い / ✓ は運営が ✓ 凸の記録で (mark_attack_done の ops_tap) / 56 未適用は案内', () => {
         assert.ok(/decRow = window\.decidePlanDomain \? window\.decidePlanDomain\.currentDecided\(pubRows\) : null;\s*\n\s*if \(decRow\) \{ pub = decRow; pubList = \[\]; pubSel = null; \}/.test(html) && /let pub = null, pubList = \[\], pubRows = \[\], pubSel = null, decRow = null;/.test(html), '決定の行を選んでいない');
