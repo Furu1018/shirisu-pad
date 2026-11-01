@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1600">
+<title>ブロック制の利点</title>
+<meta name="description" content="しりすこPAD: ユニオンレイドのブロック制の利点 6 つ (メンバー向け・Discord に貼る 1 枚絵)。文字は docs/ChatGPT画像プロンプト_ブロック制_2026-11-02.md の ① と同じ。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=block">
+<style>
+:root { --bg: #fbf7ef; --card: #ffffff; --ink: #1d1b26; --body: #3f3c4c; --muted: #6f6b80; --line: #e6e0d4; --stripe: #c9c2b2;
+  --c1: #6c42f0; --c2: #2c9fd8; --c3: #e08a1c; --c4: #1f9358; --c5: #d64f7a; --c6: #7a5af5; --bad: #d7432f; --ok: #1f9358;
+  --b0: #ffd6cf; --b1: #ffe5b8; --b2: #fff4b0; --b3: #d4f2d9; --b4: #cfe6ff; --b5: #e3d8ff; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #888; }
+.poster { width: 1600px; height: 900px; background: var(--bg); color: var(--ink); font-family: 'Noto Sans JP', system-ui, sans-serif; font-weight: 700; padding: 34px 48px 30px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 16px; position: relative; overflow: hidden; }
+h1 { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: .01em; }
+h1 small { font-size: 20px; color: var(--muted); font-weight: 900; margin-left: 14px; }
+/* 上の対比 */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.mini { background: var(--card); border-radius: 18px; padding: 12px 16px 12px; display: grid; grid-template-columns: 110px 1fr 56px; gap: 12px; align-items: center; border: 1.5px solid var(--line); }
+.mini .lb { font-size: 18px; font-weight: 900; }
+.mini .lb.now { color: var(--c1); }
+.mini .cap { font-size: 14px; color: var(--body); margin-top: 6px; }
+.face { width: 46px; height: 46px; border-radius: 50%; background: #ffe0c2; position: relative; border: 2.5px solid var(--ink); }
+.face::before, .face::after { content: ''; position: absolute; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+.face::before { left: 12px; } .face::after { right: 12px; }
+.face i { position: absolute; left: 13px; right: 13px; bottom: 11px; height: 9px; border: 2.5px solid var(--ink); border-top: 0; border-radius: 0 0 12px 12px; }
+.face.sad i { bottom: 7px; border: 2.5px solid var(--ink); border-bottom: 0; border-radius: 12px 12px 0 0; }
+.face.sad::after { transform: rotate(0); } .face.sad { background: #ffd0d0; }
+/* カード */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 16px; }
+.cd { background: var(--card); border-radius: 20px; padding: 18px 22px 18px 20px; display: grid; grid-template-columns: 104px 1fr; gap: 18px; align-items: center; border: 1.5px solid var(--line); border-left: 8px solid var(--c); }
+.cd .ic { width: 104px; height: 104px; border-radius: 26px; background: color-mix(in srgb, var(--c) 16%, white); display: flex; align-items: center; justify-content: center; }
+.cd .ic svg { width: 68px; height: 68px; stroke: var(--c); fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.cd b { display: block; font-size: 24px; font-weight: 900; line-height: 1.3; margin-bottom: 8px; letter-spacing: -0.01em; }   /* 改行は <br> で決める (balance は途中で折る) */
+.cd span { display: block; font-size: 17.5px; color: var(--body); line-height: 1.5; }
+.cd .n { position: absolute; }
+/* 下 */
+.bottom { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+.box { background: var(--card); border-radius: 18px; padding: 12px 18px; border: 1.5px solid var(--line); display: grid; gap: 6px; }
+.box .t { font-size: 16px; font-weight: 900; color: var(--muted); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.two > div { display: flex; gap: 12px; align-items: center; font-size: 16px; line-height: 1.35; }
+.two > div > div { display: block; }
+.two b { display: block; font-size: 19px; font-weight: 900; white-space: nowrap; }
+.two small { display: block; color: var(--body); font-weight: 700; font-size: 13.5px; }
+.pill { font-size: 15px; font-weight: 900; color: #fff; background: var(--ink); border-radius: 999px; padding: 4px 11px; flex: none; }
+.chart { display: grid; grid-template-columns: 190px 1fr; gap: 16px; align-items: center; }
+.bars { display: flex; gap: 14px; align-items: flex-end; height: 66px; }
+.bar { width: 84px; white-space: nowrap; border-radius: 8px 8px 3px 3px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; font-size: 11.5px; color: var(--muted); }
+.bar i { display: block; width: 100%; border-radius: 8px 8px 3px 3px; }
+.gain { font-size: 22px; font-weight: 900; color: var(--ok); line-height: 1.2; }
+.gain small { display: block; font-size: 12.5px; color: var(--muted); font-weight: 700; }
+.last { font-size: 15.5px; color: var(--body); margin-top: 4px; }
+/* タイムライン (SVG) */
+svg.tl { width: 100%; height: 58px; display: block; }
+.stripe { fill: url(#st); }
+.foot { position: absolute; right: 48px; bottom: 10px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="poster" id="poster">
+  <h1>🧱 ブロック制の利点<small>— なぜこの形にしたか</small></h1>
+
+  <div class="vs">
+    <div class="mini">
+      <div class="lb">これまで</div>
+      <div>
+        <svg class="tl" viewBox="0 0 640 58" aria-label="朝に1日ぶんを決める → ずれるたびに組み直し">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#d7432f"/></marker></defs>
+          <rect x="4" y="22" width="632" height="22" rx="11" fill="#e9e2d3"/>
+          <rect x="4" y="22" width="60" height="22" rx="11" fill="#1d1b26"/>
+          <text x="34" y="37" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">5:00</text>
+          <g stroke="#d7432f" stroke-width="3" stroke-linecap="round">
+            <path d="M200 20 l6 12 l-8 10"/><path d="M360 20 l-6 12 l8 10"/><path d="M500 20 l6 12 l-8 10"/>
+          </g>
+          <path d="M630 18 C 560 -6, 120 -6, 40 18" fill="none" stroke="#d7432f" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#ar)"/>
+        </svg>
+        <div class="cap">朝に1日ぶんを決める → ずれるたびに組み直し</div>
+      </div>
+      <div class="face sad"><i></i></div>
+    </div>
+    <div class="mini">
+      <div class="lb now">ブロック制</div>
+      <div>
+        <svg class="tl" viewBox="0 0 640 58" aria-label="1ブロックずつ、直前の実測で組む">
+          <defs><pattern id="st" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="#b9b1a0"/></pattern></defs>
+          <g font-size="12" font-weight="900" fill="#1d1b26" text-anchor="middle">
+            <rect x="4" y="22" width="86" height="22" rx="7" fill="var(--b0)"/><text x="40" y="37">A</text><rect x="90" y="22" width="16" height="22" class="stripe"/>
+            <rect x="110" y="22" width="86" height="22" rx="7" fill="var(--b1)"/><text x="146" y="37">B</text><rect x="196" y="22" width="16" height="22" class="stripe"/>
+            <rect x="216" y="22" width="86" height="22" rx="7" fill="var(--b2)"/><text x="252" y="37">C</text><rect x="302" y="22" width="16" height="22" class="stripe"/>
+            <rect x="322" y="22" width="86" height="22" rx="7" fill="var(--b3)"/><text x="358" y="37">D</text><rect x="408" y="22" width="16" height="22" class="stripe"/>
+            <rect x="428" y="22" width="86" height="22" rx="7" fill="var(--b4)"/><text x="464" y="37">E</text><rect x="514" y="22" width="16" height="22" class="stripe"/>
+            <rect x="534" y="22" width="102" height="22" rx="7" fill="var(--b5)"/><text x="585" y="37">F</text>
+          </g>
+          <g font-size="11" font-weight="900" fill="#6f6b80" text-anchor="middle"><text x="98" y="14">再編成20分</text><text x="204" y="14">再編成20分</text><text x="310" y="14">再編成20分</text><text x="416" y="14">再編成20分</text><text x="522" y="14">再編成20分</text></g>
+        </svg>
+        <div class="cap">1ブロックずつ、直前の実測で組む</div>
+      </div>
+      <div class="face"><i></i></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="cd" style="--c:var(--c1);"><div class="ic"><svg viewBox="0 0 64 64"><rect x="12" y="10" width="40" height="46" rx="6"/><rect x="24" y="6" width="16" height="8" rx="3"/><rect x="19" y="24" width="26" height="8" rx="2" fill="currentColor" style="fill:var(--c);stroke:none"/><path d="M19 40h26M19 48h18"/></svg></div>
+      <div><b>運営は「次のブロック」だけ<br>考えればいい</b><span>1日ぶんを当てにいかない。ずれても直す範囲が小さい</span></div></div>
+    <div class="cd" style="--c:var(--c2);"><div class="ic"><svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="22"/><path d="M32 20v14l9 6"/><path d="M24 7l-5 4M40 7l5 4"/></svg></div>
+      <div><b>模擬は「自分が最初に出る<br>ブロック」の前までに</b><span>時間がない人も焦らなくていい。夜しか出ない人は夕方までOK</span></div></div>
+    <div class="cd" style="--c:var(--c3);"><div class="ic"><svg viewBox="0 0 64 64"><circle cx="32" cy="36" r="20"/><path d="M26 8h12M32 8v8M46 18l4-4"/><path d="M32 36l7-7"/><path d="M12 56L52 16" style="stroke:#d7432f;stroke-width:4"/></svg></div>
+      <div><b>ブロック内ならいつ凸してもOK</b><span>時刻も順番も気にしない。Lvが上がるのはブロックの頭だけ</span></div></div>
+    <div class="cd" style="--c:var(--c4);"><div class="ic"><svg viewBox="0 0 64 64"><rect x="14" y="28" width="36" height="28" rx="6"/><path d="M22 28v-8a10 10 0 0 1 20 0v8"/><path d="M24 42l6 6 11-12" style="stroke-width:4"/></svg></div>
+      <div><b>決まった凸は基本そのまま</b><span>変わるのは残りHPが大きくずれたときだけ。変わったら通知</span></div></div>
+    <div class="cd" style="--c:var(--c5);"><div class="ic"><svg viewBox="0 0 64 64"><circle cx="22" cy="24" r="9"/><path d="M22 7v5M22 36v5M5 24h5M34 24h5M10 12l3.5 3.5M30.5 32.5L34 36M34 12l-3.5 3.5M13.5 32.5L10 36"/><path d="M52 32a13 13 0 1 1-12-18 10 10 0 0 0 12 18z"/></svg></div>
+      <div><b>朝も夜も出られる人は、<br>夜に温存できる</b><span>強い編成をLv3やボス5に取っておける</span></div></div>
+    <div class="cd" style="--c:var(--c6);"><div class="ic"><svg viewBox="0 0 64 64"><rect x="8" y="14" width="48" height="42" rx="6"/><path d="M8 26h48M20 8v10M44 8v10"/><g style="fill:var(--c);stroke:none"><circle cx="20" cy="38" r="4"/><circle cx="32" cy="38" r="4"/><circle cx="44" cy="38" r="4"/><circle cx="20" cy="49" r="4"/><circle cx="32" cy="49" r="4"/></g></svg></div>
+      <div><b>みんなの動きが見える</b><span>📅 レイド予定表に、誰がどのブロックでどのボスへ行くかが出る</span></div></div>
+  </div>
+
+  <div class="bottom">
+    <div class="box">
+      <div class="t">できる貢献は2つ</div>
+      <div class="two">
+        <div><span class="pill">①</span><div><b>模擬の属性を増やす</b><small>組める選択肢が増える</small></div></div>
+        <div><span class="pill">②</span><div><b>出られるブロックを増やす</b><small>置ける場所が増える</small></div></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="chart">
+        <div class="bars"><div class="bar"><i style="height:38px;background:#cfc8b8;"></i>1日ぶんを1回</div><div class="bar"><i style="height:46px;background:var(--c1);"></i>ブロック制</div></div>
+        <div><div class="gain">与ダメ +17〜22%<small>試算：第44回のデータ・60通り</small></div><div class="last">運営「プラン組まなきゃ」もメンバー「模擬詰めなきゃ・ミスれない」も軽くなる</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">しりすこPAD · 2026-11</div>
+</div>
+</body>
+</html>
