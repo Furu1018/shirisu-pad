@@ -244,11 +244,16 @@
     /** 決定の行に、その名前のブロックが入っているか */
     var decidedHas = function (c, name) { return !!(c && c.pub && c.pub.plan && c.pub.plan.decided && c.pub.plan.decided.blocks.some(function (b) { return b && b.name === name; })); };
     /** 当日の盤面を作ったあとに、夕方 (添字 3) を組み直して決定したか。前の決定から写しただけ (kept) = 「このまま決定し直す (変更なし)」は数えない
-     *  (変更なしでも押せるようになって、組み直す前に押すと「決定し直す」が済んだことになっていた: 2026-11-02 レビュー) */
+     *  (変更なしでも押せるようになって、組み直す前に押すと「決定し直す」が済んだことになっていた: 2026-11-02 レビュー)。
+     *  ★ 最新の行だけでなく、そのシーズンの決定の行のどれかで見る — 組み直して決定したあとに「このまま決定し直す」を押すと最新の行は全部 kept になり、済んだ課題が戻っていた (再レビュー) */
     var reDecided = function (c) {
         var at = store.get('ops-day:setupAt') || '';
-        return !!(c && c.pub && c.pub.plan && c.pub.plan.decided && String(c.pub.plan.decided.at || '') > at
-            && (c.pub.plan.decided.blocks || []).some(function (b) { return b && Number(b.idx) === 3 && !b.kept; }));
+        var ok = function (r) {
+            return !!(r && r.plan && r.plan.decided && String(r.plan.decided.at || '') > at
+                && (r.plan.decided.blocks || []).some(function (b) { return b && Number(b.idx) === 3 && !b.kept; }));
+        };
+        if (c && c.pub && ok(c.pub)) return true;
+        return !!(c && c.season && c.T && Array.isArray(c.T.published_plans) && c.T.published_plans.some(function (r) { return eq(r.season_id, c.season.id) && ok(r); }));
     };
     // 「済んだ」を端末の印 (store) で決める課題の印。「↩ 1つ前に戻る」の控えに入れて一緒に戻す (控えに入れないと、戻っても課題が戻らなかった: S5 レビュー PR-1)
     var MARKS = ['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'];

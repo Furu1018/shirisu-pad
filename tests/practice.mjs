@@ -984,6 +984,15 @@ test('練習: 「済んだ」を端末の印で決める課題は、組んだ結
     assert.equal(step('ops-day', 'decide').done(dec(['夕方'], '2026-10-03T08:30:00.000Z')), true, '夕方を組み直して決定したのに済まない');
     assert.equal(step('ops-day', 'decide').done(dec(['午後'], '2026-10-03T08:30:00.000Z')), false, '夕方でないブロックの決定で「決定し直す」が済んだ');
     assert.equal(step('ops-day', 'decide').done(dec(['夕方'], '2026-10-03T07:00:00.000Z')), false, '盤面を作る前の決定で「決定し直す」が済んだ');
+    // 組み直して決定したあとに「このまま決定し直す (変更なし)」を押しても、済んだ課題は戻らない (最新の行は全部 kept・前の行で済んでいる: 再レビュー)
+    const plansRow = (id, season_id, names, at, kept) => ({ id, season_id, plan: { decided: { at, blocks: names.map(name => ({ name, idx: IDX[name], kept })) } } });
+    const withT = (rows) => { const latest = rows.filter(r => r.season_id === 7).sort((a, b) => b.id - a.id)[0]; return { pub: latest, season: { id: 7 }, T: { published_plans: rows } }; };
+    const after = withT([plansRow(20, 7, ['夕方'], '2026-10-03T08:30:00.000Z', false), plansRow(21, 7, ['朝', '午前', '午後', '夕方'], '2026-10-03T08:40:00.000Z', true)]);
+    assert.equal(step('ops-day', 'decide').done(after), true, '変更なしで決定し直すと、済んだ「決定し直す」が戻る');
+    plans.clear(); win._ob.stale.clear();
+    assert.equal(step('ops-day', 'rebuild').done(after), true, '変更なしで決定し直すと、済んだ「組み直す」が戻る');
+    assert.equal(step('ops-day', 'decide').done(withT([plansRow(20, 7, ['夕方'], '2026-10-03T07:00:00.000Z', false), plansRow(21, 7, ['夕方'], '2026-10-03T08:40:00.000Z', true)])), false, '盤面を作る前の行で済んだ');
+    assert.equal(step('ops-day', 'decide').done(withT([plansRow(20, 8, ['夕方'], '2026-10-03T08:30:00.000Z', false), plansRow(21, 7, ['夕方'], '2026-10-03T08:40:00.000Z', true)])), false, '別のシーズンの行で済んだ');
     // ↩ 1つ前に戻る: 控えに課題の印を入れ、戻すときに印も戻す (控えに無い印は消す)
     assert.match(GUIDE, /var MARKS = \['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'\];/);
     assert.match(GUIDE, /function saveSnap\(i\) \{[\s\S]*?MARKS\.forEach[\s\S]*?JSON\.stringify\(\{ db: P\.db\.dump\(\), clock: P\.clock\.get\(\), feed: feed, marks: marks \}\)/, '控えに課題の印が入っていない');

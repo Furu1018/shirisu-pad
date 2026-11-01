@@ -18421,7 +18421,7 @@
         // 段階 4: missing / skipped = 報告の無い凸 (配信の時刻を過ぎた割当) と「凸していない」にしたもの。skips = その印 (raid_event_notices の atk_skip) の集合。
         //   plan / sinceMs = 突き合わせに使った配信 (そのブロックのぶん) と その算出の時刻 (取り込みの編成の既定にも使う)
         const _atkCheck = { filter: 'all', local: new Map(), localGen: null, gen: 0, busy: new Set(),
-            missing: [], skipped: [], skips: null, skipsSeason: null, skipsGen: null, skipsVer: 0, skipBusy: false, plan: null, sinceMs: null, planId: null, seasonId: null };
+            missing: [], skipped: [], skips: null, skipsSeason: null, skipsGen: null, skipsPlan: undefined, skipsVer: 0, skipBusy: false, plan: null, sinceMs: null, planId: null, seasonId: null };
         // 盤面を取り直して、盤面から描くカード (👥 メンバー状況 / ✅ 凸報告の確認 / 📸 模擬の取り込み) をまとめて描き直す。
         // ★ 取り直しはここ 1 か所 (カードごとに load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346・1857fd6・5186ffc)。
         //   使うのは store に残った盤面だけ (load の戻り値ではない)。追い越されたら何もしない — 最新の呼び出しが描く。
@@ -18471,25 +18471,27 @@
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
             const g = opsStore.generation();
             if (g !== _atkCheck.localGen) { _atkCheck.local.clear(); _atkCheck.localGen = g; }
-            // 「凸していない」の印: 盤面を取り直したら 1 回だけ読み直す (読めたら描き直す。読めなければ前の印のまま)
-            if (_atkCheck.skipsGen !== g || Number(_atkCheck.skipsSeason) !== Number(snap.season.id)) {
-                _atkCheck.skipsGen = g;
+            // 🧱 段階 4: 配信は そのブロックのぶん (blockScope) に絞って突き合わせる (メンバーに約束したのはその範囲だけ)。
+            //   配信を算出する前に入っていた凸は、その凸を前提に組んだプランなので照合しない (sinceMs)。
+            //   ★ 時刻でブロックを決めない — 運営があとから取り込む凸の reported_at は「登録した時刻」
+            // ✅ 決定のあるシーズンは最新の決定 (ブロックの選択に関係なく: S5 レビュー TP-1 / DX-1)。無ければ従来どおり いまのブロックに効く配信
+            const pub = _opsDecidedPub(snap.season.id) || ((_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null);
+            // 「凸していない」の印: 盤面を取り直したら / 照合する配信 (決定) が替わったら 1 回だけ読み直す (読めたら描き直す。読めなければ前の印のまま)。
+            //   ★ 印の鍵の先頭は配信の id — 別の運営が決定し直すと、その端末が新しい id で写した印 (_obCarrySkips) をここで拾う (盤面の取り直しまで待つと、片付けた報告漏れが戻って見えた: 2026-11-02 レビュー)
+            const pid = pub?.id ?? null;
+            if (_atkCheck.skipsGen !== g || Number(_atkCheck.skipsSeason) !== Number(snap.season.id) || _atkCheck.skipsPlan !== pid) {
+                _atkCheck.skipsGen = g; _atkCheck.skipsPlan = pid;
                 const sid = snap.season.id, ver = _atkCheck.skipsVer;
                 if (typeof window.supabaseLoadAttackSkips === 'function') {
                     window.supabaseLoadAttackSkips(sid).then(set => {
-                        // ★ 追い越された古い読み直し (盤面が取り直された / 画面で印を付けた・外した) は使わない (Codex指摘 1901a8a)
-                        if (!set || _atkCheck.skipsGen !== g || _atkCheck.skipsVer !== ver || Number(opsStore.get()?.season?.id) !== Number(sid)) return;
+                        // ★ 追い越された古い読み直し (盤面が取り直された / 配信が替わった / 画面で印を付けた・外した) は使わない (Codex指摘 1901a8a)
+                        if (!set || _atkCheck.skipsGen !== g || _atkCheck.skipsPlan !== pid || _atkCheck.skipsVer !== ver || Number(opsStore.get()?.season?.id) !== Number(sid)) return;
                         _atkCheck.skips = set; _atkCheck.skipsSeason = sid;
                         renderOpsAttackCheck();
                     }).catch(() => { /* 印なしのまま */ });
                 }
             }
             const skips = Number(_atkCheck.skipsSeason) === Number(snap.season.id) ? _atkCheck.skips : null;
-            // 🧱 段階 4: 配信は そのブロックのぶん (blockScope) に絞って突き合わせる (メンバーに約束したのはその範囲だけ)。
-            //   配信を算出する前に入っていた凸は、その凸を前提に組んだプランなので照合しない (sinceMs)。
-            //   ★ 時刻でブロックを決めない — 運営があとから取り込む凸の reported_at は「登録した時刻」
-            // ✅ 決定のあるシーズンは最新の決定 (ブロックの選択に関係なく: S5 レビュー TP-1 / DX-1)。無ければ従来どおり いまのブロックに効く配信
-            const pub = _opsDecidedPub(snap.season.id) || ((_opsPublishedPlan && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null);
             const rawPlan = pub?.plan || null;
             const rb = window.raidBlocksDomain;
             // ✅ 決定 (S4 レビュー [21]): 決定の行は済んだ凸を中に持つ (決定し直しても残す) → 配信の時刻より前の凸も照合する (sinceMs なし)。

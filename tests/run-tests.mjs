@@ -15468,6 +15468,11 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/_ob\.seededFrom = Number\(pub\.id\);\s*\n\s*_ob\.notifySame = false;/.test(d), '決定のあとスイッチを OFF に戻さない');
         // 「凸していない」の印を新しい決定へ写す: 決定の行ができたあと・通知より前・失敗しても決定は止めない (関数の中で受ける)
         assert.ok(d.indexOf('await _obCarrySkips({ prev, pub, plan, blocks, seasonId: sid, me });') > d.indexOf('window.supabasePublishDecidedPlan(') && d.indexOf('await _obCarrySkips(') < d.indexOf('await _obNotifyDecide('), '印を写していない / 順番が違う');
+        // ⚔️ 結果がまだの凸: 照合する配信 (決定) が替わったら印を読み直す (別の運営の決定し直しで写した印をすぐ拾う: 再レビュー)。追い越された読み直しも配信で捨てる
+        const ck = fn('async function renderOpsAttackCheck(', 'function _atkCheckDecidedPlan(');
+        assert.ok(ck.indexOf('const pub = _opsDecidedPub(snap.season.id)') > 0 && ck.indexOf('const pub = _opsDecidedPub(snap.season.id)') < ck.indexOf('_atkCheck.skipsPlan !== pid'), '印を読み直す前に照合する配信を決めていない');
+        assert.ok(/if \(_atkCheck\.skipsGen !== g \|\| Number\(_atkCheck\.skipsSeason\) !== Number\(snap\.season\.id\) \|\| _atkCheck\.skipsPlan !== pid\) \{\s*\n\s*_atkCheck\.skipsGen = g; _atkCheck\.skipsPlan = pid;/.test(ck), '配信が替わっても印を読み直さない');
+        assert.ok(/if \(!set \|\| _atkCheck\.skipsGen !== g \|\| _atkCheck\.skipsPlan !== pid \|\| _atkCheck\.skipsVer !== ver/.test(ck), '配信が替わったあとの古い読み直しを使う');
         // メンバーのホーム: 比べる相手は中身の違う 1 つ前の決定
         assert.ok(/const prevDec = dpx\.previousChanged\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\)\), pub\);/.test(html) && !/dpx\.latestDecided\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\) && Number\(r\.id\) < Number\(pub\.id\)\)\)/.test(html), 'ホームの「変わったか」が同じ中身の行と比べる');
     });
