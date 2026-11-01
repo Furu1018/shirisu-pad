@@ -11481,9 +11481,11 @@ console.log('\ngrowthDomain:');
         // 🧬 育成データの取り込みは「準備」(シーズン無し) でも使う → シーズン無しの分岐でも描く (2026-11-01 入り口が消えた)
         const noSeason = dash.slice(dash.indexOf('if (!season) {'), dash.indexOf('return;', dash.indexOf('if (!season) {')));
         // コメントの中の文字列で通らないよう、コメントを除いてから見る (Codex指摘)。準備に出るカードの描画は全部ここで呼ぶ
-        const noSeasonCode = noSeason.split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
-        assert.ok(noSeason.length > 0 && /renderOpsGrowth\(\)/.test(noSeasonCode), 'シーズン無しの分岐で 🧬 育成データの取り込みを描いていない (準備の段階で中身が出ない)');
-        assert.ok(/renderOpsMockIntake\(\)/.test(noSeasonCode), 'シーズン無しの分岐で 📸 模擬の取り込みを描いていない (準備の段階で「運営ONで読み込みます…」のまま)');
+        // ブロックコメント・行コメントを除き、呼び出し文そのもの (行頭の if (typeof … === 'function') X();) を見る
+        const noSeasonCode = noSeason.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        const callStmt = (fn) => new RegExp(`^\\s*if \\(typeof ${fn} === 'function'\\) ${fn}\\(\\);\\s*$`, 'm');
+        assert.ok(noSeason.length > 0 && callStmt('renderOpsGrowth').test(noSeasonCode), 'シーズン無しの分岐で 🧬 育成データの取り込みを描いていない (準備の段階で中身が出ない)');
+        assert.ok(callStmt('renderOpsMockIntake').test(noSeasonCode), 'シーズン無しの分岐で 📸 模擬の取り込みを描いていない (準備の段階で「運営ONで読み込みます…」のまま)');
         // 打診の返事は 10 秒のポーリングでしか新しくならない → そこで 🔁 を描き直す
         const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         const i = poll.indexOf('_refreshFinishRequests()'), j = poll.indexOf('renderOpsRecent()');
