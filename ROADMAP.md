@@ -21,8 +21,8 @@
 - **GB (別リポジトリ・別会話で)**: 第46回を 11/1 07:08 に open・ふるり値の 1.00 は**ユニオンメンバーの中央値** (2026-11〜・`scripts/union-base.mjs`)・しきい値 20/10/20。
   GB の 2026-10 の凍結版 (`~/Desktop/shirisu-pad-global/data/export/2026-10.json`) は本家 `data/gb-export/` に**まだコピーしていない** (⑤ の実装時に)。
 - **SLv 補正表 (`data/slv-ratio.json`) — 決まり (11/2 ふるり「GB から見えなければ、本家は身内しか見ないので大丈夫」): 本家はこのまま置く**。
-  本家では 2026-02 からコミットされていて、Pages で誰でも取れる (分析タブの `slvRatioTable` が読む)。GB 側から見えないことは 11/2 に確かめた:
-  GB のリポジトリは全履歴 197 commit に表の値の並びが 0 件・`.gitignore` で除外・混入を止めるテストあり / GB の公開サイトは 404 / GB のコードは本家の URL を読まない / GB の Supabase の `slv_ratio`・`fururi_bases` は公開キーで読めない (permission denied)。
+  本家では 2026-02 からコミットされていて (分析タブの `slvRatioTable` が読む)、本家の Pages の URL を知っていれば取れる。それでも本家を見るのはユニオンの身内だけなので許容する (ふるりの判断)。守りたいのは **GB (外の人も使う) から見えないこと**で、11/2 に確かめた:
+  GB のリポジトリは全履歴 197 commit に表の値の並びが 0 件・`.gitignore` で除外・混入を止めるテストあり / GB の公開サイトで表の置き場所 (`data/slv-ratio.json` など 4 つの URL) を開くと 404 (サイト自体は表示される) / GB のコードは本家の URL を読まない / GB の Supabase の `slv_ratio`・`fururi_bases` は公開キーで読めない (permission denied)。
   ★ **守ること**: 表を GB に持ち込まない (コピー・埋め込み・本家の URL を読むコードも)。GB で SLv 換算が要るときはサーバ側 (Supabase の秘匿の表) か、本家の側で計算する
 - **片付け済み**: 本家・GB とも作業ツリーはきれい・push 済み。Desktop の `しりすこPAD-icon-backup-*.json` 2 つは 11/1 のアイコン紐づけの控え (残してよい)。`~/Desktop/list.json` はふるりの BlaBlaLINK キャラ一覧 (GB のアイコン作りに使った・消してよい)
 
