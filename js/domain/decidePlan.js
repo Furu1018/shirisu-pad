@@ -293,6 +293,25 @@
         return m;
     }
 
+    /** 決定の中身の指紋: 決めたブロックの鍵 + 人ごとの割当 (ブロック・レベル・ボス・編成・キャラ = rowsOf の sig)。決定の時刻・誰が・hp・fp は見ない */
+    function contentSig(plan) {
+        const keys = [...decidedBlocks(plan).keys()].sort().join(',');
+        const per = [...rowsOf(plan, null).entries()].sort((x, y) => x[0].localeCompare(y[0], 'en', { numeric: true }))
+            .map(([id, rs]) => `${id}:${rs.map(r => r.sig).join('/')}`);
+        return `${keys}#${per.join(';')}`;
+    }
+    /**
+     * メンバーの「前回から割当が変わったか」で比べる相手 = pub より前の決定のうち、中身が pub と違う最新の行。無ければ null。
+     * 変更なしの決定し直し (2026-11-02) は中身の同じ行を足すので、1 つ前と比べると直前の決定で変わった人の「変わりました」が消える (レビュー) — 同じ中身の行は飛ばす
+     */
+    function previousChanged(rows, pub) {
+        if (!pub || !isDecided(pub.plan)) return null;
+        const sig = contentSig(pub.plan);
+        const older = (Array.isArray(rows) ? rows : []).filter(r => r && isDecided(r.plan) && Number(r.id) < Number(pub.id)).sort((x, y) => Number(y.id) - Number(x.id));
+        for (const r of older) if (contentSig(r.plan) !== sig) return r;
+        return null;
+    }
+
     /** 通知の 1 行 (rowsOf の行): 「A 朝 5〜9時 Lv1 B3 灼熱PT 編成①」。決定の通知と「変わりません」の通知が同じ言い方を使う */
     function lineText(r, ptName = null) {
         const pt = (w) => (typeof ptName === 'function' && w) ? (ptName(w) || '') : '';
@@ -391,5 +410,5 @@
             .filter(m => m.attacks > 3 || m.dupChars.length);
     }
 
-    root.decidePlanDomain = { conflictsOf, keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, sameNotices, lineText, SLOT_JP };
+    root.decidePlanDomain = { conflictsOf, keyOf, isDecided, latestDecided, currentDecided, decidedBlocks, looseKeysOf, doneInPrev, build, rangeToDecide, planKey, flat, timetable, boardView, cleanHp, rowsOf, notices, sameNotices, lineText, contentSig, previousChanged, SLOT_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

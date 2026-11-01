@@ -45,6 +45,27 @@
         return [planId, m.memberId, m.level == null ? '' : m.level, m.bossNumber, m.hourIdx == null ? '' : m.hourIdx, Number(m.loadoutSlot) || 1].join('|');
     }
     /**
+     * 決定し直したときに「凸していない」の印を新しい決定へ写す鍵 (2026-11-02 レビュー: 鍵の先頭が決定の id なので、変更なしの決定し直しで印が全部外れ、片付けた報告漏れが戻っていた)。
+     * 写すのは前の決定のまま写したブロックの印だけ — 決定の割当の時刻はブロックの終わり (index.html の _atkCheckDecidedPlan) なので、時刻 (4 番目) が写したブロックの終わりにある印。
+     * 組み直したブロックの割当は新しい約束なので、前の印で隠さない
+     * @param {Iterable<string>|null} refs  いまの印の鍵 / prevId, nextId = 前と新しい決定の id / keptEnds = 写したブロックの終わりの時刻 (hourIdx) の集まり
+     * @returns {string[]} 新しく付ける鍵 (もうあるものも含む — 付けるのは 2 回押しても 1 件)
+     */
+    function carrySkipKeys(refs, prevId, nextId, keptEnds) {
+        if (prevId == null || nextId == null || String(prevId) === String(nextId)) return [];
+        const head = `${prevId}|`;
+        const keep = new Set([...(keptEnds || [])].map(Number));
+        const out = [];
+        for (const r of (refs || [])) {
+            const s = String(r);
+            if (!s.startsWith(head)) continue;
+            const parts = s.split('|');
+            if (parts.length !== 6 || parts[4] === '' || !keep.has(Number(parts[4]))) continue;
+            out.push([nextId, ...parts.slice(1)].join('|'));
+        }
+        return out;
+    }
+    /**
      * @param {{ attacks: Array<Object>, plan: Object|null, nowMs: number, lowRatio?: number, timeGapH?: number, sinceMs?: number|null, planId?: *, skips?: Set<string>|null }} a
      *   attacks = 盤面の凸 (id / player_id / name / boss_number / boss_code / damage_raw / reported_at / level / attack_number / confirmed_at / confirmed_by)
      *   plan = 配信プラン (computeOptimalPlanCore の出力)。無ければ印は付けない (hasPlan=false)
@@ -143,5 +164,5 @@
         if (!c.total && !c.missing) return 'まだ報告はありません';
         return [`確認 ${c.confirmed} / ${c.total}`, c.flagged ? `要確認 ${c.flagged}` : '', c.unchecked ? `照合できない ${c.unchecked}` : '', c.missing ? `結果がまだ ${c.missing}` : '', c.skipped ? `凸していない ${c.skipped}` : ''].filter(Boolean).join(' · ');
     }
-    root.attackCheckDomain = { HOUR_BASE, FLAG_JP, hourIdxOfMs, hourLabelOfIdx, plannedOf, buildRows, summary, missingKey };
+    root.attackCheckDomain = { HOUR_BASE, FLAG_JP, hourIdxOfMs, hourLabelOfIdx, plannedOf, buildRows, summary, missingKey, carrySkipKeys };
 })(typeof window !== 'undefined' ? window : globalThis);

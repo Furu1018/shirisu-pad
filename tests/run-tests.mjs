@@ -15105,6 +15105,46 @@ console.log('\n✅ 決定 (decidePlan・シンプル化 S4):');
         const first = dp.notices({ prevPlan: null, nextPlan: prev, blocks, ptName: pt }).notices.find(n => n.memberId === 1);
         assert.deepEqual(first.lines, m1.lines);
     });
+    test('★ previousChanged (2026-11-02 レビュー): メンバーの「前回から変わったか」は 中身の違う 1 つ前の決定と比べる — 変更なしの決定し直し (同じ中身の行) は飛ばす', () => {
+        const p0 = dp.build({ blocks, ov, newIdxs: [0, 1], bosses, at: 'T0' });
+        // p1: 朝の B2 を 3 → 4 に替えた (中身が違う)
+        const ov1 = [{ ...ov[0], rows: [ov[0].rows[0], { ...ov[0].rows[1], pieces: [piece(4, 10, 2)] }] }, ov[1]];
+        const p1 = dp.build({ blocks, ov: ov1, newIdxs: [0], prevPlan: p0, bosses, at: 'T1' });
+        const p2 = dp.build({ blocks, ov: [], newIdxs: [], prevPlan: p1, bosses, at: 'T2' });   // 変更なし
+        const p3 = dp.build({ blocks, ov: [], newIdxs: [], prevPlan: p2, bosses, at: 'T3' });   // もう一度 変更なし
+        const row = (id, plan, season_id = 40) => ({ id, season_id, plan });
+        const legacy = { id: 13, season_id: 40, plan: { levels: [] } };   // 従来の配信 (決定ではない) は比べる相手にしない
+        const rows = [row(10, p0), row(11, p1), row(12, p2), legacy, row(14, p3)];
+        assert.equal(dp.contentSig(p2), dp.contentSig(p1), '変更なしの行の中身が違う');
+        assert.notEqual(dp.contentSig(p1), dp.contentSig(p0));
+        assert.equal(dp.contentSig(dp.build({ blocks, ov: [], newIdxs: [], prevPlan: p1, bosses, at: 'ZZ' })), dp.contentSig(p1), '決定の時刻で指紋が変わる');
+        assert.equal(dp.previousChanged(rows, row(14, p3))?.id, 10, '変更なしを 2 回重ねたあと、中身の違う決定まで戻らない');
+        assert.equal(dp.previousChanged(rows, row(12, p2))?.id, 10);
+        assert.equal(dp.previousChanged(rows, row(11, p1))?.id, 10, '普通の決定し直しは 1 つ前と比べる');
+        assert.equal(dp.previousChanged(rows, row(10, p0)), null, '最初の決定に比べる相手がある');
+        assert.equal(dp.previousChanged([row(10, p0), row(11, dp.build({ blocks, ov: [], newIdxs: [], prevPlan: p0, bosses }))], row(11, dp.build({ blocks, ov: [], newIdxs: [], prevPlan: p0, bosses }))), null, '中身の同じ行しか無いのに比べる相手を返す');
+        assert.equal(dp.previousChanged(rows, legacy), null, '決定でない行に比べる相手を返す');
+        // 人の割当が同じでも、決めたブロックが増えたら違う中身
+        const p4 = dp.build({ blocks, ov: [...ov1, { idx: 2, past: false, level: 1, rows: [{ bossNumber: 4, name: 'ボス4', weakness: 'iron', pieces: [piece(9, 5, 8)] }] }], newIdxs: [2], prevPlan: p1, bosses });
+        assert.notEqual(dp.contentSig(p4), dp.contentSig(p1));
+        // 割当は同じで、決めたブロックだけ増えた (午後を凸 0 で決めた = メンバーには「まだ決まっていません」→「決まった」) も違う中身
+        const p5 = dp.build({ blocks, ov: [{ idx: 2, past: false, level: 1, rows: [] }], newIdxs: [2], prevPlan: p1, bosses });
+        assert.deepEqual(p5.decided.blocks.map(b => b.key), ['5-8', '9-12', '13-16']);
+        assert.notEqual(dp.contentSig(p5), dp.contentSig(p1), '決めたブロックの違いを見ていない');
+    });
+    test('★ carrySkipKeys (2026-11-02 レビュー): 「凸していない」の印を新しい決定へ写す鍵 — 前の決定の id で始まり、写したブロックの終わりの時刻の印だけ', () => {
+        const ac = globalThis.attackCheckDomain;
+        const refs = new Set(['10|1|1|3|3|1', '10|2|1|2|3|2', '10|3|1|4|7|1', '9|1|1|3|3|1', '10|4||5||1', 'こわれた', '10|5|1|1|3']);
+        // 朝 (終わり 3) は写した・午前 (終わり 7) は組み直した
+        assert.deepEqual(ac.carrySkipKeys(refs, 10, 11, new Set([3])), ['11|1|1|3|3|1', '11|2|1|2|3|2']);
+        assert.deepEqual(ac.carrySkipKeys(refs, 10, 11, [3, 7]).length, 3, '写したブロックの印を落とした');
+        assert.deepEqual(ac.carrySkipKeys(refs, 10, 11, new Set()), [], '写したブロックが無いのに写した');
+        assert.deepEqual(ac.carrySkipKeys(refs, 10, 10, new Set([3])), [], '同じ id へ写した');
+        assert.deepEqual(ac.carrySkipKeys(refs, null, 11, new Set([3])), []);
+        assert.deepEqual(ac.carrySkipKeys(null, 10, 11, new Set([3])), []);
+        // 写した鍵は buildRows が新しい決定の id で作る鍵と同じ形 (missingKey)
+        assert.equal(ac.carrySkipKeys(['10|1|1|3|3|1'], 10, 11, [3])[0], ac.missingKey(11, { memberId: 1, level: 1, bossNumber: 3, hourIdx: 3, loadoutSlot: 1 }));
+    });
     test('★ rangeToDecide: いまのブロックから組めたブロックが続くところまで (途中で止める)', () => {
         const built = (s) => (i) => s.includes(i);
         assert.deepEqual(dp.rangeToDecide({ first: 1, count: 6, built: built([1, 2, 4]) }), [1, 2]);
@@ -15410,7 +15450,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/: \(same \? `<button type="button" class="ob-decide-btn" onclick="_obDecide\(\)"\$\{_ob\.busy \? ' disabled' : ''\}>✅ \$\{range\.map\(i => escapeHtml\(blocks\[i\]\.short\)\)\.join\('・'\)\} をこのまま決定し直す \(変更なし\)<\/button>`/.test(r), '変更なしで押せるボタンが無い');
         assert.ok(!r.includes('組み直すと決定し直せます'), '「組み直さないと決定できない」の古い文が残っている');
         assert.ok(/const sameOpt = same \? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame\(this\.checked\)"/.test(r) && /\$\{sameOpt\}\$\{decNote\}/.test(r), '変更なしでも通知するスイッチが無い');
-        assert.ok(/function _obSetNotifySame\(on\) \{ _ob\.notifySame = !!on; \}/.test(html) && /notifySame: false \};/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
+        assert.ok(/notifySame: false \};/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         assert.ok(!/if \(!fresh\.length\) \{ showNotification\(/.test(d), '組み直していないと止まる');
         const iSw = d.indexOf('const notifySame = !!_ob.notifySame;'), iAw = d.indexOf('await ');
@@ -15421,6 +15461,42 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(d.indexOf('const sameTo = ') < d.indexOf('if (!confirm(msg)) return;') && /sameTo\.length \? `\\n\\n「変更なしでも通知する」に印があるので、これから凸のある \$\{sameTo\.length\} 人に/.test(d), '確認で人数を言っていない');
         assert.ok(/pubRows: Array\.isArray\(pubs2\) \? pubs2\.filter\(r => Number\(r\.season_id\) === Number\(sid\)\) : \[\], sameTo \}\);/.test(d), '確認で言った相手を通知に渡していない');
         assert.ok(/\(kept\.length && !same \?/.test(d), '変更なしで「前の決定のまま残します」を重ねて言う');
+        // レビュー (2026-11-02): スイッチの印・押せなさ・説明文はスイッチに合わせる / 切り替えたら描き直す / 決定のあと OFF に戻す (隠れたまま次の決定に効かせない)
+        assert.ok(/onchange="_obSetNotifySame\(this\.checked\)"\$\{_ob\.notifySame \? ' checked' : ''\}\$\{_ob\.busy \? ' disabled' : ''\}>/.test(r), 'スイッチの印・処理中の押せなさが描かれない');
+        assert.ok(/\$\{_ob\.notifySame \? 'これから凸のある人に「変わりません」と通知します' : '通知は送りません'\}/.test(r), '説明文がスイッチに合わない (印を付けても「通知は送りません」)');
+        assert.ok(/function _obSetNotifySame\(on\) \{ _ob\.notifySame = !!on; if \(!_ob\.busy\) renderOpsBuild\(\); \}/.test(html), 'スイッチを切り替えても描き直さない');
+        assert.ok(/_ob\.seededFrom = Number\(pub\.id\);\s*\n\s*_ob\.notifySame = false;/.test(d), '決定のあとスイッチを OFF に戻さない');
+        // 「凸していない」の印を新しい決定へ写す: 決定の行ができたあと・通知より前・失敗しても決定は止めない (関数の中で受ける)
+        assert.ok(d.indexOf('await _obCarrySkips({ prev, pub, plan, blocks, seasonId: sid, me });') > d.indexOf('window.supabasePublishDecidedPlan(') && d.indexOf('await _obCarrySkips(') < d.indexOf('await _obNotifyDecide('), '印を写していない / 順番が違う');
+        // メンバーのホーム: 比べる相手は中身の違う 1 つ前の決定
+        assert.ok(/const prevDec = dpx\.previousChanged\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\)\), pub\);/.test(html) && !/dpx\.latestDecided\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\) && Number\(r\.id\) < Number\(pub\.id\)\)\)/.test(html), 'ホームの「変わったか」が同じ中身の行と比べる');
+    });
+    await testAsync('★ _obCarrySkips を実際に動かす (2026-11-02 レビュー): 写したブロックの「凸していない」の印だけを新しい決定の id で付ける・もうある印は付けない・手元の印と版を進める・読めない / 付けられないは知らせて止めない', async () => {
+        const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;   // 朝 toIdx 3 / 午前 toIdx 7
+        const plan = { decided: { blocks: [{ key: dp.keyOf(blocks[0]), kept: true }, { key: dp.keyOf(blocks[1]), kept: false }] } };
+        const run = async ({ refs, failKey = null, atk = null }) => {
+            const set = [], notes = [];
+            const win = {
+                attackCheckDomain: globalThis.attackCheckDomain, decidePlanDomain: dp,
+                supabaseLoadAttackSkips: async () => refs,
+                supabaseSetAttackSkip: async (sid, key, on, by) => { if (key === failKey) throw new Error('x'); set.push([sid, key, on, by]); return true; },
+            };
+            const _atkCheck = atk || { skips: null, skipsSeason: null, skipsVer: 0 };
+            const f = new Function('window', 'showNotification', '_atkCheck', `${fn('async function _obCarrySkips(', 'async function _obNotifyDecide(')}\nreturn _obCarrySkips;`)(win, (m) => notes.push(m), _atkCheck);
+            await f({ prev: { id: 10 }, pub: { id: 11 }, plan, blocks, seasonId: 40, me: { id: 99 } });
+            return { set, notes, atk: _atkCheck };
+        };
+        const a = await run({ refs: new Set(['10|1|1|3|3|1', '10|2|1|2|7|1', '10|3|1|4|3|2', '11|3|1|4|3|2']), atk: { skips: new Set(['10|1|1|3|3|1']), skipsSeason: 40, skipsVer: 5 } });
+        assert.deepEqual(a.set, [[40, '11|1|1|3|3|1', true, 99]], '写したブロック (朝) の印だけ・もうある印は付けない');
+        assert.ok(a.atk.skips.has('11|1|1|3|3|1') && a.atk.skipsVer === 6, '手元の印と版を進めない (古い読み直しで上書きされる)');
+        assert.deepEqual(a.notes, []);
+        const b = await run({ refs: null });
+        assert.equal(b.set.length, 0); assert.ok(b.notes.some(m => m.includes('印を読めず')), '読めないことを知らせない');
+        const c = await run({ refs: new Set(['10|1|1|3|3|1', '10|5|1|1|3|1']), failKey: '11|5|1|1|3|1' });
+        assert.deepEqual(c.set.map(x => x[1]), ['11|1|1|3|3|1']); assert.ok(c.notes.some(m => m.includes('1 件')), '付けられなかった件数を知らせない');
+        const d0 = await run({ refs: new Set(['10|2|1|2|7|1']) });
+        assert.deepEqual(d0.set, [], '組み直したブロック (午前) の印を写した');
     });
     await testAsync('★ 変更なしの決定し直し: _obNotifyDecide を実際に動かす — スイッチ OFF は 0 通で ✅ を全員引き継ぐ / ON は確認で言った相手に「変わりません」を 1 通ずつ・その人の ✅ も引き継ぐ・同じ人に 2 通にしない', async () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
@@ -15553,7 +15629,8 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/if \(season && raidToday\(season\)\) \{\s*\n\s*\/\/ A: 当日/.test(html) && /const raidToday = \(s\) => !!\(s && \(window\.opsStageDomain\?\.raidDayKey \? window\.opsStageDomain\.raidDayKey\(Date\.now\(\)\) === String\(s\.hard_date \|\| ''\)\.slice\(0, 10\)/.test(html), 'ヒーローの当日が暦日 (翌 0〜4 時が外れる)');
         // S4 レビュー [31] 従来の画面の消し込み / [24] 前回から変わったか (決定はブロック単位)
         assert.ok(html.includes('if (!decRow && rt != null && Number.isFinite(pubAt) && rt <= pubAt) return;'), '決定の行でも配信前の凸を消し込まない');
-        assert.ok(/const prevDec = dpx\.latestDecided\(pubRows\.filter\(/.test(html) && /myChange = sig\(a0\) === sig\(b0\) \? \{ changed: false \}/.test(html), '決定の「前回から変わったか」を時刻で比べている');
+        // 比べる相手は 1 つ前の決定 → 2026-11-02 から「中身の違う 1 つ前の決定」(変更なしの決定し直しを飛ばす: previousChanged)
+        assert.ok(/const prevDec = dpx\.previousChanged\(pubRows\.filter\(/.test(html) && /myChange = sig\(a0\) === sig\(b0\) \? \{ changed: false \}/.test(html), '決定の「前回から変わったか」を時刻で比べている');
         assert.ok(/const dd = window\.planDiffDomain, dpx = window\.decidePlanDomain;\s*\n\s*if \(decRow && dpx\) \{\s*\n\s*\/\/ ✅ 決定/.test(html) && /\} else if \(dd && pub\.season_id && window\.publishedPlansDomain\) \{/.test(html), '決定の行で、ブロック単位の比べ方に入らない (S4 レビュー [24])');
         // S4 レビュー [17]: 凸数の上限は ✓ の行 (plan_key あり) を鍵のブロックで数える (押した時刻ではない)
         const caps = fn('function _playersWithBlockCaps(players, season) {');

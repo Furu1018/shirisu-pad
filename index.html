@@ -5812,7 +5812,7 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 決定の「あなたの凸」(🧱 決まりました / 🔄 変わりました・外れました。決定し直しでは変わった人に ✅ 確認の有無に関わらず。タップで 📅 レイド予定表)・催促・参加可能時間の開始 (従来の画面のときは予約の登録も)。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>あなた宛</strong> — 決定の「あなたの凸」(🧱 決まりました / 🔄 変わりました・外れました。決定し直しでは変わった人に ✅ 確認の有無に関わらず。運営が変更なしで決定し直して通知に印を付けたときだけ 📅 変わりません。タップで 📅 レイド予定表)・催促・参加可能時間の開始 (従来の画面のときは予約の登録も)。<strong>時間帯に関係なく必ず届きます</strong></li>
                             <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
@@ -10468,7 +10468,8 @@
                 const dd = window.planDiffDomain, dpx = window.decidePlanDomain;
                 if (decRow && dpx) {
                     // ✅ 決定 (S4 レビュー [24]): 1 つ前の決定と、通知と同じ中身 (ブロック・レベル・ボス・編成) で比べる。時刻では比べない (時間割にも通知にも時刻は出ない)
-                    const prevDec = dpx.latestDecided(pubRows.filter(r => Number(r.season_id) === Number(pub.season_id) && Number(r.id) < Number(pub.id)));
+                    //   比べるのは中身の違う 1 つ前の決定 (変更なしの決定し直し = 同じ中身の行は飛ばす: 2026-11-02 レビュー。飛ばさないと直前の決定で変わった人の「変わりました」が消える)
+                    const prevDec = dpx.previousChanged(pubRows.filter(r => Number(r.season_id) === Number(pub.season_id)), pub);
                     if (prevDec) {
                         const bl = window.raidBlocksDomain ? window.raidBlocksDomain.blocksOfSeason(seasonStore.get()?.season || null) : [];
                         const keys = new Set(dpx.decidedBlocks(prevDec.plan).keys());
@@ -23273,7 +23274,7 @@
                 : (same ? `<button type="button" class="ob-decide-btn" onclick="_obDecide()"${_ob.busy ? ' disabled' : ''}>✅ ${range.map(i => escapeHtml(blocks[i].short)).join('・')} をこのまま決定し直す (変更なし)</button>`
                 : `<button type="button" class="ob-decide-btn" disabled>✅ 決定</button>`);
             const decideHint = fresh.length ? '決定すると、メンバーの 📅 レイド予定表 と ホームの「きょうの凸」に出て、割当のある人に通知が届きます'
-                : (same ? '決定のあと組み直したブロックはありません。押すと<b>前の決定と同じ中身</b>で決定し直します (確かめた時刻が残ります・通知は送りません)'
+                : (same ? `決定のあと組み直したブロックはありません。押すと<b>前の決定と同じ中身</b>で決定し直します (確かめた時刻が残ります・${_ob.notifySame ? 'これから凸のある人に「変わりません」と通知します' : '通知は送りません'})`
                 : '駒を手で置くか「残りを自動で組む」で組むと決定できます');
             const sameOpt = same ? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame(this.checked)"${_ob.notifySame ? ' checked' : ''}${_ob.busy ? ' disabled' : ''}>変更なしでも、割当のある人に「変わりません」と通知する</label>` : '';
             const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
@@ -23299,7 +23300,7 @@
                 skip: (i) => !_ob.stale.has(i) && !_ob.plans.has(i) && !has(i) });
         }
         // 「変更なしでも割当のある人に通知する」のスイッチ (既定 OFF)。押したときの値を _obDecide が最初の await の前に控える
-        function _obSetNotifySame(on) { _ob.notifySame = !!on; }
+        function _obSetNotifySame(on) { _ob.notifySame = !!on; if (!_ob.busy) renderOpsBuild(); }   // 下の説明文 (通知を送る / 送らない) を合わせる
         // 範囲のうち、今回決めるブロック = 決定から読み戻したまま (前の決定と同じ) でないもの
         function _obFreshOf(range, prevRow) {
             const prevId = Number(prevRow?.id || 0);
@@ -23428,10 +23429,12 @@
                     }
                     _ob.decNote = null;
                     _ob.seededFrom = Number(pub.id);
+                    _ob.notifySame = false;   // 1 回ごと (隠れたまま残った印で、次の決定に「変わりません」を送らない: レビュー)
                 }
                 showNotification(same ? `✅ ${range.map(i => blocks[i].short).join('・')} を決定し直しました (変更なし)` : `✅ ${range.map(i => blocks[i].short).join('・')} を決定しました`);
                 if (typeof _invalidateTabRenderCache === 'function') { _invalidateTabRenderCache('raid'); _invalidateTabRenderCache('mypage'); }   // 30 秒の描画キャッシュで前の決定を見せない (S5)
-                // 3. 確認 (✅) の引き継ぎと通知
+                // 3. 「凸していない」の印を新しい決定へ写す (鍵の先頭が決定の id) → 確認 (✅) の引き継ぎと通知
+                await _obCarrySkips({ prev, pub, plan, blocks, seasonId: sid, me });
                 await _obNotifyDecide({ pub, plan, prev, seasonId: sid, me, blocks, pubRows: Array.isArray(pubs2) ? pubs2.filter(r => Number(r.season_id) === Number(sid)) : [], sameTo });
                 try { await _syncOpsUnpublishBtn(); } catch (_) { /* 従来の配信の表示の取り直し — 次の描画で */ }
             } catch (e) {
@@ -23440,6 +23443,30 @@
                 _ob.busy = false;
                 renderOpsBuild();
             }
+        }
+        // 決定し直したら「凸していない」の印 (⏰ 結果がまだの凸・鍵の先頭 = 決定の id) を新しい決定へ写す (2026-11-02 レビュー: 変更なしの決定し直しで印が全部外れ、片付けた報告漏れが戻っていた)。
+        //   写すのは前の決定のまま写したブロック (kept) の印だけ (attackCheckDomain.carrySkipKeys)。決定はもう済んでいるので、失敗しても止めずに知らせる
+        async function _obCarrySkips({ prev, pub, plan, blocks, seasonId, me }) {
+            const ac = window.attackCheckDomain, dp = window.decidePlanDomain;
+            if (!prev || !pub?.id || !ac?.carrySkipKeys || !dp || typeof window.supabaseLoadAttackSkips !== 'function') return;
+            const ends = new Set((plan?.decided?.blocks || []).filter(b => b && b.kept).map(b => (blocks || []).find(x => dp.keyOf(x) === String(b.key))?.toIdx).filter(Number.isInteger));
+            if (!ends.size) return;
+            let refs = null;
+            try { refs = await window.supabaseLoadAttackSkips(seasonId); } catch (_) { refs = null; }
+            const add = refs ? ac.carrySkipKeys(refs, prev.id, pub.id, ends).filter(k => !refs.has(k)) : [];
+            if (!add.length) {
+                if (!refs) showNotification('⚠️ 決定はできましたが「凸していない」の印を読めず、新しい決定へ写せませんでした (⚔️ 結果がまだの凸 で確かめてください)');
+                return;
+            }
+            const done = [];
+            for (const k of add) { try { await window.supabaseSetAttackSkip(seasonId, k, true, me?.id || null); done.push(k); } catch (_) { /* 下で数える */ } }
+            if (done.length && typeof _atkCheck !== 'undefined' && Number(_atkCheck.skipsSeason) === Number(seasonId) && _atkCheck.skips) {
+                const set = new Set(_atkCheck.skips);
+                for (const k of done) set.add(k);
+                _atkCheck.skips = set;
+                _atkCheck.skipsVer++;   // 読み直しの途中で返ってきた古い印で上書きさせない (handleOpsAtkSkip と同じ)
+            }
+            if (done.length < add.length) showNotification(`⚠️ 決定はできましたが「凸していない」の印 ${add.length - done.length} 件を新しい決定へ写せませんでした (⚔️ 結果がまだの凸 で付け直してください)`);
         }
         async function _obNotifyDecide({ pub, plan, prev, seasonId, me, blocks, pubRows = [], sameTo = [] }) {
             const dp = window.decidePlanDomain;

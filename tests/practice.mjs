@@ -953,7 +953,9 @@ test('練習: 「済んだ」を端末の印で決める課題は、組んだ結
     win._ob = { plans, stale: new Set(), idx: null };
     const step = (sc, key) => P.steps[sc].find(x => x.key === key);
     const none = { pub: null };
-    const dec = (names, at) => ({ pub: { id: 9, plan: { decided: { at: at || '', blocks: names.map(name => ({ name })) } } } });
+    // 既定のブロックの添字 (朝 0 / 午前 1 / 午後 2 / 夕方 3)。kept = 前の決定から写しただけ (「このまま決定し直す (変更なし)」は全部 kept)
+    const IDX = { 朝: 0, 午前: 1, 午後: 2, 夕方: 3 };
+    const dec = (names, at, kept = false) => ({ pub: { id: 9, plan: { decided: { at: at || '', blocks: names.map(name => ({ name, idx: IDX[name], kept })) } } } });
     // 朝を組む: 印だけ (読み込み直して組んだ結果が消えた) では済まない → 組んだ結果か、朝が決定済みなら済み
     mem.set('ops-eve:morning', '1');
     assert.equal(step('ops-eve', 'buildMorning').done(none), false, '印だけで「朝を組む」を済ませた (読み込み直したあと押せない「✅ 決定」に進む)');
@@ -976,6 +978,12 @@ test('練習: 「済んだ」を端末の印で決める課題は、組んだ結
     win._ob.stale.clear(); plans.clear();
     assert.equal(step('ops-day', 'rebuild').done(dec(['夕方'], '2026-10-03T08:30:00.000Z')), true, '決定し直したあとに「組み直す」が済まない');
     assert.equal(step('ops-day', 'rebuild').done(dec(['夕方'], '2026-10-03T07:00:00.000Z')), false, '前日の決定を「組み直した」としている');
+    // 「このまま決定し直す (変更なし)」= 全部写しただけの決定では、組み直した・決定し直した にしない (2026-11-02 レビュー: 組み直す前に押すと課題が飛んだ)
+    assert.equal(step('ops-day', 'rebuild').done(dec(['朝', '午前', '午後', '夕方'], '2026-10-03T08:30:00.000Z', true)), false, '変更なしの決定し直しで「組み直す」が済んだ');
+    assert.equal(step('ops-day', 'decide').done(dec(['朝', '午前', '午後', '夕方'], '2026-10-03T08:30:00.000Z', true)), false, '変更なしの決定し直しで「決定し直す」が済んだ');
+    assert.equal(step('ops-day', 'decide').done(dec(['夕方'], '2026-10-03T08:30:00.000Z')), true, '夕方を組み直して決定したのに済まない');
+    assert.equal(step('ops-day', 'decide').done(dec(['午後'], '2026-10-03T08:30:00.000Z')), false, '夕方でないブロックの決定で「決定し直す」が済んだ');
+    assert.equal(step('ops-day', 'decide').done(dec(['夕方'], '2026-10-03T07:00:00.000Z')), false, '盤面を作る前の決定で「決定し直す」が済んだ');
     // ↩ 1つ前に戻る: 控えに課題の印を入れ、戻すときに印も戻す (控えに無い印は消す)
     assert.match(GUIDE, /var MARKS = \['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'\];/);
     assert.match(GUIDE, /function saveSnap\(i\) \{[\s\S]*?MARKS\.forEach[\s\S]*?JSON\.stringify\(\{ db: P\.db\.dump\(\), clock: P\.clock\.get\(\), feed: feed, marks: marks \}\)/, '控えに課題の印が入っていない');

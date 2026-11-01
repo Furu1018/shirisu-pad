@@ -243,6 +243,13 @@
     var obBuilt = function (i) { return typeof _ob !== 'undefined' && _ob && _ob.plans && _ob.plans.has(i) && !_ob.stale.has(i); };
     /** 決定の行に、その名前のブロックが入っているか */
     var decidedHas = function (c, name) { return !!(c && c.pub && c.pub.plan && c.pub.plan.decided && c.pub.plan.decided.blocks.some(function (b) { return b && b.name === name; })); };
+    /** 当日の盤面を作ったあとに、夕方 (添字 3) を組み直して決定したか。前の決定から写しただけ (kept) = 「このまま決定し直す (変更なし)」は数えない
+     *  (変更なしでも押せるようになって、組み直す前に押すと「決定し直す」が済んだことになっていた: 2026-11-02 レビュー) */
+    var reDecided = function (c) {
+        var at = store.get('ops-day:setupAt') || '';
+        return !!(c && c.pub && c.pub.plan && c.pub.plan.decided && String(c.pub.plan.decided.at || '') > at
+            && (c.pub.plan.decided.blocks || []).some(function (b) { return b && Number(b.idx) === 3 && !b.kept; }));
+    };
     // 「済んだ」を端末の印 (store) で決める課題の印。「↩ 1つ前に戻る」の控えに入れて一緒に戻す (控えに入れないと、戻っても課題が戻らなかった: S5 レビュー PR-1)
     var MARKS = ['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'];
     /** 組む画面で「そのブロックを開く」→「(📌 を置く)」→「🧮 残りを自動で組む」の案内 (印は store に残す: 自動の結果はこの端末のメモリだけ) */
@@ -364,8 +371,7 @@
             { key: 'rebuild', title: '🧱 夕方 (いまのブロック) を組み直す',
                 // 印に加えて「いま組んだ結果がある」か「もう決定し直した」(読み込み直して消えたら組み直す: S5 レビュー PR-1)
                 done: function (c) {
-                    var at = store.get('ops-day:setupAt') || '';
-                    return store.get('ops-day:rebuilt') === '1' && (!!(c && c.pub && c.pub.plan && c.pub.plan.decided && String(c.pub.plan.decided.at || '') > at)
+                    return store.get('ops-day:rebuilt') === '1' && (reDecided(c)
                         || (typeof _ob !== 'undefined' && _ob && _ob.plans && _ob.plans.has(3) && _ob.plans.get(3).fromDecided == null && !_ob.stale.has(3)));
                 },
                 guide: function (c) {
@@ -378,12 +384,13 @@
                         real: 'ゲームの進み方が模擬とずれたら、いまのブロックから組み直して決定し直します。変わった人だけに通知が届きます。', target: pick('obAuto') };
                 } },
             { key: 'decide', title: '✅ 決定し直す',
-                done: function (c) { var at = store.get('ops-day:setupAt') || ''; return !!(c.pub && c.pub.plan && c.pub.plan.decided && String(c.pub.plan.decided.at || '') > at); },
+                done: function (c) { return reDecided(c); },
                 guide: function (c) {
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('obDecide');
-                    if (!btn) return stray(c, []) || { text: 'まず夕方を組み直します。', target: pick('obAuto') };
+                    // 「このまま決定し直す (変更なし)」は前の決定を写すだけ (夕方を組み直していない) — 先に組み直す
+                    if (!btn || /変更なし/.test(btn.textContent || '')) return stray(c, []) || { text: 'まず夕方を組み直します。', target: pick('obAuto') };
                     return stray(c, []) || { text: '決定のボタン (' + (btn.textContent || '').trim() + ') を押します。確認が出たら OK。',
                         real: '過ぎたブロックと組み直していないブロックは前の決定のまま残ります。夕方の割当が変わった人だけに通知が届きます。配信したら Discord の運営スレに 1 行残すと、交代した運営が迷いません。', target: btn };
                 } },
