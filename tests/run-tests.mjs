@@ -11478,6 +11478,9 @@ console.log('\ngrowthDomain:');
         // 盤面を描き直すたびに両方描く (シーズン無しの分岐も)
         const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok((dash.match(/renderOpsPace\(\)/g) || []).length >= 2 && (dash.match(/renderOpsRecent\(\)/g) || []).length >= 2, '盤面の描画で 📈🔁 を描いていない (シーズン無しの分岐も)');
+        // 🧬 育成データの取り込みは「準備」(シーズン無し) でも使う → シーズン無しの分岐でも描く (2026-11-01 入り口が消えた)
+        const noSeason = dash.slice(dash.indexOf('if (!season) {'), dash.indexOf('return;', dash.indexOf('if (!season) {')));
+        assert.ok(noSeason.length > 0 && /renderOpsGrowth\(\)/.test(noSeason), 'シーズン無しの分岐で 🧬 育成データの取り込みを描いていない (準備の段階で中身が出ない)');
         // 打診の返事は 10 秒のポーリングでしか新しくならない → そこで 🔁 を描き直す
         const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         const i = poll.indexOf('_refreshFinishRequests()'), j = poll.indexOf('renderOpsRecent()');
