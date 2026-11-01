@@ -13682,16 +13682,29 @@ console.log('\nblablaNameCodes:');
         5180: '天城雪子',
     };
 
-    test('形: すべての行に jp と resource_id と pad があり、name_code は数字', () => {
+    // CDN にあって PAD にまだ居ないキャラ (2026-11-01 確認・誰も使っていない新キャラ)
+    const NOT_IN_PAD_YET = { 5184: 'ベロータ：パンプキンウィッチ', 5186: '紅蓮：神殺', 5187: 'ラプンツェル：サンクチュアリ' };
+
+    test('形: すべての行に jp と resource_id があり、name_code は数字。pad は PAD 未登録の新キャラ以外すべて', () => {
         const rows = Object.entries(map.data);
         for (const [nameCode, entry] of rows) {
             assert.match(nameCode, /^\d+$/, `name_code が数字でない: ${nameCode}`);
             assert.ok(entry.jp && typeof entry.jp === 'string', `jp が無い: ${nameCode}`);
             assert.ok(Number.isInteger(entry.resource_id), `resource_id が無い: ${nameCode}`);
-            // いまは 200 件すべてに PAD の宛先が付いている。付かない行が現れたら
-            // 「CDN に増えて PAD に無いキャラ」なので、気づけるようにここで落とす
+            // PAD の宛先が付かない行は「CDN に増えて PAD に無いキャラ」なので、気づけるようにここで落とす。
+            // 確認済みで、まだ誰も使っていない (= PAD に登録されていない) 新キャラだけ名前つきで通す。
+            // PAD に登録されたら node scripts/build-blabla-name-codes.mjs --apply で pad が付く (そのときここから消してよい)
+            if (NOT_IN_PAD_YET[nameCode]) {
+                assert.equal(entry.jp, NOT_IN_PAD_YET[nameCode], `name_code ${nameCode} の名前が変わった`);
+                continue;
+            }
             assert.ok(entry.pad && typeof entry.pad === 'string', `pad が無い: ${nameCode} (${entry.jp})`);
         }
+    });
+
+    test('★ 4 周年の新キャラ マリアン：クイーン (5185) は PAD の名前に付いている (育成を取り込める)', () => {
+        // 2026-11-01: 表が 10/8 のままで、第46回に使われたマリアン：クイーンだけ育成を取り込めなかった (ふるり「マリアンの情報も入れたい」)
+        assert.equal(map.data['5185']?.pad, 'マリアン：クイーン');
     });
 
     test('★ すべての行に属性が付いている (キャラ別の絞り込みの材料)', () => {

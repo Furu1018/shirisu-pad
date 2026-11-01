@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generated": "2026-10-08T01:13:31.263Z",
+  "generated": "2026-11-01T01:02:16.526Z",
   "source": "blablalink CDN: /character/character_id_map.json + /roledata/{resource_id}-v2-ja.json",
   "note": "name_code → { jp: CDNの日本語名, resource_id, element/elementJp: 属性, pad: PADのcanonical_name (一致したものだけ) }。再生成は node scripts/build-blabla-name-codes.mjs --apply",
   "counts": {
-    "name_codes": 202,
-    "matched_pad": 202,
-    "pad_total": 205,
-    "with_element": 202
+    "name_codes": 206,
+    "matched_pad": 203,
+    "pad_total": 206,
+    "with_element": 206
   },
   "data": {
     "1007": {
@@ -1440,6 +1440,31 @@
       "element": "water",
       "elementJp": "水冷",
       "pad": "シン：スウィフトバニー"
+    },
+    "5184": {
+      "jp": "ベロータ：パンプキンウィッチ",
+      "resource_id": 63,
+      "element": "water",
+      "elementJp": "水冷"
+    },
+    "5185": {
+      "jp": "マリアン：クイーン",
+      "resource_id": 19,
+      "element": "fire",
+      "elementJp": "灼熱",
+      "pad": "マリアン：クイーン"
+    },
+    "5186": {
+      "jp": "紅蓮：神殺",
+      "resource_id": 472,
+      "element": "fire",
+      "elementJp": "灼熱"
+    },
+    "5187": {
+      "jp": "ラプンツェル：サンクチュアリ",
+      "resource_id": 473,
+      "element": "fire",
+      "elementJp": "灼熱"
     }
   }
 }
