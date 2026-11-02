@@ -9632,7 +9632,7 @@ console.log('\ngrowthDomain:');
         // いまの時刻のブロックが既定・区切りが変わって添字が溢れたら戻す
         const pb = html.match(/function _opsPlanBlock\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/dom\.blockIndexOfHour\(blocks, nowHour\)/.test(pb) && /\(_opsPlanBlockIdx != null && blocks\[_opsPlanBlockIdx\]\) \? _opsPlanBlockIdx : \(cur >= 0 \? cur : 0\)/.test(pb), 'いまの時刻のブロックに落ちない');
-        assert.ok(/blocksOfSeason\(opsStore\.get\(\)\?\.season \|\| null\)/.test(html), 'ブロックをシーズンから読んでいない');
+        assert.ok(/blocksOfSeason\(\(typeof opsStore !== 'undefined' \? opsStore\.get\(\)\?\.season : null\) \|\| null\)/.test(html), 'ブロックをシーズンから読んでいない');
         // 算出: ブロックの時間帯を availableAtSlots で渡す。承認後の組み直し (onlyAvailableNow 明示) は従来どおり
         assert.ok(/availableAtSlots: Array\.isArray\(options\.availableAtSlots\) && options\.availableAtSlots\.length \? options\.availableAtSlots : undefined,/.test(html), '算出にブロックの時間帯を渡していない');
         assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null, blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};/.test(html), 'ブロックの時間帯を options に乗せていない');
@@ -16509,7 +16509,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/Number\(un\.dataset\.obBossN \?\? un\.closest\('\[data-ob-boss\]'\)\?\.dataset\.obBoss\)/.test(html), '行の外の駒のボスが渡らない');
         // 後ろの決定は残す (振り回さない) が、HP の見積もりがずれたことは確認で言う (Codex 監査)
         assert.ok(/const staleKept = kept\.filter\(b => _ob\.stale\.has\(b\.idx\)\);/.test(html) && /の HP の見積もりはずれています/.test(html), '前のブロックを変えたのに、後ろの決定の見積もりがずれたことを言わない');
-        assert.ok(/const conflicts = dp\.conflictsOf\(plan, \(a\) => \(orderOf\.has\(a\.block\) \? orderOf\.get\(a\.block\) : 99\) < first && !doneNow\.has\(dp\.planKey\(a\)\) && !overlapsAhead\(a\)\);/.test(html) && /\(conflicts\.length \? `\\n\\n⚠ 組み合わせを確かめてください/.test(html), '4 凸・同じキャラの決定を黙って配信する');
+        assert.ok(/const conflicts = dp\.conflictsOf\(plan, \(a\) => \(orderOf\.has\(a\.block\) \? orderOf\.get\(a\.block\) : 99\) < first && !doneNow\.has\(dp\.planKey\(a\)\) && !pendingTap\(a\)\);/.test(html) && /\(conflicts\.length \? `\\n\\n⚠ 組み合わせを確かめてください/.test(html), '4 凸・同じキャラの決定を黙って配信する');
     });
     test('★ 手で置いただけのブロックも ✅ 決定できる (🧮 を押さなくてよい) / 空のブロックは飛ばす / 決定のあとは読み戻した扱い / 凸が減ると確認で言う', () => {
         const rg = fnU('function _obDecideRange(first, count, ov)', '// 範囲のうち、今回決めるブロック');
@@ -16649,6 +16649,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.equal(tp.action, 'tap'); assert.match(tp.why, /A 朝 の ✓ がまだ 3 凸/);
         const b = os.hero({ ...base, rebuild: R({}) });
         assert.deepEqual([b.action, b.label, b.lead], ['build', '🧱 B 午前 を組む', '⏱ 再編成時間 8:40〜9:00 — B 午前 を組む']);
+        assert.match(b.why, /A 朝 で済んでいない凸は、B 午前 に出られる人なら B 午前 のピースに出ます$/, 'B に出られない人の凸まで B のピースに出ると言う (⑥ レビュー flow-5)');
         assert.equal(os.hero({ ...base, rebuild: R({ hpDone: null, tapLeft: null }) }).action, 'build', '分からない手順で止めている');
         assert.equal(os.hero({ ...base, rebuild: R({ decided: null }) }).action, 'build');
         assert.equal(os.hero({ ...base, rebuild: R({ decided: true }) }).action, 'tap', '決定し終えたのに再編成のヒーローのまま');
@@ -16761,6 +16762,8 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: [] } })).sent[0].body, /まだなら、B 午前 以降に出られる時間が登録されていないので/, '時間未登録の人 (🧮 の候補にならない) に「組み直します」と約束した');
         assert.match((await run('2026-11-28T08:43:00+09:00', { noBb: true })).sent[0].body, /まだなら、残りは、B 午前 以降に出られれば運営が組み直します。$/);
         assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05', 'h17'], blockCounts: { '5-8': 1, '17-20': 2 } } })).sent[0].body, /まだなら、凸数の登録 \(A 朝 1 · D 夕方 2\) のとおりに組むので、残りを後ろのブロックに足すなら Discord で運営へ。$/, '凸数を登録した人に「組み直します」と約束した (再レビュー time-1)');
+        assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05', 'h17'], blockCounts: { '5-8': 1 } } })).sent[0].body, /まだなら、残りは運営が B 午前 以降で組み直します。$/, '凸数の無い後ろのブロック (🧮 が組める) があるのに「凸数どおり」と言った (再レビュー 3 回目 logic-1 / flow-2)');
+        assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05'], blockCounts: { '5-8': 3 } } })).sent[0].body, /まだなら、B 午前 以降に出られる時間が登録されていないので/, 'A にしか出られない凸数の人');
         assert.equal(r.sent[0].tag, 'rebuild-47-5-8-1'); assert.equal(r.sent[0].url, './?tab=raid');
         assert.deepEqual(r.claims, ['rebuild_start:5-8|1'], 'ref は ブロックの鍵|人 (決定の id を入れない)');
         assert.deepEqual((await run('2026-11-28T08:39:00+09:00')).sent, [], '凸の時間のうちに送っている');
@@ -16989,7 +16992,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.equal(dp.conflictsOf(dup).length, 1);
         assert.deepEqual(dp.conflictsOf(dup, (a) => a.block === kA && a.level === 1 && a.bossNumber === 3), [], '数えない凸を数えた');
         // 配線: 確認の衝突は過ぎたブロックの済んでいない凸を数えない
-        assert.ok(/const conflicts = dp\.conflictsOf\(plan, \(a\) => \(orderOf\.has\(a\.block\) \? orderOf\.get\(a\.block\) : 99\) < first && !doneNow\.has\(dp\.planKey\(a\)\) && !overlapsAhead\(a\)\);/.test(html));
+        assert.ok(/const conflicts = dp\.conflictsOf\(plan, \(a\) => \(orderOf\.has\(a\.block\) \? orderOf\.get\(a\.block\) : 99\) < first && !doneNow\.has\(dp\.planKey\(a\)\) && !pendingTap\(a\)\);/.test(html));
     });
     test('★ ⑥ レビュー now-1 / now-4 / flow-6 / flow-8 / data-1 / data-2 の配線: 過ぎたブロックの結果を捨てる・段が変わったら置かない / 組まない・次のブロックは「9:00 から」・文面の分数・写しの鮮度・保存した値を手元に', () => {
         const ctx = fnR('function _obCtx(snap) {', 'function _obDeadText(');
@@ -16997,7 +17000,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const pl = fnR('async function _obPlace(bossNumber) {', 'async function _obUnpin(');
         assert.ok(/if \(_ob\.idx != null && idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(pl) && /if \(_obFirstIdx\(snap\.season, blocks\) !== ctx\.first\) \{/.test(pl), '描いたのと違うブロックに置く / 待っている間に進んでも置く (now-4)');
         const au = fnR('async function _obAuto() {', 'async function _obReset() {');
-        assert.ok(/if \(_ob\.idx != null && idx !== _ob\.idx\) \{ renderOpsBuild\(\);/.test(au) && /if \(ctx2 && ctx2\.first !== ctx\.first\) \{ showNotification\(/.test(au), '描いたのと違うブロックを組む / 黙って止まる (now-4)');
+        assert.ok(/if \(_ob\.idx != null && idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(au) && /if \(ctx2 && ctx2\.first !== ctx\.first\) \{ showNotification\(/.test(au), '描いたのと違うブロックを組む / 黙って止まる (now-4)');
         assert.ok(/await _yieldToPaint\(\);\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== ctx2\.first\) \{ showNotification\([^\n]*\); return; \}\s*\n\s*const skipKeys = _ob\.skip\.get\(idx\);/.test(au), '描く間を空けたあとに「いま」を見直さずに組む (Codex ⑥ 再監査)');
         assert.ok(/rbNow && r\.idx === rbNow\.next \? `<span class="mt-chip now">\$\{esc\(rbNow\.to\)\} から<\/span>`/.test(html) && /!ops && rebuild && v\.idx === rebuild\.next \? `<span class="mt-chip now">\$\{esc\(rebuild\.to\)\} から<\/span>`/.test(html) && /rebuild: _raidRebuildNow\(season, blocks\) \};/.test(html), '再編成時間に次のブロックを「いま」と出す (flow-6)');
         // Discord 用の文面: シーズンの分数で書き直す・0 分は外す
@@ -17038,12 +17041,29 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(/const overlapsAhead = \(a\) => \(Array\.isArray\(a\.team\) \? a\.team : \[\]\)\.some\(c => aheadChars\.get\(String\(a\.memberId\)\)\?\.has\(String\(c\)\)\);/.test(html), '後ろとキャラが重なる過ぎた凸まで数えない');
     });
     test('★ ⑥ 再レビュー decide-2 / time-1 / ui-2 / ui-5 の配線: ホームの帯に「今: なし」と出さない・凸数の人に組み直すと約束しない・置き場と ✕ も描いたブロックと照合・従来の経路も「9:00 から」', () => {
-        assert.ok(/const b1 = b0\.length \? b0 : \(dpx\.rowsOf\(pub\.plan, bl\)\.get\(String\(identity\.id\)\) \|\| \[\]\)\.filter\(r => !keys\.has\(r\.block\)\);/.test(html) && /before: txt\(a0\), after: txt\(b1\) \};/.test(html), '回した人のホームの帯が「今: なし」');
+        assert.ok(/const b1 = \[\.\.\.b0, \.\.\.\(dpx\.rowsOf\(pub\.plan, bl\)\.get\(String\(identity\.id\)\) \|\| \[\]\)\.filter\(r => !keys\.has\(r\.block\)\)\];/.test(html) && /before: txt\(a0\), after: txt\(b1\) \};/.test(html), '回した人のホームの帯が「今: なし」');
         const sel = fnR('function _obSelect(key)', 'const p = ctx ? ctx.tray.find(x => x.key === key) : null;');
         assert.ok(/if \(ctx && _ob\.idx != null && ctx\.idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(sel), '置き場のピースを押すと次のブロックの駒を確かめずに外す (ui-2)');
         const dr = fnR('function _obDropAuto(key, bossNumber)', 'async function _obPlace(');
-        assert.ok(/if \(_ob\.idx != null && ctx\.idx !== _ob\.idx\) \{ renderOpsBuild\(\);/.test(dr), '✕ が次のブロックの駒を外そうとする (ui-2)');
+        assert.ok(/if \(_ob\.idx != null && ctx\.idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(dr), '✕ が次のブロックの駒を外そうとする (ui-2)');
+        // 再レビュー 3 回目 flow-1 / flow-4 / logic-3: 📌 を外す・やり直す も照合 / どの描き直しでも過ぎたブロックで選んだピースを外す / 確認の衝突で数え直すのは再編成中のブロックの印の無い凸だけ
+        assert.ok(/async function _obUnpin\(resId\) \{\s*\n\s*if \(_ob\.busy\) return;\s*\n\s*\/\/[^\n]*\n\s*\{ const s0 = opsStore\.get\(\); const c0 = s0 \? _obCtx\(s0\) : null; if \(c0 && _ob\.idx != null && c0\.idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(html), '古い盤から 📌 を外す (flow-1)');
+        assert.ok(/async function _obReset\(\) \{[\s\S]{0,300}?if \(_ob\.idx != null && ctx\.idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(html), '古い盤でやり直す (flow-1)');
+        assert.ok(/if \(_ob\.sel && Number\.isInteger\(_ob\.idx\) && _ob\.idx < ctx\.first\) \{ _ob\.sel = null; showNotification\([^\n]*\n\s*_ob\.idx = ctx\.idx;/.test(html), '描き直しで、過ぎたブロックで選んだピースが残る (flow-4)');
+        assert.ok(/const pendingTap = \(a\) => !!rbNowD && orderOf\.get\(a\.block\) === rbNowD\.idx && !markedD\.has\(dp\.planKey\(a\)\) && overlapsAhead\(a\);/.test(html) && /if \(skipsD instanceof Set && prev && acD\) for \(const p of acD\.plannedOf\(_atkCheckDecidedPlan\(prev\.plan, snap2\.season\)\)\) if \(p\.planKey && skipsD\.has\(acD\.missingKey\(prev\.id, p\)\)\) markedD\.add\(p\.planKey\);/.test(html), '確認の衝突が「凸していない」の印・再編成中のブロックを見ない (logic-3 / flow-3)');
         assert.ok(/const rbNext = \(r\) => !!\(rbNow && r\.idx === rbNow\.next\);/.test(html) && /: rbNext\(r\) \? `<span[^`]*>\$\{esc\(rbNow\.to\)\} から<\/span>`/.test(html) && /const frame = \(r\.state === 'now' && !rbNext\(r\)\)/.test(html), '従来の経路のきょうの凸で次のブロックを「いま」 (ui-5)');
+    });
+    test('★ 実行 (Codex ⑥ 3 回目): 読み込みの途中 — ブロックのドメインはあって opsStore / seasonStore がまだ無くても、条件パネルの描き直し (_syncOpsPlanCondUi) が落ちない', () => {
+        const cond = fnOf('function _syncOpsPlanCondUi()'), pb = fnOf('function _opsPlanBlock()'), pn = fnOf('function _planNowSlot(season, nowMs = Date.now())');
+        const helpers = (html.match(/        const _opsSeasonNow = [^\n]*\n/)?.[0] || '') + (html.match(/        const _opsBlocks = [^\n]*\n/)?.[0] || '');
+        assert.ok(cond && pb && pn && helpers.includes('_opsBlocks'), '関数が見つからない');
+        const sel = { innerHTML: '', style: {} };
+        const doc = { querySelectorAll: () => [], getElementById: (id) => (id === 'opsPlanBlockSel' ? sel : null) };
+        // opsStore / seasonStore は引数で undefined にする (テストの中では本物が globalThis にあるため)
+        const f = new Function('window', 'document', 'opsStore', 'seasonStore', 'getCurrentSlotJST', 'escapeHtml', '_opsPlanWho', '_opsPlanBlockIdx', '_opsPlanStartMode', '_opsPlanTimeMode', '_opsPlanSticky',
+            `${helpers}\n${pn}\n${pb}\n${cond}\nreturn _syncOpsPlanCondUi;`)({ raidBlocksDomain: rb, opsStageDomain: globalThis.opsStageDomain }, doc, undefined, undefined, () => 'h10', (s) => String(s), 'block', null, 'now', 'strict', true);
+        f();
+        assert.ok(sel.innerHTML.includes('<option value="1" selected>B 午前 9〜13時 (いま)</option>'), '読み込みの途中に条件パネルを描けない / 落ちる');
     });
     test('★ 実行: _syncSeasonMeta — 再編成時間・区切りが変わったときだけ写しを捨てる・opsStore は読み直す・決定の最中は待つ', () => {
         const src = fnOf('function _seasonMetaKey(s)').replace(/\n$/, '') ;
