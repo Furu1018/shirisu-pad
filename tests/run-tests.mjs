@@ -15600,8 +15600,10 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(h.includes('✓ 置ける (B5 Lv2 残 41.0B)') && h.includes('✓ 置いた (B5 Lv2)') && h.includes('残り凸なし'), '置ける / 置いた / 残り凸なし');
         assert.ok(h.includes(`このブロックで最後 (ほか ${blocks[0].short}・${blocks[1].short} は済)`), '最後 (ほかは済) の文字');
         assert.ok(h.includes('<span class="ob-lk-a a-water">水冷 32.9B</span><span class="ob-lk-a a-fire">灼熱 37.8B②</span>'), '模擬の属性とダメージ (編成②)');
-        assert.ok(h.includes(`<div class="ob-lk-row ng on"><button type="button" class="ob-lk-b" data-ob-blk="3">${blocks[3].short}<small>${blocks[3].range} · 組んでいる</small></button>`), 'ブロックの行 (⚠ の色・いま組んでいる・押すとそのブロック)');
-        assert.ok(!h.includes(`data-ob-blk="1"`) && !h.includes(`data-ob-blk="0"`), '人のいないブロック・過ぎたブロックの行を出した');
+        assert.ok(h.includes(`<div class="ob-lk-row ng on"><div class="ob-lk-b">${blocks[3].short}<small>${blocks[3].range} · 組んでいる</small></div>`), 'ブロックの行 (⚠ の色・いま組んでいる)');
+        // ボタンの監査 ①: 上のブロックのボタンと同じ働きのボタンを置かない — 押せるのは撃破の見込みのブロックへの「○○ を開く」だけ
+        assert.deepEqual([...h.matchAll(/data-ob-blk="(\d+)"/g)].map(m => m[1]), ['2'], '段の中に、ブロックのボタンと同じ働きのボタンがある');
+        assert.equal((h.match(/class="ob-lk-row/g) || []).length, 1, '人のいないブロック・過ぎたブロックの行を出した');
         assert.ok(h.includes('🧮 はこの人を優先しません'), '見せるだけ (🧮 は優先しない) と言っていない');
         assert.equal(lockHtml([lock[0], lock[1]], blocks, 1, pt), '', '人がいないのに段を出した');
         assert.ok(make({ lockOpen: false })._obLockHtml(lock, blocks, 3, pt).startsWith('<details class="ob-lock" data-ob-lock><summary>'), '畳んだのに開いて描く');

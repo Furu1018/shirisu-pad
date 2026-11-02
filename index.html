@@ -3683,7 +3683,7 @@
         .ob-lk-list { display: grid; gap: 6px; margin-top: 6px; }
         .ob-lk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; padding: 8px 10px; border-radius: 10px; background: var(--s1); }
         .ob-lk-row.on { box-shadow: inset 0 0 0 2px var(--ops); } .ob-lk-row.ng { background: var(--bad-bg); }
-        .ob-lk-b { padding: 0; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 900; color: var(--t-ink); text-align: left; cursor: pointer; }
+        .ob-lk-b { font-size: 12px; font-weight: 900; color: var(--t-ink); min-width: 0; }
         .ob-lk-b small { display: block; font-size: 10px; font-weight: 700; color: var(--t-muted); }
         .ob-lk-ppl { display: grid; gap: 4px; min-width: 0; }
         .ob-lk-m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; min-width: 0; } .ob-lk-m > b { font-weight: 900; }
@@ -23240,7 +23240,8 @@
                     }
                     return `<div class="ob-lk-m"><b>${escapeHtml(m.name)}</b><span class="ob-lk-k">${escapeHtml(kind)}</span>${attrs}${st}</div>`;
                 }).join('');
-                return `<div class="ob-lk-row${x.ng ? ' ng' : ''}${x.idx === idx ? ' on' : ''}"><button type="button" class="ob-lk-b" data-ob-blk="${x.idx}">${escapeHtml(b.short)}<small>${escapeHtml(_obHours(b))}${x.idx === idx ? ' · 組んでいる' : ''}</small></button><div class="ob-lk-ppl">${ppl}</div></div>`;
+                // ブロック名は文字 (上のブロックのボタンと同じ働きのボタンを 2 つ置かない — 2026-10-29 ボタンの監査 ①)。押せるのは撃破の見込みのブロックへの「○○ を開く」だけ
+                return `<div class="ob-lk-row${x.ng ? ' ng' : ''}${x.idx === idx ? ' on' : ''}"><div class="ob-lk-b">${escapeHtml(b.short)}<small>${escapeHtml(_obHours(b))}${x.idx === idx ? ' · 組んでいる' : ''}</small></div><div class="ob-lk-ppl">${ppl}</div></div>`;
             }).join('');
             return `<details class="ob-lock" data-ob-lock${open ? ' open' : ''}><summary>「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum${ng ? ' ng' : ''}">${n} 人${ng ? ` · ⚠ 置けない見込み ${ng} 人` : ''}</span></summary>`
                 + '<p class="ob-note">ほかのブロックに出られない人です。相手のボスが前のブロックで倒れる見込みだと、その人のブロックには置けません (Lv が上がるのは 5 体とも倒したブロックの次から)。前のブロックを組むときに、5 体とも倒して次の Lv を出すか、相手のボスを残すかを決めてください (見せるだけで、🧮 はこの人を優先しません)</p>'
