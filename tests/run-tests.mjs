@@ -14949,7 +14949,8 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
         ] });
     test('★ trayPieces: そのブロックに出られる人だけ / 🔒 = そこしか出られない人が先 / ほかのブロック名 / 時間未登録は出さない / 凸数を言った人はそのブロックだけ / 残り凸 / 被り', () => {
         const pcs = bb.trayPieces({ board: mkBoard(100), blocks, idx: 0, bossOrder: W });
-        assert.deepEqual(pcs.map(p => [p.name, p.attr, p.rigid, p.others]), [['朝だけ', 'iron', true, []], ['朝だけ', 'fire', true, []], ['朝昼', 'electric', false, ['午後']]], '朝の人・🔒・並びが違う / 凸数を言った人 (夕方だけ) が朝に出ている / 未登録が出ている');
+        // ほかのブロックは短い名前 (short = 「C 午後」・名前は任意なので name から組まない: 2026-11-02 ②)
+        assert.deepEqual(pcs.map(p => [p.name, p.attr, p.rigid, p.others]), [['朝だけ', 'iron', true, []], ['朝だけ', 'fire', true, []], ['朝昼', 'electric', false, [blocks[2].short]]], '朝の人・🔒・並びが違う / 凸数を言った人 (夕方だけ) が朝に出ている / 未登録が出ている');
         assert.deepEqual(pcs.filter(p => p.name === '朝だけ').map(p => p.dup), [true, true], '同じ人の編成の被り (b) を見ていない');
         const eve = bb.trayPieces({ board: mkBoard(100), blocks, idx: 3, bossOrder: W });
         assert.deepEqual(eve.map(p => [p.name, p.rigid]), [['凸数つき', true]], '凸数を夕方だけ言った人を 🔒 にしていない');
@@ -14987,6 +14988,102 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
         const later = bb.overview({ board, blocks, first: 2, planOf: () => null, hpOf });
         assert.deepEqual(later.map(o => o.past), [true, true, false, false, false, false]);
         assert.equal(later[2].level, 1);
+    });
+    test('★ ② lockKind (2026-11-02 ふるり Q3): このブロックのみ / このブロックで最後 / 最後でほかは済 (実質このブロックだけ) / どれでもない', () => {
+        assert.equal(bb.lockKind([0], 0), 'only');
+        assert.equal(bb.lockKind([0, 2], 2, 0), 'last', '後ろが無い・手前の朝はまだ');
+        assert.equal(bb.lockKind([0, 2], 2, 1), 'lastOnly', '後ろが無い・手前の朝はもう過ぎた');
+        assert.equal(bb.lockKind([0, 2], 0, 0), null, '後ろに午後があるのに最後');
+        assert.equal(bb.lockKind([0, 2, 4], 2, 3), null, '後ろに夜があるのに最後');
+        assert.equal(bb.lockKind([1], 0), null, '出られないブロックに付けた');
+        assert.equal(bb.lockKind(null, 0), null);
+    });
+    test('★ ② trayPieces: 文字 (kind)・ほかのブロックは short・ほかは済 / 並びは このブロックのみ → このブロックで最後 → ほかにも出られる人', () => {
+        const at2 = bb.trayPieces({ board: mkBoard(100), blocks, idx: 2, bossOrder: W, first: 1 });
+        assert.deepEqual(at2.map(p => [p.name, p.kind, p.others, p.othersPast]), [['朝昼', 'lastOnly', [blocks[0].short], true]], '朝が過ぎたあとの午後の朝昼が「最後 (ほかは済)」でない');
+        assert.equal(bb.trayPieces({ board: mkBoard(100), blocks, idx: 2, bossOrder: W, first: 0 })[0].kind, 'last');
+        assert.equal(bb.trayPieces({ board: mkBoard(100), blocks, idx: 2, bossOrder: W })[0].kind, 'last', 'first の既定は 0');
+        // 午前: Z = 午前だけ (only) / X = 朝・午前 (午前が最後) / Y = 午前・午後 (ほかにも) — ダメージは Y が最大でも Z → X → Y
+        const b = mkBoard(100);
+        b.players = [
+            { id: 21, name: 'Y', attackCount: 0, attacks: [], availableSlots: [...H(9, 12), ...H(13, 16)], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 90, team: ['y'] }] } },
+            { id: 22, name: 'X', attackCount: 0, attacks: [], availableSlots: [...H(5, 8), ...H(9, 12)], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 50, team: ['x'] }] } },
+            { id: 23, name: 'Z', attackCount: 0, attacks: [], availableSlots: H(9, 12), loadoutsByAttr: { iron: [{ slot: 1, dmgB: 10, team: ['z'] }] } },
+        ];
+        assert.deepEqual(bb.trayPieces({ board: b, blocks, idx: 1, bossOrder: W }).map(p => [p.name, p.kind]), [['Z', 'only'], ['X', 'last'], ['Y', null]], '並びが このブロックのみ → 最後 → ほか でない');
+    });
+    test('★ ② bossState: 始まりの盤面で見る (見込み) / このブロックの駒も入れて見る (いま置けるか) / Lv4 はボス 5 だけ / 組む前から撃破済み', () => {
+        const board = mkBoard(100);
+        // 夕方 (3) に水冷 (B5) を 100B で撃破する駒
+        const pin = { id: 50, status: 'pinned', time_mode: 'block', block_from: 17, block_to: 20, boss_number: 5, player_id: 5, loadout_slot: 1, expected_damage_b: 100, characters_snapshot: [] };
+        const ov = bb.overview({ board, blocks, planOf: (idx, level, cur) => (idx === 3 ? bb.pinsPlan(bb.blockPins([pin]), blocks[3], level, cur.bosses, cur.players) : null), hpOf });
+        assert.deepEqual(bb.bossState({ ov, idx: 3, attr: 'water', atStart: true }).ok, true, '始まりで見る見込みに、このブロックの駒を入れた');
+        const here = bb.bossState({ ov, idx: 3, attr: 'water' });
+        assert.deepEqual([here.ok, here.why, here.killedIn], [false, 'killedHere', 3], 'このブロックの駒で撃破したのに置ける');
+        const night = bb.bossState({ ov, idx: 4, attr: 'water', atStart: true });
+        assert.deepEqual([night.ok, night.why, night.killedIn, night.level, night.row.bossNumber], [false, 'killed', 3, 1, 5], '夜に「夕方で撃破見込み」と言わない');
+        assert.equal(bb.bossState({ ov, idx: 4, attr: 'iron', atStart: true }).ok, true);
+        assert.equal(bb.bossState({ ov, idx: 4, attr: 'water', atStart: true, first: 4 }).killedIn, null, 'first より前のブロックを撃破の見込みに数えた');
+        // 組む前から撃破済み (実際の凸で HP 0)
+        const dead = mkBoard(100); dead.bosses[4].remaining_hp_raw = 0;
+        const ov2 = bb.overview({ board: dead, blocks, planOf: () => null, hpOf });
+        assert.deepEqual(['ok', 'why', 'killedIn'].map(k => bb.bossState({ ov: ov2, idx: 0, attr: 'water', atStart: true })[k]), [false, 'killed', null]);
+        // Lv4 (ボス 5 だけ・無限)
+        const lv4 = [{ idx: 0, past: false, level: 4, rows: [{ bossNumber: 5, name: 'B5', weakness: 'water', infinite: true, startB: 0, done: false }] }];
+        assert.deepEqual([bb.bossState({ ov: lv4, idx: 0, attr: 'iron' }).why, bb.bossState({ ov: lv4, idx: 0, attr: 'water' }).ok], ['lv4', true]);
+        assert.equal(bb.bossState({ ov: [{ idx: 0, past: true, rows: [] }], idx: 0, attr: 'iron' }), null, '過ぎたブロックに見込みを出した');
+    });
+    test('★ ② lockOutlook (2026-11-02 ふるり): このブロックのみ / 最後 (ほかは済) の人だけ・置ける / 置いた / 前のブロックで撃破見込み (どのブロック・Lv の残り) / 5 体撃破で次の Lv が出れば置ける / 残り凸なし', () => {
+        const trayOfFor = (board, ov, first = 0) => (i) => (ov[i] && ov[i].startBoard ? bb.trayPieces({ board: ov[i].startBoard, blocks, idx: i, bossOrder: W, first }) : []);
+        // 何も組んでいない: 朝 = 朝だけ (only)・夕方 = 凸数つき (凸数で夕方だけ = only)・夜 = 夜 (only)。朝昼 (朝・午後) は午後で「最後」だが朝はまだ → 載せない
+        //   (mkBoard の「夜」はきょう q を使っていて水冷の編成が使えない → ここでは別のキャラにする。使えないときは下の used で見る)
+        const board = mkBoard(100); board.players[2].attacks = [{ boss_number: 1, characters: ['zz'] }];
+        const ov0 = bb.overview({ board, blocks, planOf: () => null, hpOf });
+        const lk0 = bb.lockOutlook({ ov: ov0, blocks, trayOf: trayOfFor(board, ov0) });
+        assert.deepEqual(lk0.map(x => x.people.map(m => [m.name, m.kind, m.state])), [[['朝だけ', 'only', 'ok']], [], [], [['凸数つき', 'only', 'ok']], [['夜', 'only', 'ok']], []]);
+        assert.deepEqual(lk0.map(x => [x.only, x.lastOnly, x.ng]), [[1, 0, 0], [0, 0, 0], [0, 0, 0], [1, 0, 0], [1, 0, 0], [0, 0, 0]]);
+        const m0 = lk0[0].people[0];
+        assert.deepEqual([m0.best.attr, m0.best.bossNumber, m0.best.dmgB, m0.best.remB, m0.attrs.map(a => a.attr)], ['iron', 1, 30, 100, ['iron', 'fire']], '置けるときの一番の駒 (ダメージの大きい順)');
+        // 夕方に水冷 (B5) を撃破 → 夜の「夜」(水冷だけ) は置けない見込み。撃破の見込みは夕方・Lv1 の残りは B1〜B4
+        const pin = (id, boss, from, to, dmg) => ({ id, status: 'pinned', time_mode: 'block', block_from: from, block_to: to, boss_number: boss, player_id: 5, loadout_slot: 1, expected_damage_b: dmg, characters_snapshot: [] });
+        const planOf = (pins) => (idx, level, cur) => bb.pinsPlan(bb.blockPins(pins.filter(p => bb.pinBlockIdx(p, blocks) === idx)), blocks[idx], level, cur.bosses, cur.players);
+        const ov1 = bb.overview({ board, blocks, planOf: planOf([pin(1, 5, 17, 20, 100)]), hpOf });
+        const lk1 = bb.lockOutlook({ ov: ov1, blocks, trayOf: trayOfFor(board, ov1) });
+        const yoru = lk1[4].people[0];
+        assert.deepEqual([yoru.state, yoru.reasons.map(r => [r.attr, r.why, r.bossNumber, r.killedIn]), lk1[4].left, lk1[4].level, lk1[4].ng], ['ng', [['water', 'killed', 5, 3]], [1, 2, 3, 4], 1, 1], '夕方で B5 を倒すと夜の人が置けないと言わない');
+        // 夕方で 5 体とも撃破 → 夜は Lv2 (HP 満タン) → 置ける
+        const ov2 = bb.overview({ board, blocks, planOf: planOf([1, 2, 3, 4, 5].map(n => ({ ...pin(n, n, 17, 20, 100), player_id: n }))), hpOf });   // 5 人で 1 体ずつ (同じ人・同じ編成は 1 日 1 回)
+        assert.equal(ov2[3].allDone, true, '夕方で 5 体とも倒れていない (テストの盤面)');
+        const lk2 = bb.lockOutlook({ ov: ov2, blocks, trayOf: trayOfFor(board, ov2) });
+        assert.deepEqual([lk2[4].level, lk2[4].people[0].state, lk2[4].people[0].best.remB], [2, 'ok', 200], '5 体倒して次の Lv が出たのに置けない見込み');
+        // 置いた / 残り凸なし
+        const p3 = { ...pin(9, 1, 5, 8, 30), player_id: 1, characters_snapshot: ['a', 'b'] };
+        const ov3 = bb.overview({ board, blocks, planOf: planOf([p3]), hpOf });
+        const lk3 = bb.lockOutlook({ ov: ov3, blocks, trayOf: trayOfFor(board, ov3) });
+        assert.deepEqual([lk3[0].people[0].state, lk3[0].people[0].placed], ['placed', [{ bossNumber: 1, dmgB: 30 }]]);
+        const spent = mkBoard(100); spent.players[2].attackCount = 3; spent.players[2].attacks = [1, 2, 3].map(() => ({ boss_number: 5, characters: [] }));
+        const ov4 = bb.overview({ board: spent, blocks, planOf: () => null, hpOf });
+        assert.equal(bb.lockOutlook({ ov: ov4, blocks, trayOf: trayOfFor(spent, ov4) })[4].people[0].state, 'none', '3 凸済みの人を置ける見込みにした');
+        // 朝が過ぎた (first = 1): 午後の朝昼は「このブロックで最後 (ほかは済)」として載る
+        const ov5 = bb.overview({ board, blocks, first: 1, planOf: () => null, hpOf });
+        const lk5 = bb.lockOutlook({ ov: ov5, blocks, first: 1, trayOf: trayOfFor(board, ov5, 1) });
+        assert.deepEqual(lk5[2].people.map(m => [m.name, m.kind, m.others]), [['朝昼', 'lastOnly', [blocks[0].short]]]);
+        assert.deepEqual([lk5[0].past, lk5[0].people.length], [true, 0], '過ぎたブロックに人を載せた');
+        // 編成が全部使えない (きょう使ったキャラ) → 理由は blocked
+        const used = mkBoard(100); used.players[2].attacks = [{ boss_number: 1, characters: ['q'] }];
+        const ov6 = bb.overview({ board: used, blocks, planOf: () => null, hpOf });
+        assert.deepEqual(bb.lockOutlook({ ov: ov6, blocks, trayOf: trayOfFor(used, ov6) })[4].people[0].reasons.map(r => r.why), ['blocked']);
+        assert.deepEqual(bb.lockOutlook({ ov: ov0, blocks }).map(x => x.people.length), [0, 0, 0, 0, 0, 0], 'trayOf が無いのに人を載せた');
+        // 見込みはブロックの始まりで見る: 夕方に別の人の駒が B4 (風圧) を倒していても、凸数つき (夕方のみ・風圧) は「置ける」(駒は入れ替えられる)
+        const ov7 = bb.overview({ board, blocks, planOf: planOf([{ ...pin(70, 4, 17, 20, 100), player_id: 1 }]), hpOf });
+        const lk7 = bb.lockOutlook({ ov: ov7, blocks, trayOf: trayOfFor(board, ov7) });
+        assert.deepEqual([ov7[3].rows.find(r => r.bossNumber === 4).done, lk7[3].people[0].name, lk7[3].people[0].state], [true, '凸数つき', 'ok'], '同じブロックの駒で倒れたのを「置けない見込み」にした (見込みは始まりの盤面で)');
+        // 撃破の見込みは同じレベルのブロックだけ: 午前に Lv1 を 5 体撃破 → 午後は Lv2 で B5 を撃破 → 夕方の人の B5 は「午後で撃破」(午前の Lv1 の撃破ではない)
+        const pins8 = [...[1, 2, 3, 4, 5].map(n => ({ ...pin(80 + n, n, 9, 12, 100), player_id: n })), { ...pin(90, 5, 13, 16, 200), player_id: 1, loadout_slot: 2 }];
+        const ov8 = bb.overview({ board, blocks, planOf: planOf(pins8), hpOf });
+        assert.deepEqual([ov8[1].allDone, ov8[2].level, ov8[2].rows.find(r => r.bossNumber === 5).done, ov8[3].level], [true, 2, true, 2], 'テストの盤面 (午前で 5 体・午後で Lv2 の B5)');
+        const st8 = bb.bossState({ ov: ov8, idx: 3, attr: 'water', atStart: true });
+        assert.deepEqual([st8.why, st8.killedIn, st8.level], ['killed', 2, 2], '別のレベル (Lv1) の撃破を撃破の見込みに数えた');
     });
     test('★ (レビュー) trayPieces: きょう使ったキャラの編成は使えない / 後ろのブロックに置いた分を残り凸から引く / 凸数を言ったブロックは 凸数 − そのブロックで済んだ数', () => {
         const b = mkBoard(100);
@@ -15364,7 +15461,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/if \(k >= idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(k > idx && !hand\) _ob\.stale\.add\(k\); \}/.test(ac));
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
         assert.ok(/const planOf = \(idx, level, cur\) => \{ const p = _ob\.plans\.get\(idx\); return p \? _obStripDone\(p, blocks\[idx\], doneKeys\) : bb\.pinsPlan\(pins, blocks\[idx\], level, cur\.bosses, cur\.players\); \};/.test(cx) &&/bb\.overview\(\{ board: \{ season: snap\.season, bosses: snap\.bosses, players: snap\.players \}, blocks, first, planOf, hpOf: _obHpOf \}\)/.test(cx), 'ブロックの様子を自動の結果 / 手で置いた駒から作っていない');
-        assert.ok(/bb\.trayPieces\(\{ board: cur\.startBoard, blocks, idx, bossOrder, placed, pins: pinMap, laterUse \}\)/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
+        assert.ok(/bb\.trayPieces\(\{ board: o\.startBoard, blocks, idx: i, bossOrder, placed, pins: pinMap, laterUse, first \}\)/.test(cx) && /const tray = trayOf\(idx\);/.test(cx) && /bb\.blockPins\(_ob\.pins \|\| \[\], rv && rv\.isFixed \? rv\.isFixed : null\)/.test(cx), 'ピースをそのブロックの始まりの盤面で作っていない');
     });
     test('★ Codex 監査: 実行されない凸は置いた扱いにしない / シーズンが変わったら古い結果を書かない / 読み直した駒で盤面を作り直す', () => {
         const cx = fn('function _obCtx(snap)', 'function renderOpsBuild()');
@@ -15450,7 +15547,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/: \(same \? `<button type="button" class="ob-decide-btn" onclick="_obDecide\(\)"\$\{_ob\.busy \? ' disabled' : ''\}>✅ \$\{range\.map\(i => escapeHtml\(blocks\[i\]\.short\)\)\.join\('・'\)\} をこのまま決定し直す \(変更なし\)<\/button>`/.test(r), '変更なしで押せるボタンが無い');
         assert.ok(!r.includes('組み直すと決定し直せます'), '「組み直さないと決定できない」の古い文が残っている');
         assert.ok(/const sameOpt = same \? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame\(this\.checked\)"/.test(r) && /\$\{sameOpt\}\$\{decNote\}/.test(r), '変更なしでも通知するスイッチが無い');
-        assert.ok(/notifySame: false \};/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
+        assert.ok(/notifySame: false,/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         assert.ok(!/if \(!fresh\.length\) \{ showNotification\(/.test(d), '組み直していないと止まる');
         const iSw = d.indexOf('const notifySame = !!_ob.notifySame;'), iAw = d.indexOf('await ');
@@ -15475,6 +15572,56 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/if \(!set \|\| _atkCheck\.skipsGen !== g \|\| _atkCheck\.skipsPlan !== pid \|\| _atkCheck\.skipsVer !== ver/.test(ck), '配信が替わったあとの古い読み直しを使う');
         // メンバーのホーム: 比べる相手は中身の違う 1 つ前の決定
         assert.ok(/const prevDec = dpx\.previousChanged\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\)\), pub\);/.test(html) && !/dpx\.latestDecided\(pubRows\.filter\(r => Number\(r\.season_id\) === Number\(pub\.season_id\) && Number\(r\.id\) < Number\(pub\.id\)\)\)/.test(html), 'ホームの「変わったか」が同じ中身の行と比べる');
+    });
+    test('★ ② 「このブロックのみ / 最後」の段を実際に描く (_obLockHtml / _obDeadText): 人・文字・模擬・見込み・「○○ を開く」・名前のエスケープ・開け閉めの記憶 / 空なら出さない', () => {
+        const rbx = globalThis.raidBlocksDomain;
+        const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
+        const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const PT = { fire: '灼熱', water: '水冷', iron: '鉄甲', electric: '電撃', wind: '風圧' };
+        const pt = (a) => PT[a] || a;
+        const make = (_ob) => new Function('escapeHtml', 'SLOT_JP', '_ob', '_obHours', `${fn('function _obDeadText(', 'function _obLockHtml(')}\n${fn('function _obLockHtml(', 'function renderOpsBuild()')}\nreturn { _obDeadText, _obLockHtml };`)(esc, { 1: '①', 2: '②', 3: '③' }, _ob, (b) => b.range);
+        const { _obDeadText: dead, _obLockHtml: lockHtml } = make({ lockOpen: null });
+        const lock = [
+            { idx: 0, past: true, people: [], only: 0, lastOnly: 0, ng: 0, level: null, left: [] },
+            { idx: 1, past: false, people: [], only: 0, lastOnly: 0, ng: 0, level: 1, left: [] },
+            { idx: 3, past: false, level: 2, left: [1, 4], only: 2, lastOnly: 1, ng: 1, people: [
+                { memberId: 7, name: '<b>M</b>', kind: 'only', others: [], attrs: [{ attr: 'water', dmgB: 32.9, slot: 1 }, { attr: 'fire', dmgB: 37.8, slot: 2 }], state: 'ng', placed: [], best: null,
+                    reasons: [{ attr: 'fire', why: 'killed', bossNumber: 3, name: 'アルト', killedIn: 2 }] },
+                { memberId: 8, name: '銀', kind: 'only', others: [], attrs: [{ attr: 'water', dmgB: 30.1, slot: 1 }], state: 'ok', placed: [], best: { attr: 'water', bossNumber: 5, dmgB: 30.1, remB: 41, infinite: false }, reasons: [] },
+                { memberId: 9, name: 'ふ', kind: 'lastOnly', others: [blocks[0].short, blocks[1].short], attrs: [{ attr: 'water', dmgB: 14.4, slot: 1 }], state: 'placed', placed: [{ bossNumber: 5, dmgB: 14.4 }], best: null, reasons: [] },
+                { memberId: 10, name: 'ゼ', kind: 'only', others: [], attrs: [], state: 'none', placed: [], best: null, reasons: [] },
+            ] },
+        ];
+        const h = lockHtml(lock, blocks, 3, pt);
+        assert.ok(h.startsWith('<details class="ob-lock" data-ob-lock open><summary>「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum ng">4 人 · ⚠ 置けない見込み 1 人</span></summary>'), '見出し・人数・⚠ の数 / 既定で開く');
+        assert.ok(h.includes('&lt;b&gt;M&lt;/b&gt;') && !h.includes('<b>M</b>'), '名前をエスケープしていない');
+        assert.ok(h.includes(`⚠ 灼熱PT の相手 B3 アルト は Lv2 を ${blocks[2].short} で撃破する見込み → このブロックに Lv3 は出ない見込み (Lv2 の残り: B1・B4)`), '置けない見込みの文');
+        assert.ok(h.includes(`<button type="button" class="ob-lk-go" data-ob-blk="2">${blocks[2].short} を開く</button>`), '撃破の見込みのブロックを開く近道が無い');
+        assert.ok(h.includes('✓ 置ける (B5 Lv2 残 41.0B)') && h.includes('✓ 置いた (B5 Lv2)') && h.includes('残り凸なし'), '置ける / 置いた / 残り凸なし');
+        assert.ok(h.includes(`このブロックで最後 (ほか ${blocks[0].short}・${blocks[1].short} は済)`), '最後 (ほかは済) の文字');
+        assert.ok(h.includes('<span class="ob-lk-a a-water">水冷 32.9B</span><span class="ob-lk-a a-fire">灼熱 37.8B②</span>'), '模擬の属性とダメージ (編成②)');
+        assert.ok(h.includes(`<div class="ob-lk-row ng on"><button type="button" class="ob-lk-b" data-ob-blk="3">${blocks[3].short}<small>${blocks[3].range} · 組んでいる</small></button>`), 'ブロックの行 (⚠ の色・いま組んでいる・押すとそのブロック)');
+        assert.ok(!h.includes(`data-ob-blk="1"`) && !h.includes(`data-ob-blk="0"`), '人のいないブロック・過ぎたブロックの行を出した');
+        assert.ok(h.includes('🧮 はこの人を優先しません'), '見せるだけ (🧮 は優先しない) と言っていない');
+        assert.equal(lockHtml([lock[0], lock[1]], blocks, 1, pt), '', '人がいないのに段を出した');
+        assert.ok(make({ lockOpen: false })._obLockHtml(lock, blocks, 3, pt).startsWith('<details class="ob-lock" data-ob-lock><summary>'), '畳んだのに開いて描く');
+        // 置けない理由の文 (ピース置き場の赤と同じ)
+        assert.equal(dead({ why: 'lv4' }, blocks, pt, 'iron'), 'Lv4 はボス 5 だけです (鉄甲PT は使えません)');
+        assert.equal(dead({ why: 'killedHere', row: { bossNumber: 2, name: 'X' }, level: 1 }, blocks, pt, 'electric'), '電撃PT の相手 B2 X は、このブロックに置いた駒で撃破 ✓ (入れ替えるなら駒を ✕ で外す)');
+        assert.equal(dead({ why: 'killed', row: { bossNumber: 5, name: 'Y' }, level: 3, killedIn: null }, blocks, pt, 'water'), '水冷PT の相手 B5 Y は Lv3 を もう撃破済み');
+        assert.equal(dead({ why: 'blocked' }, blocks, pt, null), '模擬の編成のキャラが、きょうもう使われているか被っています');
+        assert.equal(dead(null, blocks, pt, 'fire'), '');
+    });
+    test('★ ② の配線: ボタンに「このブロックのみ N 人」(⚠ は赤) / 段はボタンの下・決定の上 / ピースは文字 (🔒 は使わない)・置けないピースは赤 (いまの盤 = bossState・first) / 段の開け閉めを覚える / 全ブロックのピースは同じ判定 (trayOf)', () => {
+        const r = fn('function renderOpsBuild()', 'function _obDecideRange(');
+        assert.ok(/const lkHtml = lkTxt \? `<span class="lk\$\{lk\.ng \? ' ng' : ''\}">\$\{lk\.ng \? '⚠ ' : ''\}\$\{lkTxt\}<\/span>` : '';/.test(r) && /lk\.only \? `このブロックのみ \$\{lk\.only\} 人` : ''/.test(r) && /\$\{lkHtml\}<span class="minis">/.test(r), 'ボタンに人数が無い');
+        assert.ok(/<div class="obb-grid" role="group" aria-label="組むブロック">\$\{btns\}<\/div>\$\{lockHtml\}\$\{decideHtml\}/.test(r), '段の置き場所');
+        assert.ok(!r.includes('🔒 この時間だけ') && !html.includes('🔒 = この時間帯しか出られない人'), '🔒 の印が残っている (Q3: 文字で)');
+        assert.ok(/p\.kind === 'only' \? '<span class="rigid">このブロックのみ<\/span>'/.test(r) && /p\.kind === 'lastOnly' \? `<span class="rigid">このブロックで最後/.test(r) && /p\.kind === 'last' \? '<span class="rigid last">このブロックで最後<\/span>'/.test(r), 'ピースの文字');
+        assert.ok(/const bs = \(!off && !dropped\) \? window\.blockBuildDomain\.bossState\(\{ ov, idx, first: ctx\.first, attr: p\.attr \}\) : null;/.test(r) && /\$\{ngTxt \? ' ng' : ''\}"/.test(r), '置けないピースを赤にしていない (いまの盤で見る)');
+        assert.ok(/host\.addEventListener\('toggle', \(e\) => \{ const d = e\.target; if \(d && d\.matches && d\.matches\('\[data-ob-lock\]'\)\) _ob\.lockOpen = !!d\.open; \}, true\);/.test(html) && /lockOpen: null \};/.test(html), '段の開け閉めを覚えない');
+        const cx = fn('function _obCtx(snap)', 'function _obDeadText(');
+        assert.ok(/const lock = bb\.lockOutlook \? bb\.lockOutlook\(\{ ov, blocks, first, trayOf: \(i\) => \(i === idx \? tray : trayOf\(i\)\) \}\) : \[\];/.test(cx), '見込みをピース置き場と同じ判定で作っていない');
     });
     await testAsync('★ _obCarrySkips を実際に動かす (2026-11-02 レビュー): 写したブロックの「凸していない」の印だけを新しい決定の id で付ける・もうある印は付けない・手元の印と版を進める・読めない / 付けられないは知らせて止めない', async () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;

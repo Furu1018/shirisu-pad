@@ -265,8 +265,8 @@
         if (obIdx() !== idx) return stray(c, []) || { text: '「' + name + '」のブロックのボタンを押します。ボタンの中に、そのブロックの Lv・置いた凸の数・ボスの HP の帯が出ます。', target: q('#opsBuild [data-ob-blk="' + idx + '"]') };
         if (withPin && !pinnedIn(c, idx)) {
             var sel = typeof _ob !== 'undefined' && _ob ? _ob.sel : null;
-            var rigid = q('#opsBuild .obt:not(.off) .rigid');   // 🔒 この時間だけ出られる人を先に
-            if (!sel) return stray(c, []) || { text: '下に「この時間帯に出られる人の模擬」のピースが並んでいます。🔒 (この時間だけ出られる人) を先に置きます。ピースを 1 つ押します。',
+            var rigid = q('#opsBuild .obt:not(.off):not(.ng) .rigid');   // 「このブロックのみ / このブロックで最後」の人を先に (赤 = いま置けないピースは指さない)
+            if (!sel) return stray(c, []) || { text: '下に「この時間帯に出られる人の模擬」のピースが並んでいます。「このブロックのみ」「このブロックで最後」の人を先に置きます。ピースを 1 つ押します。',
                 real: 'Discord で『朝に このボスへ行きたい』と希望が来たら、その人をここで先に置きます (予約の代わり)。', target: rigid ? rigid.closest('.obt') : pick('obPiece') };
             return stray(c, []) || { text: '置けるボスの行 (枠が付いた行) の見出しを押します。📌 として置かれ、幅 = ダメージぶんボスの残り HP が減ります。', target: pick('obRow') };
         }

@@ -995,6 +995,9 @@ test('練習: 「済んだ」を端末の印で決める課題は、組んだ結
     assert.equal(step('ops-day', 'decide').done(withT([plansRow(20, 8, ['夕方'], '2026-10-03T08:30:00.000Z', false), plansRow(21, 7, ['夕方'], '2026-10-03T08:40:00.000Z', true)])), false, '別のシーズンの行で済んだ');
     // ↩ 1つ前に戻る: 控えに課題の印を入れ、戻すときに印も戻す (控えに無い印は消す)
     assert.match(GUIDE, /var MARKS = \['ops-eve:morning', 'ops-eve:more', 'ops-day:rebuilt', 'ops-day:copied', 'member:noAssign'\];/);
+    // ② (2026-11-02): 先に置くピースは「このブロックのみ / 最後」の文字 (.rigid) で探し、赤 (.ng = いま置けない) は指さない。🔒 の言い方は使わない
+    assert.match(GUIDE, /var rigid = q\('#opsBuild \.obt:not\(\.off\):not\(\.ng\) \.rigid'\);/, '練習の案内が赤い (置けない) ピースを指す');
+    assert.ok(!/🔒 \(この時間だけ出られる人\)/.test(GUIDE), '練習の案内に 🔒 の言い方が残っている');
     assert.match(GUIDE, /function saveSnap\(i\) \{[\s\S]*?MARKS\.forEach[\s\S]*?JSON\.stringify\(\{ db: P\.db\.dump\(\), clock: P\.clock\.get\(\), feed: feed, marks: marks \}\)/, '控えに課題の印が入っていない');
     assert.match(GUIDE, /function goBack\(toIdx\) \{[\s\S]*?MARKS\.forEach\(function \(k\) \{ if \(Object\.prototype\.hasOwnProperty\.call\(marks, k\)\) store\.set\(k, marks\[k\]\); else store\.del\(k\); \}\);[\s\S]*?P\.closed = true;/, '戻るときに課題の印を戻していない');
 });

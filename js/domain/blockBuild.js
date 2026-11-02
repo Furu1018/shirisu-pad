@@ -6,7 +6,8 @@
 //   - overview: ブロックごとに「挑むレベル・ボスごとの始まりの HP・置いた凸・残り」(★ レベルはブロックの頭でしか変わらない)。
 //     前のブロックで組んだ凸を「模擬どおり削れた」と仮定して盤面を進める (planChainDomain.projectBoard の levelLockInBlock)
 //   - pinsPlan: 手で置いた駒 (📌 ブロックの仮置き = plan_reservations status 'pinned' / time_mode 'block') を、プランの形にする
-//   - trayPieces: そのブロックに出られる人の模擬のピース。🔒 = このブロックしか出られない人 (先に置く) / ほかのブロック名 / 被り / 置いた所
+//   - trayPieces: そのブロックに出られる人の模擬のピース。「このブロックのみ」「このブロックで最後」(lockKind・先に置く) / ほかのブロック名 / 被り / 置いた所
+//   - lockOutlook / bossState: 「このブロックのみ / 最後」の人の凸が置けるかの見込み (第46回の反省 ②・2026-11-02 ふるり)。見せるだけ — 🧮 に「必ず置く」は入れない
 // DOM 非依存。node tests/run-tests.mjs で検証
 // ============================================================================
 (function (root) {
@@ -141,8 +142,9 @@
      * @param {{ board:{players}, blocks:Object[], idx:number, bossOrder?:string[], placed?: Map<string, number>, pins?: Map<string, {blockIdx:number, id:number}> }} a
      *   board = そのブロックの始まりの盤面 (overview の startBoard) / placed = 鍵 'memberId:attr:slot' → 置いたブロックの添字 (組んだ全ブロック)
      *   pins = 同じ鍵 → 📌 (どのブロックの・予約の id) / bossOrder = 属性の並び (ボス 1〜5 の弱点の順)
-     * @returns {Array<{ key, memberId, name, attr, slot, dmgB, team, rigid:boolean, others:string[], remaining:number, dup:boolean,
-     *   placedIdx:number|null, pinId:number|null, blocked:string|null }>}  並び: 🔒 → 出られるブロックの少ない順 → ボスの順 → ダメージの大きい順
+     * @returns {Array<{ key, memberId, name, attr, slot, dmgB, team, rigid:boolean, kind:('only'|'lastOnly'|'last'|null), avail:number[], others:string[] (short), othersPast:boolean, remaining:number, dup:boolean,
+     *   placedIdx:number|null, pinId:number|null, blocked:string|null }>}  並び: このブロックのみ (と実質このブロックだけ) → このブロックで最後 → 出られるブロックの少ない順 → ボスの順 → ダメージの大きい順。
+     *   first = いまのブロック (lockKind の「ほかは済」に使う。省略は 0)
      */
     /** ISO の時刻 → レイド日の時間帯の添字 (5 時 = 0・JST)。読めなければ null */
     function hourIdxOfIso(iso) {
@@ -162,7 +164,100 @@
         const h = hourIdxOfIso(a.reported_at);
         return h != null && h >= blk.fromIdx && h <= blk.toIdx;
     }
-    function trayPieces({ board, blocks, idx, bossOrder = null, placed = null, pins = null, laterUse = null } = {}) {
+    /**
+     * 「このブロックのみ」「このブロックで最後」(第46回の反省 ②・2026-11-02 ふるり Q3: 🔒 の印をやめて文字で)。
+     *   only = 出られるブロックが 1 つ / last = 後ろに出られるブロックが無い (ほかにもある) / lastOnly = last のうち、ほかのブロックがもう過ぎた (first より前) = 実質このブロックだけ
+     * @param {number[]} avail その人が出られるブロック (availableBlocks) / idx = 見ているブロック / first = いまのブロック (それより前は過ぎた)
+     * @returns {'only'|'lastOnly'|'last'|null}
+     */
+    function lockKind(avail, idx, first = 0) {
+        const a = Array.isArray(avail) ? avail.map(Number) : [];
+        if (!a.includes(Number(idx))) return null;
+        if (a.length === 1) return 'only';
+        if (!a.every(i => i <= Number(idx))) return null;
+        return a.every(i => i === Number(idx) || i < Number(first)) ? 'lastOnly' : 'last';
+    }
+
+    /**
+     * そのブロックで、その属性の相手ボスに置けるか (overview の結果で)。
+     *   atStart = true: ブロックの始まりの盤面で見る (見込み: このブロックの駒は入れ替えられるので数えない) / false: このブロックに置いた駒も入れて見る (いま置けるか = canDrop と同じ)
+     * @returns {{ ok:true, row, level }|{ ok:false, why:'lv4'|'none'|'killed'|'killedHere', row?, level, killedIn?:number|null }|null}  null = 過ぎた・無いブロック
+     *   killedIn = 撃破の見込みのブロック (同じレベルで、そのボスの行が撃破になった最初のブロック)。null = 組む前から撃破済み (実際の凸)
+     */
+    function bossState({ ov, idx, first = 0, attr, atStart = false } = {}) {
+        const list = Array.isArray(ov) ? ov : [];
+        const o = list[idx];
+        if (!o || o.past) return null;
+        const row = (o.rows || []).find(r => r.weakness === attr) || null;
+        if (!row) return { ok: false, why: Number(o.level) >= 4 ? 'lv4' : 'none', level: o.level };
+        if (row.infinite) return { ok: true, row, level: o.level };
+        const deadAtStart = !(Number(row.startB) > EPS);
+        if (!deadAtStart && (atStart || !row.done)) return { ok: true, row, level: o.level };
+        if (!deadAtStart) return { ok: false, why: 'killedHere', row, level: o.level, killedIn: idx };
+        let killedIn = null;
+        for (let j = Math.max(0, Number(first) || 0); j < idx; j++) {
+            const x = list[j];
+            if (!x || x.past || Number(x.level) !== Number(o.level)) continue;
+            const r = (x.rows || []).find(y => Number(y.bossNumber) === Number(row.bossNumber));
+            if (r && r.done) { killedIn = j; break; }
+        }
+        return { ok: false, why: 'killed', row, level: o.level, killedIn };
+    }
+
+    /**
+     * ブロックごとの「このブロックのみ / このブロックで最後 (ほかは済)」の人と、その人の凸が置けるかの見込み (第46回の反省 ②・2026-11-02 ふるり)。
+     * ★ 見せるだけ (止めない・🧮 に「必ず置く」は入れない: Q2「そのルールに引っ張られて総合スコアが減るときもある」)。
+     * 見込みはブロックの始まりの盤面 (overview = 前のブロックまでを組んだとおりに実行した盤面) で、その人の模擬の相手ボスが残っているか。
+     *   残っていなければ、どのブロックで撃破の見込みか と、そのレベルで残っているボス (= 5 体倒すと次のブロックから次のレベル)
+     * 載せるのは only と lastOnly だけ (last = 後ろが無いだけの人は、手前のブロックにも出られる — 全員の最後のブロックに名前が並ぶのを避ける。ピース置き場には文字で出す)
+     * @param {{ ov:Object[], blocks:Object[], first?:number, trayOf:(idx:number)=>Object[] }} a  trayOf = そのブロックのピース (trayPieces と同じ判定)
+     * @returns {Array<{ idx:number, past:boolean, only:number, lastOnly:number, ng:number,
+     *   people:Array<{ memberId, name, kind:'only'|'lastOnly', others:string[], attrs:Array<{attr,dmgB,slot}>, state:'placed'|'none'|'ok'|'ng',
+     *     placed:Array<{bossNumber,dmgB}>, best:{attr,bossNumber,dmgB,remB:number|null,infinite:boolean}|null, reasons:Array<{attr,why,bossNumber?,name?,killedIn?}> }>,
+     *   level:number|null, left:number[] }>}  left = ブロックの始まりにそのレベルで残っているボス (無限は除く)
+     */
+    function lockOutlook({ ov, blocks, first = 0, trayOf } = {}) {
+        const bl = Array.isArray(blocks) ? blocks : [];
+        const list = Array.isArray(ov) ? ov : [];
+        return bl.map((blk, idx) => {
+            const o = list[idx] || null;
+            if (!o || o.past || typeof trayOf !== 'function') return { idx, past: !!(o && o.past), only: 0, lastOnly: 0, ng: 0, people: [], level: o ? o.level : null, left: [] };
+            const byMember = new Map();
+            for (const p of (trayOf(idx) || [])) {
+                if (!p || (p.kind !== 'only' && p.kind !== 'lastOnly')) continue;
+                const k = String(p.memberId);
+                if (!byMember.has(k)) byMember.set(k, { memberId: p.memberId, name: p.name, kind: p.kind, others: Array.isArray(p.others) ? p.others : [], pieces: [] });
+                byMember.get(k).pieces.push(p);
+            }
+            const left = (o.rows || []).filter(r => !r.infinite && Number(r.startB) > EPS).map(r => Number(r.bossNumber));
+            const people = [...byMember.values()].map(m => {
+                const placed = [];
+                for (const r of (o.rows || [])) for (const a of (r.pieces || [])) if (String(a.memberId) === String(m.memberId)) placed.push({ bossNumber: Number(r.bossNumber), dmgB: Number(a.dmgB) || 0 });
+                const attrs = m.pieces.map(p => ({ attr: p.attr, dmgB: Number(p.dmgB) || 0, slot: Number(p.slot) || 1 }));
+                const remaining = Math.max(...m.pieces.map(p => Number(p.remaining) || 0), 0);
+                const base = { memberId: m.memberId, name: m.name, kind: m.kind, others: m.others, attrs, placed, best: null, reasons: [] };
+                if (placed.length) return { ...base, state: 'placed' };
+                if (remaining <= 0) return { ...base, state: 'none' };
+                const cands = m.pieces.filter(p => !p.blocked && p.placedIdx == null);
+                let best = null;
+                const reasons = [];
+                for (const p of cands) {
+                    const st = bossState({ ov: list, idx, first, attr: p.attr, atStart: true });
+                    if (st && st.ok) {
+                        if (!best || p.dmgB > best.dmgB) best = { attr: p.attr, bossNumber: Number(st.row.bossNumber), dmgB: Number(p.dmgB) || 0, remB: st.row.infinite ? null : Number(st.row.startB), infinite: !!st.row.infinite };
+                    } else if (st && !reasons.some(x => x.attr === p.attr)) {
+                        reasons.push({ attr: p.attr, why: st.why, ...(st.row ? { bossNumber: Number(st.row.bossNumber), name: st.row.name } : {}), ...(st.why === 'killed' ? { killedIn: st.killedIn } : {}) });
+                    }
+                }
+                if (best) return { ...base, state: 'ok', best };
+                return { ...base, state: 'ng', reasons: cands.length ? reasons : [{ attr: null, why: 'blocked' }] };
+            });
+            return { idx, past: false, level: o.level, left, people,
+                only: people.filter(p => p.kind === 'only').length, lastOnly: people.filter(p => p.kind === 'lastOnly').length, ng: people.filter(p => p.state === 'ng').length };
+        });
+    }
+
+    function trayPieces({ board, blocks, idx, bossOrder = null, placed = null, pins = null, laterUse = null, first = 0 } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const blk = bl[idx];
         if (!blk) return [];
@@ -186,13 +281,17 @@
             // きょう使ったキャラ (実際の凸 + 前のブロックで済んだことにした凸) を含む編成は使えない (同じキャラは 1 日 1 回: レビュー高)
             const usedChars = new Set((Array.isArray(p.attacks) ? p.attacks : []).flatMap(a => Array.isArray(a && a.characters) ? a.characters : []).map(String));
             const lo = p.loadoutsByAttr && typeof p.loadoutsByAttr === 'object' ? p.loadoutsByAttr : {};
+            // 「このブロックのみ / このブロックで最後」(Q3)。ほかのブロックは時計の言い方の短い名前 (short = 「A 朝」・名前は任意なので name から組まない: 2026-10-30)
+            const kind = lockKind(avail, idx, first);
+            const others = avail.filter(i => i !== idx).map(i => bl[i].short || bl[i].name || bl[i].letter || '');
+            const othersPast = avail.filter(i => i !== idx).every(i => i < Number(first));
             const mine = [];
             for (const attr of Object.keys(lo)) for (const l of (Array.isArray(lo[attr]) ? lo[attr] : [])) {
                 if (!l || !(Number(l.dmgB) > 0)) continue;
                 const slot = Number(l.slot) || 1;
                 const key = `${p.id}:${attr}:${slot}`;
                 mine.push({ key, memberId: p.id, name: p.name, attr, slot, dmgB: Number(l.dmgB), team: Array.isArray(l.team) ? l.team.filter(Boolean).map(String) : [],
-                    rigid: avail.length === 1, others: avail.filter(i => i !== idx).map(i => bl[i].name), remaining,
+                    rigid: avail.length === 1, kind, avail: avail.slice(), others, othersPast, remaining,
                     placedIdx: placedMap.has(key) ? placedMap.get(key) : null, pinId: pinMap.has(key) ? pinMap.get(key).id : null, dup: false, blocked: null });
             }
             for (const x of mine) for (const y of mine) if (x !== y && x.team.length && y.team.length && x.team.some(c => y.team.includes(c))) { x.dup = true; y.dup = true; }
@@ -207,7 +306,9 @@
         }
         const rank = (a) => order.indexOf(a.attr) < 0 ? 99 : order.indexOf(a.attr);
         const nAvail = new Map(out.map(x => [String(x.memberId), x.others.length]));
-        out.sort((a, b) => (Number(b.rigid) - Number(a.rigid)) || ((nAvail.get(String(a.memberId)) || 0) - (nAvail.get(String(b.memberId)) || 0))
+        // 並び: このブロックのみ・実質このブロックだけ (lastOnly) → このブロックで最後 → ほかにも出られる人 (出られるブロックの少ない順)
+        const pri = (x) => (x.kind === 'only' || x.kind === 'lastOnly') ? 0 : (x.kind === 'last' ? 1 : 2);
+        out.sort((a, b) => (pri(a) - pri(b)) || ((nAvail.get(String(a.memberId)) || 0) - (nAvail.get(String(b.memberId)) || 0))
             || (rank(a) - rank(b)) || (b.dmgB - a.dmgB) || (String(a.memberId) < String(b.memberId) ? -1 : String(a.memberId) > String(b.memberId) ? 1 : 0) || (a.slot - b.slot));
         return out;
     }
@@ -267,5 +368,5 @@
         }) };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, dropPiece, withoutPieces, EPS };
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, dropPiece, withoutPieces, lockKind, bossState, lockOutlook, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);
