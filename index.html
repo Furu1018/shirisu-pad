@@ -5768,7 +5768,7 @@
                         <p>🧱 組む のタブの <strong>凸プランを組む</strong>。6 つのブロックの大きなボタン (何時〜何時・Lv・置いた凸の数・ボスの HP の帯) が並びます。</p>
                         <h3>① ブロックを押す → 置く → 自動</h3>
                         <ul>
-                            <li>ブロックのボタンを押すと、そのブロックの始まりのボスの HP と、<strong>その時間帯に出られる人の模擬</strong>のピースが出ます (<strong>このブロックのみ</strong> = ほかのブロックに出られない人・<strong>このブロックで最後</strong> = 後ろに出られるブロックが無い人 = 先に置く / ほか: 出られる別のブロック)。<strong>赤いピース</strong>は、いまは置けません (相手のボスが撃破済み・Lv4 はボス 5 だけ — 理由がピースに出ます)</li>
+                            <li>ブロックのボタンを押すと、そのブロックの始まりのボスの HP と、<strong>その時間帯に出られる人の模擬</strong>のピースが出ます (<strong>このブロックのみ</strong> = ほかのブロックに出られない人・<strong>このブロックで最後</strong> = 後ろに出られるブロックが無い人 = 先に置く / ほか: 出られる別のブロック)。<strong>赤く塗ったピース</strong> (⚠ 置けない) は、いまは置けません (相手のボスが撃破済み・Lv4 はボス 5 だけ — 理由がピースに出ます。押しても選ばれません)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます</li>
                             <li><strong>「このブロックのみ」「このブロックで最後」の人</strong> — ブロックのボタンに「このブロックのみ N 人」、その下の段にブロックごとの人と模擬、置ける見込み (段に出すのは、このブロックのみの人と、ほかのブロックがもう過ぎて実質このブロックだけの人 =「このブロックで最後 (ほか ○○ は済)」。手前のブロックにも出られる「このブロックで最後」の人は、ピースに文字だけ) (✓ 置ける / ⚠ 相手のボスが前のブロックで撃破の見込み → そのブロックに次の Lv は出ない見込み)。⚠ のときは、前のブロックを組むときに <strong>5 体とも倒して次の Lv を出す</strong> か <strong>相手のボスを残す</strong> かを決めます (「○○ を開く」で撃破の見込みのブロックへ)。見せるだけで、🧮 はこの人を優先しません</li>
                             <li>ピースを押してボスの行を押す (PC はドラッグ) → <strong>📌 仮置き</strong>。幅 = ダメージで、ボスの残り HP が減るのが見えます。駒は <strong>✕</strong> で 1 個ずつ外せます (手で置いた駒も自動の駒も・ほかの駒はそのまま・下のピースをもう一度押しても同じ)。外した駒は 🧮 では使いません (置き直すか「このブロックをやり直す」で戻ります)。<strong>🧮 を押さず、手で置いた駒だけでも ✅ 決定できます</strong> (朝と夜に出られる人を朝に置かず、夜まで温存できます。だれも置いていないブロックは飛ばして、まだ決まっていないブロックのまま残ります)。置けないときは理由が出ます</li>
                             <li><strong>🧮 残りを自動で組む</strong> — 手で置いた 📌 は動かさず、そのブロックの始まりの盤面から本物のソルバーが組みます。本人の凸数 (ブロックごとの上限)・ボス 5 の 2 編成目は Lv4 だけ・時間未登録の人は候補にしない、も自動で効きます</li>
@@ -23209,7 +23209,12 @@
             const who = attr ? `${pt(attr)}PT の相手 ` : '';
             if (st.why === 'lv4') return `Lv4 はボス 5 だけです${attr ? ` (${pt(attr)}PT は使えません)` : ''}`;
             if (st.why === 'blocked') return '模擬の編成のキャラが、きょうもう使われているか被っています';
-            if (st.why === 'placedElsewhere') return `${attr ? `${pt(attr)}PT の駒は ` : '駒は '}${blocks[st.placedIdx] ? blocks[st.placedIdx].short : '別のブロック'} に置いてあります (そのブロックで ✕ で外すと、ここに置けます)`;
+            if (st.why === 'placedElsewhere') {
+                const at = blocks[st.placedIdx] ? blocks[st.placedIdx].short : '別のブロック';
+                // 過ぎたブロックは開けない (✕ で外せない) — できない操作を案内しない (Codex・再レビュー)
+                return st.past ? `${attr ? `${pt(attr)}PT の駒は ` : '駒は '}過ぎた ${at} に置いたままで、ここでは使えません (凸されなかった仮置き)`
+                    : `${attr ? `${pt(attr)}PT の駒は ` : '駒は '}${at} に置いてあります (そのブロックで ✕ で外すと、ここに置けます)`;
+            }
             if (st.why === 'none') return `${who}ボスがいません`;
             const b = st.row ? `B${Number(st.row.bossNumber)}${st.row.name ? ' ' + st.row.name : ''}` : 'ボス';
             if (st.why === 'killedHere') return `${who}${b} は、このブロックに置いた駒で撃破 ✓ (入れ替えるなら駒を ✕ で外す)`;
@@ -23380,7 +23385,7 @@
                     <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${pinHint}${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-board">${rows}</div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
-                            <p class="ob-note">「このブロックのみ」「このブロックで最後」の人を先に置きます。赤いピースは、いまは置けません (相手のボスがいない・撃破済み)。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます</p>
+                            <p class="ob-note">「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます</p>
                             <div class="ob-tray-list">${trayHtml}</div></div></div>
                 </div>`;
             _obDelegate(host);
@@ -23665,12 +23670,17 @@
                         if (bossRow) { _obDropAuto(p.key, bossRow.bossNumber); return; }
                     }
                 }
-                showNotification(pinRow && pinRow.status !== 'pinned' ? '🔒 予約です (外すには 🧱 組む の「🔒 凸の予約」で取り下げる)' : `${ctx.blocks[p.placedIdx]?.short || '別のブロック'} に置いてあります (そのブロックを開いて ✕ を押すと外せます)`);
+                // 過ぎたブロックは開けない — 「開いて ✕」と案内しない (Codex・再レビュー 2026-11-02)
+                showNotification(pinRow && pinRow.status !== 'pinned' ? '🔒 予約です (外すには 🧱 組む の「🔒 凸の予約」で取り下げる)'
+                    : (ctx.ov[p.placedIdx]?.past ? `過ぎた ${ctx.blocks[p.placedIdx]?.short || 'ブロック'} に置いたままです (凸されなかった仮置き)。過ぎたブロックは開けないので、ここでは使えません`
+                    : `${ctx.blocks[p.placedIdx]?.short || '別のブロック'} に置いてあります (そのブロックを開いて ✕ を押すと外せます)`));
                 return;
             }
             if (p.blocked === 'dup') { showNotification('別の編成とキャラが被るので使えません (同じキャラは 1 日 1 回)'); return; }
             if (p.blocked === 'used') { showNotification('この編成のキャラは、きょうもう使っています (同じキャラは 1 日 1 回)'); return; }
             if (p.remaining <= 0) { showNotification(`${p.name} はこのブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)`); return; }
+            // 選んでいるピースをもう一度押す = 選ぶのをやめる (選んだあとで赤になったピースも外せるように: 再レビュー)
+            if (_ob.sel === key) { _ob.sel = null; renderOpsBuild(); return; }
             // 赤いピース (いまは置けない) は選ばずに理由を言う — 選んでも置ける行が 1 つも無い (レビュー 2026-11-02)
             const bs = window.blockBuildDomain.bossState ? window.blockBuildDomain.bossState({ ov: ctx.ov, idx: ctx.idx, first: ctx.first, attr: p.attr }) : null;
             if (bs && !bs.ok) { showNotification(`置けません: ${_obDeadText(bs, ctx.blocks, (a) => PT_ATTRS.find(x => x.key === a)?.name || a, p.attr)}`); return; }

@@ -216,7 +216,7 @@
      * @returns {Array<{ idx:number, past:boolean, only:number, lastOnly:number, ng:number,
      *   people:Array<{ memberId, name, kind:'only'|'lastOnly', others:string[], attrs:Array<{attr,dmgB,slot}>, state:'placed'|'none'|'ok'|'ng',
      *     placed:Array<{bossNumber,dmgB}>, best:{attr,bossNumber,dmgB,remB:number|null,infinite:boolean}|null,
-     *     reasons:Array<{attr, why:'killed'|'killedHere'|'lv4'|'none'|'placedElsewhere'|'blocked', bossNumber?, name?, killedIn?, placedIdx?}> }>,
+     *     reasons:Array<{attr, why:'killed'|'killedHere'|'lv4'|'none'|'placedElsewhere'|'blocked', bossNumber?, name?, killedIn?, placedIdx?, past?:boolean}> }>,
      *   level:number|null, left:number[] }>}  left = ブロックの始まりにそのレベルで残っているボス (無限は除く)
      */
     function lockOutlook({ ov, blocks, first = 0, trayOf } = {}) {
@@ -249,7 +249,8 @@
                 let best = null;
                 const reasons = [];
                 for (const p of [...cands, ...stuck]) {
-                    const st = bossState({ ov: list, idx, first, attr: p.attr, atStart: true });
+                    // 実行されない駒 (stuck) はいまの盤 (このブロックの駒も入れる) で見る — 始まりに生きていた相手を、このブロックの別の駒が先に倒した (killedHere) を言う (再レビュー)
+                    const st = bossState({ ov: list, idx, first, attr: p.attr, atStart: !stuck.includes(p) });
                     if (st && st.ok) {
                         if (cands.includes(p) && (!best || p.dmgB > best.dmgB)) best = { attr: p.attr, bossNumber: Number(st.row.bossNumber), dmgB: Number(p.dmgB) || 0, remB: st.row.infinite ? null : Number(st.row.startB), infinite: !!st.row.infinite };
                     } else if (st && !reasons.some(x => x.attr === p.attr)) {
@@ -257,7 +258,13 @@
                     }
                 }
                 if (best) return { ...base, state: 'ok', best };
-                for (const p of elsewhere) if (!reasons.some(x => x.attr === p.attr)) reasons.push({ attr: p.attr, why: 'placedElsewhere', placedIdx: p.placedIdx });
+                // 別のブロックに置いたままの駒: 相手のボスがこのブロックの始まりにいなければ、そちらが理由 (外しても置けない: 再レビュー)。past = 置き先が過ぎたブロック (開けない)
+                for (const p of elsewhere) if (!reasons.some(x => x.attr === p.attr)) {
+                    const st = bossState({ ov: list, idx, first, attr: p.attr, atStart: true });
+                    reasons.push(st && !st.ok
+                        ? { attr: p.attr, why: st.why, ...(st.row ? { bossNumber: Number(st.row.bossNumber), name: st.row.name } : {}), ...(st.why === 'killed' ? { killedIn: st.killedIn } : {}) }
+                        : { attr: p.attr, why: 'placedElsewhere', placedIdx: p.placedIdx, past: !!(list[p.placedIdx] && list[p.placedIdx].past) });
+                }
                 return { ...base, state: 'ng', reasons: reasons.length ? reasons : [{ attr: null, why: 'blocked' }] };
             });
             return { idx, past: false, level: o.level, left, people,
