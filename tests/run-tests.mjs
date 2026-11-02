@@ -17052,6 +17052,9 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.equal(mkSkip({ plan: cp, blocks: B0, first: 1, doneNow: new Set(), rbNow: null, marked: new Set() })(pastA), false, '再編成時間なし (0 分) のシーズンで、直前のブロックの ✓ 待ちかもしれない凸を数えない (レビュー 4 回目 r-1)');
         assert.equal(mkSkip({ plan: cp, blocks: B0, first: 2, doneNow: new Set(), rbNow: null, marked: new Set() })(pastA), true, '0 分のシーズンで 2 つ前のブロックまで数えた');
         assert.equal(mkSkip({ plan: cp, blocks: B20, first: 1, doneNow: new Set([pkA]), rbNow: { idx: 0 }, marked: new Set() })(pastA), false, '済んだ凸を数えない (済んだ凸は数える)');
+        assert.equal(mkSkip({ plan: cp, blocks: B20, first: 1, doneNow: new Set([pkA]), rbNow: null, marked: new Set() })(pastA), false, '再編成のあとの済んだ凸を数えない (済んだ凸はいつも数える)');
+        const lone = { ...pastA, team: ['x', 'y'] };
+        assert.equal(mkSkip({ plan: { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ ...lone }] }, { bossNumber: 2, attacks: [A(7, 1, ['crown', 'naga'], 4, { block: kB0 })] }] }] }, blocks: B20, first: 1, doneNow: new Set(), rbNow: { idx: 0 }, marked: new Set() })(lone), true, '後ろの凸とキャラが重ならない過ぎた凸まで数えた');
         assert.equal(mkSkip({ plan: cp, blocks: B20, first: 1, doneNow: new Set(), rbNow: { idx: 0 }, marked: new Set() })({ ...cp.levels[0].bosses[1].attacks[0], level: 1, bossNumber: 2 }), false, '後ろのブロックの凸を数えない');
         // 印は盤面を読み直す前に読む (Codex ⑥ 4 回目)
         assert.ok(/try \{ \[rows, pubs, skipsAll\] = await Promise\.all\(\[window\.supabaseLoadReservations\(sid\), window\.supabaseGetPublishedPlans\(\), Promise\.resolve\(window\.supabaseLoadAttackSkips\?\.\(sid\)\)\.catch\(\(\) => null\)\]\); \}/.test(html), '印を盤面のあとに待って読む');
