@@ -23087,7 +23087,7 @@
         let _opsPlanBlockIdx = null;
         // ★ 読み込みの途中 (_syncOpsPlanStickyBtn → _syncOpsPlanCondUi) にも動く — opsStore / seasonStore は typeof で守る (Codex ⑥ 3 回目)
         const _opsSeasonNow = () => (typeof opsStore !== 'undefined' ? opsStore.get()?.season : null) || (typeof seasonStore !== 'undefined' ? seasonStore.get()?.season : null) || null;
-        const _opsBlocks = () => window.raidBlocksDomain ? window.raidBlocksDomain.blocksOfSeason((typeof opsStore !== 'undefined' ? opsStore.get()?.season : null) || null) : [];
+        const _opsBlocks = () => window.raidBlocksDomain ? window.raidBlocksDomain.blocksOfSeason(_opsSeasonNow()) : [];
         // いま選ばれているブロック (区切りが変わって添字が溢れたら、いまの時刻のブロックに戻す)
         function _opsPlanBlock() {
             const blocks = _opsBlocks();
@@ -23335,6 +23335,27 @@
             if (dp && row && info.loose.size) {
                 for (const [key, list] of dp.doneInPrev(blocks, dp.decidedBlocks(row.plan), row.plan, info)) for (const a of list) out.add(dp.planKey({ ...a, block: key }));
             }
+            return out;
+        }
+        // ⏱ 確認の衝突 (conflictsOf) で数えない凸 = 過ぎたブロック (first より前) の済んでいない凸 (もう凸しない — 4 凸・同じキャラ と言わない: ⑥ レビュー)。
+        //   ただし、いま再編成中のブロック (✓ を付けている最中) の凸で「凸していない」の印 (marked) が無く、後ろのブロックの凸とキャラが重なるものは数える (✓ がまだなだけかもしれない)
+        function _obConflictSkip({ plan, blocks, first, doneNow, rbNow, marked }) {
+            const dp = window.decidePlanDomain;
+            const orderOf = new Map((Array.isArray(blocks) ? blocks : []).map((b, i) => [dp.keyOf(b), i]));
+            const ord = (a) => (orderOf.has(a.block) ? orderOf.get(a.block) : 99);
+            const aheadChars = new Map();
+            for (const a of dp.flat(plan)) if (ord(a) >= first) for (const c of (Array.isArray(a.team) ? a.team : [])) { const k = String(a.memberId); if (!aheadChars.has(k)) aheadChars.set(k, new Set()); aheadChars.get(k).add(String(c)); }
+            const overlapsAhead = (a) => (Array.isArray(a.team) ? a.team : []).some(c => aheadChars.get(String(a.memberId))?.has(String(c)));
+            // ✓ を付けている最中かもしれないブロック = いま再編成中のブロック。再編成時間の無い区切り (0 分) なら直前のブロック (次のブロックの頭で ✓ を付ける: レビュー 4 回目 r-1)
+            const tapIdx = rbNow ? rbNow.idx : ((first > 0 && blocks[first - 1] && !blocks[first - 1].rebuild) ? first - 1 : -1);
+            const pendingTap = (a) => tapIdx >= 0 && ord(a) === tapIdx && !(marked instanceof Set && marked.has(dp.planKey(a))) && overlapsAhead(a);
+            return (a) => ord(a) < first && !(doneNow instanceof Set && doneNow.has(dp.planKey(a))) && !pendingTap(a);
+        }
+        // 前の決定の割当のうち「凸していない」の印があるものの planKey (印が読めなければ空 = 数え直す側)
+        function _obSkipMarked(prev, skips, season) {
+            const ac = window.attackCheckDomain, out = new Set();
+            if (!prev || !ac || !(skips instanceof Set)) return out;
+            for (const p of ac.plannedOf(_atkCheckDecidedPlan(prev.plan, season))) if (p.planKey && skips.has(ac.missingKey(prev.id, p))) out.add(p.planKey);
             return out;
         }
         // 組んだ結果から、そのブロックの済んだ凸を外した写し (S4 レビュー [5]: 投影の前に外す。✓ はダメージ 0・キャラの無い編成だとキャラ被りで飛ばせず、済んだ凸をもう一度実行したことになる)
@@ -23633,7 +23654,9 @@
             try {
                 // 1. 押した時点の DB で: 駒 (指紋が変わった自動の結果は捨てる) と 決定 (別の運営が決定していたら止める)
                 let rows = null, pubs = null;
-                try { [rows, pubs] = await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans()]); } catch (_) { /* 下で止める */ }
+                // 「凸していない」の印 (確認の衝突で使う) もここで読む — 盤面を読み直して計画を作ったあとに待つと、待つ間に変わった盤面で決めてしまう (Codex ⑥ 4 回目)
+                let skipsAll = null;
+                try { [rows, pubs, skipsAll] = await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans(), Promise.resolve(window.supabaseLoadAttackSkips?.(sid)).catch(() => null)]); } catch (_) { /* 下で止める */ }
                 if (!_obSame(epoch, sid)) return;
                 if (!Array.isArray(rows) || !Array.isArray(pubs)) { showNotification('⚠️ 駒・配信を読めないため止めました。もう一度お試しください'); return; }
                 _ob.pins = rows; _ob.pinsErr = null;
@@ -23686,20 +23709,7 @@
                 const fewer = plan.decided.blocks.filter(b => !b.kept && prevDec.has(b.key) && Number(b.attacks) < Number(prevDec.get(b.key).attacks))
                     .map(b => `${b.short || b.name || b.letter} ${Number(prevDec.get(b.key).attacks)} → ${Number(b.attacks)} 凸`);
                 // 過ぎたブロック (first より前) の済んでいない凸は数えない (もう凸しない — 4 凸・同じキャラ と言わない: ⑥ レビュー)
-                const doneNow = _obDoneKeys(snap2, blocks), orderOf = new Map(blocks.map((b, i) => [dp.keyOf(b), i]));
-                //   ただし後ろのブロックの凸とキャラが重なる人は数える (✓ がまだなだけで凸していたかもしれない — 再レビュー decide-1)
-                const aheadChars = new Map();
-                for (const a of dp.flat(plan)) if ((orderOf.has(a.block) ? orderOf.get(a.block) : 99) >= first) for (const c of (Array.isArray(a.team) ? a.team : [])) { const k = String(a.memberId); if (!aheadChars.has(k)) aheadChars.set(k, new Set()); aheadChars.get(k).add(String(c)); }
-                const overlapsAhead = (a) => (Array.isArray(a.team) ? a.team : []).some(c => aheadChars.get(String(a.memberId))?.has(String(c)));
-                //   数え直すのは、いま再編成中のブロック (✓ を付けている最中) の凸で「凸していない」の印も無いものだけ (それより前・印のある凸は数えない: 再レビュー logic-3 / flow-3)
-                const rbNowD = _raidRebuildNow(snap2.season, blocks), acD = window.attackCheckDomain;
-                let skipsD = null;
-                if (rbNowD && prev && acD) { try { skipsD = await window.supabaseLoadAttackSkips?.(sid); } catch (_) { skipsD = null; } }
-                if (!_obSame(epoch, sid)) return;
-                const markedD = new Set();
-                if (skipsD instanceof Set && prev && acD) for (const p of acD.plannedOf(_atkCheckDecidedPlan(prev.plan, snap2.season))) if (p.planKey && skipsD.has(acD.missingKey(prev.id, p))) markedD.add(p.planKey);
-                const pendingTap = (a) => !!rbNowD && orderOf.get(a.block) === rbNowD.idx && !markedD.has(dp.planKey(a)) && overlapsAhead(a);
-                const conflicts = dp.conflictsOf(plan, (a) => (orderOf.has(a.block) ? orderOf.get(a.block) : 99) < first && !doneNow.has(dp.planKey(a)) && !pendingTap(a));
+                const conflicts = dp.conflictsOf(plan, _obConflictSkip({ plan, blocks, first, doneNow: _obDoneKeys(snap2, blocks), rbNow: _raidRebuildNow(snap2.season, blocks), marked: _obSkipMarked(prev, skipsAll, snap2.season) }));
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
                 // 変更なしの決定し直し: 通知はスイッチが ON のときだけ。宛先はいまのブロックから後ろに済んでいない凸がある人 (確認で言った人数どおりに送る = ここで 1 回だけ決める)
