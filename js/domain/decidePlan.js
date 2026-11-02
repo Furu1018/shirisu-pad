@@ -109,7 +109,8 @@
         // ⏱ 次のブロックに回した凸 (第46回の反省 ⑥ のレビュー flow-1・2026-11-02): 再編成の始まりで「いま」が次のブロックへ進むと、過ぎたブロック (first より前) の
         //   済んでいない凸は次のブロックのピースに出て、同じ編成でもう一度置ける。そのまま前の決定から写すと決定に同じ割当が 2 つ残り、通知に 2 回並ぶ・
         //   「同じキャラ」の警告が出る・✓ が過ぎたブロックの札に付いて次のブロックの割当が未完了のまま残った。
-        //   → 過ぎたブロックを写すとき、済んでいない凸のうち同じ人の同じ編成 (キャラが重なる・キャラが無ければ 編成枠 + 弱点) を新しいブロックに置いたものは写さない
+        //   → 過ぎたブロックを写すとき、済んでいない凸のうち同じ人の同じ編成 (置き場の鍵と同じ 編成枠 + 弱点・またはキャラの集合が全部同じ) を新しいブロックに置いたものは写さない。
+        //   ★ キャラが重なるだけの別の編成は回したとみなさない (再レビュー decide-1: 支援キャラは複数の属性の模擬に入る — 落とすと ✓ 待ちの凸に ✓ を付ける札が無くなり、衝突の警告も消えた)
         const freshPieces = [];
         for (const i of newSet) {
             const o = (Array.isArray(ov) ? ov : []).find(x => x && x.idx === i);
@@ -117,8 +118,9 @@
             for (const r of (o.rows || [])) for (const p of (r.pieces || [])) freshPieces.push({ memberId: String(p.memberId), slot: Number(p.loadoutSlot) || 1, weakness: r.weakness || null, team: Array.isArray(p.team) ? p.team.filter(Boolean).map(String) : [] });
         }
         const weakOfBoss = (bn) => (bossOf.get(Number(bn)) || {}).weakness || null;
-        const carried = (a) => freshPieces.some(f => f.memberId === String(a.memberId) && ((f.team.length && Array.isArray(a.team) && a.team.some(c => f.team.includes(String(c))))
-            || (!f.team.length && f.slot === (Number(a.loadoutSlot) || 1) && !!f.weakness && f.weakness === weakOfBoss(a.bossNumber))));
+        const teamKey = (t) => (Array.isArray(t) ? t.filter(Boolean).map(String).sort().join(',') : '');
+        const carried = (a) => freshPieces.some(f => f.memberId === String(a.memberId) && ((f.slot === (Number(a.loadoutSlot) || 1) && !!f.weakness && f.weakness === weakOfBoss(a.bossNumber))
+            || (f.team.length > 0 && teamKey(f.team) === teamKey(a.team))));
         bl.forEach((blk, idx) => {
             const key = keyOf(blk);
             let level = null, atks = [], kept = false, hp = null;

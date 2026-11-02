@@ -5713,7 +5713,7 @@
                         <ul>
                             <li>決まったブロックの時間内 (例: A 朝 5〜8:40) に、決まったボス・PT・編成で凸します。何時に凸するかはブロックの中で自由です</li>
                             <li><strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です。入ってしまった凸は<strong>次のブロックの凸</strong>として扱います。再編成時間のはじめ (数分あと) に、運営の記録でそのブロックの凸がまだの人へ「⏱ A 朝 の凸は 8:40 まで」の通知が届きます (Discord に結果を貼ったなら、そのままで大丈夫です)</li>
-                            <li>凸できなかったときも Discord で一言ください。運営が次のブロックで組み直します</li>
+                            <li>凸できなかったときも Discord で一言ください。次のブロック以降に出られるなら、運営が組み直します (出られないときは、その旨も)</li>
                             <li>本番のダメージは翌月の初期値として引き継がれません — 期間中に模擬を貼ってください</li>
                         </ul>
                         <h3>運営: ✓ 凸の記録 (⚔️ 戦況)</h3>
@@ -9781,7 +9781,10 @@
                         const pl = board.players.find(x => String(x.id) === memberId);
                         const later = (pl && window.blockBuildDomain?.availableBlocks) ? window.blockBuildDomain.availableBlocks(pl, blocks).some(i => i > ph.idx) : null;
                         const nx = next ? next.short : '次のブロック';
-                        const rest = later === true ? `残りは運営が ${nx} 以降で組み直します。`
+                        // 凸数を登録した人は凸数どおりに組む (後ろのブロックの上限は登録した凸数・残りは足さない: 再レビュー time-1)
+                        const counts = (pl && pl.blockCounts && typeof pl.blockCounts === 'object' && Object.keys(pl.blockCounts).length) ? rbd.countsLabel(pl.blockCounts, blocks) : '';
+                        const rest = counts ? `凸数の登録 (${counts}) のとおりに組むので、残りを後ろのブロックに足すなら Discord で運営へ。`
+                            : later === true ? `残りは運営が ${nx} 以降で組み直します。`
                             : later === false ? `${nx} 以降に出られる時間が登録されていないので、残りは組まれません (出られるなら Discord で運営へ)。`
                             : `残りは、${nx} 以降に出られれば運営が組み直します。`;
                         const ref = `${bkey}|${memberId}`;
@@ -10359,7 +10362,9 @@
                 const esc = escapeHtml;
                 const bossName = (bn) => { const b = (ctx?.bosses || []).find(x => Number(x.boss_number) === Number(bn)); return b ? `B${bn} ${b.name || ''}`.trim() : `B${bn}`; };
                 const rbNow = _raidRebuildNow(season, blocks);   // ⏱ 再編成時間 (Codex ⑥ 監査: 従来の配信の経路にも)
+                const rbNext = (r) => !!(rbNow && r.idx === rbNow.next);   // 再編成時間の次のブロック (凸しない時間 — 「いま」でなく「9:00 から」: 再レビュー ui-5)
                 const stateChip = (r) => (rbNow && r.idx === rbNow.idx) ? '<span style="font-size:9.5px;font-weight:900;color:var(--warn-deep);">⏱ 再編成中</span>'
+                    : rbNext(r) ? `<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">${esc(rbNow.to)} から</span>`
                     : r.state === 'now' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
                     : r.state === 'next' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">次</span>'
                     : r.state === 'past' ? '<span style="font-size:9.5px;font-weight:900;color:var(--t-muted);">済</span>' : '';
@@ -10383,7 +10388,7 @@
                             : r.covered ? '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>'
                             : '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">まだ決まっていません (運営がこのブロックの前に配信します)</div>';
                     }
-                    const frame = r.state === 'now' ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
+                    const frame = (r.state === 'now' && !rbNext(r)) ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
                     return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:10px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
                         <div><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${esc(r.short || r.name)}</div><div style="font-size:9.5px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.attackRange || r.range || '')}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
                         <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">${bodyHtml}</div>
@@ -10614,7 +10619,9 @@
                         const a0 = mineOf(prevDec.plan), b0 = mineOf(pub.plan);
                         const sig = (rs) => rs.map(r => r.sig).join(' / ');
                         const txt = (rs) => rs.map(r => `${r.blockLabel} Lv${r.level} B${r.bossNumber}`).join(' / ') || 'なし';
-                        myChange = sig(a0) === sig(b0) ? { changed: false } : { changed: true, label: '割当が変わった', before: txt(a0), after: txt(b0) };
+                        // ⏱ 前の決定のブロックの割当が次のブロックへ回った (⑥) とき「今: なし」と出さない — 今の決定の、前に無いブロックの割当を出す (比べるのは前の決定のブロックのまま: 再レビュー decide-2)
+                        const b1 = b0.length ? b0 : (dpx.rowsOf(pub.plan, bl).get(String(identity.id)) || []).filter(r => !keys.has(r.block));
+                        myChange = sig(a0) === sig(b0) ? { changed: false } : { changed: true, label: '割当が変わった', before: txt(a0), after: txt(b1) };
                     }
                 } else if (dd && pub.season_id && window.publishedPlansDomain) {
                     const prev = window.publishedPlansDomain.previousFor(pubRows, pub, pubSel ? pubSel.key : null);   // 🧱 段階 7: 見ているブロックに効いていた 1 つ前と比べる (今回が 1 日ぶんでも — Codex 再監査 A)
@@ -15639,13 +15646,14 @@
                     const s = opsStore.get()?.season;
                     if (s && _obPhaseKey(s, window.raidBlocksDomain.blocksOfSeason(s)) !== _ob.phaseKey) {
                         // ピースを選んだままなら外す (A のつもりで押すと B に置いて、B の組んだ結果を捨てていた: ⑥ レビュー now-4)
-                        if (_ob.sel) { _ob.sel = null; showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。選んでいたピースを外しました'); }
+                        if (_ob.sel && Number.isInteger(_ob.idx) && _ob.idx < _obFirstIdx(s, window.raidBlocksDomain.blocksOfSeason(s))) { _ob.sel = null; showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。選んでいたピースを外しました'); }   // 描いたブロックが過ぎたときだけ (再レビュー ui-3)
                         renderOpsBuild();
                     }
                 }
-                // ⏱ 再編成時間は ⚔️ のカードが見えていなくても盤面を取り直す (ヒーローの ✓ の残り・🧱 の始まりの盤面がほかの運営の ✓ を知るように: ⑥ レビュー data-3)
+                // ⏱ 再編成時間は 🧱 組む を開いていても盤面を取り直す (ヒーローの ✓ の残り・🧱 の始まりの盤面がほかの運営の ✓ を知るように: ⑥ レビュー data-3)。
+                //   👥 などほかのタブでは取り直さない (📸 模擬の取り込みの表・選択を 30 秒ごとに描き直していた: 再レビュー time-4 / ui-4 — そこではヒーローの ✓ の残りは「分からない」)
                 if (_coordPollTick === 2 && _opsMode && document.getElementById('tab-ops')?.classList.contains('active')
-                    && document.getElementById('opsSecAttackTap')?.offsetParent == null && window.raidBlocksDomain && typeof _raidRebuildNow === 'function'
+                    && document.getElementById('opsSecAttackTap')?.offsetParent == null && document.getElementById('opsSecPlan')?.offsetParent != null && window.raidBlocksDomain && typeof _raidRebuildNow === 'function'
                     && typeof _atkTap !== 'undefined' && _atkTap.busy.size === 0 && _atkCheck.busy.size === 0 && !(typeof _ob !== 'undefined' && (_ob.busy || _ob.sel))
                     && opsStore.get()?.season && _raidRebuildNow(opsStore.get().season, window.raidBlocksDomain.blocksOfSeason(opsStore.get().season))
                     && typeof _opsReloadBoardCards === 'function') _opsReloadBoardCards();
@@ -15719,7 +15727,7 @@
         });
         // ⏱ 端末に残ったシーズンの写し (seasonStore / opsStore) の再編成時間・区切りが、取り直したシーズンと違えば捨てて描き直す (⑥ レビュー now-2 / data-1)。
         //   見回りは ボスしか差し替えない (patchBosses) ので、👑 が分数を変えても、開いたままの端末は前の値のまま「いま」・帯・凸の時間を出していた。
-        //   opsStore は捨てたら読み直す (読み直さないと運営端末が通知の送り手でなくなる)。決定している最中は待つ (次の周期で)
+        //   opsStore は捨てずに読み直す (失敗したら前の盤面のまま・次の周期でもう一度比べる)。決定している最中は待つ (次の周期で)
         function _seasonMetaKey(s) { const rb = window.raidBlocksDomain; return (s && rb) ? `${s.id}|${rb.rebuildMinutesOf(s)}|${JSON.stringify((s.metadata && s.metadata.blocks) ?? null)}` : ''; }
         function _syncSeasonMeta(fresh) {
             if (!fresh?.id || !window.raidBlocksDomain) return false;
@@ -15729,7 +15737,8 @@
             if (hs && String(hs.id) === String(fresh.id) && _seasonMetaKey(hs) !== k) { seasonStore.invalidate(); changed = true; }
             const os = opsStore.get()?.season;
             if (os && String(os.id) === String(fresh.id) && _seasonMetaKey(os) !== k && !(typeof _ob !== 'undefined' && _ob.busy)) {
-                opsStore.invalidate(); changed = true;
+                // ★ 捨てずに読み直す (load は成功したら差し替え・失敗したら前の盤面を残す)。捨ててから読み直しに失敗すると、その運営端末は通知の送り手に戻らなかった (再レビュー time-2)
+                changed = true;
                 if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active') && typeof renderOpsDashboard === 'function') renderOpsDashboard();
                 else Promise.resolve(opsStore.load()).catch(() => { /* 次の周期で */ });
             }
@@ -23079,7 +23088,7 @@
             const blocks = _opsBlocks();
             if (!blocks.length) return null;
             const dom = window.raidBlocksDomain;
-            const nowHour = Number(String(_planNowSlot(opsStore.get()?.season || (typeof seasonStore !== 'undefined' ? seasonStore.get()?.season : null) || null)).slice(1));   // ⏱ 再編成時間は次のブロック (Codex ⑥ 監査)
+            const nowHour = Number(String(_planNowSlot((typeof opsStore !== 'undefined' ? opsStore.get()?.season : null) || (typeof seasonStore !== 'undefined' ? seasonStore.get()?.season : null) || null)).slice(1));   // ⏱ 再編成時間は次のブロック (Codex ⑥ 監査)
             // ★ レイド日より前 (前日・準備) は当日の最初のブロック (朝) が「次」。時計のブロック (前日の夕方など) を既定にしない (練習の作り直しで発覚・2026-10-22)
             const st = window.opsStageDomain;
             const hd = String((opsStore.get()?.season || (typeof seasonStore !== 'undefined' ? seasonStore.get()?.season : null))?.hard_date || '').slice(0, 10);   // 盤面の読み直し中でもシーズンから
@@ -23105,7 +23114,7 @@
             if (sel) {
                 const blocks = _opsBlocks(), picked = _opsPlanBlock();
                 const dom = window.raidBlocksDomain;
-                const nowHour = Number(String(_planNowSlot(opsStore.get()?.season || null)).slice(1));   // ⏱ 再編成時間は次のブロック (Codex ⑥ 監査)
+                const nowHour = Number(String(_planNowSlot((typeof opsStore !== 'undefined' ? opsStore.get()?.season : null) || null)).slice(1));   // ⏱ 再編成時間は次のブロック (Codex ⑥ 監査)。読み込みの途中にも呼ばれるので typeof で守る
                 const cur = dom ? dom.blockIndexOfHour(blocks, nowHour) : -1;
                 const html = blocks.map((b, i) => `<option value="${i}" ${picked && picked.idx === i ? 'selected' : ''}>${escapeHtml(b.label)}${i === cur ? ' (いま)' : (i === cur + 1 ? ' (次)' : '')}</option>`).join('');
                 if (sel.innerHTML !== html) sel.innerHTML = html;   // 変わっていなければ描き直さない (開いている選択・フォーカスを落とさない)
@@ -23671,7 +23680,11 @@
                     .map(b => `${b.short || b.name || b.letter} ${Number(prevDec.get(b.key).attacks)} → ${Number(b.attacks)} 凸`);
                 // 過ぎたブロック (first より前) の済んでいない凸は数えない (もう凸しない — 4 凸・同じキャラ と言わない: ⑥ レビュー)
                 const doneNow = _obDoneKeys(snap2, blocks), orderOf = new Map(blocks.map((b, i) => [dp.keyOf(b), i]));
-                const conflicts = dp.conflictsOf(plan, (a) => (orderOf.has(a.block) ? orderOf.get(a.block) : 99) < first && !doneNow.has(dp.planKey(a)));
+                //   ただし後ろのブロックの凸とキャラが重なる人は数える (✓ がまだなだけで凸していたかもしれない — 再レビュー decide-1)
+                const aheadChars = new Map();
+                for (const a of dp.flat(plan)) if ((orderOf.has(a.block) ? orderOf.get(a.block) : 99) >= first) for (const c of (Array.isArray(a.team) ? a.team : [])) { const k = String(a.memberId); if (!aheadChars.has(k)) aheadChars.set(k, new Set()); aheadChars.get(k).add(String(c)); }
+                const overlapsAhead = (a) => (Array.isArray(a.team) ? a.team : []).some(c => aheadChars.get(String(a.memberId))?.has(String(c)));
+                const conflicts = dp.conflictsOf(plan, (a) => (orderOf.has(a.block) ? orderOf.get(a.block) : 99) < first && !doneNow.has(dp.planKey(a)) && !overlapsAhead(a));
                 const replaced = prev ? fresh.filter(i => dp.decidedBlocks(prev.plan).has(dp.keyOf(blocks[i]))) : [];
                 const n = plan.decided.blocks.filter(b => !b.kept).reduce((t, b) => t + b.attacks, 0);
                 // 変更なしの決定し直し: 通知はスイッチが ON のときだけ。宛先はいまのブロックから後ろに済んでいない凸がある人 (確認で言った人数どおりに送る = ここで 1 回だけ決める)
@@ -23858,6 +23871,8 @@
         }
         function _obSelect(key) {
             const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            // ⏱ 描いたあとに「いま」が進んだ — 次のブロックの駒を確かめずに外す・黙って選ぶ、をしない (再レビュー ui-2)
+            if (ctx && _ob.idx != null && ctx.idx !== _ob.idx) { _ob.sel = null; renderOpsBuild(); showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。画面を合わせたので、もう一度押してください'); return; }
             const p = ctx ? ctx.tray.find(x => x.key === key) : null;
             if (!p) return;
             if (p.placedIdx != null) {
@@ -23948,6 +23963,7 @@
             if (_ob.busy) return;
             const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
             if (!ctx) return;
+            if (_ob.idx != null && ctx.idx !== _ob.idx) { renderOpsBuild(); showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。画面を合わせたので、もう一度押してください'); return; }   // 再レビュー ui-2
             const [memberId, , slot] = String(key).split(':');
             const r = _obRemoveFromPlan(ctx.idx, ctx.blocks, { memberId, bossNumber, loadoutSlot: Number(slot) || 1 }, _ob.pins);
             if (!r || !r.removed) { showNotification('この駒を外せませんでした。もう一度「残りを自動で組む」を押してください'); renderOpsBuild(); return; }
@@ -24059,6 +24075,8 @@
                 const executed = new Set(ov.slice(0, idx).flatMap(x => (x.done || []).map(d => d.reservationId)).filter(v => v != null).map(Number));
                 const resv = rows.filter(r => !executed.has(Number(r.id)));
                 await _yieldToPaint();
+                // 描く間を空けたあいだにも「いま」が進み得る — 過ぎたブロックを組んで「組みました」と言わない (Codex ⑥ 再監査)
+                if (_obFirstIdx(snap2.season, blocks) !== ctx2.first) { showNotification('⏱ 待っている間にいまのブロックが進みました。画面を合わせたので、もう一度押してください'); return; }
                 const skipKeys = _ob.skip.get(idx);   // ✕ で外した駒は 🧮 でも使わない (置き直すか やり直す で戻る)
                 const plan = computeOptimalPlan({ onlyAvailableNow: true, availableAtSlots: blk.slots, availableAtLabel: blk.label, blockStartSlot: _hourKey(blk.from), previousPlan: null, reservations: resv }, skipKeys && skipKeys.size ? window.blockBuildDomain.withoutPieces(o.startBoard, skipKeys) : o.startBoard);
                 if (!plan) { showNotification(`❌ ${blk.short} を組めませんでした`); return; }
@@ -27756,7 +27774,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 **🙋 よくある疑問**
 ・**「自分の凸が入ってない」** → そのブロックがまだ決まっていない / 参加可能時間が無い / 凸数の上限 / 模擬が未登録の属性しか残っていない / 3 凸済み のどれか。分からなければここで聞いてください
 ・**「想定ダメージより出なかった / 出すぎた」** → 全然 OK。結果のスクショさえ貼ってくれれば次のブロックの計算で吸収されます
-・**「この時間、無理になった」** → Discord で一言ください。次のブロックで組み直します`;
+・**「この時間、無理になった」** → Discord で一言ください。次のブロック以降に出られるなら、そこで組み直します`;
 
         // ⏱ 📣 Discord 用の文面の再編成時間の一文は、シーズンの分数とブロックで書き直す (⑥ レビュー flow-8: 「20 分 (8:40〜9:00)」で固定だった)。0 分 (なし) なら外す
         const _ANNOUNCE_RB_MAIN = '。**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**。入ってしまった凸は次のブロックの凸になります';
@@ -27979,17 +27997,19 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const day = window.opsStageDomain && season.hard_date && window.opsStageDomain.raidDayKey(Date.now()) === String(season.hard_date).slice(0, 10);
             // ★ 当日は「いま」(凸の扱いのブロック) が変わる変更を断る (Codex ⑥ 監査): 8:45 に 20 分 → なし で再編成中の A が凸の時間に戻り、A を組み直して決定できた /
             //   8:35 に 20 → 30 分 で、もう凸していた 8:30〜8:35 がさかのぼって再編成時間になった。いまのブロックが終わってから変える
-            if (day) {
+            const shift = () => {   // 「いま」(凸の扱いのブロック) が変わるなら断りの文。確認の前とあとで同じものを見る (確認を開いている間に境目をまたぐ: 再レビュー time-3)
+                const st = window.opsStageDomain;
+                if (!(st && season.hard_date && st.raidDayKey(Date.now()) === String(season.hard_date).slice(0, 10))) return '';
                 const m = rb.raidMinuteOfMs(Date.now()), cfg = rb.toConfig(rb.blocksOfSeason(season));
                 const ph = (min) => { const bl = rb.normalize(cfg, { rebuildMinutes: min }).blocks || []; return { bl, p: rb.phaseAt(bl, m) }; };
                 const a = ph(cur), b = ph(n);
-                if (a.p.attackIdx !== b.p.attackIdx && a.bl[a.p.idx]) {
-                    const blk = a.bl[a.p.idx];
-                    alert(`⏱ いまは ${blk.short} の${a.p.inRebuild ? '再編成時間' : '凸の時間'}です。${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると「いま」のブロックが ${a.bl[a.p.attackIdx]?.short || ''} から ${b.bl[b.p.attackIdx]?.short || ''} に変わるので、きょうのいまは変えられません。\n\n${blk.short} が終わってから (${rb.clockOfMinute((blk.toIdx + 1) * 60)} 以降) 変えてください。`);
-                    return;
-                }
-            }
+                if (a.p.attackIdx === b.p.attackIdx || !a.bl[a.p.idx]) return '';
+                const blk = a.bl[a.p.idx];
+                return `⏱ いまは ${blk.short} の${a.p.inRebuild ? '再編成時間' : '凸の時間'}です。${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると「いま」のブロックが ${a.bl[a.p.attackIdx]?.short || ''} から ${b.bl[b.p.attackIdx]?.short || ''} に変わるので、きょうのいまは変えられません。\n\n${blk.short} が終わってから (${rb.clockOfMinute((blk.toIdx + 1) * 60)} 以降) 変えてください。`;
+            };
+            if (day) { const why = shift(); if (why) { alert(why); return; } }
             if (day && !confirm(`きょうはレイド当日です。再編成時間を ${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると、この端末と再編成の通知はすぐ変わります。ほかの端末 (メンバーの画面・ほかの運営) は取り直すまで (30 秒の見回り・開き直す・下に引く) 前の時刻のままです。変えますか？`)) return;
+            if (day) { const why = shift(); if (why) { alert(why); return; } }   // 確認の間に境目をまたいだ
             const sid = season.id;
             _obkRb.busy = true; _obkRb.msg = '保存しています…';
             _obkRebuildPaint();
