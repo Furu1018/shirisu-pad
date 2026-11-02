@@ -256,7 +256,7 @@
                 if (rebuild.hpDone === false) return { lead, why: `${base}。まず BlaBlaLINK の画像で HP を合わせます`, action: 'hp', label: '🎯 ボス HP を更新する' };
                 const left = Number(rebuild.tapLeft) || 0;
                 if (left > 0) return { lead, why: `${base}。${rebuild.block} の ✓ がまだ ${left} 凸です (凸しなかった人は ⚔️ 結果の取り込みで「凸していない」に)`, action: 'tap', label: '✓ 凸の記録を開く' };
-                return { lead, why: `${base}。${rebuild.block} で済んでいない凸は ${rebuild.next} のピースに出ます`, action: 'build', label: `🧱 ${rebuild.next} を組む` };
+                return { lead, why: `${base}。${rebuild.block} で済んでいない凸は、${rebuild.next} に出られる人なら ${rebuild.next} のピースに出ます`, action: 'build', label: `🧱 ${rebuild.next} を組む` };
             }
             if (freshMin != null && freshMin >= 30) return { lead: `HP 更新が ${fmtAgo(freshMin)} です`, why: '古い HP で締め凸を出すと、無駄凸や取りこぼしが出ます', action: 'hp', label: '🎯 ボス HP を更新する' };
             if ((Number(finPending) || 0) > 0) return { lead: `締め凸の返答待ちが ${finPending} 件`, why: '返答が無いと締めの割当が決まりません', action: 'members', label: '👥 返答待ちを見る' };

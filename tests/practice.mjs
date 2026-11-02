@@ -338,6 +338,24 @@ test('✅ 決定の配信 (publish_decided_plan): 押したときの最新の決
     assert.ok(!(await sb3.from('published_plans').update({ frozen_at: '2026-10-03T10:00:00Z', frozen_by: '運営' }).eq('id', d3.id).select('id')).error, '凍結が通らない');
     assert.ok(!(await sb3.from('published_plans').update({ frozen_at: null, frozen_by: null }).eq('id', d3.id).select('id')).error, '解除が通らない');
 });
+test('⏱ 再編成時間の保存 (ops_set_season_meta_key・59 の写し): 鍵は member_input と rebuild_minutes・0〜59 の整数か null・metadata が配列なら {} から・アクティブのときだけ', async () => {
+    const sb = mini();
+    let r = await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'rebuild_minutes', p_value: 20 });
+    assert.equal(r.error, null); assert.equal(r.data.rebuild_minutes, 20);
+    for (const bad of [20.5, '20', -1, 60, true]) {
+        r = await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'rebuild_minutes', p_value: bad });
+        assert.equal(r.error && r.error.message, 'rebuild_minutes は 0〜59 の整数か null です', `${String(bad)} を通した`);
+    }
+    r = await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'member_input', p_value: 'full' });
+    assert.deepEqual(r.data, { rebuild_minutes: 20, member_input: 'full' }, 'ほかの鍵を消した');
+    r = await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'rebuild_minutes', p_value: null });
+    assert.deepEqual(r.data, { member_input: 'full' }, 'null で鍵を消していない');
+    assert.equal((await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'blocks', p_value: 1 })).error.message, 'この鍵は書けません: blocks');
+    await sb.from('seasons').update({ metadata: [1, 2] }).eq('id', 1);
+    r = await sb.rpc('ops_set_season_meta_key', { p_season_id: 1, p_key: 'rebuild_minutes', p_value: 15 });
+    assert.deepEqual(r.data, { rebuild_minutes: 15 }, '配列の metadata を {} から作り直していない (SQL と違う)');
+    assert.match((await sb.rpc('ops_set_season_meta_key', { p_season_id: 9, p_key: 'rebuild_minutes', p_value: 15 })).error.message, /アクティブではありません/);
+});
 test('通知 (send-push) は送ったことにして控える / 画像の読み取りと画像の保存は使えないと返す', async () => {
     const got = [];
     const sb = createPracticeClient({ now: () => T0, onPush: (x) => got.push(x), tables: { players: [{ id: 10, name: 'あ' }, { id: 11, name: 'い' }, { id: 12, name: 'う', archived: true }] } });

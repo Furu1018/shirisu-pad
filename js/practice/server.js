@@ -442,7 +442,7 @@ export function createPracticeClient(opts = {}) {
             if (!clear && a.p_key === 'rebuild_minutes' && !(typeof a.p_value === 'number' && Number.isInteger(a.p_value) && a.p_value >= 0 && a.p_value <= 59)) throw new PgError('P0001', 'rebuild_minutes は 0〜59 の整数か null です');
             const row = T.seasons.find(s => eqv(s.id, a.p_season_id) && s.is_active === true);
             if (!row) throw new PgError('P0001', '対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-            const metadata = { ...(row.metadata && typeof row.metadata === 'object' ? row.metadata : {}) };
+            const metadata = { ...(row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? row.metadata : {}) };   // 配列・スカラーは {} から (SQL 51 / 59 と同じ・Codex ⑥ 監査)
             if (clear) delete metadata[a.p_key]; else metadata[a.p_key] = a.p_key === 'member_input' ? 'full' : a.p_value;
             updateRow('seasons', row, { metadata }, { rpc: true });
             return clone(metadata);

@@ -86,7 +86,7 @@
      *   fpOf = ブロックの駒の指紋 (決定したときのもの)。decided.blocks[].fp に残し、読み戻しはそれを使う (S4 引き継ぎ 3)
      * @returns {Object} levels[].bosses[].attacks[] の形 (ソルバーの出力と同じ読み方ができる) + decided
      */
-    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null, done = null, fpOf = null, hpOf = null } = {}) {
+    function build({ blocks, ov, newIdxs, prevPlan = null, bosses = [], at = null, done = null, fpOf = null, hpOf = null, first = null } = {}) {
         const bl = Array.isArray(blocks) ? blocks : [];
         const newSet = new Set((Array.isArray(newIdxs) ? newIdxs : []).map(Number));
         const prevBlocks = decidedBlocks(prevPlan);
@@ -106,6 +106,19 @@
         // ★ 済んだ凸は決定し直しても残す (S4 引き継ぎ 1)。組み直したブロックの自動の結果は「まだの凸」だけなので、前の決定の済んだ凸を足す。
         //   ✓ は planKey で先に全部見てから、数字の報告 (planKey なし) を 人・レベル・ボス の数でブロックの順 (前のブロックから) に消し込む
         const doneOf = doneInPrev(bl, prevBlocks, prevPlan, done);
+        // ⏱ 次のブロックに回した凸 (第46回の反省 ⑥ のレビュー flow-1・2026-11-02): 再編成の始まりで「いま」が次のブロックへ進むと、過ぎたブロック (first より前) の
+        //   済んでいない凸は次のブロックのピースに出て、同じ編成でもう一度置ける。そのまま前の決定から写すと決定に同じ割当が 2 つ残り、通知に 2 回並ぶ・
+        //   「同じキャラ」の警告が出る・✓ が過ぎたブロックの札に付いて次のブロックの割当が未完了のまま残った。
+        //   → 過ぎたブロックを写すとき、済んでいない凸のうち同じ人の同じ編成 (キャラが重なる・キャラが無ければ 編成枠 + 弱点) を新しいブロックに置いたものは写さない
+        const freshPieces = [];
+        for (const i of newSet) {
+            const o = (Array.isArray(ov) ? ov : []).find(x => x && x.idx === i);
+            if (!o || o.past) continue;
+            for (const r of (o.rows || [])) for (const p of (r.pieces || [])) freshPieces.push({ memberId: String(p.memberId), slot: Number(p.loadoutSlot) || 1, weakness: r.weakness || null, team: Array.isArray(p.team) ? p.team.filter(Boolean).map(String) : [] });
+        }
+        const weakOfBoss = (bn) => (bossOf.get(Number(bn)) || {}).weakness || null;
+        const carried = (a) => freshPieces.some(f => f.memberId === String(a.memberId) && ((f.team.length && Array.isArray(a.team) && a.team.some(c => f.team.includes(String(c))))
+            || (!f.team.length && f.slot === (Number(a.loadoutSlot) || 1) && !!f.weakness && f.weakness === weakOfBoss(a.bossNumber))));
         bl.forEach((blk, idx) => {
             const key = keyOf(blk);
             let level = null, atks = [], kept = false, hp = null;
@@ -132,6 +145,10 @@
             } else if (prevBlocks.has(key) && pc()) {
                 level = Number(prevBlocks.get(key).level) || null;
                 atks = pc().attacksIn(prevPlan, blk).map(a => ({ ...a, _meta: {} }));
+                if (Number.isInteger(first) && idx < first && freshPieces.length) {
+                    const doneKeys = new Set((doneOf.get(key) || []).map(a => planKey({ ...a, block: key })));
+                    atks = atks.filter(a => doneKeys.has(planKey({ ...a, block: key })) || !carried(a));
+                }
                 kept = true;
                 hp = cleanHp(prevBlocks.get(key).hp);   // 前の決定の見積もりをそのまま (無い古い行は無し)
             } else return;
@@ -328,7 +345,7 @@
      *   ・何も変わらない人 → 送らない (unchanged に入れる = ✅ を引き継ぐ)
      * @returns {{ notices: Array<{memberId,title,body,lines,changed,gone?,sig}>, unchanged: any[] }}
      */
-    function notices({ prevPlan = null, nextPlan, blocks, ackedIds = null, ptName = null } = {}) {
+    function notices({ prevPlan = null, nextPlan, blocks, ackedIds = null, ptName = null, fromIdx = null } = {}) {
         const prev = rowsOf(prevPlan, blocks), next = rowsOf(nextPlan, blocks);
         const prevKeys = new Set(decidedBlocks(prevPlan).keys());
         const acked = ackedIds instanceof Set ? ackedIds : null;
@@ -344,7 +361,10 @@
             const sigAll = (rows) => rows.map(r => r.sig).join(' / ');
             const memberId = Number.isFinite(Number(id)) ? Number(id) : id;
             if (sigAll(p) === sigAll(n)) { if (n.length) unchanged.push(memberId); continue; }
-            if (!n.length) {
+            // ⏱ 通知の行はいまのブロック (fromIdx) から後ろだけ (⑥ レビュー notify-3: 再編成時間の決定で、過ぎたブロックの済んでいない割当が「A 朝 5〜8:40 …」と並んだ)。
+            //   これからの割当が 1 つも無ければ「外れました」。比べる中身 (sig・changed) は過ぎたブロックも入れたまま
+            const ahead = Number.isInteger(fromIdx) ? n.filter(r => r.order >= fromIdx) : n;
+            if (!ahead.length) {
                 out.push({ memberId, lines: ['割当なし'], gone: true, changed: true, sig: 'gone',
                     title: '🔄 あなたの凸が外れました',
                     body: !acked ? '組み直しで、あなたの割当は無くなりました。レイド予定表で確認してください'
@@ -355,7 +375,7 @@
             // 前の決定にあったブロックだけを比べる (新しく決まったブロックが増えただけなら「決まりました」)
             const inPrev = (rows) => rows.filter(r => prevKeys.has(r.block));
             const changed = p.length > 0 && prevKeys.size > 0 && sigAll(inPrev(p)) !== sigAll(inPrev(n));
-            const lines = n.map(lineOf);
+            const lines = ahead.map(lineOf);
             out.push({ memberId, lines, changed, sig: sigAll(n),
                 title: changed ? '🔄 あなたの凸が変わりました' : '🧱 あなたの凸が決まりました',
                 body: `${lines.join(' / ')} — ${tailOf(changed, memberId)}` });
@@ -394,12 +414,14 @@
      * 決定は止めない (後ろまで組み直すとメンバーを振り回す) — 確認で運営に言うための材料
      * @returns {{ memberId:any, name:string, attacks:number, dupChars:string[] }[]}
      */
-    function conflictsOf(plan) {
+    function conflictsOf(plan, skip = null) {
         const by = new Map();
         for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
             for (const b of (lv && Array.isArray(lv.bosses) ? lv.bosses : [])) {
                 for (const a of (b && Array.isArray(b.attacks) ? b.attacks : [])) {
                     if (!a || a.memberId == null) continue;
+                    // ⏱ skip = 数えない凸 (⑥ レビュー: 過ぎたブロックの済んでいない凸 — もう凸しないので 3 凸にもキャラにも入れない)
+                    if (typeof skip === 'function' && skip({ ...a, level: lv.infinite ? 4 : Number(lv.level), bossNumber: Number(b.bossNumber) })) continue;
                     const k = String(a.memberId);
                     if (!by.has(k)) by.set(k, { memberId: a.memberId, name: a.memberName || '', attacks: 0, chars: new Map() });
                     const m = by.get(k);
