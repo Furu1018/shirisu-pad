@@ -15084,6 +15084,25 @@ console.log('\n🧱 凸プランを組む (blockBuild・シンプル化 S2):');
         assert.deepEqual([ov8[1].allDone, ov8[2].level, ov8[2].rows.find(r => r.bossNumber === 5).done, ov8[3].level], [true, 2, true, 2], 'テストの盤面 (午前で 5 体・午後で Lv2 の B5)');
         const st8 = bb.bossState({ ov: ov8, idx: 3, attr: 'water', atStart: true });
         assert.deepEqual([st8.why, st8.killedIn, st8.level], ['killed', 2, 2], '別のレベル (Lv1) の撃破を撃破の見込みに数えた');
+        // (Codex + レビュー) 組む前から撃破済み (実際の凸で HP 0) は、後ろのブロックでも killedIn = null (いまのブロックで撃破する見込み と言わない)
+        const dead = mkBoard(100); dead.bosses[4].remaining_hp_raw = 0;
+        const ov9 = bb.overview({ board: dead, blocks, first: 1, planOf: () => null, hpOf });
+        assert.deepEqual([2, 3, 4, 5].map(i => bb.bossState({ ov: ov9, idx: i, first: 1, attr: 'water', atStart: true }).killedIn), [null, null, null, null], '組む前から撃破済みのボスを、いまのブロックで撃破する見込みと言った');
+        // 撃破が 2 ブロック以上前: 午前で B5 を倒す → 夜 (4) から見ると killedIn = 午前 (1)
+        const ov10 = bb.overview({ board, blocks, planOf: planOf([{ ...pin(100, 5, 9, 12, 100), player_id: 1 }]), hpOf });
+        assert.equal(bb.bossState({ ov: ov10, idx: 4, attr: 'water', atStart: true }).killedIn, 1, '2 ブロック以上前の撃破のブロックが違う');
+        // (レビュー) このブロックに置いた駒が、前のブロックで相手が倒れて実行されない → 理由は「○○ で撃破する見込み」(キャラ被りではない)・別のブロックに置いたまま → placedElsewhere
+        const ov11 = bb.overview({ board, blocks, planOf: planOf([{ ...pin(110, 4, 13, 16, 100), player_id: 1 }, { ...pin(111, 4, 17, 20, 20), player_id: 5 }]), hpOf });
+        assert.equal(ov11[3].skipped.length, 1, 'テストの盤面 (夕方の凸数つきの駒が実行されない)');
+        const stuckTray = (where) => (i) => (ov11[i] && ov11[i].startBoard ? bb.trayPieces({ board: ov11[i].startBoard, blocks, idx: i, bossOrder: W, placed: new Map([['5:wind:1', where]]) }) : []);
+        const s11 = bb.lockOutlook({ ov: ov11, blocks, trayOf: stuckTray(3) })[3].people[0];
+        assert.deepEqual([s11.name, s11.state, s11.reasons.map(r => [r.attr, r.why, r.bossNumber, r.killedIn])], ['凸数つき', 'ng', [['wind', 'killed', 4, 2]]], '置いたのに実行されない駒の理由を「被り」にした');
+        const e11 = bb.lockOutlook({ ov: ov11, blocks, trayOf: stuckTray(4) })[3].people[0];
+        assert.deepEqual(e11.reasons.map(r => [r.why, r.placedIdx]), [['placedElsewhere', 4]], '別のブロックに置いたままの駒を言わない');
+        // 置いたのに実行されない駒 (相手は生きている = 被りなど別の理由) を「✓ 置ける」の根拠にしない
+        const ovS = [{ idx: 0, past: false, level: 1, rows: [{ bossNumber: 1, name: 'B1', weakness: 'iron', tier: 'lord', infinite: false, startB: 100, gotB: 0, remB: 100, done: false, pieces: [] }], startBoard: {} }];
+        const sS = bb.lockOutlook({ ov: ovS, blocks: [blocks[0]], trayOf: () => [{ memberId: 1, name: 'X', kind: 'only', others: [], attr: 'iron', dmgB: 30, slot: 1, remaining: 3, placedIdx: 0, blocked: null }] })[0].people[0];
+        assert.deepEqual([sS.state, sS.best], ['ng', null], '実行されない駒を「置ける」の根拠にした');
     });
     test('★ (レビュー) trayPieces: きょう使ったキャラの編成は使えない / 後ろのブロックに置いた分を残り凸から引く / 凸数を言ったブロックは 凸数 − そのブロックで済んだ数', () => {
         const b = mkBoard(100);
@@ -15612,7 +15631,18 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.equal(dead({ why: 'killedHere', row: { bossNumber: 2, name: 'X' }, level: 1 }, blocks, pt, 'electric'), '電撃PT の相手 B2 X は、このブロックに置いた駒で撃破 ✓ (入れ替えるなら駒を ✕ で外す)');
         assert.equal(dead({ why: 'killed', row: { bossNumber: 5, name: 'Y' }, level: 3, killedIn: null }, blocks, pt, 'water'), '水冷PT の相手 B5 Y は Lv3 を もう撃破済み');
         assert.equal(dead({ why: 'blocked' }, blocks, pt, null), '模擬の編成のキャラが、きょうもう使われているか被っています');
+        assert.equal(dead({ why: 'placedElsewhere', placedIdx: 4 }, blocks, pt, 'wind'), `風圧PT の駒は ${blocks[4].short} に置いてあります (そのブロックで ✕ で外すと、ここに置けます)`);
         assert.equal(dead(null, blocks, pt, 'fire'), '');
+        // (レビュー) Lv3 → Lv4 はボス 5 だけ: ボス 5 以外の相手には「Lv4 は出ない見込み」を添えない / ボス 5 なら添える。近道は 撃破の見込み・置いたまま のブロック (過ぎたブロックは出さない)
+        // lock はブロックの添字の順 (lockOutlook と同じ)。朝・午前 (0・1) は過ぎた
+        const L3 = (reasons) => blocks.map((_, i) => (i !== 3 ? { idx: i, past: i < 2, people: [], only: 0, lastOnly: 0, ng: 0, level: i < 2 ? null : 3, left: [] }
+            : { idx: 3, past: false, level: 3, left: [1, 2], only: 1, lastOnly: 0, ng: 1,
+                people: [{ memberId: 1, name: 'X', kind: 'only', others: [], attrs: [{ attr: 'fire', dmgB: 30, slot: 1 }], state: 'ng', placed: [], best: null, reasons }] }));
+        const h3 = lockHtml(L3([{ attr: 'fire', why: 'killed', bossNumber: 3, name: 'C', killedIn: 2 }]), blocks, 3, pt);
+        assert.ok(!h3.includes('Lv4 は出ない見込み') && h3.includes('data-ob-blk="2"'), 'Lv3 でボス 5 以外の相手に「Lv4 は出ない見込み」を添えた');
+        assert.ok(lockHtml(L3([{ attr: 'water', why: 'killed', bossNumber: 5, name: 'E', killedIn: 2 }]), blocks, 3, pt).includes('Lv4 は出ない見込み'), 'Lv3 でボス 5 の相手に「Lv4 は出ない見込み」を添えない');
+        const hp = lockHtml(L3([{ attr: 'fire', why: 'placedElsewhere', placedIdx: 4 }, { attr: 'wind', why: 'placedElsewhere', placedIdx: 1 }]), blocks, 3, pt);
+        assert.deepEqual([...hp.matchAll(/data-ob-blk="(\d+)"/g)].map(m => m[1]), ['4'], '置いたままのブロックへの近道 / 過ぎたブロックへの近道');
     });
     test('★ ② の配線: ボタンに「このブロックのみ N 人」(⚠ は赤) / 段はボタンの下・決定の上 / ピースは文字 (🔒 は使わない)・置けないピースは赤 (いまの盤 = bossState・first) / 段の開け閉めを覚える / 全ブロックのピースは同じ判定 (trayOf)', () => {
         const r = fn('function renderOpsBuild()', 'function _obDecideRange(');
@@ -15624,6 +15654,11 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/host\.addEventListener\('toggle', \(e\) => \{ const d = e\.target; if \(d && d\.matches && d\.matches\('\[data-ob-lock\]'\)\) _ob\.lockOpen = !!d\.open; \}, true\);/.test(html) && /lockOpen: null \};/.test(html), '段の開け閉めを覚えない');
         const cx = fn('function _obCtx(snap)', 'function _obDeadText(');
         assert.ok(/const lock = bb\.lockOutlook \? bb\.lockOutlook\(\{ ov, blocks, first, trayOf: \(i\) => \(i === idx \? tray : trayOf\(i\)\) \}\) : \[\];/.test(cx), '見込みをピース置き場と同じ判定で作っていない');
+        // (レビュー) 赤いピースは選ばずに理由を言う・ドラッグできない / 赤は「置けない」だけ (先に置く人の文字は紫)
+        const sel = fn('function _obSelect(key)', 'function _obAfterChange(');
+        assert.ok(/if \(bs && !bs\.ok\) \{ showNotification\(`置けません: \$\{_obDeadText\(bs, ctx\.blocks,/.test(sel) && sel.indexOf('if (bs && !bs.ok)') < sel.indexOf('_ob.sel = _ob.sel === key ? null : key;'), '赤いピースを選べる (置ける行が無いのに「明るい行を押して」)');
+        assert.ok(/draggable="\$\{off \|\| ngTxt \? 'false' : 'true'\}"/.test(r), '赤いピースをドラッグできる');
+        assert.ok(/\.obt \.rigid \{ font-size: 10px; font-weight: 900; color: var\(--ops-on\); \}/.test(html) && /\.obt\.ng \{ border-color: var\(--bad\); background: var\(--bad-bg\); \}/.test(html), '赤が「置けない」以外にも使われている');
     });
     await testAsync('★ _obCarrySkips を実際に動かす (2026-11-02 レビュー): 写したブロックの「凸していない」の印だけを新しい決定の id で付ける・もうある印は付けない・手元の印と版を進める・読めない / 付けられないは知らせて止めない', async () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;

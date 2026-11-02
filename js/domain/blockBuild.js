@@ -199,7 +199,9 @@
             const x = list[j];
             if (!x || x.past || Number(x.level) !== Number(o.level)) continue;
             const r = (x.rows || []).find(y => Number(y.bossNumber) === Number(row.bossNumber));
-            if (r && r.done) { killedIn = j; break; }
+            // ★ そのブロックの始まりに生きていて、そのブロックで倒れた行だけ (始まりから HP 0 の行も done になる — 組む前から撃破済みのボスを
+            //   「いまのブロックで撃破する見込み」と言っていた: Codex + レビュー 2026-11-02)
+            if (r && Number(r.startB) > EPS && r.done) { killedIn = j; break; }
         }
         return { ok: false, why: 'killed', row, level: o.level, killedIn };
     }
@@ -213,7 +215,8 @@
      * @param {{ ov:Object[], blocks:Object[], first?:number, trayOf:(idx:number)=>Object[] }} a  trayOf = そのブロックのピース (trayPieces と同じ判定)
      * @returns {Array<{ idx:number, past:boolean, only:number, lastOnly:number, ng:number,
      *   people:Array<{ memberId, name, kind:'only'|'lastOnly', others:string[], attrs:Array<{attr,dmgB,slot}>, state:'placed'|'none'|'ok'|'ng',
-     *     placed:Array<{bossNumber,dmgB}>, best:{attr,bossNumber,dmgB,remB:number|null,infinite:boolean}|null, reasons:Array<{attr,why,bossNumber?,name?,killedIn?}> }>,
+     *     placed:Array<{bossNumber,dmgB}>, best:{attr,bossNumber,dmgB,remB:number|null,infinite:boolean}|null,
+     *     reasons:Array<{attr, why:'killed'|'killedHere'|'lv4'|'none'|'placedElsewhere'|'blocked', bossNumber?, name?, killedIn?, placedIdx?}> }>,
      *   level:number|null, left:number[] }>}  left = ブロックの始まりにそのレベルで残っているボス (無限は除く)
      */
     function lockOutlook({ ov, blocks, first = 0, trayOf } = {}) {
@@ -239,18 +242,23 @@
                 if (placed.length) return { ...base, state: 'placed' };
                 if (remaining <= 0) return { ...base, state: 'none' };
                 const cands = m.pieces.filter(p => !p.blocked && p.placedIdx == null);
+                // このブロックに置いたのに実行されない駒 (前のブロックで相手が倒れた など — overview の skipped) と、別のブロックに置いたままの駒も理由に入れる
+                //   (入れないと「キャラ使用済み・被り」と言い、この機能がいちばん見せたい「前のブロックで撃破」が出なかった: レビュー 2026-11-02)
+                const stuck = m.pieces.filter(p => !p.blocked && p.placedIdx === idx);
+                const elsewhere = m.pieces.filter(p => !p.blocked && p.placedIdx != null && p.placedIdx !== idx);
                 let best = null;
                 const reasons = [];
-                for (const p of cands) {
+                for (const p of [...cands, ...stuck]) {
                     const st = bossState({ ov: list, idx, first, attr: p.attr, atStart: true });
                     if (st && st.ok) {
-                        if (!best || p.dmgB > best.dmgB) best = { attr: p.attr, bossNumber: Number(st.row.bossNumber), dmgB: Number(p.dmgB) || 0, remB: st.row.infinite ? null : Number(st.row.startB), infinite: !!st.row.infinite };
+                        if (cands.includes(p) && (!best || p.dmgB > best.dmgB)) best = { attr: p.attr, bossNumber: Number(st.row.bossNumber), dmgB: Number(p.dmgB) || 0, remB: st.row.infinite ? null : Number(st.row.startB), infinite: !!st.row.infinite };
                     } else if (st && !reasons.some(x => x.attr === p.attr)) {
                         reasons.push({ attr: p.attr, why: st.why, ...(st.row ? { bossNumber: Number(st.row.bossNumber), name: st.row.name } : {}), ...(st.why === 'killed' ? { killedIn: st.killedIn } : {}) });
                     }
                 }
                 if (best) return { ...base, state: 'ok', best };
-                return { ...base, state: 'ng', reasons: cands.length ? reasons : [{ attr: null, why: 'blocked' }] };
+                for (const p of elsewhere) if (!reasons.some(x => x.attr === p.attr)) reasons.push({ attr: p.attr, why: 'placedElsewhere', placedIdx: p.placedIdx });
+                return { ...base, state: 'ng', reasons: reasons.length ? reasons : [{ attr: null, why: 'blocked' }] };
             });
             return { idx, past: false, level: o.level, left, people,
                 only: people.filter(p => p.kind === 'only').length, lastOnly: people.filter(p => p.kind === 'lastOnly').length, ng: people.filter(p => p.state === 'ng').length };

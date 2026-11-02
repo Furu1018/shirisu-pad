@@ -56,7 +56,7 @@
         mockDmg: ['#myDmgPreviewDmgInput'],
         mockSave: ['#myDmgPreviewSaveBtn'],
         obBlock: ['#opsBuild [data-ob-blk]'],
-        obPiece: ['#opsBuild .obt:not(.off)'],
+        obPiece: ['#opsBuild .obt:not(.off):not(.ng)'],   // 赤 (いま置けない) のピースは指さない (2026-11-02)
         obRow: ['#opsBuild .obr.can .obr-h'],   // ★ 行の真ん中は 📌 の駒 (押すと外れる) → 見出しを指す
         obAuto: ['[onclick="_obAuto()"]'],
         obDecide: ['[onclick="_obDecide()"]'],
