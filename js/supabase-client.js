@@ -2043,6 +2043,28 @@ window.supabaseUpdateSeasonMemberInput = async function (seasonId, full) {
     if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
     return value;
 };
+// ⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02)。seasons.metadata.rebuild_minutes = 0〜59 の整数 / null (鍵を消す = 0 分)。
+// 本線は RPC ops_set_season_meta_key (59 で鍵を白リストに足した)。未適用の見分け: 51 も無い = PGRST202 / 51 だけある = 51 の白リストの断り文
+// 「この鍵は書けません: rebuild_minutes」(51 の分かれ道しか出さない文。完全一致で見る — ほかの P0001 は投げる)。そのときだけ「読んで混ぜて書く」
+window.supabaseUpdateSeasonRebuildMinutes = async function (seasonId, minutes) {
+    if (!seasonId) throw new Error('seasonId が必要です');
+    // null・''・true を 0 に化けさせない (整数だけ)
+    if (minutes != null && !(typeof minutes === 'number' && Number.isInteger(minutes) && minutes >= 0 && minutes <= 59)) throw new Error('再編成時間は 0〜59 分の整数です');
+    const value = minutes == null ? null : minutes;
+    const { error } = await supabase.rpc('ops_set_season_meta_key', { p_season_id: seasonId, p_key: 'rebuild_minutes', p_value: value });
+    if (!error) return value;
+    const no59 = error.code === 'PGRST202' || (error.code === 'P0001' && /^この鍵は書けません: rebuild_minutes$/.test(String(error.message || '')));
+    if (!no59) throw error;
+    const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
+    if (rErr) throw rErr;
+    if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' && !Array.isArray(cur.metadata) ? cur.metadata : {}) };
+    if (value != null) metadata.rebuild_minutes = value; else delete metadata.rebuild_minutes;
+    const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
+    if (uErr) throw uErr;
+    if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    return value;
+};
 
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
 // 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
@@ -2911,7 +2933,9 @@ window.supabaseCreateSeason = async function (payload) {
 
     // テストシーズン: 現在の player_damages (characters 含む) + nikke_characters の
     // キャノニカル名一覧をスナップショットして metadata に保存。テスト終了時に復元する。
-    let metadata = {};
+    // ⏱ 再編成時間: 新しい本番シーズンは既定の 20 分から (第46回の反省 ⑥ Q11・Q14「第47回から」)。テストシーズンは 0 分 (👑 🧱 ブロックの設定で入れられる)
+    const rbDefault = (typeof window !== 'undefined' && window.raidBlocksDomain && Number.isInteger(window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES)) ? window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES : 20;
+    let metadata = isTest ? {} : { rebuild_minutes: rbDefault };
     if (isTest) {
         // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
         let dmgs = null;

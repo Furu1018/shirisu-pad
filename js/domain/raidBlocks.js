@@ -80,13 +80,53 @@
         return HOUR_ORDER.slice(a, b + 1);
     }
 
+    // ===== ⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり「ブロックとブロックの間に運営のプラン再編成の時間を設けたい」・メモ §6) =====
+    //   最後以外の各ブロックの**最後の N 分は凸しない時間** (運営が次のブロックを組む)。区切り (from / to・1 時間刻み 'hXX') は変えない。
+    //   シーズンごとに seasons.metadata.rebuild_minutes (0〜59 の整数・鍵なし = 0 = 再編成なし)。保存は RPC ops_set_season_meta_key (SQL 59)。
+    //   ★ 凸がどのブロックのものかは今までどおり (✓ は plan_key・数字の報告は時)。報告の時刻 (reported_at) で次のブロックに振り分けない —
+    //     📥 取り込みの reported_at は「運営が登録した時刻」で、再編成時間はまさに前のブロックの結果を取り込む時間だから (振り分けると前のブロックの凸が次に化ける)。
+    //     Q12「再編成時間に入った凸は次のブロックの凸」は、再編成の始まりで「いま」を次のブロックに進めることで成り立たせる
+    //     (🧱 組む の始まりの盤面 = 実際の盤面・前のブロックの済んでいない予定を投影しない → 残りは次のブロックのピースに出る)
+    const MAX_REBUILD_MINUTES = 59;            // ブロックは 1 時間以上なので、凸の時間は必ず 1 分以上残る (DB の検査も 0〜59: SQL 59)
+    const REBUILD_CHOICES = [0, 10, 15, 20, 30];   // 👑 🧱 ブロックの設定で選べる分数
+    const DEFAULT_REBUILD_MINUTES = 20;        // 新しい本番シーズンの既定 (Q11: 20 分・Q14: 第47回から)
+    /** シーズンの再編成時間 (分)。0〜59 の整数だけ。鍵なし・null・文字列・範囲外・シーズンが読めない は 0 (= 再編成なし。「凸しない時間」と言わない・通知も送らない安全側) */
+    function rebuildMinutesOf(season) {
+        const v = season && season.metadata && typeof season.metadata === 'object' ? season.metadata.rebuild_minutes : null;
+        return (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_REBUILD_MINUTES) ? v : 0;
+    }
+    /** その時刻 (ms) はレイド日の 5:00 JST から何分目か (0〜1439)。JST は夏時間が無いので +9 時間で足りる。読めなければ null */
+    function raidMinuteOfMs(ms) {
+        const t = (typeof ms === 'number') ? ms : (ms instanceof Date ? ms.getTime() : NaN);
+        if (!Number.isFinite(t)) return null;
+        const jst = Math.floor(t / 60000) + 9 * 60;
+        return (((jst - 5 * 60) % 1440) + 1440) % 1440;
+    }
+    /** レイド日の分 (0〜1440) → 時計の文字「8:40」「翌0:40」「翌5:00」 */
+    function clockOfMinute(min) {
+        if (!Number.isInteger(min) || min < 0 || min > 1440) return '';
+        if (min === 1440) return '翌5:00';
+        return `${wrap(HOUR_ORDER[Math.floor(min / 60)])}:${String(min % 60).padStart(2, '0')}`;
+    }
+    /** ブロックの凸の欄 (normalize が足す): 凸の終わり (レイド日の分)・凸の時間の文字・再編成の時間。再編成が無い (0 分・最後のブロック) ときは区切りと同じ文字 */
+    function attackFieldsOf(b, range, short, minutes, isLast) {
+        const endMin = (b.toIdx + 1) * 60;
+        const n = (!isLast && Number.isInteger(minutes) && minutes > 0 && minutes <= MAX_REBUILD_MINUTES) ? minutes : 0;
+        if (!n) return { attackEndMin: endMin, attackRange: range, attackLabel: `${short} ${range}`, rebuild: null };
+        const attackRange = `${wrap(b.from)}〜${clockOfMinute(endMin - n)}`;
+        const from = clockOfMinute(endMin - n), to = clockOfMinute(endMin);
+        return { attackEndMin: endMin - n, attackRange, attackLabel: `${short} ${attackRange}`, rebuild: { minutes: n, fromMin: endMin - n, toMin: endMin, from, to, label: `${from}〜${to}` } };
+    }
+
     /**
      * 設定 ([{ name, from, to }] / null) を検査して使える形にする。
      * 空・null は既定。壊れていれば error を返し blocks は null (呼び出し側は既定に落とす)。
      * 条件: 5時から翌4時まで隙間も重なりも無く順に並ぶ / 2〜12 個 / 名前は任意 (6 文字まで・付けた名前どうしは重ねない)
+     * ⏱ opts.rebuildMinutes (既定 0) を渡すと、凸の欄 attackEndMin / attackRange (「5〜8:40」) / attackLabel (「A 朝 5〜8:40」) / rebuild ({ from:'8:40', to:'9:00', label, minutes } か null) を足す。
+     *   range / label は区切りのまま (ブロックの設定・保存・決定の控えは区切りを読む)。凸の時間を見せる所だけ attackRange / attackLabel を読む
      * @returns {{ blocks: ({name:string, from:number, to:number, fromIdx:number, toIdx:number, hours:number[], slots:string[], label:string}[]|null), error: string|null, isDefault: boolean }}
      */
-    function normalize(config) {
+    function normalize(config, opts) {
         const isDefault = !(Array.isArray(config) && config.length > 0);
         const src = isDefault ? DEFAULT_BLOCKS : config;
         const err = (msg) => ({ blocks: null, error: msg, isDefault });
@@ -116,14 +156,38 @@
             out.push({ letter, name, short, range, label: `${short} ${range}`, from, to, fromIdx: idxOfHour(from), toIdx: idxOfHour(to), hours, slots: hours.map(keyOf) });
         }
         if (cursor !== HOUR_ORDER.length) return err('最後のブロックは 翌5時 で終えてください');
+        const minutes = opts && Number.isInteger(opts.rebuildMinutes) ? opts.rebuildMinutes : 0;
+        out.forEach((b, i) => Object.assign(b, attackFieldsOf(b, b.range, b.short, minutes, i === out.length - 1)));
         return { blocks: out, error: null, isDefault };
     }
 
-    /** シーズンのブロック。設定が無い・壊れているときは既定 (壊れていても画面を止めない) */
+    /** シーズンのブロック。設定が無い・壊れているときは既定 (壊れていても画面を止めない)。⏱ 再編成時間は既定へ落ちる側にも渡す */
     function blocksOfSeason(season) {
         const cfg = season && season.metadata && Array.isArray(season.metadata.blocks) ? season.metadata.blocks : null;
-        const r = normalize(cfg);
-        return r.blocks || normalize(null).blocks;
+        const opts = { rebuildMinutes: rebuildMinutesOf(season) };
+        const r = normalize(cfg, opts);
+        return r.blocks || normalize(null, opts).blocks;
+    }
+    /**
+     * ⏱ レイド日のその分 (raidMinuteOfMs) はどのブロックか・再編成時間か。
+     *   idx = 時刻が入るブロック (区切りで) / inRebuild = そのブロックの再編成時間 (凸の終わり〜区切り) / attackIdx = 凸の扱いのブロック (再編成中は次)
+     * ブロックに凸の欄が無ければ (normalize を opts 無しで呼んだ写し) 再編成なしとして読む
+     */
+    function phaseAt(blocks, minute) {
+        const list = Array.isArray(blocks) ? blocks : [];
+        const none = { idx: -1, attackIdx: -1, inRebuild: false, rebuildIdx: -1 };
+        if (!Number.isInteger(minute) || minute < 0 || minute >= 1440) return none;
+        const idx = list.findIndex(b => b && minute >= b.fromIdx * 60 && minute < (b.toIdx + 1) * 60);
+        if (idx < 0) return none;
+        const b = list[idx];
+        const end = Number.isInteger(b.attackEndMin) ? b.attackEndMin : (b.toIdx + 1) * 60;
+        const inRebuild = idx < list.length - 1 && minute >= end;
+        return { idx, attackIdx: inRebuild ? idx + 1 : idx, inRebuild, rebuildIdx: inRebuild ? idx : -1 };
+    }
+    /** ⏱ 再編成時間なら次のブロックの頭の時間帯 ('h09')、そうでなければ null (ソルバーの起点・🧱 組む の first・時間割の「いま」を次へ進める) */
+    function rebuildNowSlot(blocks, minute) {
+        const ph = phaseAt(blocks, minute);
+        return ph.inRebuild ? keyOf(blocks[ph.attackIdx].from) : null;
     }
     /** 保存する形 ([{ name, from, to }]) に戻す */
     const toConfig = (blocks) => (Array.isArray(blocks) ? blocks : []).map(b => ({ name: b.name, from: b.from, to: b.to }));
@@ -283,7 +347,7 @@
         const set = new Set((Array.isArray(slots) ? slots : []).map(String));
         return (Array.isArray(blocks) ? blocks : []).map((b, idx) => {
             const on = b.slots.filter(k => set.has(k)).length;
-            return { idx, name: b.name, letter: b.letter || letterOf(idx), short: b.short || shortOf(b, idx), range: b.range || rangeOf(b), label: b.label || labelOf(b, idx), hours: b.slots.length, on, state: on === 0 ? 'off' : (on === b.slots.length ? 'on' : 'partial') };
+            return { idx, name: b.name, letter: b.letter || letterOf(idx), short: b.short || shortOf(b, idx), range: b.range || rangeOf(b), label: b.label || labelOf(b, idx), attackRange: b.attackRange || b.range || rangeOf(b), attackLabel: b.attackLabel || b.label || labelOf(b, idx), rebuild: b.rebuild || null, hours: b.slots.length, on, state: on === 0 ? 'off' : (on === b.slots.length ? 'on' : 'partial') };
         });
     }
     /** ブロックを丸ごと ON / OFF にした時間帯 ('hXX' の配列・5時始まりの並び) */
@@ -342,6 +406,7 @@
         }
         const rows = blocks.map((b, i) => ({
             idx: i, name: b.name, letter: b.letter || letterOf(i), short: b.short || shortOf(b, i), range: b.range || rangeOf(b), label: b.label || labelOf(b, i),
+            attackRange: b.attackRange || b.range || rangeOf(b), attackLabel: b.attackLabel || b.label || labelOf(b, i), rebuild: b.rebuild || null,
             state: nowIdx < 0 ? 'later' : (i < nowIdx ? 'past' : (i === nowIdx ? 'now' : (i === nowIdx + 1 ? 'next' : 'later'))),
             planned: planned.filter(x => x.block === i),
             done: done.filter(x => x.block === i),
@@ -424,6 +489,7 @@
 
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
+        MAX_REBUILD_MINUTES, REBUILD_CHOICES, DEFAULT_REBUILD_MINUTES, rebuildMinutesOf, raidMinuteOfMs, clockOfMinute, phaseAt, rebuildNowSlot,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, shortOf, rangeOf, letterOf, endLabel, toHour, addSplit, removeAt, evenSplit, splitAt, setEndAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
         scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel, todayRows,

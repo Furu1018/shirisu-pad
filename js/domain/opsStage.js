@@ -214,7 +214,7 @@
      * @param {number=} a.attackCap         定員×3
      * @returns {{lead:string, why:string, action:string, label:string}}
      */
-    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, finPending, attacksDone, attackCap, decided = true } = {}) {
+    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, finPending, attacksDone, attackCap, decided = true, rebuild = null } = {}) {
         const rp = Number(pendingRepublish) || 0;
         const rvP = reservations ? Number(reservations.pending) || 0 : 0;
         if (stage === 'prep') {
@@ -248,6 +248,16 @@
             }
         }
         if (stage === 'day') {
+            // ⏱ 再編成時間 (第46回の反省 ⑥・メモ §6「HP → ✓ → 組む → 決定」): 済んでいない最初の手順へ。分からない (null) 手順は止めない。
+            //   rebuild = { block: 'A 朝', next: 'B 午前', label: '8:40〜9:00', to: '9:00', hpDone, tapLeft, decided }。次のブロックを決定し終えたら、いつもの当日の分岐へ
+            if (rebuild && rebuild.block && rebuild.next && rebuild.decided !== true) {
+                const lead = `⏱ 再編成時間 ${rebuild.label} — ${rebuild.next} を組む`;
+                const base = `${rebuild.block} の凸の時間は終わりました (${rebuild.next} は ${rebuild.to} から)。HP → ✓ → 組む → 決定 の順に`;
+                if (rebuild.hpDone === false) return { lead, why: `${base}。まず BlaBlaLINK の画像で HP を合わせます`, action: 'hp', label: '🎯 ボス HP を更新する' };
+                const left = Number(rebuild.tapLeft) || 0;
+                if (left > 0) return { lead, why: `${base}。${rebuild.block} の ✓ がまだ ${left} 凸です (凸しなかった人は ⚔️ 結果の取り込みで「凸していない」に)`, action: 'tap', label: '✓ 凸の記録を開く' };
+                return { lead, why: `${base}。${rebuild.block} で済んでいない凸は ${rebuild.next} のピースに出ます`, action: 'build', label: `🧱 ${rebuild.next} を組む` };
+            }
             if (freshMin != null && freshMin >= 30) return { lead: `HP 更新が ${fmtAgo(freshMin)} です`, why: '古い HP で締め凸を出すと、無駄凸や取りこぼしが出ます', action: 'hp', label: '🎯 ボス HP を更新する' };
             if ((Number(finPending) || 0) > 0) return { lead: `締め凸の返答待ちが ${finPending} 件`, why: '返答が無いと締めの割当が決まりません', action: 'members', label: '👥 返答待ちを見る' };
             if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '当日の予約は承認するとすぐ決まります', action: 'reserve', label: '🔒 予約を見る' };

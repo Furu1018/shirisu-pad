@@ -280,12 +280,14 @@
     /** 人ごとの割当 (ブロックの順)。sig = 比べるための中身 (ブロック・レベル・ボス・編成・キャラ) */
     function rowsOf(plan, blocks) {
         const order = new Map((Array.isArray(blocks) ? blocks : []).map((b, i) => [keyOf(b), i]));
+        // ⏱ 行の時刻はいまのブロックの凸の時間 (「A 朝 5〜8:40」・再編成時間が無ければ区切りの label と同じ)。ブロックが分からなければ保存した blockLabel (⑥)
+        const labelOf = new Map((Array.isArray(blocks) ? blocks : []).map(b => [keyOf(b), b.attackLabel || b.label || null]));
         const m = new Map();
         for (const a of flat(plan)) {
             const k = String(a.memberId);
             if (!m.has(k)) m.set(k, []);
             const team = Array.isArray(a.team) ? a.team.map(String).slice().sort().join(',') : '';
-            m.get(k).push({ block: a.block || '', blockLabel: a.blockLabel || a.block || '', order: order.has(a.block) ? order.get(a.block) : 99,
+            m.get(k).push({ block: a.block || '', blockLabel: labelOf.get(a.block) || a.blockLabel || a.block || '', order: order.has(a.block) ? order.get(a.block) : 99,
                 level: a.level, bossNumber: a.bossNumber, weakness: a.weakness, slot: Number(a.loadoutSlot) || 1,
                 sig: `${a.block || ''}|L${a.level}|B${a.bossNumber}|S${Number(a.loadoutSlot) || 1}|${team}` });
         }

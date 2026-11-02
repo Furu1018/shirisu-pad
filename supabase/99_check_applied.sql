@@ -398,6 +398,11 @@ SELECT * FROM (
                       FROM to_regprocedure('public.ops_set_season_blocks(bigint,jsonb)') AS f WHERE f IS NOT NULL), false),
         '🧱 ブロックの設定のガード (凸数の登録・ブロックの予約・決定があるシーズンは ops_set_season_blocks が断る)。未適用でも画面は読み取り専用にする (DB の断りが無いだけ)'
 
+    UNION ALL SELECT '59_season_rebuild_minutes',
+        COALESCE((SELECT pg_get_functiondef(f) LIKE '%NOT IN (''member_input'', ''rebuild_minutes'')%' AND pg_get_functiondef(f) LIKE '%rebuild_minutes は 0〜59 の整数か null です%'
+                      FROM to_regprocedure('public.ops_set_season_meta_key(bigint,text,jsonb)') AS f WHERE f IS NOT NULL), false),
+        '⏱ 再編成時間 (seasons.metadata.rebuild_minutes) を保存できる鍵の白リスト。未適用でも「読んで混ぜて書く」で保存できる (同時編集に弱いだけ)。51 を流し直すと false に戻る → 59 も流し直す'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

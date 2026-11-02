@@ -53,7 +53,7 @@
             let deadline = null;
             if (rb && bl.length && slots.length && !p.flexTime) {
                 const idxs = rb.blocksOfSlots(bl, slots);
-                if (idxs.length) deadline = { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || '') };
+                if (idxs.length) deadline = { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || ''), ...rebuildAt(bl, idxs[0]) };
             }
             out.push({
                 id: p.id, name: p.name, missing, missingJp: missing.map(a => ATTR_JP[a]),
@@ -132,14 +132,16 @@
         ATTR_KEYS.forEach(a => { if (!out.includes(a)) out.push(a); });
         return out;
     }
-    /** 〆 = その人が最初に出られるブロック (missingRows と同じ決め方) */
+    /** ⏱ 〆 の時刻 (第46回の反省 ⑥): 1 つ前のブロックに再編成時間があれば、その始まり { at: '8:40' } (運営はそこから次のブロックを組む)。無ければ {} (A は前に再編成が無い・0 分) */
+    const rebuildAt = (bl, i) => (i > 0 && bl[i - 1] && bl[i - 1].rebuild && bl[i - 1].rebuild.from) ? { at: String(bl[i - 1].rebuild.from) } : {};
+    /** 〆 = その人が最初に出られるブロック (missingRows と同じ決め方)。前のブロックに再編成時間があれば at = その始まり */
     function deadlineOf(p, blocks) {
         const rb = root.raidBlocksDomain;
         const bl = Array.isArray(blocks) ? blocks : [];
         const slots = Array.isArray(p && p.availableSlots) ? p.availableSlots : [];
         if (!rb || !bl.length || !slots.length || (p && p.flexTime)) return null;
         const idxs = rb.blocksOfSlots(bl, slots);
-        return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || '') } : null;
+        return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || ''), ...rebuildAt(bl, idxs[0]) } : null;
     }
     /**
      * 人 × 属性 の表。マス = その人のその属性の編成 (slot / dmgB / team / dup)。

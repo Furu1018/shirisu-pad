@@ -18,6 +18,13 @@
         const h = Math.floor((t + JST_OFFSET_H * 3600000) / 3600000) % 24;
         return (h - HOUR_BASE + 24) % 24;
     }
+    /** エポック ms → レイド日の 5:00 JST からの分 (0〜1439)。⏱ 再編成時間の凸の終わり (dueMin) と比べる */
+    function minuteIdxOfMs(v) {
+        const t = ms(v);
+        if (t == null) return null;
+        const m = Math.floor((t + JST_OFFSET_H * 3600000) / 60000) % 1440;
+        return (m - HOUR_BASE * 60 + 1440) % 1440;
+    }
     function hourLabelOfIdx(idx) {
         if (!Number.isInteger(idx) || idx < 0 || idx > 23) return '';
         const h = idx + HOUR_BASE;
@@ -32,7 +39,8 @@
                     if (!a || a.memberId == null) continue;
                     out.push({ memberId: a.memberId, bossNumber: Number(b.bossNumber), hourIdx: Number.isInteger(a.hourIdx) ? a.hourIdx : null,
                         dmgB: Number(a.dmgB) || 0, level: lv.level == null ? null : Number(lv.level), flex: !!a.flex, loadoutSlot: Number(a.loadoutSlot) || 1,
-                        blockEnd: !!a.blockEnd,   // ✅ 決定の割当 (S4): 時刻はブロックの終わりに寄せてある (約束はブロックだけ) → 時刻のずれの印は出さない
+                        blockEnd: !!a.blockEnd,
+                        dueMin: Number.isInteger(a.dueMin) ? a.dueMin : null,   // ⏱ 決定の割当: 凸の時間の終わり (レイド日の 5:00 からの分)。再編成時間があれば区切りより N 分早い (⑥)   // ✅ 決定の割当 (S4): 時刻はブロックの終わりに寄せてある (約束はブロックだけ) → 時刻のずれの印は出さない
                         planKey: typeof a.planKey === 'string' && a.planKey ? a.planKey : null });   // ✅ 決定の割当の鍵 (✓ の行の plan_key と同じ形・S5 レビュー TP-4)
                 }
             }
@@ -83,6 +91,7 @@
         //   最新の配信だけで全報告を見ると、古い凸が新しいレベルの割当を食って 未報告 / 食い違い を誤表示する)
         const planLevels = new Set(planned.map(p => p.level).filter(l => l != null));
         const nowIdx = hourIdxOfMs(nowMs);
+        const nowMin = minuteIdxOfMs(nowMs);   // ⏱ 凸の時間の終わり (dueMin) と比べる
         const since = ms(sinceMs);   // 配信を算出した時刻 (段階 4)
         // 報告は古い順に見て、同じ人・同じボス・同じレベルの割当のうち時刻の近いものへ当てる (1 つの割当に 1 つの報告)
         const sorted = list.slice().sort((a, b) => ((ms(a.reported_at) ?? 0) - (ms(b.reported_at) ?? 0)) || (Number(a.id) - Number(b.id)));
@@ -144,7 +153,10 @@
         });
         rows.sort((a, b) => ((b.atMs ?? 0) - (a.atMs ?? 0)) || (Number(b.id) - Number(a.id)));   // 新しい順
         // 報告漏れの候補: 予定の時刻を過ぎたのに報告が無い割当 (⏳隙間・時刻なし・いまが読めないときは数えない)
-        const late = planned.filter(p => !p.used && !p.flex && p.hourIdx != null && nowIdx != null && p.hourIdx < nowIdx)
+        //   ⏱ 決定の割当は凸の時間の終わり (dueMin) を過ぎたら — 再編成時間 (8:40〜9:00) のうちに ✓ と「凸していない」を片付けられるように (⑥)。
+        //   dueMin の無い割当 (従来の配信) は今までどおり時の単位。再編成なしの dueMin は区切り = (toIdx+1)*60 なので「hourIdx < nowIdx」と同じ
+        const late = planned.filter(p => !p.used && !p.flex && p.hourIdx != null
+                && (p.dueMin != null && nowMin != null ? nowMin >= p.dueMin : (nowIdx != null && p.hourIdx < nowIdx)))
             .map(p => ({ memberId: p.memberId, bossNumber: p.bossNumber, hourIdx: p.hourIdx, hourLabel: hourLabelOfIdx(p.hourIdx), dmgB: p.dmgB, level: p.level,
                 loadoutSlot: p.loadoutSlot, key: missingKey(planId, p) }))
             .sort((a, b) => (a.hourIdx - b.hourIdx) || (a.bossNumber - b.bossNumber));
@@ -164,5 +176,5 @@
         if (!c.total && !c.missing) return 'まだ報告はありません';
         return [`確認 ${c.confirmed} / ${c.total}`, c.flagged ? `要確認 ${c.flagged}` : '', c.unchecked ? `照合できない ${c.unchecked}` : '', c.missing ? `結果がまだ ${c.missing}` : '', c.skipped ? `凸していない ${c.skipped}` : ''].filter(Boolean).join(' · ');
     }
-    root.attackCheckDomain = { HOUR_BASE, FLAG_JP, hourIdxOfMs, hourLabelOfIdx, plannedOf, buildRows, summary, missingKey, carrySkipKeys };
+    root.attackCheckDomain = { HOUR_BASE, FLAG_JP, hourIdxOfMs, minuteIdxOfMs, hourLabelOfIdx, plannedOf, buildRows, summary, missingKey, carrySkipKeys };
 })(typeof window !== 'undefined' ? window : globalThis);
