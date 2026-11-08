@@ -3782,6 +3782,46 @@
         .mk-dup-sample { padding: 0 4px; border: 2px solid var(--bad); border-radius: 6px; }
         .mk-plus { display: inline-block; margin: 1px 0; width: 26px; height: 24px; border-radius: 8px; border: 1px dashed var(--line); background: transparent; color: var(--t-muted); font: inherit; font-weight: 900; cursor: pointer; }
         .mk-b5 { display: inline-block; margin: 1px 2px; font-size: 9.5px; font-weight: 800; color: var(--warn-deep); }
+        .mk-name.btn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+        .mk-only { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 900; color: var(--ops-deep); background: var(--ops-bg); vertical-align: middle; white-space: nowrap; }
+        /* ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08) */
+        .mkb-head { margin: 2px 0 4px; }
+        .mkb-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+        .mkb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--t-body); background: var(--s1); }
+        .mkb-note { margin: 6px 0 0; font-size: 11px; color: var(--t-muted); line-height: 1.55; }
+        .mkb-note b { color: var(--t-ink); }
+        .mkb-loading { color: var(--ops-deep); font-weight: 800; }
+        .mkb-attr { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 9px 10px; margin-top: 8px; background: var(--card); }
+        .mkb-ah { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; font-weight: 900; color: var(--t-ink); }
+        .mkb-ah small { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .mkb-done { margin-left: auto; font-size: 11px; font-weight: 900; color: var(--ok-deep); }
+        .mkb-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+        .mkb-rl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .mkb-rl .st { font-weight: 900; } .mkb-rl .st.dirty { color: var(--warn-deep); } .mkb-rl .st.ok { color: var(--ok-deep); } .mkb-rl .st.err { color: var(--bad); }
+        .mkb-presets { display: grid; gap: 4px; margin-top: 5px; }
+        .mkb-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 7px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; cursor: pointer; text-align: left; }
+        .mkb-preset.on { border-color: var(--ops); background: var(--ops-bg); }
+        .mkb-preset.ng { opacity: 0.55; cursor: not-allowed; border-style: dashed; }
+        .mkb-preset .faces { display: flex; gap: 3px; min-width: 0; overflow: hidden; }
+        .mkb-preset .pm { font-size: 10px; font-weight: 800; color: var(--t-muted); text-align: right; white-space: nowrap; line-height: 1.35; }
+        .mkb-preset .pm b { color: var(--t-ink); }
+        .mkb-preset .pm .mine { color: var(--ops-deep); }
+        .mkb-slots { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .mkb-faces { display: flex; gap: 4px; }
+        .mkb-face { width: 36px; height: 36px; border-radius: 8px; border: 1.5px dashed var(--line); background: var(--s1); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: var(--t-muted); cursor: pointer; padding: 0; overflow: hidden; }
+        .mkb-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .mkb-face.has { border-style: solid; }
+        .mkb-face.dup { border-color: var(--bad); border-width: 2px; }
+        .mkb-dmg { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+        .mkb-dmg input { width: 96px; font: inherit; font-size: 17px; font-weight: 900; text-align: right; padding: 5px 7px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .mkb-dmg span { font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .mkb-add { margin-top: 7px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--line); background: transparent; color: var(--t-body); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .mkb-foot { position: sticky; bottom: 0; background: var(--card); padding: 10px 0 2px; margin-top: 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .mkb-foot .cnt { flex: 1 1 100%; min-width: 0; font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .mkb-btn { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--s2); color: var(--t-body); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+        .mkb-btn.main { flex: 1; border: none; background: var(--t-ink); color: var(--card); font-size: 13px; font-weight: 900; }
+        .mkb-btn:disabled { opacity: 0.5; cursor: default; }
+        .mkb-msg { flex: 1 1 100%; margin: 0; font-size: 11.5px; font-weight: 800; color: var(--t-body); min-height: 14px; }
         /* 編成①② と 報告済み。
            ★ 模擬パネルのように絶対配置の中央バッジにすると、幅156px では
               想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
@@ -4910,7 +4950,7 @@
                 </div>
                 <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
                 <!-- ▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26): 人 × 属性 (ボス 1〜5 の順)。マスの ＋ で手入力、編成を押すと直す。赤い枠 = 同じ人の別の編成とキャラが被る -->
-                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。空のマスの ＋ で手入力・編成を押すと直す。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
+                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。<strong>名前を押すと 5 属性をまとめて入力</strong> (プリセットから編成を選んでダメージだけ)。空のマスの ＋ で 1 属性ずつ手入力・編成を押すと直す。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
                 <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -6935,6 +6975,17 @@
                     </div>
                     <p class="subtitle">Discord で伝えられた「このブロックに この PT で行きたい」を、本人の代わりに予約にします。登録した時点で予約 (承認待ちはありません)。本人に通知が届き、ホームの「🔒 予約」に出ます。</p>
                     <div id="opsResvCreateBody"></div>
+                </div>
+            </div>
+
+    <!-- ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08): 📸 模擬ダメージ表の名前を押す → その人の 5 属性を 1 枚で。描くのは _mkbRender -->
+    <div class="player-select-modal" id="opsMockBulkModal" data-ops-only>
+                <div class="player-select-content" style="max-width:560px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2 id="opsMockBulkTitle">✏️ 模擬をまとめて入力</h2>
+                        <button onclick="closeOpsMockBulk()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <div id="opsMockBulkBody"></div>
                 </div>
             </div>
 
@@ -14630,6 +14681,23 @@
             if (input) input.click();
         }
 
+        // 模擬 1 枠の保存。本人の「画像で提出」・✏️ 手で入力・✏️ まとめて入力 (1 人 5 属性) が**全部ここを通る** (保存の経路を増やさない)。
+        // 編成 (5キャラ) をマスタで正規化してから、測定+編成を 1 回で保存する。supabaseSaveMockSubmission は同一編成のスロットへ自動で寄せる
+        // (同じ編成を撮り直しても編成枠を食わない)。測定ボスレベルは廃止 (2026-09-06) — level は渡さない (= 未指定 '0' として保存される)
+        async function _saveMockFor(playerId, attr, { damageB, slot = 1, characters = null, actorName = null } = {}) {
+            let canon = null;
+            if (Array.isArray(characters) && characters.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
+                try {
+                    const reg = await window.supabaseRegisterOcrCharacters(characters);
+                    canon = (reg.canonical || []).filter(Boolean);
+                } catch (e) { console.warn('[mock save team]', e?.message || e); }
+            }
+            return window.supabaseSaveMockSubmission(playerId, attr, {
+                damageB, slot,
+                characters: canon && canon.length > 0 ? canon : null,
+                actorName,
+            });
+        }
         async function handleMyDmgPreviewSave() {
             const d = _myDmgPreviewData;
             if (!d) return;
@@ -14646,20 +14714,9 @@
             }
             try {
                 const damageB = Number(d.totalDamage) / 1e9;
-                // 編成 (5キャラ) をマスタ解決してから、測定+編成を1回で保存する。
-                // saveMockSubmission は同一編成のスロットへ自動で測定を追記する
-                // (同じ編成をレベル違いで撮っても編成枠を食わない)
-                let canon = null;
-                if (Array.isArray(d.characters) && d.characters.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
-                    try {
-                        const reg = await window.supabaseRegisterOcrCharacters(d.characters);
-                        canon = (reg.canonical || []).filter(Boolean);
-                    } catch (e) { console.warn('[preview save team]', e?.message || e); }
-                }
-                // 測定ボスレベルは廃止 (2026-09-06) — level は渡さない (= 未指定 '0' として保存される)
-                const res = await window.supabaseSaveMockSubmission(id.id, attr, {
+                const res = await _saveMockFor(id.id, attr, {
                     damageB, slot: forPlayer ? (MY_TEAM_SLOTS.includes(Number(d.slot)) ? Number(d.slot) : 1) : 1,   // 📸 運営の取り込みは選んだ保存先 (① / ② / ③。段階 5 → 2026-10-24 に 3 つまで)
-                    characters: canon && canon.length > 0 ? canon : null,
+                    characters: d.characters,
                     actorName: forPlayer ? ((getCurrentIdentity() || {}).name || '運営') : null,   // 代理登録の印 (活動ログ)
                 });
                 if (statusEl) {
@@ -19152,6 +19209,7 @@
             if (cnt) cnt.textContent = dom.summary(rows, players.length);
             // ▶︎ 模擬ダメージ表 (S1): 人 × 属性 (ボス 1〜5 の順)。純ロジックは mockIntakeDomain.tableRows
             const tbl = dom.tableRows({ players, blocks, bosses: snap.bosses || [], b5Weakness: b5Weak });
+            _mockIntake.order = tbl.rows.map(r => Number(r.id));   // ✏️ まとめて入力の「次の人 →」= この並び (〆 の早い順)
             const bossOf = (a) => (snap.bosses || []).find(b => String(b.weakness || '').toLowerCase() === a) || null;
             const C = _MK_ATTR_CSS;
             const head = tbl.attrs.map(a => { const b = bossOf(a); const pt = PT_ATTRS.find(x => x.key === a)?.name || a;
@@ -19165,7 +19223,8 @@
                     const plus = list.length < MY_TEAM_SLOTS.length ? `<button type="button" class="mk-plus" onclick="_opsMockManual(${Number(r.id)}, '${a}')" title="${escapeHtml(r.name)} の ${escapeHtml(PT_ATTRS.find(x => x.key === a)?.name || a)}PT を手で入力">＋</button>` : '';
                     return `<td style="background:${C[a].bg};">${chips}${b5n}${plus}</td>`;
                 }).join('');
-                return `<tr><td><span class="mk-name">${escapeHtml(r.name)}</span></td><td class="mk-dl${r.deadline ? ' warn' : ''}">${dl}</td>${cells}</tr>`;
+                // 名前 → ✏️ その人の 5 属性をまとめて入力 (第46期メモ §3)。「このブロックのみ」の人は文字で印 (その人の模擬を先に埋める — ② とのつながり)
+                return `<tr><td><button type="button" class="mk-name btn" onclick="openOpsMockBulk(${Number(r.id)})" title="押すと ${escapeHtml(r.name)} の 5 属性をまとめて入力">${escapeHtml(r.name)}</button>${r.only ? `<span class="mk-only" title="出られるブロックが ${escapeHtml(r.only.label || r.only.short)} だけ — 模擬を先に">${escapeHtml(r.only.short)} のみ</span>` : ''}</td><td class="mk-dl${r.deadline ? ' warn' : ''}">${dl}</td>${cells}</tr>`;
             }).join('');
             body.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe><table class="mk-tbl"><thead><tr><th>名前</th><th>〆</th>${head}</tr></thead><tbody>${body2}</tbody></table></div>`;
         }
@@ -19229,6 +19288,260 @@
                 fail(e?.message || e);
             } finally {
                 if (banner) banner.style.display = 'none';
+            }
+        }
+
+        // ========== ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08) ==========
+        // ふるり「人を選ぶ → 入力のモーダルで一気に登録」。📸 模擬ダメージ表の名前を押す → その人の 5 属性を 1 枚で (ボスの順)。
+        // 属性ごとに プリセット (この属性でよく使われる編成 → 前回の自分 → 顔を押して 1 人ずつ = Q4) を押すと 5 枠に入り、ダメージ (B) だけ打つ (Q6)。
+        // 保存は「変えた枠だけ」を属性ごとに _saveMockFor で順に (Q5・新しい RPC は作らない)。失敗した枠はそのまま残して「もう一度」。
+        // プリセットの材料は 📚 人気編成と同じ (_loadTeamSubs: 今回の模擬 + 過去の凸) を開くたびに読み直す (Q4「運営が登録するほど今回の編成が上がる」)。
+        // 純ロジック (並び・被り・保存の中身) は mockIntakeDomain.presetsFor / bulkSaves / markDup。実行テスト tests/ops-mock-bulk.mjs
+        const _mkb = { gen: 0, playerId: null, name: '', seasonId: null, attrs: [], bosses: [], rows: {}, pop: {}, last: {}, prev: null, loading: false, busy: false, msg: '', deadline: null, only: null, noSlots: false, b5Weak: null, b5: null };
+        const _mkbTeam5 = (team) => { const t = (Array.isArray(team) ? team : []).filter(Boolean).map(String).slice(0, 5); while (t.length < 5) t.push(''); return t; };
+        const _mkbKey = (team) => window.mockIntakeDomain.keyOf(team);
+        // 変えた = ダメージか編成が開いたとき (または最後に保存したとき) と違う
+        const _mkbIsDirty = (r) => !!r && ((Number(r.damageB) > 0 ? Number(r.damageB) : null) !== r.orig.damageB || _mkbKey(r.team) !== r.orig.teamKey);
+        const _mkbRow = (slot, dmgB, team, existed) => { const t = _mkbTeam5(team); const d = Number(dmgB) > 0 ? Number(dmgB) : null; return { slot: Number(slot) || 1, damageB: d, team: t, existed: !!existed, saved: false, err: '', note: '', orig: { damageB: d, teamKey: _mkbKey(t) } }; };
+        const _mkbPt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+        async function openOpsMockBulk(playerId) {
+            if (!_opsMode) { showNotification('運営モードで使います'); return; }
+            if (_mkb.busy) { showNotification('保存中です — 終わってから開いてください'); return; }
+            const dom = window.mockIntakeDomain, rb = window.raidBlocksDomain;
+            if (!dom) { showNotification('模擬の取り込みの機能を読み込めていません (再読み込みしてください)'); return; }
+            let snap = opsStore.get();
+            if (!snap) { try { snap = await opsStore.load(); } catch { snap = null; } }   // 保存直後は invalidate 直後で盤面が無い — 読み終わるのを待つ
+            if (!snap?.season?.id) { showNotification('盤面を読み込めていません (↻ で取り直してください)'); return; }
+            const p = (snap.players || []).find(x => x && Number(x.id) === Number(playerId) && !x.archived) || null;
+            if (!p) { showNotification('その人が盤面に見つかりません (↻ で取り直してください)'); return; }
+            const gen = ++_mkb.gen;
+            const blocks = rb ? rb.blocksOfSeason(snap.season) : [];
+            const b5Weak = (snap.bosses || []).find(b => Number(b.boss_number) === 5)?.weakness || null;
+            Object.assign(_mkb, {
+                playerId: Number(p.id), name: String(p.name || ''), seasonId: Number(snap.season.id), bosses: snap.bosses || [],
+                attrs: dom.attrOrderOfBosses(snap.bosses || []),
+                deadline: dom.deadlineOf(p, blocks), only: dom.onlyBlockOf(p, blocks), noSlots: !p.flexTime && !(Array.isArray(p.availableSlots) && p.availableSlots.length),
+                b5Weak, b5: dom.b5SecondOf(p, b5Weak),
+                rows: {}, pop: {}, last: {}, prev: null, loading: true, busy: false, msg: '',
+            });
+            // 枠: いまの登録 (盤面の loadoutsByAttr) をそのまま (slot 順)。無い属性は空の編成① を 1 つ
+            for (const a of _mkb.attrs) {
+                const lo = (p.loadoutsByAttr && Array.isArray(p.loadoutsByAttr[a]) ? p.loadoutsByAttr[a] : []).filter(Boolean)
+                    .filter(l => Number(l.dmgB) > 0 || (Array.isArray(l.team) && l.team.some(Boolean)))
+                    .map(l => _mkbRow(l.slot, l.dmgB, l.team, true)).sort((x, y) => x.slot - y.slot);
+                _mkb.rows[a] = lo.length ? lo : [_mkbRow(1, null, [], false)];
+            }
+            document.getElementById('opsMockBulkModal').classList.add('open');
+            _mkbRender();
+            // プリセットの材料: 📚 人気編成と同じ (今回の模擬 + 過去の凸) を読み直す + 前のレイド (前回の自分)。片方が失敗しても もう片方は使う
+            await Promise.allSettled([_loadTeamSubs(true), _mkbLoadPrevSeason()]);
+            if (gen !== _mkb.gen) return;   // 待っている間に別の人を開いた / 閉じた
+            _mkbRebuildPresets();
+            _mkb.loading = false;
+            _mkbRender();
+        }
+        function closeOpsMockBulk(force = false) {
+            if (_mkb.busy) { showNotification('保存中です — 終わるまで待ってください'); return; }
+            if (!force && _mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。閉じますか?')) return;
+            ++_mkb.gen;
+            document.getElementById('opsMockBulkModal').classList.remove('open');
+        }
+        // 前のレイド (「前回の自分」の材料) = 本番シーズンのうち終わっているものの最新 (いまのシーズンは除く)。無ければ null (前回の自分は出ない)
+        async function _mkbLoadPrevSeason() {
+            const list = typeof window.supabaseLoadGrowthSeasons === 'function' ? await window.supabaseLoadGrowthSeasons(8) : [];
+            const prev = (list || []).find(s => s && !s.is_test && !s.is_active && Number(s.id) !== Number(_mkb.seasonId)) || null;
+            _mkb.prev = prev ? { id: Number(prev.id), monthKey: String(prev.month_key || '') } : null;
+        }
+        // プリセットの材料を属性ごとに控える: 人気 (📚 と同じ _teamGroupsFor) と 前回の自分 (前のレイドのその人の凸。画像パス → キャラ名は 📚 と同じ resolveNikkeChar。解決できない凸は presetsFor が捨てる)
+        function _mkbRebuildPresets() {
+            const resolveHist = (c) => { const r = resolveNikkeChar(String(c)); return r?.canonical || null; };
+            const hist = Array.isArray(_teamHistCache) ? _teamHistCache : [];
+            for (const a of _mkb.attrs) {
+                _mkb.pop[a] = _teamGroupsFor(a).list || [];
+                _mkb.last[a] = _mkb.prev ? hist.filter(r => r && Number(r.player_id) === _mkb.playerId && Number(r.season_id) === _mkb.prev.id && r.attribute === a)
+                    .map(r => (Array.isArray(r.characters) ? r.characters : []).map(resolveHist)) : [];
+            }
+        }
+        // その枠以外の編成 (被りの相手)。属性を問わず・いま画面に入っているもの (保存前も含む) — 同じキャラは 1 日 1 回
+        function _mkbOthers(attr, i) {
+            const out = [];
+            for (const [a, rs] of Object.entries(_mkb.rows)) rs.forEach((r, j) => { if (!(a === attr && j === i)) { const t = r.team.filter(Boolean); if (t.length) out.push(t); } });
+            return out;
+        }
+        function _mkbPresetsOf(attr, i) {
+            return window.mockIntakeDomain.presetsFor({ popular: _mkb.pop[attr] || [], lastRaid: _mkb.last[attr] || [], others: _mkbOthers(attr, i) });
+        }
+        function _mkbFlatRows() {
+            const out = [];
+            for (const a of _mkb.attrs) (_mkb.rows[a] || []).forEach(r => out.push({ attr: a, slot: r.slot, damageB: r.damageB, team: r.team, dirty: _mkbIsDirty(r), ref: r }));
+            return out;
+        }
+        // 次の人 = 表の並び (〆 の早い順・renderOpsMockIntake が控える _mockIntake.order) でいまの人の次
+        function _mkbNextId() {
+            const order = Array.isArray(_mockIntake.order) ? _mockIntake.order : [];
+            const i = order.indexOf(Number(_mkb.playerId));
+            return i >= 0 && i + 1 < order.length ? Number(order[i + 1]) : null;
+        }
+        function _mkbCntText(flat) {
+            const d = flat.filter(r => r.dirty), ok = d.filter(r => Number(r.damageB) > 0), noDmg = d.length - ok.length;
+            return `保存するのは変えた枠だけ: ${ok.length} 件${ok.length ? ` (${[...new Set(ok.map(r => _mkbPt(r.attr)))].join('・')})` : ''}${noDmg ? ` · ダメージの無い枠 ${noDmg} は保存しません` : ''}`;
+        }
+        function _mkbStHtml(r) {
+            if (r.err) return `<span class="st err">❌ ${escapeHtml(r.err)}</span>`;
+            if (_mkbIsDirty(r)) return '<span class="st dirty">● 変更あり (未保存)</span>';
+            if (r.saved) return '<span class="st ok">✓ 保存しました</span>';
+            return r.existed ? '<span class="st">登録済み</span>' : '';
+        }
+        function _mkbRowHtml(a, i, r) {
+            const presets = _mkbPresetsOf(a, i);
+            const curKey = _mkbKey(r.team);
+            const others = _mkbOthers(a, i).flat();
+            const pres = presets.map(p => {
+                const meta = p.source === 'last'
+                    ? `<span class="mine">前回の自分</span><br>${p.count ? `${p.count} 人が使用` : '実凸の編成'}`
+                    : `<b>${p.count} 人</b>が使用<br>模擬${p.mockCount}+過去の凸${p.histCount}${p.mine ? ' · <span class="mine">前回の自分も</span>' : ''}`;
+                const t = p.dup ? ` title="別の編成とキャラが被ります (${escapeHtml(p.dupWith.join('・'))}) — 同じキャラは 1 日 1 回"` : ' title="押すと 5 枠に入ります"';
+                // 名前は onclick に埋めない (引用符で壊れる) — 鍵は data 属性で渡す
+                return `<button type="button" class="mkb-preset${curKey === p.key ? ' on' : ''}${p.dup ? ' ng' : ''}" data-key="${escapeHtml(p.key)}" onclick="_mkbPick('${a}', ${i}, this.dataset.key)"${p.dup ? ' aria-disabled="true"' : ''}${t}><span class="faces">${p.team.map(c => _charIconHtml(c, 24)).join('')}</span><span class="pm">${meta}</span></button>`;
+            }).join('');
+            const faces = r.team.map((c, k) => {
+                const dup = !!c && others.includes(c), rr = c ? resolveNikkeChar(c) : null;
+                const title = c ? `${rr?.canonical || c}${dup ? ' — 別の編成と被り (同じキャラは 1 日 1 回)' : ''} · 押すと選び直す` : `${k + 1}枠目を選ぶ`;
+                return `<button type="button" class="mkb-face${c ? ' has' : ''}${dup ? ' dup' : ''}" onclick="_mkbPickChar('${a}', ${i}, ${k})" title="${escapeHtml(title)}">${c ? (rr?.iconPath ? `<img loading="lazy" decoding="async" src="${escapeHtml(rr.iconPath)}" alt="${escapeHtml(rr.canonical || c)}">` : escapeHtml(String(c).slice(0, 2))) : '?'}</button>`;
+            }).join('');
+            const dmg = r.damageB != null ? String(+Number(r.damageB).toFixed(2)) : '';
+            return `<div class="mkb-row">
+                <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}</div>
+                ${presets.length ? `<div class="mkb-presets">${pres}</div>` : (_mkb.loading ? '' : '<p class="mkb-note">この属性のプリセットはまだありません — 顔を押して 1 人ずつ選んでください</p>')}
+                <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="number" inputmode="decimal" step="0.01" min="0" value="${dmg}" placeholder="例 28.4" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"><span>B</span></label></div>
+            </div>`;
+        }
+        function _mkbRender() {
+            const body = document.getElementById('opsMockBulkBody'), title = document.getElementById('opsMockBulkTitle');
+            if (!body || !_mkb.playerId) return;
+            const C = _MK_ATTR_CSS;
+            if (title) title.textContent = `✏️ ${_mkb.name} の模擬 (${_mkb.attrs.length} 属性)`;
+            const bossOf = (a) => (_mkb.bosses || []).find(b => String(b.weakness || '').toLowerCase() === a) || null;
+            const pills = [];
+            if (_mkb.only) pills.push(`<span class="mk-only" title="出られるブロックが ${escapeHtml(_mkb.only.label || _mkb.only.short)} だけ">${escapeHtml(_mkb.only.short)} のみ</span>`);
+            const dl = _mkb.deadline;
+            pills.push(`<span class="mkb-pill">${dl ? (dl.at ? `〆 ${escapeHtml(dl.at)} (${escapeHtml(dl.short || dl.name)}の前)` : `〆 ${escapeHtml(dl.short || dl.name)}の前`) : (_mkb.noSlots ? '時間 未登録' : 'いつでも')}</span>`);
+            if (_mkb.b5 && _mkb.b5Weak) pills.push(`<span class="mkb-pill">18 時以降に出られる → ${escapeHtml(_mkbPt(_mkb.b5Weak))}PT (ボス 5) は 2 編成</span>`);
+            const filled = _mkb.attrs.filter(a => (_mkb.rows[a] || []).some(r => Number(r.damageB) > 0));
+            const head = `<div class="mkb-head"><div class="mkb-pills">${pills.join('')}</div>
+                <p class="mkb-note"><b id="mkbProg">${filled.length} / ${_mkb.attrs.length} 属性</b> · ボスの順。<b>プリセットを押すと 5 キャラが入ります</b> (顔を押すと 1 人ずつ選べます)。ダメージは B 単位。保存するのは変えた枠だけです。${_mkb.loading ? ' <span class="mkb-loading">プリセットを読み込み中…</span>' : ''}</p></div>`;
+            const attrsHtml = _mkb.attrs.map(a => {
+                const b = bossOf(a), rows = _mkb.rows[a] || [];
+                const done = rows.some(r => Number(r.damageB) > 0 && !_mkbIsDirty(r));
+                const canAdd = rows.length < MY_TEAM_SLOTS.length;
+                const addLabel = (a === _mkb.b5Weak && rows.length === 1) ? '＋ 2 編成目 (Lv4 のボス 5 用・キャラが被らない編成だけ選べます)' : `＋ 編成${SLOT_JP[rows.length + 1] || rows.length + 1}を足す`;
+                return `<div class="mkb-attr" style="border-left-color:${C[a].deep};" data-mkb-attr="${a}">
+                    <div class="mkb-ah"><span style="color:${C[a].deep};">${b ? `B${Number(b.boss_number)} ` : ''}${escapeHtml(_mkbPt(a))}PT</span>${b ? `<small>vs ${escapeHtml(b.name || b.boss_code || '')}</small>` : ''}<span class="mkb-done" id="mkbDone-${a}"${done ? '' : ' hidden'}>✓ 登録済み</span></div>
+                    ${rows.map((r, i) => _mkbRowHtml(a, i, r)).join('')}
+                    ${canAdd ? `<button type="button" class="mkb-add" onclick="_mkbAddRow('${a}')"${_mkb.busy ? ' disabled' : ''}>${addLabel}</button>` : ''}
+                </div>`;
+            }).join('');
+            const flat = _mkbFlatRows(), canSave = flat.some(r => r.dirty && Number(r.damageB) > 0);
+            const nextId = _mkbNextId(), nextName = nextId != null ? ((_mockIntake.players || []).find(p => Number(p.id) === nextId)?.name || '') : '';
+            const foot = `<div class="mkb-foot">
+                <span class="cnt" id="mkbCnt">${_mkbCntText(flat)}</span>
+                ${nextId != null ? `<button type="button" class="mkb-btn" onclick="_mkbNext()"${_mkb.busy ? ' disabled' : ''}>次の人 → ${escapeHtml(nextName)}</button>` : ''}
+                <button type="button" class="mkb-btn main" id="mkbSaveBtn" onclick="handleOpsMockBulkSave()"${(_mkb.busy || !canSave) ? ' disabled' : ''}>${_mkb.busy ? '保存中…' : `✅ ${escapeHtml(_mkb.name)} の模擬をまとめて保存`}</button>
+                <p class="mkb-msg" id="mkbMsg">${_mkb.msg ? escapeHtml(_mkb.msg) : ''}</p></div>`;
+            body.innerHTML = head + attrsHtml + foot;
+        }
+        // 入力中は描き直さない (焦点が飛ぶ) — 件数・保存ボタン・進み・✓・その枠の状態だけ
+        function _mkbSyncFooter() {
+            const flat = _mkbFlatRows();
+            const cnt = document.getElementById('mkbCnt'); if (cnt) cnt.textContent = _mkbCntText(flat);
+            const btn = document.getElementById('mkbSaveBtn'); if (btn) btn.disabled = _mkb.busy || !flat.some(r => r.dirty && Number(r.damageB) > 0);
+            const prog = document.getElementById('mkbProg'); if (prog) prog.textContent = `${_mkb.attrs.filter(a => (_mkb.rows[a] || []).some(r => Number(r.damageB) > 0)).length} / ${_mkb.attrs.length} 属性`;
+            for (const a of _mkb.attrs) {
+                const el = document.getElementById(`mkbDone-${a}`); if (el) el.hidden = !(_mkb.rows[a] || []).some(r => Number(r.damageB) > 0 && !_mkbIsDirty(r));
+                (_mkb.rows[a] || []).forEach((r, i) => { const st = document.getElementById(`mkbSt-${a}-${i}`); if (st) st.innerHTML = _mkbStHtml(r); });
+            }
+        }
+        function _mkbPick(attr, i, key) {
+            if (_mkb.busy) return;
+            const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
+            const p = _mkbPresetsOf(attr, i).find(x => x.key === key); if (!p) return;
+            if (p.dup) { showNotification(`別の編成とキャラが被ります (${p.dupWith.join('・')}) — 同じキャラは 1 日 1 回なので選べません`); return; }
+            r.team = _mkbTeam5(p.team); r.err = '';
+            _mkbRender();
+            const inp = document.querySelector(`[data-mkb-dmg="${attr}:${i}"]`);
+            if (inp && !(Number(inp.value) > 0)) inp.focus();   // 編成が入ったらダメージを打つだけ
+        }
+        function _mkbPickChar(attr, i, k) {
+            if (_mkb.busy) return;
+            const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
+            const gen = _mkb.gen;
+            const cur = r.team[k] ? (fuzzyResolveCharacter(r.team[k]) || r.team[k]) : '';
+            // Q1 (2026-10-26) と同じ: その属性の採用数の順で並ぶ (openIconPicker の attr)
+            openIconPicker(cur, (name) => {
+                if (gen !== _mkb.gen) return;   // 選んでいる間に別の人を開いた / 閉じた
+                r.team[k] = name; r.err = '';
+                _mkbRender();
+            }, `📚 ${_mkbPt(attr)}PT 編成${SLOT_JP[r.slot] || r.slot} の ${k + 1}枠目`, { attr });
+        }
+        function _mkbAddRow(attr) {
+            if (_mkb.busy) return;
+            const rows = _mkb.rows[attr] || (_mkb.rows[attr] = []);
+            if (rows.length >= MY_TEAM_SLOTS.length) return;
+            const slot = MY_TEAM_SLOTS.find(n => !rows.some(r => Number(r.slot) === n));
+            if (!slot) return;
+            rows.push(_mkbRow(slot, null, [], false));
+            _mkbRender();
+        }
+        function _mkbSetDmg(attr, i, v) {
+            const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
+            const n = Number(String(v || '').replace(/,/g, ''));
+            r.damageB = Number.isFinite(n) && n > 0 ? n : null;
+            r.err = '';
+            _mkbSyncFooter();
+        }
+        function _mkbNext() {
+            if (_mkb.busy) return;
+            const next = _mkbNextId(); if (next == null) return;
+            if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに次の人へ進みますか?')) return;
+            openOpsMockBulk(next);
+        }
+        async function handleOpsMockBulkSave() {
+            if (_mkb.busy) return;
+            const dom = window.mockIntakeDomain; if (!dom) return;
+            const flat = _mkbFlatRows();
+            const { saves } = dom.bulkSaves(flat);   // 変えた枠だけ・ダメージのある枠だけ (Q5 / Q6)
+            if (!saves.length) { _mkb.msg = '変えた枠がありません (ダメージの入っていない枠は保存しません)'; _mkbRender(); return; }
+            const pid = _mkb.playerId, name = _mkb.name;
+            const actorName = (getCurrentIdentity() || {}).name || '運営';   // 代理登録の印 (活動ログ)
+            _mkb.busy = true; _mkb.msg = ''; _mkbRender();
+            const ok = [], ng = [];
+            try {
+                for (const s of saves) {   // 属性ごとに今の保存を順に (同時に投げない: 同一編成の寄せ先の判定が同じ行を読む)
+                    const row = flat.find(r => r.attr === s.attr && Number(r.slot) === s.slot)?.ref || null;
+                    try {
+                        const res = await _saveMockFor(pid, s.attr, { damageB: s.damageB, slot: s.slot, characters: s.characters, actorName });
+                        if (row) {
+                            if (res && Number(res.slot) && Number(res.slot) !== s.slot) { row.note = `同一編成のため編成${SLOT_JP[Number(res.slot)] || res.slot}に統合`; row.slot = Number(res.slot); }
+                            row.orig = { damageB: s.damageB, teamKey: _mkbKey(row.team) }; row.existed = true; row.saved = true; row.err = '';
+                        }
+                        ok.push(`${_mkbPt(s.attr)} ${s.damageB.toFixed(1)}B`);
+                    } catch (e) {
+                        if (row) { row.err = String(e?.message || e); row.saved = false; }   // 失敗した枠はそのまま残す (もう一度押せば その枠だけ)
+                        ng.push(_mkbPt(s.attr));
+                    }
+                }
+            } finally {
+                _mkb.busy = false;
+            }
+            _mkb.msg = (ok.length ? `✅ ${name}: ${ok.join('・')} を登録しました` : '')
+                + (ng.length ? `${ok.length ? ' / ' : ''}❌ ${ng.join('・')} は保存できませんでした (そのまま残しています — もう一度押してください)` : '');
+            _mkbRender();
+            if (ok.length) {
+                // 盤面に模擬が増えた: 表・メンバー状況・組む を描き直す (✏️ 1 属性の保存と同じ)。本人のぶんなら模擬タブも
+                opsStore.invalidate();
+                _opsReloadBoardCards();
+                const me = getCurrentIdentity();
+                if (me?.id && Number(me.id) === pid) renderMyDamagePanels(me);
             }
         }
 

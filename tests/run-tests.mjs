@@ -13481,7 +13481,8 @@ console.log('\ngrowthDomain:');
         const render = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /\+\+_mockIntake\.gen;/.test(render), '運営OFF / 世代を進めていない');
         assert.ok(/const rows = dom\.missingRows\(\{ players, blocks, b5Weakness: b5Weak \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
-        assert.ok(/<span class="mk-name">/.test(render) && !/_opsMockIntakePickFromList/.test(html), '表の名前がボタンのまま (「誰の模擬か + 📷」と同じ入口の 2 つ目 — 2026-10-29 ボタンの監査)');
+        // 名前は ✏️ まとめて入力 (1 人 5 属性) の入口 (第46期メモ §3・2026-11-08)。📷 と同じ入口の 2 つ目 (_opsMockIntakePickFromList・2026-10-29 に消した) は戻さない
+        assert.ok(/<button type="button" class="mk-name btn" onclick="openOpsMockBulk\(\$\{Number\(r\.id\)\}\)"/.test(render) && !/_opsMockIntakePickFromList/.test(html), '表の名前が まとめて入力 を開かない / 📷 の 2 つ目の入口が戻っている');
     });
 
     await testAsync('★ 実行: 代理登録の印 (actorName) は 31 未適用の劣化経路 (supabaseSavePlayerDamage) でも活動ログに残る / 本人の提出には付かない (Codex指摘 adae2da)', async () => {
@@ -14772,14 +14773,92 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         const u = t.rows.find(r => r.name === 'う'); assert.deepEqual([u.noSlots, u.deadline, u.submitted], [true, null, 0]);
         assert.deepEqual(d.tableRows({}), { attrs: d.ATTR_KEYS, rows: [] });
     });
+    test('★ ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3): presetsFor の並び (今回の模擬 → 過去の凸 → 人数)・前回の自分・被り / bulkSaves は変えた枠だけ・ダメージのある枠だけ / onlyBlockOf / markDup', () => {
+        const d = globalThis.mockIntakeDomain;
+        const T = (s) => s.split('');
+        const popular = [
+            { team: T('abcde'), count: 9, mockCount: 1, histCount: 8 },   // 人数は多いが今回の模擬は 1
+            { team: T('fghij'), count: 4, mockCount: 4, histCount: 0 },   // 今回の模擬 4 → 先頭 (Q4)
+            { team: T('klmno'), count: 5, mockCount: 1, histCount: 4 },   // 模擬 1 は同じ → 過去の凸 4 < 8 → 3 番目
+            { team: T('pqrst'), count: 1, mockCount: 0, histCount: 1 },
+            { team: T('abcd'), count: 99, mockCount: 99, histCount: 0 },  // 4 人しか無い → 出さない
+            { team: ['e', 'd', 'c', 'b', 'a'], count: 3, mockCount: 3, histCount: 0 },   // 同じ 5 人 (並びだけ違う) → 1 つにまとめる (人数はそれぞれ大きいほう: 9 人・模擬 3・凸 8)
+        ];
+        const r1 = d.presetsFor({ popular });
+        assert.deepEqual(r1.map(p => p.key), ['f|g|h|i|j', 'a|b|c|d|e', 'k|l|m|n|o', 'p|q|r|s|t'], '並びが 今回の模擬 → 過去の凸 → 人数 でない / 4 人の編成・同じ 5 人の重複を出した');
+        assert.ok(r1.every(p => p.source === 'popular' && !p.mine && !p.dup && p.dupWith.length === 0), 'popular の印');
+        assert.deepEqual([r1[1].count, r1[1].mockCount, r1[1].histCount], [9, 3, 8], '同じ 5 人の 2 行をまとめていない');
+        // 前回の自分: 人気に無ければ後ろに足す (source last・mine)・人気にあればその行に mine・5 人そろわない (解決できなかった) 凸と同じ編成の 2 回目は捨てる
+        const r2 = d.presetsFor({ popular, lastRaid: [T('abcde'), T('uvwxy'), ['a', 'b', null, 'd', 'e'], T('uvwxy')] });
+        assert.deepEqual(r2.map(p => [p.key, p.source, p.mine]), [['f|g|h|i|j', 'popular', false], ['a|b|c|d|e', 'popular', true], ['k|l|m|n|o', 'popular', false], ['p|q|r|s|t', 'popular', false], ['u|v|w|x|y', 'last', true]]);
+        // 上限: limit で人気を切る。切られた人気と同じ前回の自分は人数つきで後ろに
+        const r3 = d.presetsFor({ popular, lastRaid: [T('pqrst')], limit: 2 });
+        assert.deepEqual(r3.map(p => [p.key, p.source, p.count]), [['f|g|h|i|j', 'popular', 4], ['a|b|c|d|e', 'popular', 9], ['p|q|r|s|t', 'last', 1]]);
+        // 被り: その人のほかの編成とキャラが 1 人でも重なれば dup (同じキャラは 1 日 1 回)
+        const r4 = d.presetsFor({ popular, others: [T('e1234'), T('zzzzz')] });
+        assert.deepEqual(r4.map(p => [p.key, p.dup, p.dupWith]), [['f|g|h|i|j', false, []], ['a|b|c|d|e', true, ['e']], ['k|l|m|n|o', false, []], ['p|q|r|s|t', false, []]]);
+        assert.deepEqual(d.presetsFor({}), [], '材料なしで落ちる');
+        // bulkSaves: 変えた枠だけ・ダメージのある枠だけ (Q5 / Q6)
+        const rows = [
+            { attr: 'iron', slot: 1, damageB: 30, team: T('abcde'), dirty: true },
+            { attr: 'fire', slot: 2, damageB: 20.5, team: ['', '', '', '', ''], dirty: true },   // 編成なし = キャラは null
+            { attr: 'water', slot: 1, damageB: 25, team: T('fghij'), dirty: false },             // 変えていない → 保存しない
+            { attr: 'wind', slot: 1, damageB: null, team: T('klmno'), dirty: true },            // 編成だけ → 保存しない (Q6)
+            { attr: 'electric', slot: 9, damageB: 1, team: [], dirty: true },                   // 枠の番号が壊れていれば ①
+            { attr: 'nope', slot: 1, damageB: 1, team: [], dirty: true },
+        ];
+        assert.deepEqual(d.bulkSaves(rows), {
+            saves: [{ attr: 'iron', slot: 1, damageB: 30, characters: T('abcde') }, { attr: 'fire', slot: 2, damageB: 20.5, characters: null }, { attr: 'electric', slot: 1, damageB: 1, characters: null }],
+            skipped: [{ attr: 'water', slot: 1, why: 'unchanged' }, { attr: 'wind', slot: 1, why: 'no_damage' }],
+        });
+        assert.deepEqual(d.bulkSaves(null), { saves: [], skipped: [] });
+        // onlyBlockOf / tableRows.only: 出られるブロックが 1 つだけの人 (= blockBuild.lockKind の only)
+        const blocks = globalThis.raidBlocksDomain.blocksOfSeason({ metadata: {} });
+        const P = (slots) => ({ id: 1, name: 'x', availableSlots: slots, loadoutsByAttr: {} });
+        assert.deepEqual(d.onlyBlockOf(P(['h17', 'h18']), blocks), { idx: 3, short: blocks[3].short, label: blocks[3].label });
+        assert.equal(d.onlyBlockOf(P(['h17', 'h22']), blocks), null, '2 つのブロックに出られる人を「のみ」にした');
+        assert.equal(d.onlyBlockOf(P([]), blocks), null, '時間未登録を「のみ」にした');
+        assert.equal(d.onlyBlockOf({ ...P(['h17']), flexTime: true }, blocks), null, '⏳隙間を「のみ」にした');
+        assert.equal(d.tableRows({ players: [P(['h17'])], blocks, bosses: [] }).rows[0].only.idx, 3, '表の行に only が無い');
+        assert.equal(d.tableRows({ players: [P(['h17', 'h22'])], blocks, bosses: [] }).rows[0].only, null);
+        // markDup = 表の赤い枠と同じ判定 (キャラの無い編成は判定しない)
+        const L = [{ team: T('abcde') }, { team: T('e1234') }, { team: [] }, { team: T('vwxyz') }];
+        assert.deepEqual(d.markDup(L).map(x => x.dup), [true, true, false, false]);
+        assert.equal(d.keyOf(['b', 'a', 'a', '', null]), 'a|b');
+    });
+
+    test('★ 配線: ✏️ まとめて入力 — 表の名前 → openOpsMockBulk / モーダル / 保存は _saveMockFor (本人の提出と同じ経路) を変えた枠だけ順に / プリセットは開くたびに読み直す / 次の人は表の並び', () => {
+        assert.ok(/<div class="player-select-modal" id="opsMockBulkModal" data-ops-only>/.test(html) && /id="opsMockBulkBody"/.test(html), 'モーダルが無い');
+        const r = html.slice(html.indexOf('async function renderOpsMockIntake'), html.indexOf('async function handleOpsMockIntakeUpload'));
+        assert.ok(/\$\{r\.only \? `<span class="mk-only"/.test(r), '「このブロックのみ」の印が無い');
+        assert.ok(/_mockIntake\.order = tbl\.rows\.map\(r => Number\(r\.id\)\);/.test(r), '次の人の並びを控えていない');
+        const m = html.slice(html.indexOf('const _mkb = {'), html.indexOf('// ========== 👥 メンバー状況ボード'));
+        assert.ok(m.length > 1000, 'まとめて入力の本体が見つからない');
+        assert.ok(/await Promise\.allSettled\(\[_loadTeamSubs\(true\), _mkbLoadPrevSeason\(\)\]\);/.test(m), 'プリセットの材料を開くたびに読み直していない (Q4)');
+        assert.ok(/if \(gen !== _mkb\.gen\) return;/.test(m), '世代ガードが無い');
+        assert.ok(/const \{ saves \} = dom\.bulkSaves\(flat\);/.test(m) && /await _saveMockFor\(pid, s\.attr, \{ damageB: s\.damageB, slot: s\.slot, characters: s\.characters, actorName \}\);/.test(m), '保存が bulkSaves → _saveMockFor でない');
+        assert.ok(!/supabaseSaveMockSubmission|supabaseRegisterOcrCharacters/.test(m), 'まとめて入力が保存の RPC を直に呼んでいる (経路を増やさない)');
+        assert.ok(/window\.mockIntakeDomain\.presetsFor\(\{ popular: _mkb\.pop\[attr\] \|\| \[\], lastRaid: _mkb\.last\[attr\] \|\| \[\], others: _mkbOthers\(attr, i\) \}\)/.test(m), 'プリセットをドメインで作っていない');
+        assert.ok(/if \(p\.dup\) \{ showNotification\(/.test(m), '被るプリセットを選べる');
+        assert.ok(/opsStore\.invalidate\(\);\s*\n\s*_opsReloadBoardCards\(\);/.test(m), '保存後に盤面を取り直していない');
+        assert.ok(/data-key="\$\{escapeHtml\(p\.key\)\}" onclick="_mkbPick\('\$\{a\}', \$\{i\}, this\.dataset\.key\)"/.test(m), 'プリセットの鍵を onclick に埋めている (名前は onclick に埋めない)');
+        assert.ok(/if \(_mkb\.busy\) \{ showNotification\('保存中です/.test(m), '保存中に閉じられる / 開き直せる');
+        // 本人の提出 (handleMyDmgPreviewSave) も同じ保存関数を通る。保存の RPC を直に呼ぶのは _saveMockFor と 従来の編成編集 (entries 付き) の 2 か所だけ
+        const pv = html.slice(html.indexOf('async function handleMyDmgPreviewSave()'), html.indexOf('async function detectPtAttrFromBossName'));
+        assert.ok(/const res = await _saveMockFor\(id\.id, attr, \{/.test(pv) && !/supabaseRegisterOcrCharacters/.test(pv), '本人の提出が _saveMockFor を通っていない');
+        assert.equal((html.match(/window\.supabaseSaveMockSubmission\(/g) || []).length, 2, '保存の RPC を呼ぶ場所が増えた (_saveMockFor と 編成編集の entries 付き だけ)');
+        const sv = html.slice(html.indexOf('async function _saveMockFor('), html.indexOf('async function handleMyDmgPreviewSave()'));
+        assert.ok(/supabaseRegisterOcrCharacters\(characters\)/.test(sv) && /characters: canon && canon\.length > 0 \? canon : null,/.test(sv), '_saveMockFor がキャラをマスタで正規化していない');
+    });
+
     test('★ 配線: 📸 のカードが表 (tableRows・ボス順の見出し・属性の薄い地・＋ と編成の押下 → _opsMockManual・名前 → 読み取り) / ✏️ 手で入力 / プレビューは手入力のときダメージの欄・見出し・再撮影なし / キャラ選びは属性の採用数の順', () => {
         const r = html.slice(html.indexOf('async function renderOpsMockIntake'), html.indexOf('async function handleOpsMockIntakeUpload'));
         assert.ok(/const tbl = dom\.tableRows\(\{ players, blocks, bosses: snap\.bosses \|\| \[\], b5Weakness: b5Weak \}\);/.test(r), '表の行をドメインで作っていない');
         assert.ok(/<table class="mk-tbl">/.test(r) && /data-no-swipe/.test(r), '表が無い / 横スクロールの箱に data-no-swipe が無い');
         assert.ok(/onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}', \$\{Number\(c\.slot\)\}\)"/.test(r) && /onclick="_opsMockManual\(\$\{Number\(r\.id\)\}, '\$\{a\}'\)"/.test(r), '編成を押して直す / ＋ で手入力 が無い');
         assert.ok(/class="mk-chip\$\{c\.dup \? ' dup' : ''\}"/.test(r), '被りの赤い枠が無い');
-        // 名前は文字 (押すとファイル選択が開いた・「誰の模擬か + 📷」と同じ — 2026-10-29 ボタンの監査)
-        assert.ok(/<td><span class="mk-name">\$\{escapeHtml\(r\.name\)\}<\/span><\/td>/.test(r) && !html.includes('_opsMockIntakePickFromList'), '名前がボタンのまま');
+        // 名前 → ✏️ まとめて入力 (第46期メモ §3)。押すとファイル選択が開く 2 つ目の入口 (2026-10-29 に消した) は戻さない
+        assert.ok(/<td><button type="button" class="mk-name btn" onclick="openOpsMockBulk\(\$\{Number\(r\.id\)\}\)"[^>]*>\$\{escapeHtml\(r\.name\)\}<\/button>/.test(r) && !html.includes('_opsMockIntakePickFromList'), '名前が まとめて入力 を開かない');
         assert.ok(/list\.length < MY_TEAM_SLOTS\.length \? `<button type="button" class="mk-plus"/.test(r), '3 編成そろったマスにも ＋ が出る');
         // 手で入力の入口は表のマスの ＋ / 編成のチップ (カードの「✏️ 手で入力」は同じ操作の 2 つ目だった — 2026-10-29 ボタンの監査)
         assert.ok(!/onclick="_opsMockManual\(\)"/.test(html) && /_opsMockManual\(\$\{Number\(r\.id\)\}/.test(html), '✏️ 手で入力 が 2 つある / 表から手入力できない');

@@ -143,12 +143,38 @@
         const idxs = rb.blocksOfSlots(bl, slots);
         return idxs.length ? { idx: idxs[0], name: String(bl[idxs[0]].name || ''), short: String(bl[idxs[0]].short || bl[idxs[0]].name || ''), range: String(bl[idxs[0]].range || ''), label: String(bl[idxs[0]].label || ''), ...rebuildAt(bl, idxs[0]) } : null;
     }
+    /** 出られるブロックが 1 つだけならそのブロック (blockBuildDomain.lockKind の 'only' と同じ判定: 出られるブロックの数が 1)。⏳隙間・時間未登録・2 つ以上は null */
+    function onlyBlockOf(p, blocks) {
+        const rb = root.raidBlocksDomain;
+        const bl = Array.isArray(blocks) ? blocks : [];
+        const slots = Array.isArray(p && p.availableSlots) ? p.availableSlots : [];
+        if (!rb || !bl.length || !slots.length || (p && p.flexTime)) return null;
+        const idxs = rb.blocksOfSlots(bl, slots);
+        if (idxs.length !== 1) return null;
+        const b = bl[idxs[0]];
+        return { idx: idxs[0], short: String(b.short || b.name || ''), label: String(b.label || '') };
+    }
+    /**
+     * 同じ人の編成どうしのキャラ被り (同じキャラは 1 日 1 回 → 両方は使えない)。list[].team を見て list[].dup を立てる (キャラの無い編成は判定しない)。
+     * ▶︎ 模擬ダメージ表の赤い枠 と ✏️ まとめて入力 の顔の赤 が同じ判定になるよう、ここが唯一
+     */
+    function markDup(list) {
+        const all = Array.isArray(list) ? list : [];
+        for (const x of all) x.dup = false;
+        for (const x of all) for (const y of all) {
+            if (x === y) continue;
+            const tx = Array.isArray(x.team) ? x.team.filter(Boolean) : [], ty = Array.isArray(y.team) ? y.team.filter(Boolean) : [];
+            if (tx.length && ty.length && tx.some(c => ty.includes(c))) { x.dup = true; y.dup = true; }
+        }
+        return all;
+    }
     /**
      * 人 × 属性 の表。マス = その人のその属性の編成 (slot / dmgB / team / dup)。
      * dup = 同じ人の別の編成 (属性を問わず) と同じキャラが 1 人でもいる (同じキャラは 1 日 1 回 → 両方は使えない)。キャラの無い編成は判定しない。
      * 並びは missingRows と同じ (〆 の早い順 → 足りない属性が多い順 → 名前)。書庫と「今回は難しい」は除く。
      * @param {{ players?: Array<Object>, blocks?: Array<Object>, bosses?: Array<Object>, b5Weakness?: string|null }} a
-     * @returns {{ attrs: string[], rows: Array<{ id, name, deadline, noSlots, submitted, missing: string[], b5Short: number, cells: Object<string, Array<{slot, dmgB, team, dup}>> }> }}
+     * @returns {{ attrs: string[], rows: Array<{ id, name, deadline, only, noSlots, submitted, missing: string[], b5Short: number, cells: Object<string, Array<{slot, dmgB, team, dup}>> }> }}
+     *   only = 出られるブロックが 1 つだけの人はそのブロック { idx, short, label } (「このブロックのみ」= 第46期メモ §3 の 5。その人の模擬を先に埋める)。ほかは null
      */
     function tableRows({ players, blocks, bosses, b5Weakness = null } = {}) {
         const attrs = attrOrderOfBosses(bosses);
@@ -163,18 +189,88 @@
                 if (!(dmgB > 0) && !team.length) return;
                 all.push({ attr: a, slot: Number(l.slot) || 1, dmgB, team, dup: false });
             }));
-            for (const x of all) for (const y of all) if (x !== y && x.team.length && y.team.length && x.team.some(c => y.team.includes(c))) { x.dup = true; y.dup = true; }
+            markDup(all);
             const cells = {};
             attrs.forEach(a => { cells[a] = all.filter(x => x.attr === a).sort((x, y) => x.slot - y.slot).map(({ slot, dmgB, team, dup }) => ({ slot, dmgB, team, dup })); });
             const missing = attrs.filter(a => !cells[a].some(c => c.dmgB > 0));
             const b5 = b5SecondOf(p, b5Weakness);
             const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
-            rows.push({ id: p.id, name: p.name, deadline: deadlineOf(p, blocks), noSlots: !p.flexTime && slots.length === 0, submitted: attrs.length - missing.length, missing, b5Short: b5 ? b5.short : 0, cells });
+            rows.push({ id: p.id, name: p.name, deadline: deadlineOf(p, blocks), only: onlyBlockOf(p, blocks), noSlots: !p.flexTime && slots.length === 0, submitted: attrs.length - missing.length, missing, b5Short: b5 ? b5.short : 0, cells });
         }
         const key = (r) => (r.deadline ? r.deadline.idx : Number.MAX_SAFE_INTEGER);
         rows.sort((a, b) => (key(a) - key(b)) || (b.missing.length - a.missing.length) || String(a.name).localeCompare(String(b.name), 'ja'));
         return { attrs, rows };
     }
 
-    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf, defaultSlot, SLOTS, attrOrderOfBosses, deadlineOf, tableRows };
+    // ===== ✏️ 1 人 5 属性のまとめて入力 (第46期メモ §3・2026-11-08・ふるり「人を選ぶ → 入力のモーダルで一気に登録」) =====
+    const keyOf = (team) => [...new Set((Array.isArray(team) ? team : []).filter(Boolean).map(String))].sort().join('|');
+    const clean5 = (team) => [...new Set((Array.isArray(team) ? team : []).filter(Boolean).map(String))];
+    /**
+     * 属性ごとのプリセット (Q4 の並び): 1. この属性でよく使われる編成 (📚 人気編成と同じ集計 `popularTeamsDomain.buildPopularTeams` の list を
+     *   **今回の模擬の人数 → 過去の凸の人数 → 使った人数** の順に並べ直し・上位 limit) → 2. 前回の自分 (前のレイドの実凸・人気に無いものだけ後ろに足す。人気にあればその行に mine)。
+     *   3. 「自分で 5 キャラを選ぶ」は画面 (顔を押す)。
+     *   dup = その人のほかの編成 (いま画面に入っているもの・編集中の枠は除く = others) とキャラが被る → 選べない (同じキャラは 1 日 1 回)。dupWith = 被るキャラ
+     * @param {{ popular?: Array<{team:string[], count?:number, mockCount?:number, histCount?:number}>, lastRaid?: string[][], others?: string[][], limit?: number }} a
+     * @returns {Array<{ key:string, team:string[], source:'popular'|'last', mine:boolean, count:number, mockCount:number, histCount:number, dup:boolean, dupWith:string[] }>}
+     */
+    function presetsFor({ popular, lastRaid, others, limit = 5 } = {}) {
+        const lim = Number.isInteger(limit) && limit > 0 ? limit : 5;
+        const oth = (Array.isArray(others) ? others : []).map(clean5).filter(t => t.length);
+        // 同じ 5 人 (並びだけ違う) が 2 行来たら 1 つにまとめる (人数はそれぞれ大きいほう。buildPopularTeams はもう鍵でまとめているので通常は来ない)
+        const byKey = new Map();
+        for (const g0 of (Array.isArray(popular) ? popular : [])) {
+            if (!g0) continue;
+            const g = { team: clean5(g0.team), count: Number(g0.count) || 0, mockCount: Number(g0.mockCount) || 0, histCount: Number(g0.histCount) || 0 };
+            if (g.team.length !== 5) continue;
+            const k = keyOf(g.team), cur = byKey.get(k);
+            if (!cur) byKey.set(k, g);
+            else { cur.count = Math.max(cur.count, g.count); cur.mockCount = Math.max(cur.mockCount, g.mockCount); cur.histCount = Math.max(cur.histCount, g.histCount); }
+        }
+        const pop = [...byKey.values()]
+            .sort((a, b) => (b.mockCount - a.mockCount) || (b.histCount - a.histCount) || (b.count - a.count) || (keyOf(a.team) < keyOf(b.team) ? -1 : keyOf(a.team) > keyOf(b.team) ? 1 : 0));
+        const out = [], seen = new Set();
+        for (const g of pop) {
+            const k = keyOf(g.team);
+            seen.add(k);
+            out.push({ key: k, team: g.team, source: 'popular', mine: false, count: g.count, mockCount: g.mockCount, histCount: g.histCount });
+            if (out.length >= lim) break;
+        }
+        for (const t0 of (Array.isArray(lastRaid) ? lastRaid : [])) {
+            const t = clean5(t0);
+            if (t.length !== 5) continue;   // 5 人そろわない (解決できなかった) 凸は使わない (人気編成と同じ)
+            const k = keyOf(t);
+            const hit = out.find(o => o.key === k);
+            if (hit) { hit.mine = true; continue; }
+            if (seen.has(k)) continue;
+            seen.add(k);
+            const pg = pop.find(g => keyOf(g.team) === k) || null;   // 上位 limit に入らなかった人気の編成なら人数も添える
+            out.push({ key: k, team: t, source: 'last', mine: true, count: pg ? pg.count : 0, mockCount: pg ? pg.mockCount : 0, histCount: pg ? pg.histCount : 0 });
+        }
+        for (const o of out) {
+            o.dupWith = [...new Set(oth.flatMap(x => x.filter(c => o.team.includes(c))))];
+            o.dup = o.dupWith.length > 0;
+        }
+        return out;
+    }
+    /**
+     * まとめて保存の中身 (Q5「1 回押すと入れた属性ぶんが全部保存される・裏は属性ごとに今の保存を順に」): **変えた枠だけ・ダメージの入っている枠だけ**。
+     *   変えていない枠は保存しない (活動ログに「運営が代理で登録」が人数ぶん並ばないように)。編成だけ入れてダメージが無い枠は保存しない (Q6: 1 編成 = ダメージ 1 つ)。
+     * @param {Array<{ attr:string, slot:number, damageB:number|null, team:string[], dirty:boolean }>} rows  画面の枠 (属性の順)
+     * @returns {{ saves: Array<{attr:string, slot:number, damageB:number, characters:string[]|null}>, skipped: Array<{attr:string, slot:number, why:'unchanged'|'no_damage'}> }}
+     */
+    function bulkSaves(rows) {
+        const saves = [], skipped = [];
+        for (const r of (Array.isArray(rows) ? rows : [])) {
+            if (!r || !ATTR_KEYS.includes(r.attr)) continue;
+            const slot = SLOTS.includes(Number(r.slot)) ? Number(r.slot) : 1;
+            const dmg = Number(r.damageB);
+            if (!r.dirty) { skipped.push({ attr: r.attr, slot, why: 'unchanged' }); continue; }
+            if (!(dmg > 0)) { skipped.push({ attr: r.attr, slot, why: 'no_damage' }); continue; }
+            const team = clean5(r.team);
+            saves.push({ attr: r.attr, slot, damageB: dmg, characters: team.length ? team : null });
+        }
+        return { saves, skipped };
+    }
+
+    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf, defaultSlot, SLOTS, attrOrderOfBosses, deadlineOf, onlyBlockOf, markDup, tableRows, presetsFor, bulkSaves, keyOf };
 })(typeof window !== 'undefined' ? window : globalThis);
