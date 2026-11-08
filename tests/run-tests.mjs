@@ -14846,6 +14846,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.ok(/if \(p\.blocked\) \{ showNotification\(/.test(m) && !/if \(p\.dup\) \{ showNotification/.test(m), '同じ属性の被りで止めていない / 別の属性の被りで止めている');
         assert.ok(/const row = s\.ref \|\| null;/.test(m) && /const teamKey = _mkbKey\(s\.characters \|\| \[\]\);/.test(m), '行を札で引いていない / 保存した時点の編成の鍵を控えていない (Codex P1 / P2)');
         assert.ok(/const tgt = to !== s\.slot \? rows\.find\(x => x !== row && Number\(x\.slot\) === to\) \|\| null : null;/.test(m) && /rows\.splice\(at, 1\);/.test(m), '統合先の行に寄せて元の行を消していない (Codex P1)');
+        assert.ok(/if \(tgt && !s\.retried && queue\.slice\(qi \+ 1\)\.some\(q => q\.ref === tgt\)\) \{/.test(m) && /queue\.push\(\{ \.\.\.s, retried: true \}\);/.test(m), '寄せ先が変更中のときに保存し直していない (Codex 再監査 A②)');
         assert.ok(/if \(_mkb\.busy\) \{ showNotification\('保存中なので反映しませんでした/.test(m) && /MY_TEAM_SLOTS\.includes\(Number\(l\.slot\)\) && \(Number\(l\.dmgB\) > 0/.test(m), '保存中のピッカーの結果を捨てていない / 壊れた枠番号の行を読んでいる');
         assert.ok(/opsStore\.invalidate\(\);\s*\n\s*_opsReloadBoardCards\(\);/.test(m), '保存後に盤面を取り直していない');
         assert.ok(/data-key="\$\{escapeHtml\(p\.key\)\}" onclick="_mkbPick\('\$\{a\}', \$\{i\}, this\.dataset\.key\)"/.test(m), 'プリセットの鍵を onclick に埋めている (名前は onclick に埋めない)');

@@ -103,7 +103,9 @@ function makeEnv(o = {}) {
             mockIntakeDomain: globalThis.mockIntakeDomain, raidBlocksDomain: globalThis.raidBlocksDomain,
             supabaseLoadGrowthSeasons: async () => [{ id: 46, is_active: true, is_test: false, month_key: '2026-12' }, { id: 47, is_active: false, is_test: true, month_key: '2026-12t' }, { id: 45, is_active: false, is_test: false, month_key: '2026-11' }, { id: 44, is_active: false, is_test: false, month_key: '2026-10' }],
             supabaseRegisterOcrCharacters: async (names) => { reg.push(names.slice()); return { canonical: names.map(n => n + '!') }; },
-            supabaseSaveMockSubmission: async (pid, attr, opts) => { if (env._saveGate) await env._saveGate(attr); if (env._failAttr === attr) throw new Error(`${attr} だめ`); saved.push({ pid, attr, ...opts }); return { slot: env._redirectTo && attr === env._redirectAttr ? env._redirectTo : opts.slot }; },
+            supabaseSaveMockSubmission: async (pid, attr, opts) => { if (env._saveGate) await env._saveGate(attr); if (env._failAttr === attr) throw new Error(`${attr} だめ`); saved.push({ pid, attr, ...opts });
+                if (env._redirectRule) { const r = env._redirectRule(attr, opts, saved.length); if (r) return { slot: r }; }
+                return { slot: env._redirectTo && attr === env._redirectAttr ? env._redirectTo : opts.slot }; },
         },
         console,
         saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, myPanels: 0, _confirm: true, _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
@@ -233,6 +235,22 @@ await t('③ まとめて保存: 変えた枠だけ・ダメージのある枠�
     assert.ok(!h._mkbFlatRows().some(r => r.dirty), '統合のあとに「変更あり」が残る');
     await h.handleOpsMockBulkSave();
     assert.ok(/変えた枠がありません/.test(h._mkb.msg), '統合のあとにもう一度保存できてしまう');
+    // 寄せ先の行がこのあと保存される (変更中) とき: 編成① に入れた X が「いまの DB の編成② と同一」で ② へ寄せられ、そのあと編成② の保存 (Y) が ② を上書きする
+    // → ② の保存のあとに ① をもう一度保存する (そのときは ② と別の編成なので ① に入る)。最後は ① = X・② = Y で、どちらも保存済み (Codex 再監査 A②)
+    const g = makeEnv();
+    await g.openOpsMockBulk(1);
+    g._mkbAddRow('water');
+    for (let k = 0; k < 5; k++) { g._mkbPickChar('water', 0, k); g.env.picker.cb('abcde'[k]); }   // ① を X に
+    g._mkbSetDmg('water', 0, '31');
+    for (let k = 0; k < 5; k++) { g._mkbPickChar('water', 1, k); g.env.picker.cb('PQRST'[k]); }   // ② を Y に
+    g._mkbSetDmg('water', 1, '33');
+    let firstWater1 = true;
+    g.env._redirectRule = (attr, opts) => { if (attr === 'water' && opts.slot === 1 && firstWater1) { firstWater1 = false; return 2; } return null; };   // 最初の ① の保存だけ「② と同一編成」
+    await g.handleOpsMockBulkSave();
+    assert.deepEqual(g.env.saved.filter(x => x.attr === 'water').map(x => [x.slot, x.damageB]), [[1, 31], [2, 33], [1, 31]], '② の保存のあとに ① を保存し直していない');
+    assert.deepEqual(g._mkb.rows.water.map(r => [r.slot, r.damageB, r.team.join(''), r.saved]), [[1, 31, 'abcde', true], [2, 33, 'PQRST', true]], '寄せ先 (②) を ① の中身で上書きした / 行が消えた');
+    assert.ok(!g._mkbFlatRows().some(r => r.dirty), '「変更あり」が残る');
+    assert.ok(/✅ ミリン: 水冷 33\.0B・水冷 31\.0B を登録しました$/.test(g._mkb.msg), g._mkb.msg);   // 保存し直した ① は後ろ (実際の処理順)
 });
 
 await t('④ 保存中は閉じられない・二重に押せない・開き直せない / ⑤ 待っている間に別の人を開いたら古い読み込みで上書きしない / ⑥ 次の人 (未保存なら確認)', async () => {
@@ -244,7 +262,7 @@ await t('④ 保存中は閉じられない・二重に押せない・開き直�
     const p = h.handleOpsMockBulkSave();
     await tick();
     assert.equal(h._mkb.busy, true);
-    assert.ok(/data-mkb-dmg="electric:0" oninput="[^"]*" disabled/.test(h.env.body()) && /class="mkb-face"[^>]* disabled/.test(h.env.body()), '保存中に入力欄・顔が押せる');
+    assert.ok(/data-mkb-dmg="electric:0" oninput="[^"]*" disabled/.test(h.env.body()) && /class="mkb-face"[^>]* disabled/.test(h.env.body()) && /class="mkb-preset[^"]*"[^>]* disabled/.test(h.env.body()) && /class="mkb-add"[^>]* disabled/.test(h.env.body()), '保存中に入力欄・顔・プリセット・追加が押せる');
     h.closeOpsMockBulk(); assert.ok(h.env.isOpen() && h.env.toasts.some(m => /保存中/.test(m)), '保存中に閉じられた');
     await h.handleOpsMockBulkSave(); assert.equal(h.env.saved.length, 0, '二重に保存した');
     await h.openOpsMockBulk(2); assert.equal(h._mkb.playerId, 1, '保存中に別の人を開けた');
@@ -255,6 +273,7 @@ await t('④ 保存中は閉じられない・二重に押せない・開き直�
     release(); await p;
     assert.equal(h.env.saved.length, 1); assert.equal(h._mkb.busy, false);
     assert.ok(h._mkb.rows.electric[0].saved && !h._mkbFlatRows().some(r => r.dirty), '保存したあとの状態');
+    assert.ok(/data-mkb-dmg="electric:0" oninput="[^"]*">/.test(h.env.body()) && !/class="mkb-face"[^>]* disabled/.test(h.env.body()) && !/class="mkb-preset[^"]*"[^>]* disabled/.test(h.env.body()), '保存が終わったのに disabled のまま');
     // ⑤ 世代: 1 の読み込みが遅い間に 2 を開く → 1 の結果で描き直さない
     const g = makeEnv();
     let gates = []; g.env._loadGate = () => new Promise(r => gates.push(r));

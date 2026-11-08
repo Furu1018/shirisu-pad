@@ -19529,8 +19529,10 @@
             _mkb.busy = true; _mkb.msg = ''; _mkbRender();
             const ok = [], ng = [];
             try {
-                for (const s of saves) {   // 属性ごとに今の保存を順に (同時に投げない: 同一編成の寄せ先の判定が同じ行を読む)
-                    const row = flat.find(r => r.attr === s.attr && Number(r.slot) === s.slot)?.ref || null;   // 行は札 (ref) で引く — 枠番号で探すと、正規化された番号や統合で付け替えた番号と合わない (Codex P2)
+                const queue = saves.slice();
+                for (let qi = 0; qi < queue.length; qi++) {   // 属性ごとに今の保存を順に (同時に投げない: 同一編成の寄せ先の判定が同じ行を読む)
+                    const s = queue[qi];
+                    const row = s.ref || null;   // 行は札 (ref) で引く — 枠番号で探すと、正規化された番号や統合で付け替えた番号と合わない (Codex P2)
                     const teamKey = _mkbKey(s.characters || []);   // 保存した時点の編成 (待っている間に変わったら「変更あり」のまま残す — Codex P1)
                     try {
                         const res = await _saveMockFor(pid, s.attr, { damageB: s.damageB, slot: s.slot, characters: s.characters, actorName });
@@ -19539,6 +19541,12 @@
                             const to = res && Number(res.slot) ? Number(res.slot) : s.slot;
                             const rows = _mkb.rows[s.attr] || [];
                             const tgt = to !== s.slot ? rows.find(x => x !== row && Number(x.slot) === to) || null : null;
+                            if (tgt && !s.retried && queue.slice(qi + 1).some(q => q.ref === tgt)) {
+                                // 寄せ先の行がこのあと保存される (変更中): いま寄せた中身はその保存で上書きされる (Codex 再監査 A②)。
+                                // 寄せ先の保存のあとにこの枠をもう一度保存する — そのときは寄せ先と別の編成になっているので元の枠に入る。この行は「変更あり」のまま
+                                queue.push({ ...s, retried: true });
+                                continue;
+                            }
                             if (tgt) {
                                 // 同一編成として既にある枠へ寄せられた: その枠の行をこの保存の中身にして、入力していた行は消す (同じ枠番号の行を 2 つにしない — Codex P1)
                                 tgt.damageB = s.damageB; tgt.team = _mkbTeam5(row.team); tgt.orig = saved; tgt.existed = true; tgt.saved = true; tgt.err = '';
