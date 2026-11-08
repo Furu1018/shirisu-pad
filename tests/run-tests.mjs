@@ -14794,10 +14794,14 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         // 上限: limit で人気を切る。切られた人気と同じ前回の自分は人数つきで後ろに
         const r3 = d.presetsFor({ popular, lastRaid: [T('pqrst')], limit: 2 });
         assert.deepEqual(r3.map(p => [p.key, p.source, p.count]), [['f|g|h|i|j', 'popular', 4], ['a|b|c|d|e', 'popular', 9], ['p|q|r|s|t', 'last', 1]]);
-        // 被り: その人のほかの編成とキャラが 1 人でも重なれば dup (同じキャラは 1 日 1 回)
-        const r4 = d.presetsFor({ popular, others: [T('e1234'), T('zzzzz')] });
-        assert.deepEqual(r4.map(p => [p.key, p.dup, p.dupWith]), [['f|g|h|i|j', false, []], ['a|b|c|d|e', true, ['e']], ['k|l|m|n|o', false, []], ['p|q|r|s|t', false, []]]);
+        // 被り: 別の属性の編成 (others) と重なれば dup = 注意の印だけ (選べる) / 同じ属性のほかの枠 (blockers) と重なれば blocked = 選べない
+        const r4 = d.presetsFor({ popular, others: [T('e1234'), T('zzzzz')], blockers: [T('k9999')] });
+        assert.deepEqual(r4.map(p => [p.key, p.dup, p.dupWith, p.blocked, p.blockedWith]),
+            [['f|g|h|i|j', false, [], false, []], ['a|b|c|d|e', true, ['e'], false, []], ['k|l|m|n|o', false, [], true, ['k']], ['p|q|r|s|t', false, [], false, []]]);
+        assert.ok(d.presetsFor({ popular }).every(p => !p.dup && !p.blocked && p.dupWith.length === 0 && p.blockedWith.length === 0), 'others / blockers 無しで被りが立つ');
         assert.deepEqual(d.presetsFor({}), [], '材料なしで落ちる');
+        // ref は画面の札 (中身は見ない・そのまま返す)。無ければ付けない
+        assert.deepEqual(d.bulkSaves([{ attr: 'iron', slot: 1, damageB: 1, team: [], dirty: true, ref: 'R' }]).saves, [{ attr: 'iron', slot: 1, damageB: 1, characters: null, ref: 'R' }]);
         // bulkSaves: 変えた枠だけ・ダメージのある枠だけ (Q5 / Q6)
         const rows = [
             { attr: 'iron', slot: 1, damageB: 30, team: T('abcde'), dirty: true },
@@ -14838,8 +14842,11 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.ok(/if \(gen !== _mkb\.gen\) return;/.test(m), '世代ガードが無い');
         assert.ok(/const \{ saves \} = dom\.bulkSaves\(flat\);/.test(m) && /await _saveMockFor\(pid, s\.attr, \{ damageB: s\.damageB, slot: s\.slot, characters: s\.characters, actorName \}\);/.test(m), '保存が bulkSaves → _saveMockFor でない');
         assert.ok(!/supabaseSaveMockSubmission|supabaseRegisterOcrCharacters/.test(m), 'まとめて入力が保存の RPC を直に呼んでいる (経路を増やさない)');
-        assert.ok(/window\.mockIntakeDomain\.presetsFor\(\{ popular: _mkb\.pop\[attr\] \|\| \[\], lastRaid: _mkb\.last\[attr\] \|\| \[\], others: _mkbOthers\(attr, i\) \}\)/.test(m), 'プリセットをドメインで作っていない');
-        assert.ok(/if \(p\.dup\) \{ showNotification\(/.test(m), '被るプリセットを選べる');
+        assert.ok(/window\.mockIntakeDomain\.presetsFor\(\{ popular: _mkb\.pop\[attr\] \|\| \[\], lastRaid: _mkb\.last\[attr\] \|\| \[\], others: _mkbOthers\(attr, i\), blockers: _mkbOthers\(attr, i, true\) \}\)/.test(m), 'プリセットをドメインで作っていない (別の属性 = others / 同じ属性 = blockers)');
+        assert.ok(/if \(p\.blocked\) \{ showNotification\(/.test(m) && !/if \(p\.dup\) \{ showNotification/.test(m), '同じ属性の被りで止めていない / 別の属性の被りで止めている');
+        assert.ok(/const row = s\.ref \|\| null;/.test(m) && /const teamKey = _mkbKey\(s\.characters \|\| \[\]\);/.test(m), '行を札で引いていない / 保存した時点の編成の鍵を控えていない (Codex P1 / P2)');
+        assert.ok(/const tgt = to !== s\.slot \? rows\.find\(x => x !== row && Number\(x\.slot\) === to\) \|\| null : null;/.test(m) && /rows\.splice\(at, 1\);/.test(m), '統合先の行に寄せて元の行を消していない (Codex P1)');
+        assert.ok(/if \(_mkb\.busy\) \{ showNotification\('保存中なので反映しませんでした/.test(m) && /MY_TEAM_SLOTS\.includes\(Number\(l\.slot\)\) && \(Number\(l\.dmgB\) > 0/.test(m), '保存中のピッカーの結果を捨てていない / 壊れた枠番号の行を読んでいる');
         assert.ok(/opsStore\.invalidate\(\);\s*\n\s*_opsReloadBoardCards\(\);/.test(m), '保存後に盤面を取り直していない');
         assert.ok(/data-key="\$\{escapeHtml\(p\.key\)\}" onclick="_mkbPick\('\$\{a\}', \$\{i\}, this\.dataset\.key\)"/.test(m), 'プリセットの鍵を onclick に埋めている (名前は onclick に埋めない)');
         assert.ok(/if \(_mkb\.busy\) \{ showNotification\('保存中です/.test(m), '保存中に閉じられる / 開き直せる');

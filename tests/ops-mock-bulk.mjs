@@ -131,7 +131,7 @@ await t('① 開く: 5 属性がボスの順・いまの登録が入っている
     assert.ok(b.includes('2 / 5 属性'), '進み');
     assert.deepEqual(h.env.loads, [true], 'プリセットの材料を読み直していない (force)');
     assert.ok(!/mkb-loading/.test(b), '読み込みが終わったのに「読み込み中」');
-    assert.ok(/data-key="K\|L\|M\|N\|O"/.test(b) && /class="mkb-preset ng" data-key="A\|W\|X\|Y\|Z"/.test(b), '鉄甲の人気の編成が無い / 灼熱の編成と被るものが選べる見た目');
+    assert.ok(/data-key="K\|L\|M\|N\|O"/.test(b) && /class="mkb-preset warn" data-key="A\|W\|X\|Y\|Z"[^>]*>[\s\S]*?別の属性と被り: A/.test(b) && !/mkb-preset ng/.test(b), '鉄甲の人気の編成が無い / 灼熱の編成と被るものが「注意」でなく選べない見た目');
     assert.ok(/<b>5 人<\/b>が使用<br>模擬3\+過去の凸2/.test(b), '人数の内訳');
     assert.ok(/class="mkb-preset on" data-key="F\|G\|H\|I\|J"/.test(b), 'いまの編成と同じプリセットが選択中になっていない');
     assert.ok(/data-key="W1\|W2\|W3\|W4\|W5"[^>]*>[\s\S]*?<span class="mine">前回の自分<\/span>/.test(b), '前回の自分 (風圧) が無い');
@@ -150,17 +150,25 @@ await t('② プリセットを押すと 5 枠に入ってダメージへ焦点 
     assert.deepEqual(h.env.focused, ['iron:0'], 'ダメージの欄へ焦点が移らない');
     assert.ok(h._mkbFlatRows().find(r => r.attr === 'iron').dirty, '変更ありにならない');
     assert.ok(/保存するのは変えた枠だけ: 0 件 · ダメージの無い枠 1 は保存しません/.test(h.env.body()), '編成だけの枠を保存する数に入れている');
+    // 別の属性 (灼熱) の編成と被るプリセットは「注意」で選べる (支援キャラは複数の属性に入るのが普通) → 行に ⚠ の文
     h._mkbPick('iron', 0, 'A|W|X|Y|Z');
-    assert.deepEqual(h._mkb.rows.iron[0].team, T('KLMNO'), '被るプリセットが入った');
-    assert.ok(h.env.toasts.some(m => /被ります \(A\)/.test(m)), '被りの知らせが無い');
-    // 同じ属性の 2 編成目: 水冷の編成①と同じ 5 人は被り
+    assert.deepEqual(h._mkb.rows.iron[0].team.slice().sort(), T('AWXYZ'), '別の属性と被るだけのプリセットが選べない');   // 並びはプリセットのまま (人気の表示順) なので揃えて比べる
+    assert.ok(/⚠ 別の属性と被り: A/.test(h.env.body()), '別の属性との被りの文が無い');
+    assert.ok(!/mkb-face has dup/.test(h.env.body()), '別の属性との被りで顔を赤くした');
+    h._mkbPick('iron', 0, 'K|L|M|N|O');
+    // 同じ属性の 2 編成目: 水冷の編成①と同じ 5 人は選べない (2 編成目は両方使う)
     h._mkbAddRow('water');
     assert.equal(h._mkb.rows.water.length, 2); assert.equal(h._mkb.rows.water[1].slot, 2);
     assert.ok(/＋ 編成③を足す/.test(h.env.body()) && /B5 水冷PT/.test(h.env.body()), '3 つ目を足すボタン');
     const p2 = h._mkbPresetsOf('water', 1);
-    assert.deepEqual(p2.map(p => [p.key, p.dup]), [['F|G|H|I|J', true]], '同じ属性の編成①と被るのに選べる');
+    assert.deepEqual(p2.map(p => [p.key, p.dup, p.blocked, p.blockedWith]), [['F|G|H|I|J', false, true, T('FGHIJ')]], '同じ属性の編成①と被るのに選べる');
+    assert.ok(/class="mkb-preset ng" data-key="F\|G\|H\|I\|J"/.test(h.env.body()), '選べない見た目でない');
     h._mkbPick('water', 1, 'F|G|H|I|J');
     assert.deepEqual(h._mkb.rows.water[1].team, ['', '', '', '', ''], '被るのに入った');
+    assert.ok(h.env.toasts.some(m => /同じ属性の別の編成とキャラが被ります \(F・G・H・I・J\)/.test(m)), '被りの知らせが無い');
+    // 同じ属性の 2 編成目に編成①と同じキャラを顔から入れると、その顔が赤い
+    h._mkbPickChar('water', 1, 0); h.env.picker.cb('F');
+    assert.ok(/class="mkb-face has dup"/.test(h.env.body()), '同じ属性の被りの顔が赤くない');
     // 顔を押す → アイコンピッカー (属性つき) → 選んだ名前が入る。選んでいる間に別の人を開いたら捨てる
     h._mkbPickChar('electric', 0, 2);
     assert.equal(h.env.picker.opts.attr, 'electric'); assert.ok(/電撃PT 編成① の 3枠目/.test(h.env.picker.title));
@@ -206,26 +214,47 @@ await t('③ まとめて保存: 変えた枠だけ・ダメージのある枠�
     // 何も変えずに押す
     await h.handleOpsMockBulkSave();
     assert.equal(h.env.saved.length, 2); assert.ok(/変えた枠がありません/.test(h._mkb.msg));
-    // 同一編成のため別の枠に寄せられたら、その枠番号と注記
-    h.env._redirectAttr = 'water'; h.env._redirectTo = 2;
-    h._mkbPick('water', 0, 'F|G|H|I|J'); h._mkbSetDmg('water', 0, '33');
+    // 同一編成のため別の枠に寄せられたら (寄せ先の行が無い): その枠番号と注記
+    h.env._redirectAttr = 'wind'; h.env._redirectTo = 2;
+    h._mkbSetDmg('wind', 0, '20');
     await h.handleOpsMockBulkSave();
-    assert.equal(h._mkb.rows.water[0].slot, 2); assert.ok(/編成②に統合/.test(h._mkb.rows.water[0].note));
+    assert.equal(h._mkb.rows.wind.length, 1); assert.equal(h._mkb.rows.wind[0].slot, 2); assert.ok(/編成②に統合/.test(h._mkb.rows.wind[0].note));
+    assert.ok(!h._mkbFlatRows().some(r => r.dirty), '統合のあとに「変更あり」が残る');
+    // 寄せ先の行がある (編成② に入れたものが編成① と同一編成だった): 編成① の行をこの中身にして、編成② の行は消す (同じ枠番号の行を 2 つにしない — Codex P1)
+    h._mkbAddRow('water');
+    for (let k = 0; k < 5; k++) { h._mkbPickChar('water', 1, k); h.env.picker.cb('PQRST'[k]); }
+    h._mkbSetDmg('water', 1, '33');
+    h.env._redirectAttr = 'water'; h.env._redirectTo = 1;
+    await h.handleOpsMockBulkSave();
+    assert.equal(h.env.saved.at(-1).slot, 2, '編成② として保存を頼んでいない');
+    assert.equal(h._mkb.rows.water.length, 1, '同じ枠番号の行が 2 つになった / 行が消えた');
+    assert.deepEqual([h._mkb.rows.water[0].slot, h._mkb.rows.water[0].damageB, h._mkb.rows.water[0].team], [1, 33, T('PQRST')]);
+    assert.ok(/編成②に入れた模擬は同一編成のためこちらに統合/.test(h._mkb.rows.water[0].note) && h._mkb.rows.water[0].saved);
+    assert.ok(!h._mkbFlatRows().some(r => r.dirty), '統合のあとに「変更あり」が残る');
+    await h.handleOpsMockBulkSave();
+    assert.ok(/変えた枠がありません/.test(h._mkb.msg), '統合のあとにもう一度保存できてしまう');
 });
 
 await t('④ 保存中は閉じられない・二重に押せない・開き直せない / ⑤ 待っている間に別の人を開いたら古い読み込みで上書きしない / ⑥ 次の人 (未保存なら確認)', async () => {
     const h = makeEnv();
     await h.openOpsMockBulk(1);
     h._mkbSetDmg('electric', 0, '15');
+    h._mkbPickChar('electric', 0, 1); const lateCb = h.env.picker.cb;   // 保存の前に開いたピッカー
     let release; h.env._saveGate = () => new Promise(r => { release = r; });
     const p = h.handleOpsMockBulkSave();
     await tick();
     assert.equal(h._mkb.busy, true);
+    assert.ok(/data-mkb-dmg="electric:0" oninput="[^"]*" disabled/.test(h.env.body()) && /class="mkb-face"[^>]* disabled/.test(h.env.body()), '保存中に入力欄・顔が押せる');
     h.closeOpsMockBulk(); assert.ok(h.env.isOpen() && h.env.toasts.some(m => /保存中/.test(m)), '保存中に閉じられた');
     await h.handleOpsMockBulkSave(); assert.equal(h.env.saved.length, 0, '二重に保存した');
     await h.openOpsMockBulk(2); assert.equal(h._mkb.playerId, 1, '保存中に別の人を開けた');
+    // 保存中に遅れて届いたピッカーの結果と入力は反映しない (保存した中身と画面がずれて「保存済み」になる — Codex P1)
+    lateCb('遅れて来た'); h._mkbSetDmg('electric', 0, '99');
+    assert.deepEqual(h._mkb.rows.electric[0].team, ['', '', '', '', '']); assert.equal(h._mkb.rows.electric[0].damageB, 15);
+    assert.ok(h.env.toasts.some(m => /保存中なので反映しませんでした/.test(m)), '遅れて来たピッカーの結果を黙って捨てた');
     release(); await p;
     assert.equal(h.env.saved.length, 1); assert.equal(h._mkb.busy, false);
+    assert.ok(h._mkb.rows.electric[0].saved && !h._mkbFlatRows().some(r => r.dirty), '保存したあとの状態');
     // ⑤ 世代: 1 の読み込みが遅い間に 2 を開く → 1 の結果で描き直さない
     const g = makeEnv();
     let gates = []; g.env._loadGate = () => new Promise(r => gates.push(r));

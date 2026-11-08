@@ -209,13 +209,15 @@
      * 属性ごとのプリセット (Q4 の並び): 1. この属性でよく使われる編成 (📚 人気編成と同じ集計 `popularTeamsDomain.buildPopularTeams` の list を
      *   **今回の模擬の人数 → 過去の凸の人数 → 使った人数** の順に並べ直し・上位 limit) → 2. 前回の自分 (前のレイドの実凸・人気に無いものだけ後ろに足す。人気にあればその行に mine)。
      *   3. 「自分で 5 キャラを選ぶ」は画面 (顔を押す)。
-     *   dup = その人のほかの編成 (いま画面に入っているもの・編集中の枠は除く = others) とキャラが被る → 選べない (同じキャラは 1 日 1 回)。dupWith = 被るキャラ
-     * @param {{ popular?: Array<{team:string[], count?:number, mockCount?:number, histCount?:number}>, lastRaid?: string[][], others?: string[][], limit?: number }} a
-     * @returns {Array<{ key:string, team:string[], source:'popular'|'last', mine:boolean, count:number, mockCount:number, histCount:number, dup:boolean, dupWith:string[] }>}
+     *   dup = **別の属性**の編成 (others) とキャラが被る → 注意の印だけ (選べる。表の赤い枠と同じ「1 日に両方は使えない」— 支援キャラは複数の属性の模擬に入るのが普通で、使う 3 属性は組むときに決まる)。dupWith = 被るキャラ
+     *   blocked = **同じ属性のほかの枠** (blockers) とキャラが被る → 選べない (2 編成目は両方使う前提 = メモ §3 の 4「キャラが被らない編成だけ選べる」)。blockedWith = 被るキャラ
+     * @param {{ popular?: Array<{team:string[], count?:number, mockCount?:number, histCount?:number}>, lastRaid?: string[][], others?: string[][], blockers?: string[][], limit?: number }} a
+     * @returns {Array<{ key:string, team:string[], source:'popular'|'last', mine:boolean, count:number, mockCount:number, histCount:number, dup:boolean, dupWith:string[], blocked:boolean, blockedWith:string[] }>}
      */
-    function presetsFor({ popular, lastRaid, others, limit = 5 } = {}) {
+    function presetsFor({ popular, lastRaid, others, blockers, limit = 5 } = {}) {
         const lim = Number.isInteger(limit) && limit > 0 ? limit : 5;
         const oth = (Array.isArray(others) ? others : []).map(clean5).filter(t => t.length);
+        const blk = (Array.isArray(blockers) ? blockers : []).map(clean5).filter(t => t.length);
         // 同じ 5 人 (並びだけ違う) が 2 行来たら 1 つにまとめる (人数はそれぞれ大きいほう。buildPopularTeams はもう鍵でまとめているので通常は来ない)
         const byKey = new Map();
         for (const g0 of (Array.isArray(popular) ? popular : [])) {
@@ -249,14 +251,16 @@
         for (const o of out) {
             o.dupWith = [...new Set(oth.flatMap(x => x.filter(c => o.team.includes(c))))];
             o.dup = o.dupWith.length > 0;
+            o.blockedWith = [...new Set(blk.flatMap(x => x.filter(c => o.team.includes(c))))];
+            o.blocked = o.blockedWith.length > 0;
         }
         return out;
     }
     /**
      * まとめて保存の中身 (Q5「1 回押すと入れた属性ぶんが全部保存される・裏は属性ごとに今の保存を順に」): **変えた枠だけ・ダメージの入っている枠だけ**。
      *   変えていない枠は保存しない (活動ログに「運営が代理で登録」が人数ぶん並ばないように)。編成だけ入れてダメージが無い枠は保存しない (Q6: 1 編成 = ダメージ 1 つ)。
-     * @param {Array<{ attr:string, slot:number, damageB:number|null, team:string[], dirty:boolean }>} rows  画面の枠 (属性の順)
-     * @returns {{ saves: Array<{attr:string, slot:number, damageB:number, characters:string[]|null}>, skipped: Array<{attr:string, slot:number, why:'unchanged'|'no_damage'}> }}
+     * @param {Array<{ attr:string, slot:number, damageB:number|null, team:string[], dirty:boolean, ref?:* }>} rows  画面の枠 (属性の順)。ref は画面が行を引き直すための札 (中身は見ない・そのまま返す)
+     * @returns {{ saves: Array<{attr:string, slot:number, damageB:number, characters:string[]|null, ref?:*}>, skipped: Array<{attr:string, slot:number, why:'unchanged'|'no_damage'}> }}
      */
     function bulkSaves(rows) {
         const saves = [], skipped = [];
@@ -267,7 +271,7 @@
             if (!r.dirty) { skipped.push({ attr: r.attr, slot, why: 'unchanged' }); continue; }
             if (!(dmg > 0)) { skipped.push({ attr: r.attr, slot, why: 'no_damage' }); continue; }
             const team = clean5(r.team);
-            saves.push({ attr: r.attr, slot, damageB: dmg, characters: team.length ? team : null });
+            saves.push({ attr: r.attr, slot, damageB: dmg, characters: team.length ? team : null, ...(r.ref !== undefined ? { ref: r.ref } : {}) });
         }
         return { saves, skipped };
     }

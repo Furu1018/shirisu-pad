@@ -3802,6 +3802,8 @@
         .mkb-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 7px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; cursor: pointer; text-align: left; }
         .mkb-preset.on { border-color: var(--ops); background: var(--ops-bg); }
         .mkb-preset.ng { opacity: 0.55; cursor: not-allowed; border-style: dashed; }
+        .mkb-preset.warn { border-color: var(--warn-solid); }
+        .mkb-preset .pm .warn, .mkb-rl .st.warn { color: var(--warn-deep); }
         .mkb-preset .faces { display: flex; gap: 3px; min-width: 0; overflow: hidden; }
         .mkb-preset .pm { font-size: 10px; font-weight: 800; color: var(--t-muted); text-align: right; white-space: nowrap; line-height: 1.35; }
         .mkb-preset .pm b { color: var(--t-ink); }
@@ -19327,7 +19329,7 @@
             // 枠: いまの登録 (盤面の loadoutsByAttr) をそのまま (slot 順)。無い属性は空の編成① を 1 つ
             for (const a of _mkb.attrs) {
                 const lo = (p.loadoutsByAttr && Array.isArray(p.loadoutsByAttr[a]) ? p.loadoutsByAttr[a] : []).filter(Boolean)
-                    .filter(l => Number(l.dmgB) > 0 || (Array.isArray(l.team) && l.team.some(Boolean)))
+                    .filter(l => MY_TEAM_SLOTS.includes(Number(l.slot)) && (Number(l.dmgB) > 0 || (Array.isArray(l.team) && l.team.some(Boolean))))   // 枠番号は ①〜③ だけ (保存先と行の対応づけ — Codex P2)
                     .map(l => _mkbRow(l.slot, l.dmgB, l.team, true)).sort((x, y) => x.slot - y.slot);
                 _mkb.rows[a] = lo.length ? lo : [_mkbRow(1, null, [], false)];
             }
@@ -19362,14 +19364,18 @@
                     .map(r => (Array.isArray(r.characters) ? r.characters : []).map(resolveHist)) : [];
             }
         }
-        // その枠以外の編成 (被りの相手)。属性を問わず・いま画面に入っているもの (保存前も含む) — 同じキャラは 1 日 1 回
-        function _mkbOthers(attr, i) {
+        // その枠以外の編成 (被りの相手・いま画面に入っているもの = 保存前も含む)。same=false: **別の属性**の編成 (注意の印だけ・表の赤い枠と同じ「1 日に両方は使えない」)
+        //   / same=true: **同じ属性のほかの枠** (選べない — 2 編成目は両方使う前提・メモ §3 の 4)。支援キャラは複数の属性の模擬に入るのが普通なので、別の属性との被りで止めると大半が選べなくなる (実データで 30 件中 24 件)
+        function _mkbOthers(attr, i, same = false) {
             const out = [];
-            for (const [a, rs] of Object.entries(_mkb.rows)) rs.forEach((r, j) => { if (!(a === attr && j === i)) { const t = r.team.filter(Boolean); if (t.length) out.push(t); } });
+            for (const [a, rs] of Object.entries(_mkb.rows)) {
+                if (same ? a !== attr : a === attr) continue;
+                rs.forEach((r, j) => { if (!(a === attr && j === i)) { const t = r.team.filter(Boolean); if (t.length) out.push(t); } });
+            }
             return out;
         }
         function _mkbPresetsOf(attr, i) {
-            return window.mockIntakeDomain.presetsFor({ popular: _mkb.pop[attr] || [], lastRaid: _mkb.last[attr] || [], others: _mkbOthers(attr, i) });
+            return window.mockIntakeDomain.presetsFor({ popular: _mkb.pop[attr] || [], lastRaid: _mkb.last[attr] || [], others: _mkbOthers(attr, i), blockers: _mkbOthers(attr, i, true) });
         }
         function _mkbFlatRows() {
             const out = [];
@@ -19395,25 +19401,29 @@
         function _mkbRowHtml(a, i, r) {
             const presets = _mkbPresetsOf(a, i);
             const curKey = _mkbKey(r.team);
-            const others = _mkbOthers(a, i).flat();
+            const same = _mkbOthers(a, i, true).flat(), cross = _mkbOthers(a, i).flat();
+            const dis = _mkb.busy ? ' disabled' : '';   // 保存中は触れない (保存した中身と画面がずれる — Codex P1)
             const pres = presets.map(p => {
-                const meta = p.source === 'last'
+                const meta = (p.source === 'last'
                     ? `<span class="mine">前回の自分</span><br>${p.count ? `${p.count} 人が使用` : '実凸の編成'}`
-                    : `<b>${p.count} 人</b>が使用<br>模擬${p.mockCount}+過去の凸${p.histCount}${p.mine ? ' · <span class="mine">前回の自分も</span>' : ''}`;
-                const t = p.dup ? ` title="別の編成とキャラが被ります (${escapeHtml(p.dupWith.join('・'))}) — 同じキャラは 1 日 1 回"` : ' title="押すと 5 枠に入ります"';
+                    : `<b>${p.count} 人</b>が使用<br>模擬${p.mockCount}+過去の凸${p.histCount}${p.mine ? ' · <span class="mine">前回の自分も</span>' : ''}`)
+                    + (p.dup && !p.blocked ? `<br><span class="warn">別の属性と被り: ${escapeHtml(p.dupWith.join('・'))}</span>` : '');
+                const t = p.blocked ? ` title="同じ属性の別の編成とキャラが被ります (${escapeHtml(p.blockedWith.join('・'))}) — 2 編成目は両方使うので選べません"`
+                    : p.dup ? ` title="別の属性の編成とキャラが被ります (${escapeHtml(p.dupWith.join('・'))}) — 1 日に両方は使えません (選べます)"` : ' title="押すと 5 枠に入ります"';
                 // 名前は onclick に埋めない (引用符で壊れる) — 鍵は data 属性で渡す
-                return `<button type="button" class="mkb-preset${curKey === p.key ? ' on' : ''}${p.dup ? ' ng' : ''}" data-key="${escapeHtml(p.key)}" onclick="_mkbPick('${a}', ${i}, this.dataset.key)"${p.dup ? ' aria-disabled="true"' : ''}${t}><span class="faces">${p.team.map(c => _charIconHtml(c, 24)).join('')}</span><span class="pm">${meta}</span></button>`;
+                return `<button type="button" class="mkb-preset${curKey === p.key ? ' on' : ''}${p.blocked ? ' ng' : p.dup ? ' warn' : ''}" data-key="${escapeHtml(p.key)}" onclick="_mkbPick('${a}', ${i}, this.dataset.key)"${p.blocked ? ' aria-disabled="true"' : ''}${dis}${t}><span class="faces">${p.team.map(c => _charIconHtml(c, 24)).join('')}</span><span class="pm">${meta}</span></button>`;
             }).join('');
             const faces = r.team.map((c, k) => {
-                const dup = !!c && others.includes(c), rr = c ? resolveNikkeChar(c) : null;
-                const title = c ? `${rr?.canonical || c}${dup ? ' — 別の編成と被り (同じキャラは 1 日 1 回)' : ''} · 押すと選び直す` : `${k + 1}枠目を選ぶ`;
-                return `<button type="button" class="mkb-face${c ? ' has' : ''}${dup ? ' dup' : ''}" onclick="_mkbPickChar('${a}', ${i}, ${k})" title="${escapeHtml(title)}">${c ? (rr?.iconPath ? `<img loading="lazy" decoding="async" src="${escapeHtml(rr.iconPath)}" alt="${escapeHtml(rr.canonical || c)}">` : escapeHtml(String(c).slice(0, 2))) : '?'}</button>`;
+                const dup = !!c && same.includes(c), rr = c ? resolveNikkeChar(c) : null;
+                const title = c ? `${rr?.canonical || c}${dup ? ' — 同じ属性の別の編成と被り' : ''} · 押すと選び直す` : `${k + 1}枠目を選ぶ`;
+                return `<button type="button" class="mkb-face${c ? ' has' : ''}${dup ? ' dup' : ''}" onclick="_mkbPickChar('${a}', ${i}, ${k})" title="${escapeHtml(title)}"${dis}>${c ? (rr?.iconPath ? `<img loading="lazy" decoding="async" src="${escapeHtml(rr.iconPath)}" alt="${escapeHtml(rr.canonical || c)}">` : escapeHtml(String(c).slice(0, 2))) : '?'}</button>`;
             }).join('');
+            const crossDup = r.team.filter(c => c && cross.includes(c));
             const dmg = r.damageB != null ? String(+Number(r.damageB).toFixed(2)) : '';
             return `<div class="mkb-row">
-                <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}</div>
+                <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}${crossDup.length ? `<span class="st warn" title="表の赤い枠と同じ: 1 日に両方は使えない (使う属性は組むときに決まる)">⚠ 別の属性と被り: ${escapeHtml(crossDup.join('・'))}</span>` : ''}</div>
                 ${presets.length ? `<div class="mkb-presets">${pres}</div>` : (_mkb.loading ? '' : '<p class="mkb-note">この属性のプリセットはまだありません — 顔を押して 1 人ずつ選んでください</p>')}
-                <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="number" inputmode="decimal" step="0.01" min="0" value="${dmg}" placeholder="例 28.4" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"><span>B</span></label></div>
+                <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="number" inputmode="decimal" step="0.01" min="0" value="${dmg}" placeholder="例 28.4" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"${dis}><span>B</span></label></div>
             </div>`;
         }
         function _mkbRender() {
@@ -19465,7 +19475,7 @@
             if (_mkb.busy) return;
             const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
             const p = _mkbPresetsOf(attr, i).find(x => x.key === key); if (!p) return;
-            if (p.dup) { showNotification(`別の編成とキャラが被ります (${p.dupWith.join('・')}) — 同じキャラは 1 日 1 回なので選べません`); return; }
+            if (p.blocked) { showNotification(`同じ属性の別の編成とキャラが被ります (${p.blockedWith.join('・')}) — 2 編成目は両方使うので選べません`); return; }
             r.team = _mkbTeam5(p.team); r.err = '';
             _mkbRender();
             const inp = document.querySelector(`[data-mkb-dmg="${attr}:${i}"]`);
@@ -19479,6 +19489,7 @@
             // Q1 (2026-10-26) と同じ: その属性の採用数の順で並ぶ (openIconPicker の attr)
             openIconPicker(cur, (name) => {
                 if (gen !== _mkb.gen) return;   // 選んでいる間に別の人を開いた / 閉じた
+                if (_mkb.busy) { showNotification('保存中なので反映しませんでした — 終わってからもう一度選んでください'); return; }   // 保存した中身と画面がずれる (Codex P1)
                 r.team[k] = name; r.err = '';
                 _mkbRender();
             }, `📚 ${_mkbPt(attr)}PT 編成${SLOT_JP[r.slot] || r.slot} の ${k + 1}枠目`, { attr });
@@ -19493,6 +19504,7 @@
             _mkbRender();
         }
         function _mkbSetDmg(attr, i, v) {
+            if (_mkb.busy) return;   // 欄は disabled だが、保存の最中に届いた入力は受けない
             const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
             const n = Number(String(v || '').replace(/,/g, ''));
             r.damageB = Number.isFinite(n) && n > 0 ? n : null;
@@ -19517,12 +19529,24 @@
             const ok = [], ng = [];
             try {
                 for (const s of saves) {   // 属性ごとに今の保存を順に (同時に投げない: 同一編成の寄せ先の判定が同じ行を読む)
-                    const row = flat.find(r => r.attr === s.attr && Number(r.slot) === s.slot)?.ref || null;
+                    const row = s.ref || null;   // 行は札 (ref) で引く — 枠番号で探すと、正規化された番号や統合で付け替えた番号と合わない (Codex P2)
+                    const teamKey = _mkbKey(s.characters || []);   // 保存した時点の編成 (待っている間に変わったら「変更あり」のまま残す — Codex P1)
                     try {
                         const res = await _saveMockFor(pid, s.attr, { damageB: s.damageB, slot: s.slot, characters: s.characters, actorName });
                         if (row) {
-                            if (res && Number(res.slot) && Number(res.slot) !== s.slot) { row.note = `同一編成のため編成${SLOT_JP[Number(res.slot)] || res.slot}に統合`; row.slot = Number(res.slot); }
-                            row.orig = { damageB: s.damageB, teamKey: _mkbKey(row.team) }; row.existed = true; row.saved = true; row.err = '';
+                            const saved = { damageB: s.damageB, teamKey };
+                            const to = res && Number(res.slot) ? Number(res.slot) : s.slot;
+                            const rows = _mkb.rows[s.attr] || [];
+                            const tgt = to !== s.slot ? rows.find(x => x !== row && Number(x.slot) === to) || null : null;
+                            if (tgt) {
+                                // 同一編成として既にある枠へ寄せられた: その枠の行をこの保存の中身にして、入力していた行は消す (同じ枠番号の行を 2 つにしない — Codex P1)
+                                tgt.damageB = s.damageB; tgt.team = _mkbTeam5(row.team); tgt.orig = saved; tgt.existed = true; tgt.saved = true; tgt.err = '';
+                                tgt.note = `編成${SLOT_JP[s.slot] || s.slot}に入れた模擬は同一編成のためこちらに統合`;
+                                const at = rows.indexOf(row); if (at >= 0) rows.splice(at, 1);
+                            } else {
+                                if (to !== s.slot) { row.note = `同一編成のため編成${SLOT_JP[to] || to}に統合`; row.slot = to; }
+                                row.orig = saved; row.existed = true; row.saved = true; row.err = '';
+                            }
                         }
                         ok.push(`${_mkbPt(s.attr)} ${s.damageB.toFixed(1)}B`);
                     } catch (e) {
