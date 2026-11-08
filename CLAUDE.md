@@ -837,6 +837,7 @@ node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / �
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
 node tests/block-board.mjs    # 🧱 ブロック盤 (段階 6): 盤・候補・手順の帯・メンバーの盤 の実行テスト
 node tests/ops-resv-create.mjs # 🔒 運営発の予約 (🗣 9b): 人 → 編成 → ブロック の描画 / 📌 を置いてすぐ 🔒 確定 / 置けない・二重押し の実行テスト
+node tests/ops-mock-bulk.mjs  # ✏️ まとめて入力 (1 人 5 属性): 開く → プリセット → ダメージ → まとめて保存 → 失敗が残る → 次の人 の実行テスト
 node tests/result-intake.mjs  # 📥 結果の取り込み (段階 4): 下書き → 登録 (代理凸の経路・✓・残 HP・撃破の検知) / 凸していない / 組むの片付け / ブロックの配信の通知 の実行テスト
 node tests/practice-e2e.mjs   # 🎮 練習モードの通し確認 — 本物のブラウザで案内の枠だけを押して最後まで (Chrome が要る・1〜2分。PC=1 で PC 幅も)
 node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの実験 (第44回の実データ)。ほかに carry-over / boss5-two-teams / boss5-why / left-attacks — 使い方と結論は同じフォルダの README (単体テストではない)
@@ -1377,6 +1378,14 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   (ダメージは `<input>` → `_myDmgPreviewSetDamage` が `totalDamage` = B × 1e9・見出し「✏️ 模擬を手で入力」・再撮影なし・slot を渡せばその編成を直す `slotTouched: true`)。保存は従来の `handleMyDmgPreviewSave` (キャラは任意 = null 可)。
   Q1「使用頻度の高いキャラが選びやすく」= `editMyDmgPreviewChar` が `openIconPicker` に属性を渡す → 既存の「ユニオンの採用数の順」(`_charUsageFor`)。色は `_MK_ATTR_CSS` (トークン名は静的に書く — 「定義されていない var(--…)」の見張り)。
   手で入力の入口は表のマスの ＋ / 編成のチップだけ (カードの「✏️ 手で入力」は 2026-10-29 に外した)。次は S2 (配分表の手動) → S3 (自動) → S4 (決定・時間割) → S5 (予約などを隠す)
+  ★ **✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08 ふるり「人を選ぶ → 入力のモーダルで一気に登録」)**: 📸 模擬ダメージ表の**名前を押す** → `openOpsMockBulk(id)` → モーダル `#opsMockBulkModal` (`_mkbRender`) にその人の 5 属性をボスの順で。
+  属性ごとに プリセット (Q4 の順 = **この属性でよく使われる編成** (📚 人気編成と同じ `_teamGroupsFor` の list を `mockIntakeDomain.presetsFor` が **今回の模擬の人数 → 過去の凸の人数** で並べ直し・開くたびに `_loadTeamSubs(true)` で読み直す)
+  → **前回の自分** (前のレイド = 終わっている本番シーズンの最新・その人の凸を 📚 と同じ `resolveNikkeChar` でキャラ名に。解決できない凸は使わない) → 顔を押して 1 人ずつ (`openIconPicker` に属性 = 採用数順))。押すと 5 枠に入りダメージの欄へ焦点。ダメージは数字だけ (Q6)。B5 は「＋ 2 編成目」(1 属性 3 つまで)。
+  **被り** (同じ人の別の編成とキャラが重なる = 同じキャラは 1 日 1 回) のプリセットは選べない — 判定 `mockIntakeDomain.markDup` は表の赤い枠と同じ 1 か所。
+  **まとめて保存** (Q5) = `bulkSaves` が決める **変えた枠だけ・ダメージのある枠だけ** を属性の順に 1 つずつ `_saveMockFor` (本人の「画像で提出」・✏️ 手で入力 から切り出した保存の 1 枠ぶん = キャラのマスタ正規化 + `supabaseSaveMockSubmission`。**保存の RPC を直に呼ぶのは `_saveMockFor` と 従来の編成編集 (entries 付き) の 2 か所だけ** — テストが数える)。
+  失敗した枠はそのまま残して「もう一度」。保存中は閉じられない・二重に押せない・開き直せない (`_mkb.busy`)。待っている間に別の人を開いたら古い読み込みで上書きしない (`_mkb.gen`)。入力中は描き直さない (`_mkbSyncFooter` が件数・ボタン・✓ だけ)。
+  「次の人 →」= 表の並び (`_mockIntake.order` = `tableRows` の 〆 の早い順)。表の名前の横に「○○ のみ」(`tableRows` の `only` = 出られるブロックが 1 つ = ② の `lockKind` の only と同じ) — その人の模擬を先に埋める (メモ §3 の 5)。
+  プリセットの鍵・名前は onclick に埋めない (`data-key` で渡す)。運営だけの変更なので release-notes は無し。実行テスト `tests/ops-mock-bulk.mjs`
   ★ **🧱 レベルはブロックの頭でしか変わらない (ソルバー `input.levelStartsAtBlock`・2026-10-26 ふるり「朝ブロックでレベル1が完了したらその朝ブロックではレベル2は行わず次のブロックから」)**:
   ブロックの始まりの hourIdx の配列 (`_opsLevelBlockStarts(season)`) を渡したときだけ効く (渡さなければ従来と 1 バイトも違わない: `tests/solver-fingerprint.mjs` 120 盤面)。
   撃破したブロックの残りは次のレベルを開けない (次のレベルは次のブロックの頭から・撃破したレベルの窓も次のブロックの頭まで伸ばす)。最後のブロックで撃破すれば次のレベル (Lv4) は無し。
