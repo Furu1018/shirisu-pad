@@ -19306,6 +19306,7 @@
         const _mkbIsDirty = (r) => !!r && ((Number(r.damageB) > 0 ? Number(r.damageB) : null) !== r.orig.damageB || _mkbKey(r.team) !== r.orig.teamKey);
         const _mkbRow = (slot, dmgB, team, existed) => { const t = _mkbTeam5(team); const d = Number(dmgB) > 0 ? Number(dmgB) : null; return { slot: Number(slot) || 1, damageB: d, team: t, existed: !!existed, saved: false, err: '', note: '', orig: { damageB: d, teamKey: _mkbKey(t) } }; };
         const _mkbPt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+        const _mkbFew = (names) => { const n = (names || []).filter(Boolean); return n.length <= 2 ? n.join('・') : `${n.slice(0, 2).join('・')} ほか${n.length - 2}`; };   // 画面の文は 2 人まで (スマホで折り返しすぎる)。全部は title に
         async function openOpsMockBulk(playerId) {
             if (!_opsMode) { showNotification('運営モードで使います'); return; }
             if (_mkb.busy) { showNotification('保存中です — 終わってから開いてください'); return; }
@@ -19407,7 +19408,7 @@
                 const meta = (p.source === 'last'
                     ? `<span class="mine">前回の自分</span><br>${p.count ? `${p.count} 人が使用` : '実凸の編成'}`
                     : `<b>${p.count} 人</b>が使用<br>模擬${p.mockCount}+過去の凸${p.histCount}${p.mine ? ' · <span class="mine">前回の自分も</span>' : ''}`)
-                    + (p.dup && !p.blocked ? `<br><span class="warn">別の属性と被り: ${escapeHtml(p.dupWith.join('・'))}</span>` : '');
+                    + (p.dup && !p.blocked ? `<br><span class="warn">別の属性と被り: ${escapeHtml(_mkbFew(p.dupWith))}</span>` : '');
                 const t = p.blocked ? ` title="同じ属性の別の編成とキャラが被ります (${escapeHtml(p.blockedWith.join('・'))}) — 2 編成目は両方使うので選べません"`
                     : p.dup ? ` title="別の属性の編成とキャラが被ります (${escapeHtml(p.dupWith.join('・'))}) — 1 日に両方は使えません (選べます)"` : ' title="押すと 5 枠に入ります"';
                 // 名前は onclick に埋めない (引用符で壊れる) — 鍵は data 属性で渡す
@@ -19421,7 +19422,7 @@
             const crossDup = r.team.filter(c => c && cross.includes(c));
             const dmg = r.damageB != null ? String(+Number(r.damageB).toFixed(2)) : '';
             return `<div class="mkb-row">
-                <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}${crossDup.length ? `<span class="st warn" title="表の赤い枠と同じ: 1 日に両方は使えない (使う属性は組むときに決まる)">⚠ 別の属性と被り: ${escapeHtml(crossDup.join('・'))}</span>` : ''}</div>
+                <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}${crossDup.length ? `<span class="st warn" title="別の属性の編成と同じキャラ: ${escapeHtml(crossDup.join('・'))} — 表の赤い枠と同じ (1 日に両方は使えない・使う属性は組むときに決まる)">⚠ 別の属性と被り: ${escapeHtml(_mkbFew(crossDup))}</span>` : ''}</div>
                 ${presets.length ? `<div class="mkb-presets">${pres}</div>` : (_mkb.loading ? '' : '<p class="mkb-note">この属性のプリセットはまだありません — 顔を押して 1 人ずつ選んでください</p>')}
                 <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="number" inputmode="decimal" step="0.01" min="0" value="${dmg}" placeholder="例 28.4" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"${dis}><span>B</span></label></div>
             </div>`;
@@ -19529,7 +19530,7 @@
             const ok = [], ng = [];
             try {
                 for (const s of saves) {   // 属性ごとに今の保存を順に (同時に投げない: 同一編成の寄せ先の判定が同じ行を読む)
-                    const row = s.ref || null;   // 行は札 (ref) で引く — 枠番号で探すと、正規化された番号や統合で付け替えた番号と合わない (Codex P2)
+                    const row = flat.find(r => r.attr === s.attr && Number(r.slot) === s.slot)?.ref || null;   // 行は札 (ref) で引く — 枠番号で探すと、正規化された番号や統合で付け替えた番号と合わない (Codex P2)
                     const teamKey = _mkbKey(s.characters || []);   // 保存した時点の編成 (待っている間に変わったら「変更あり」のまま残す — Codex P1)
                     try {
                         const res = await _saveMockFor(pid, s.attr, { damageB: s.damageB, slot: s.slot, characters: s.characters, actorName });
