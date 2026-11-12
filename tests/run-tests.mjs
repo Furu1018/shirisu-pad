@@ -16555,7 +16555,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
     test('★ 駒は ✕ で 1 個ずつ外せる (手で置いた駒も自動の駒も) / 外せないのは 🔒 予約だけ / 下線 = 手で置いた駒 / 盤の近くに案内', () => {
         const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
         assert.ok(/if \(resv\) return `<span class="obpc\$\{over\}" \$\{box\} data-ob-note=/.test(r), '🔒 予約が押すと外せる形になっている');
-        assert.ok(/return `<button type="button" class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}" \$\{box\} \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\}/.test(r), '駒がボタンでない / 自動の駒に外す印が無い');
+        assert.ok(/return `<button type="button" class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}\$\{flash\}" \$\{box\} \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\}/.test(r), '駒がボタンでない / 自動の駒に外す印が無い');
         assert.ok(/const pieceKey = escapeHtml\(`\$\{a\.memberId\}:\$\{r\.weakness\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\);/.test(r), '駒の鍵がピースの鍵と違う');
         assert.ok(/<span class="obpc-x" aria-hidden="true">✕<\/span><\/button>/.test(r) && /aria-label="\$\{nm\} の駒を外す"/.test(r), '✕ が見えない / 読み上げの名前が無い');
         assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の ✕ で 1 個ずつ外せます') && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
@@ -16965,7 +16965,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const r = fnR('function renderOpsBuild()', 'function _obDecideRange(');
         assert.ok(/const rbNow = _raidRebuildNow\(snap\.season, blocks\);\s*\n\s*_ob\.phaseKey = _obPhaseKey\(snap\.season, blocks\);/.test(r), '再編成中を見ていない / 段の鍵を覚えていない');
         assert.ok(/if \(o\.past && rbNow && rbNow\.idx === i\) return `<div class="obb past rebuild" aria-disabled="true"/.test(r) && /⏱ 再編成中<\/span><\/div>`;/.test(r), '再編成中の札が無い (押せない札のまま)');
-        assert.ok(/host\.innerHTML = `\$\{rbHtml\}<div class="obb-grid"/.test(r), '再編成時間の帯が無い');
+        assert.ok(/host\.innerHTML = `\$\{rbHtml\}<div id="obSync">\$\{_obSyncHtml\(\)\}<\/div><div class="obb-grid"/.test(r), '再編成時間の帯が無い');
         assert.ok(/return `\$\{_raidNowIdx\(season, blocks\)\}\|\$\{rb \? rb\.idx : -1\}`;/.test(fnOf('function _obPhaseKey(season, blocks)')), '段の鍵が無い');
         assert.ok(/if \(_opsMode && typeof _ob !== 'undefined' && _ob\.phaseKey != null && !_ob\.busy\n/.test(html) && /if \(s && _obPhaseKey\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\) !== _ob\.phaseKey\) \{\s*\n[^\n]*\n\s*if \(_ob\.sel && Number\.isInteger\(_ob\.idx\) && _ob\.idx < _obFirstIdx\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\)\) \{ _ob\.sel = null; showNotification\(/.test(html), '段が変わっても描き直さない / 組んでいる最中に描き直す / 選んだピースを残す (⑥ レビュー now-4) / 再編成が終わっただけで外す (再レビュー ui-3)');
         assert.ok(/if \(!confirm\(msg\)\) return;\s*\n\s*if \(!_obSame\(epoch, sid\)\) return;\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== first\) \{ alert\(/.test(html), '確認の間に「いま」が進んでも決定している');

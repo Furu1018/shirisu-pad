@@ -3687,6 +3687,36 @@
         /* 「このブロックのみ / このブロックで最後」(第46回の反省 ②・2026-11-02): ピースの文字・置けないピースの赤・ボタンの人数・新しい段 */
         .obt .rigid.last { color: var(--warn-deep); }
         .obt.ng { border-color: var(--bad); background: var(--bad-bg); } .obt .where.ng { color: var(--bad-deep); font-weight: 800; }
+        /* 🧭 ピースのガイド (2026-11-12): 盤の下 (左の列) に置く — ピース置き場の中に置くと、ポインタを乗せるたびに高さが変わって下のピースが動く */
+        .ob-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .ob-guide { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 9px 10px; background: var(--s1); min-width: 0; }
+        .ob-guide .obg-empty { margin: 0; }
+        .obg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 900; color: var(--t-ink); }
+        .obg-h .obg-dmg { font-size: 15px; font-variant-numeric: tabular-nums; } .obg-h .obg-left { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .obg-faces { display: inline-flex; gap: 3px; vertical-align: middle; } .obg-face { display: inline-flex; border-radius: 8px; } .obg-face.hit { outline: 2px solid var(--bad); outline-offset: 1px; }
+        .obg-noteam { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .obg-sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(var(--ink-rgb), 0.08); font-size: 11.5px; color: var(--t-body); }
+        .obg-lb { font-size: 10.5px; font-weight: 900; color: var(--t-muted); margin-bottom: 4px; }
+        .obg-blks { display: grid; grid-template-columns: repeat(var(--obg-n, 6), minmax(0, 1fr)); gap: 3px; max-width: 320px; }
+        .obg-blks span { text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 3px 0; background: var(--s2); color: var(--t-muted); }
+        .obg-blks span.on { background: var(--ops-solid); color: var(--on-fill); } .obg-blks span.past { opacity: .45; } .obg-blks span.now { outline: 2px solid var(--bad); outline-offset: 1px; }
+        .obg-drop { font-weight: 800; color: var(--t-ink); } .obg-drop.ok { color: var(--ok-on); } .obg-drop.ng { color: var(--bad-deep); }
+        .obg-mate { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 3px 0; }
+        .obg-mk { font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 1px 7px; white-space: nowrap; background: var(--s2); color: var(--t-muted); }
+        .obg-mk.x { background: var(--bad-bg); color: var(--bad-on); } .obg-mk.o { background: var(--ok-bg); color: var(--ok-on); }
+        .obg-mate .why { flex-basis: 100%; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .obg-sum b { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--t-ink); } .obg-sum .d { color: var(--bad-deep); font-weight: 800; } .obg-sum .z { color: var(--ok-on); font-weight: 800; } .obg-sum small { color: var(--t-muted); font-weight: 700; }
+        /* 🔄 ほかの運営の変更 (2026-11-12) */
+        .ob-sync { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 8px; font-size: 12px; color: var(--t-body); }
+        .ob-sync.pend { padding: 8px 10px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-deep); } .ob-sync.done { padding: 8px 10px; border-radius: 10px; background: var(--ok-bg); color: var(--ok-on); }
+        .ob-sync-b { flex: 1 1 220px; min-width: 0; } .ob-sync ul { margin: 3px 0 0; padding-left: 18px; font-weight: 700; } .ob-sync-n { display: block; margin-top: 4px; font-size: 11px; font-weight: 800; }
+        .ob-sync-btn { font: inherit; font-size: 12px; font-weight: 900; border: 0; border-radius: 9px; padding: 7px 14px; background: var(--t-ink); color: var(--card); cursor: pointer; } .ob-sync-btn:disabled { opacity: .5; cursor: default; }
+        .ob-sync-x { font: inherit; font-weight: 900; border: 0; background: none; color: inherit; cursor: pointer; padding: 2px 6px; }
+        .ob-sync-auto { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); cursor: pointer; flex-basis: 100%; } .ob-sync.idle .ob-sync-auto { flex-basis: auto; }
+        .obpc.flash { animation: obFlash 1.2s ease-out 3; }
+        @keyframes obFlash { 0% { box-shadow: 0 0 0 0 var(--warn); } 100% { box-shadow: 0 0 0 9px transparent; } }
+        @media (prefers-reduced-motion: reduce) { .obpc.flash { animation: none; outline: 2px solid var(--warn); } }
+        .obr-if { flex-basis: 100%; text-align: right; font-size: 11px; font-weight: 900; color: var(--ops-on); font-variant-numeric: tabular-nums; }
         .obb .lk { font-size: 10px; font-weight: 900; color: var(--ops-on); } .obb .lk.ng { color: var(--bad-deep); }
         .obb.lk-ng { border-color: var(--bad); }
         .ob-lock { margin: 10px 0 4px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -15712,6 +15742,8 @@
                         renderOpsBuild();
                     }
                 }
+                // 🔄 🧱 組む が見えている間は、ほかの運営が置いた・外した駒を 10 秒ごとに確かめる (2026-11-12)。見えていなければ通信しない・この端末が処理中なら待つ (中で見る)
+                if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active') && typeof _obSyncPins === 'function') _obSyncPins().catch(() => { /* 次の周期で */ });
                 // ⏱ 再編成時間は 🧱 組む を開いていても盤面を取り直す (ヒーローの ✓ の残り・🧱 の始まりの盤面がほかの運営の ✓ を知るように: ⑥ レビュー data-3)。
                 //   👥 などほかのタブでは取り直さない (📸 模擬の取り込みの表・選択を 30 秒ごとに描き直していた: 再レビュー time-4 / ui-4 — そこではヒーローの ✓ の残りは「分からない」)
                 if (_coordPollTick === 2 && _opsMode && document.getElementById('tab-ops')?.classList.contains('active')
@@ -23629,6 +23661,102 @@
             _ob.pinsErr = Array.isArray(rows) ? null : (err || '凸の予約 (supabase/39・45・54) が未適用のため、手で置けません');
             renderOpsBuild();
         }
+        // 🔄 ほかの運営が置いた・外した駒を反映する (2026-11-12 ふるり「運営が複数人で組む場合、リアルタイムでほかの運営が組んだ結果が反映されるとうれしい。
+        //   難しいならワンボタンで」)。手で置いた駒は DB にある (plan_reservations) ので、10 秒の見回りで読み直して差分を出す — だれが・何を (blockBuildDomain.pinChanges)。
+        //   ★ 手を動かしていないとき (ピースを選んでいない・処理中でない) は自動で反映する。選んでいる間はバーで知らせるだけ (握った駒が消えない・ドラッグが切れない) →「反映する」
+        //   ★ 🧮 自動で組んだ結果はこの端末だけ (決定するまで DB に無い) — ここでは届かない。反映で指紋が変わったブロックは、いつもどおり要組み直しになる (_obCtx)
+        //   ★ 読んでいる間にこの端末が駒を書き換えたら (_ob.pins の差し替え・処理中)、古い読み取りは捨てる (自分で置いた駒が「外れた」に見えて消える)
+        const _OB_SYNC_AUTO_KEY = 'shirisuko_ob_sync_auto_v1';   // '0' = 自動で反映しない (端末ごと)
+        const _obSyncAuto = () => { try { return localStorage.getItem(_OB_SYNC_AUTO_KEY) !== '0'; } catch (_) { return true; } };
+        function _obSetSyncAuto(on) {
+            try { if (on) localStorage.removeItem(_OB_SYNC_AUTO_KEY); else localStorage.setItem(_OB_SYNC_AUTO_KEY, '0'); } catch (_) { /* 覚えられないだけ */ }
+            if (on && _ob.syncPending && !_ob.sel && !_ob.busy) _obSyncApply(_ob.syncPending.rows, _ob.syncPending.changes); else _obSyncPaint();
+        }
+        // 行の中身の鍵 (✓ で実行済みになった・外れた も含めて、駒と拘束に効く値)。同じなら何もしない
+        const _obRawSig = (rows) => (Array.isArray(rows) ? rows : []).filter(Boolean).map(r => JSON.stringify([Number(r.id), String(r.status), r.release_reason || '', r.time_mode || '',
+            r.block_from ?? '', r.block_to ?? '', r.time_slot || '', String(r.player_id), Number(r.boss_number), Number(r.loadout_slot) || 1, Number(r.expected_damage_b) || 0, r.raid_level ?? '',
+            Array.isArray(r.characters_snapshot) ? r.characters_snapshot.map(String) : []])).sort().join('|');
+        async function _obSyncPins() {
+            const host = document.getElementById('opsBuild'), snap = opsStore.get();
+            if (!host || host.offsetParent == null || !_opsMode || !snap?.season || _ob.busy || _ob.syncing) return;
+            if (_ob.pins == null || _ob.pinsErr || _ob.pinsSeason !== snap.season.id) return;   // 最初の読み込みと読み直しは renderOpsBuild の役目
+            const sid = snap.season.id, epoch = _ob.epoch, before = _ob.pins;
+            _ob.syncing = true;
+            let rows = null;
+            try { rows = await window.supabaseLoadReservations(sid); } catch (_) { rows = null; } finally { _ob.syncing = false; }
+            if (!Array.isArray(rows) || !_obSame(epoch, sid) || _ob.busy || _ob.pins !== before) return;
+            if (_obRawSig(rows) === _obRawSig(before)) { if (_ob.syncPending) { _ob.syncPending = null; _obSyncPaint(); } return; }   // 元に戻っていた (相手が置いて外した)
+            const rv = window.reservationsDomain, bb = window.blockBuildDomain;
+            const blocks = _ob.blocks || window.raidBlocksDomain.blocksOfSeason(snap.season);
+            const changes = bb.pinChanges ? bb.pinChanges(_obFpRows(before), _obFpRows(rows), blocks, rv && rv.isFixed ? rv.isFixed : null) : [];
+            const idle = !_ob.sel;
+            // 駒の出入りは無いが中身が違う (✓ で実行済みになった・時刻の約束が変わった): 言うほどのことではないので、手が空いていれば黙って合わせる
+            if (!changes.length) { if (idle) { _ob.pins = rows; _ob.syncPending = null; renderOpsBuild(); } return; }
+            if (idle && _obSyncAuto()) _obSyncApply(rows, changes);
+            else { _ob.syncPending = { rows, changes }; _obSyncPaint(); }
+        }
+        function _obSyncApply(rows, changes) {
+            if (_ob.busy) return;
+            _ob.pins = rows; _ob.pinsErr = null; _ob.syncPending = null;
+            _ob.syncNote = { changes, at: Date.now() };
+            _ob.flash = new Set(changes.filter(c => c.kind !== 'removed').map(c => Number(c.id)));
+            clearTimeout(_ob.flashTimer);
+            _ob.flashTimer = setTimeout(() => { _ob.flash = null; }, 6000);   // 光らせるのは反映の直後だけ (次の描き直しからは普通の駒)
+            renderOpsBuild();
+        }
+        // 「反映する」: 知らせたときの行ではなく、押した時点の DB を読み直して合わせる (知らせてから押すまでにまた変わっているかもしれない)
+        async function _obSyncNow() {
+            const snap = opsStore.get();
+            if (!snap?.season || _ob.busy || _ob.syncing) return;
+            const sid = snap.season.id, epoch = _ob.epoch, before = _ob.pins;
+            _ob.syncing = true; _obSyncPaint();
+            let rows = null;
+            try { rows = await window.supabaseLoadReservations(sid); } catch (_) { rows = null; } finally { _ob.syncing = false; }
+            if (!_obSame(epoch, sid) || _ob.busy || _ob.pins !== before) { _obSyncPaint(); return; }
+            if (!Array.isArray(rows)) { showNotification('⚠️ ほかの運営の変更を読めませんでした。もう一度お試しください'); _obSyncPaint(); return; }
+            const rv = window.reservationsDomain, bb = window.blockBuildDomain;
+            const blocks = _ob.blocks || window.raidBlocksDomain.blocksOfSeason(snap.season);
+            const changes = bb.pinChanges ? bb.pinChanges(_obFpRows(before || []), _obFpRows(rows), blocks, rv && rv.isFixed ? rv.isFixed : null) : [];
+            _ob.sel = null;   // 握っていたピースは外す (反映で置けなくなっているかもしれない)
+            if (changes.length) _obSyncApply(rows, changes);
+            else { _ob.pins = rows; _ob.pinsErr = null; _ob.syncPending = null; renderOpsBuild(); showNotification('ほかの運営の変更は、もう元に戻っていました (いまの駒に合わせました)'); }
+        }
+        function _obSyncDismiss() { _ob.syncNote = null; _obSyncPaint(); }
+        // 差分の 1 行: 「さくら が A 朝 · B3 に ミケ 鉄甲 29.3B を置いた」
+        function _obSyncLine(c, snap, blocks) {
+            const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+            const who = (snap.players || []).find(p => String(p.id) === String(c.playerId))?.name || '(不明)';
+            const boss = (n) => { const b = (snap.bosses || []).find(x => Number(x.boss_number) === Number(n)); return { txt: `B${Number(n)}`, attr: b ? b.weakness : null }; };
+            const blk = (i) => (blocks[i] ? blocks[i].short : 'ブロック');
+            const b = boss(c.bossNumber);
+            const piece = `${who}${b.attr ? ` ${pt(b.attr)}` : ''}${c.slot > 1 ? ` 編成${SLOT_JP[c.slot] || c.slot}` : ''} ${c.dmgB.toFixed(1)}B`;
+            const by = c.by || 'ほかの運営';
+            if (c.kind === 'placed') return `${by} が ${blk(c.blockIdx)} · ${b.txt} に ${piece} を${c.fixed ? ' 🔒 予約で' : ''}置いた`;
+            if (c.kind === 'removed') return `${c.by ? `${c.by} が ` : ''}${blk(c.blockIdx)} · ${b.txt} の ${piece} を外した`;
+            if (c.kind === 'moved') return `${by} が ${piece} を ${blk(c.fromBlockIdx)} · B${c.fromBossNumber} → ${blk(c.blockIdx)} · ${b.txt} に移した`;
+            return `${blk(c.blockIdx)} · ${b.txt} の ${piece} の中身が変わった`;
+        }
+        function _obSyncHtml() {
+            const snap = opsStore.get();
+            if (!snap?.season) return '';
+            const blocks = _ob.blocks || [];
+            const list = (changes) => { const top = changes.slice(0, 6); return `<ul>${top.map(c => `<li>${escapeHtml(_obSyncLine(c, snap, blocks))}</li>`).join('')}${changes.length > top.length ? `<li>ほか ${changes.length - top.length} 件</li>` : ''}</ul>`; };
+            const auto = `<label class="ob-sync-auto" title="ほかの運営が手で置いた・外した駒を 10 秒ごとに確かめています。ピースを選んでいる間は、知らせるだけで反映しません"><input type="checkbox" onchange="_obSetSyncAuto(this.checked)"${_obSyncAuto() ? ' checked' : ''}>ほかの運営の駒を自動で反映する</label>`;
+            const pend = _ob.syncPending;
+            if (pend) {
+                // この端末で 🧮 した (まだ決定していない) 結果があれば、反映で組み直しになり得ると先に言う
+                const mine = [..._ob.plans.values()].some(p => p && p.fromDecided == null);
+                return `<div class="ob-sync pend"><div class="ob-sync-b"><b>🔄 ほかの運営の変更が ${pend.changes.length} 件あります</b>${list(pend.changes)}${mine ? '<span class="ob-sync-n">反映すると、この端末で 🧮 した結果のうち、駒が変わったブロックとその後ろは組み直しになります</span>' : ''}</div>`
+                    + `<button type="button" class="ob-sync-btn" onclick="_obSyncNow()"${_ob.busy || _ob.syncing ? ' disabled' : ''}>${_ob.syncing ? '読み込み中…' : '反映する'}</button>${auto}</div>`;
+            }
+            const note = _ob.syncNote;
+            if (note && Date.now() - note.at < 90000) {
+                return `<div class="ob-sync done"><div class="ob-sync-b"><b>✓ ほかの運営の変更 ${note.changes.length} 件を反映しました</b> (${escapeHtml(_obTimeOf(new Date(note.at).toISOString()))})${list(note.changes)}</div>`
+                    + `<button type="button" class="ob-sync-x" onclick="_obSyncDismiss()" aria-label="この知らせを閉じる">✕</button>${auto}</div>`;
+            }
+            return `<div class="ob-sync idle">${auto}</div>`;
+        }
+        function _obSyncPaint() { const el = document.getElementById('obSync'); if (el) el.innerHTML = _obSyncHtml(); }
         // ✅ 決定 (シンプル化 S4): 最新の決定の行を読む。決定は published_plans の 1 行 (plan.decided)。basisId = この端末が前提にしている決定 (決定の直前に照合する)
         async function _obLoadDecided(seasonId) {
             const seq = ++_ob.decSeq;
@@ -23835,6 +23963,7 @@
             if (_ob.pinsSeason !== snap.season.id) {
                 _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.skip.clear(); _ob.sel = null; _ob.idx = null;
                 _ob.dec = null; _ob.decErr = null; _ob.seededFrom = null; _ob.notifySame = false;
+                _ob.syncPending = null; _ob.syncNote = null; _ob.flash = null; _ob.hover = null;   // 🔄 前のシーズンの知らせ・🧭 ガイドの相手を持ち越さない
                 _obLoadPins(snap.season.id);
                 _obLoadDecided(snap.season.id);
             } else {
@@ -23847,6 +23976,8 @@
             // ⏱ 描いていたブロックが過ぎた (再編成時間に入った) — どの経路で描き直しても、選んでいたピースを外す (再レビュー flow-4)
             if (_ob.sel && Number.isInteger(_ob.idx) && _ob.idx < ctx.first) { _ob.sel = null; showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。選んでいたピースを外しました'); }
             _ob.idx = ctx.idx;
+            _ob.ctxLast = ctx;   // 🧭 ガイドの描き直し (_obGuidePaint) が、描いてある盤と同じ材料を読む
+            if (_ob.hover && !host.querySelector('[data-ob-piece]:hover')) _ob.hover = null;   // 描き直しの間にポインタが離れていた (消えた要素は mouseout を出さない)
             const { blocks, ov, idx, tray, lock } = ctx;
             const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
             // ⏱ 再編成時間 (⑥): 凸の時間が終わったブロック (first の 1 つ前) は「再編成中」— 組むのは次のブロック。帯で手順を言う
@@ -23888,10 +24019,16 @@
                     // 手で置いた駒も自動の駒も ✕ で 1 個ずつ外せる (2026-10-31 ふるり)。外せないのは 🔒 予約だけ — 押すと理由を言う
                     if (resv) return `<span class="obpc${over}" ${box} data-ob-note="🔒 予約です (外すには 🔒 凸の予約 の「取り下げる」)" title="${nm} ${dmgTxt}B — 🔒 予約">🔒 ${nm} ${dmgTxt}</span>`;
                     const pieceKey = escapeHtml(`${a.memberId}:${r.weakness}:${Number(a.loadoutSlot) || 1}`);
-                    return `<button type="button" class="obpc pin${pin ? ' hand' : ''}${over}" ${box} ${pin ? `data-ob-unpin="${Number(a.reservationId)}"` : `data-ob-drop="${pieceKey}"`} title="${nm} ${dmgTxt}B — ${pin ? '手で置いた駒' : '自動で置いた駒'}。押すと外れます" aria-label="${nm} の駒を外す"><span class="obpc-nm">${nm} ${dmgTxt}</span><span class="obpc-x" aria-hidden="true">✕</span></button>`;
+                    // 🔄 ほかの運営の変更を反映した直後は、変わった駒を光らせる。手で置いた駒は置いた人の名前を title に
+                    const pinBy = pin ? ((_ob.pins || []).find(x => Number(x.id) === Number(a.reservationId))?.pinned_by || '') : '';
+                    const flash = pin && _ob.flash && _ob.flash.has(Number(a.reservationId)) ? ' flash' : '';
+                    return `<button type="button" class="obpc pin${pin ? ' hand' : ''}${over}${flash}" ${box} ${pin ? `data-ob-unpin="${Number(a.reservationId)}"` : `data-ob-drop="${pieceKey}"`} title="${nm} ${dmgTxt}B — ${pin ? `手で置いた駒${pinBy ? ` (${escapeHtml(pinBy)})` : ''}` : '自動で置いた駒'}。押すと外れます" aria-label="${nm} の駒を外す"><span class="obpc-nm">${nm} ${dmgTxt}</span><span class="obpc-x" aria-hidden="true">✕</span></button>`;
                 }).join('');
                 const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B` : (r.done ? `撃破 ✓${r.gotB - r.startB > 0.05 ? ` 余り ${(r.gotB - r.startB).toFixed(1)}B` : ''}` : `あと ${r.remB.toFixed(1)}B / ${r.startB.toFixed(1)}B`);
-                return `<div class="obr${can === true ? ' can' : (can === false ? ' no' : '')}${r.done ? ' done' : ''}" data-ob-boss="${r.bossNumber}"><div class="obr-h"><span class="obr-pt" style="background:${(_bbFill(r.weakness) || [])[0] || 'var(--s2)'};color:${(_bbFill(r.weakness) || [])[1] || 'var(--t-ink)'};">${escapeHtml(pt(r.weakness))}PT</span><b>B${r.bossNumber} ${escapeHtml(r.name)}</b><span class="hp">${hp}</span></div><div class="obr-bar">${pieces}</div></div>`;
+                // 🧭 選んでいるピースを置ける行には「置くとどうなるか」を先に出す (2026-11-12 ふるり「組む際のガイド」)
+                const ifB = (can === true && !r.infinite) ? r.remB - sel.dmgB : null;
+                const ifTxt = ifB == null ? '' : `<span class="obr-if">${escapeHtml(sel.name)} を置くと → ${ifB <= 0.05 ? `撃破 ✓${-ifB > 0.05 ? ` 余り ${(-ifB).toFixed(1)}B` : ''}` : `あと ${ifB.toFixed(1)}B`}</span>`;
+                return `<div class="obr${can === true ? ' can' : (can === false ? ' no' : '')}${r.done ? ' done' : ''}" data-ob-boss="${r.bossNumber}"><div class="obr-h"><span class="obr-pt" style="background:${(_bbFill(r.weakness) || [])[0] || 'var(--s2)'};color:${(_bbFill(r.weakness) || [])[1] || 'var(--t-ink)'};">${escapeHtml(pt(r.weakness))}PT</span><b>B${r.bossNumber} ${escapeHtml(r.name)}</b><span class="hp">${hp}</span>${ifTxt}</div><div class="obr-bar">${pieces}</div></div>`;
             }).join('');
             const skipped = (o.skipped || []).map(a => {
                 const nm = escapeHtml(a.memberName || '');
@@ -23957,17 +24094,77 @@
             const rbHtml = rbNow && blocks[rbNow.idx] && blocks[rbNow.next]
                 ? `<p class="ob-rebuild">⏱ <b>再編成時間 ${escapeHtml(rbNow.label)}</b> — ${escapeHtml(blocks[rbNow.idx].short)} の凸の時間は終わりました。${escapeHtml(blocks[rbNow.next].short)} (${escapeHtml(rbNow.to)} から) を組んで ✅ 決定します: ⚔️ HP → ✓ 凸の記録 → 🧱 組む → ✅ 決定。${escapeHtml(blocks[rbNow.idx].short)} で済んでいない凸は、${escapeHtml(blocks[rbNow.next].short)} に出られる人なら ${escapeHtml(blocks[rbNow.next].short)} のピースに出ます</p>`
                 : '';
-            host.innerHTML = `${rbHtml}<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${lockHtml}${decideHtml}
+            host.innerHTML = `${rbHtml}<div id="obSync">${_obSyncHtml()}</div><div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${lockHtml}${decideHtml}
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
                     <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${pinHint}${err}${skippedHtml}
-                    <div class="ob-wrap"><div class="ob-board">${rows}</div>
+                    <div class="ob-wrap"><div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
                             <p class="ob-note">「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます</p>
                             <div class="ob-tray-list">${trayHtml}</div></div></div>
                 </div>`;
             _obDelegate(host);
+        }
+        // 🧭 ピースのガイド (2026-11-12 ふるり「ピースを握った際・ポイントしたときに、そのメンバーのほかに凸できる時間・編成 (キャラのアイコン)・ダメージ、
+        //   この編成を使うことでほかの編成にどう影響するかも見たい」)。中身は blockBuildDomain.pieceGuide が唯一 (見せるだけ・置けるかの判定は増やさない)。
+        //   出すピース = ポインタを乗せているピース (PC) → 無ければ選んでいるピース。材料は描いてある盤と同じ ctx
+        function _obGuideKey(ctx) {
+            return (_ob.hover && ctx.tray.some(p => p.key === _ob.hover)) ? _ob.hover : _ob.sel;
+        }
+        function _obGuideHtml(ctx, key) {
+            const bb = window.blockBuildDomain;
+            const p = key ? ctx.tray.find(x => x.key === key) : null;
+            const g = (p && bb.pieceGuide) ? bb.pieceGuide({ piece: p, tray: ctx.tray, ov: ctx.ov, idx: ctx.idx, first: ctx.first }) : null;
+            if (!g) return '<p class="ob-note obg-empty">🧭 ピースを押す (PC はポインタを乗せる) と、その人の出られるブロック・編成・ダメージと、ほかの編成への影響がここに出ます</p>';
+            const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+            const blocks = ctx.blocks;
+            const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
+            const slotTxt = (s) => (s > 1 ? ` 編成${SLOT_JP[s] || s}` : '');
+            const faces = (team, hit) => team.length
+                ? `<span class="obg-faces">${team.map(c => `<span class="obg-face${hit.includes(c) ? ' hit' : ''}">${_charIconHtml(c, 26)}</span>`).join('')}</span>`
+                : '<span class="obg-noteam">キャラの登録なし</span>';
+            const picksTxt = (picks) => picks.map(x => `${pt(x.attr)}${slotTxt(x.slot)}`).join(' + ');
+            const head = `<div class="obg-h"><span>${escapeHtml(p.name)}</span><span class="obt-pt" style="background:${fill};color:${ink};">${escapeHtml(pt(p.attr))}PT${escapeHtml(slotTxt(p.slot))}</span>${faces(p.team, [])}<span class="obg-dmg">${p.dmgB.toFixed(1)}B</span><span class="obg-left">このブロックで置ける凸 ${Math.max(0, Number(p.remaining) || 0)}</span></div>`;
+            // 置き先: ここに置くとどうなるか / 置けない理由 (文は盤・ピースと同じ _obDeadText)
+            let dropTxt;
+            if (p.placedIdx != null) dropTxt = `<span class="obg-drop">${escapeHtml(blocks[p.placedIdx]?.short || '別のブロック')} に置いてあります</span>`;
+            else if (p.blocked === 'used') dropTxt = '<span class="obg-drop ng">⚠ 使えない: この編成のキャラは、きょうもう使っています</span>';
+            else if (p.blocked === 'dup') dropTxt = '<span class="obg-drop ng">⚠ 使えない: 置いた別の編成とキャラが被ります (同じキャラは 1 日 1 回)</span>';
+            else if (!(p.remaining > 0)) dropTxt = '<span class="obg-drop ng">⚠ このブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)</span>';
+            else if (g.drop && g.drop.ok) {
+                const d = g.drop, b = `B${d.bossNumber} ${escapeHtml(d.name || '')}`;
+                dropTxt = d.infinite ? `<span class="obg-drop ok">${b} (HP 無限) に置けます</span>`
+                    : `<span class="obg-drop${d.kill ? ' ok' : ''}">${b}: あと ${d.remB.toFixed(1)}B → 置くと ${d.kill ? `撃破 ✓${d.overB > 0.05 ? ` 余り ${d.overB.toFixed(1)}B` : ''}` : `あと ${d.afterB.toFixed(1)}B`}</span>`;
+            } else dropTxt = `<span class="obg-drop ng">⚠ 置けない: ${escapeHtml(g.drop ? _obDeadText(g.drop.st, blocks, pt, p.attr) : '相手のボスがいません')}</span>`;
+            // 出られるブロック (A から順・紫 = 出られる・赤枠 = いま組んでいるブロック・薄い = 過ぎた)
+            const kindTxt = p.kind === 'only' ? ' — このブロックのみ' : (p.kind === 'lastOnly' ? ' — このブロックで最後 (ほかは済)' : (p.kind === 'last' ? ' — このブロックで最後' : ''));
+            const tiles = blocks.map((b, i) => `<span class="${[p.avail.includes(i) ? 'on' : '', i < ctx.first ? 'past' : '', i === ctx.idx ? 'now' : ''].filter(Boolean).join(' ')}" title="${escapeHtml(`${b.short} ${_obHours(b)}${p.avail.includes(i) ? ' — 出られる' : ''}`)}">${escapeHtml(b.letter || String(i + 1))}</span>`).join('');
+            const ahead = p.avail.filter(i => i !== ctx.idx && i >= ctx.first).map(i => blocks[i].short);
+            const availNote = ahead.length ? `ほかに ${escapeHtml(ahead.join('・'))} でも置けます` : 'ほかのブロックには置けません (先に置く人)';
+            // この編成を使うと、ほかの編成は
+            const MK = { placed: ['', '置いた'], used: ['', 'キャラ使用済み'], dup: ['', '被りでもう使えない'], clash: ['x', '✕ 使えなくなる'], free: ['o', '○ 残る'] };
+            const mates = g.mates.length ? g.mates.map(m => {
+                const [cls, lbl] = MK[m.state] || MK.free;
+                const at = m.state === 'placed' && blocks[m.placedIdx] ? ` (${escapeHtml(blocks[m.placedIdx].short)})` : '';
+                const why = m.hit.length ? `<span class="why">${escapeHtml(m.hit.join('・'))} が同じ (同じキャラは 1 日 1 回)</span>` : '';
+                return `<div class="obg-mate"><span class="obg-mk ${cls}">${lbl}${at}</span><b>${escapeHtml(pt(m.attr))}${escapeHtml(slotTxt(m.slot))}</b> ${m.dmgB.toFixed(1)}B ${faces(m.team, m.hit)}${why}</div>`;
+            }).join('') : '<span class="obg-noteam">ほかの編成の登録はありません</span>';
+            // この人の残り凸の合計 (この人だけの数字 — ボスの残り HP・ほかの人は見ない)
+            const t = g.total;
+            const sum = !t ? '' : `<div class="obg-sec obg-sum"><div class="obg-lb">${escapeHtml(p.name)} の残り ${t.n} 凸の合計 (模擬どおりなら・この人だけで見た数字)</div>`
+                + `この編成を使う: <b>${t.withThis.sumB.toFixed(1)}B</b> <small>(${escapeHtml(picksTxt(t.withThis.picks))})</small><br>`
+                + `いちばん高い組み合わせ: <b>${t.best.sumB.toFixed(1)}B</b> <small>(${escapeHtml(picksTxt(t.best.picks))})</small><br>`
+                + (t.diffB < -0.05 ? `<span class="d">差 ${t.diffB.toFixed(1)}B — この人だけで見ると、別の編成のほうが出ます</span>` : '<span class="z">差なし — この編成はいちばん高い組み合わせに入っています</span>') + '</div>';
+            return `${head}<div class="obg-sec">${dropTxt}</div>`
+                + `<div class="obg-sec"><div class="obg-lb">出られるブロック${kindTxt}</div><div class="obg-blks" style="--obg-n:${blocks.length};">${tiles}</div><div class="obg-noteam" style="margin-top:4px;">${availNote}</div></div>`
+                + `<div class="obg-sec"><div class="obg-lb">${p.placedIdx != null ? 'この編成を置いたので、ほかの編成は' : 'この編成を使うと、ほかの編成は'}</div>${mates}</div>${sum}`;
+        }
+        // ガイドだけ描き直す (ポインタを乗せるたびに盤を描き直さない — 掴んだピース・スクロールが飛ぶ)
+        function _obGuidePaint() {
+            const el = document.getElementById('obGuide'), ctx = _ob.ctxLast;
+            if (!el || !ctx) return;
+            el.innerHTML = _obGuideHtml(ctx, _obGuideKey(ctx));
         }
         // 決定できるブロック: 🧮 で組んだ、または駒を手で置いた (2026-10-31 ふるり「全部手動で組みたい。朝と夜に出られる人の凸を朝に温存して夜まで取っておきたい」)。
         //   だれも置いていない空のブロックは飛ばす (後ろのブロックを決められる)。組み直しが要るブロックの先は決めない
@@ -24237,6 +24434,11 @@
             // 「このブロックのみ / 最後」の段の開け閉めを覚える (30 秒ごとの描き直しで戻さない)。toggle は泡立たないので捕捉で受ける
             host.addEventListener('toggle', (e) => { const d = e.target; if (d && d.matches && d.matches('[data-ob-lock]')) _ob.lockOpen = !!d.open; }, true);
             host.addEventListener('dragstart', (e) => { if (_ob.busy) { e.preventDefault(); return; } const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
+            // 🧭 PC: ピースにポインタを乗せるとガイドがその人に替わる (押さなくても見られる)。離れたら選んでいるピースに戻す。タッチの端末では押したピース (_ob.sel) だけ
+            if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+                host.addEventListener('mouseover', (e) => { const pc = e.target.closest('[data-ob-piece]'); if (!pc || _ob.hover === pc.dataset.obPiece) return; _ob.hover = pc.dataset.obPiece; _obGuidePaint(); });
+                host.addEventListener('mouseout', (e) => { if (!_ob.hover || !e.target.closest('[data-ob-piece]')) return; const to = e.relatedTarget; if (to && to.closest && to.closest('[data-ob-piece]')) return; _ob.hover = null; _obGuidePaint(); });
+            }
             host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
             host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
         }

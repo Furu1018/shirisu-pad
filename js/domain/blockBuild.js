@@ -71,6 +71,34 @@
             .sort().join('|');
     }
 
+    /**
+     * 🔄 ほかの運営が駒を置いた・外した の差分 (2026-11-12 ふるり「運営が複数人で組むとき、ほかの運営が組んだ結果が反映されるとうれしい」)。
+     * 前に読んだ予約の行と、いま読んだ行の「ブロックの駒」(blockPins) を id で突き合わせる。見せるだけ (どの結果を捨てるかは指紋 _obPinsFp のまま)。
+     * ★ 呼ぶ側は ✓ で実行済みになった駒を実行前に戻した行 (_obFpRows) を渡す — ✓ を付けただけで「外れた」と言わない
+     * @returns {Array<{ kind:'placed'|'moved'|'changed'|'removed', id:number, playerId, bossNumber:number, slot:number, dmgB:number, blockIdx:number, by:string|null, fixed:boolean,
+     *   fromBlockIdx?:number, fromBossNumber?:number }>}  by = 置いた人 (pinned_by)。removed の by は外した人 (released_by・分からなければ null)
+     */
+    function pinChanges(prevRows, nextRows, blocks, isFixed) {
+        const idx = (rows) => new Map(blockPins(rows, isFixed).map(r => [Number(r.id), r]));
+        const a = idx(prevRows), b = idx(nextRows);
+        const view = (r) => ({ id: Number(r.id), playerId: r.player_id, bossNumber: Number(r.boss_number), slot: Number(r.loadout_slot) || 1,
+            dmgB: Number(r.expected_damage_b) || 0, blockIdx: pinBlockIdx(r, blocks), by: r.pinned_by || null, fixed: r.status !== 'pinned' });
+        const body = (r) => JSON.stringify([String(r.status), String(r.player_id), Number(r.loadout_slot) || 1, Number(r.expected_damage_b) || 0,
+            Array.isArray(r.characters_snapshot) ? r.characters_snapshot.map(String) : []]);
+        const out = [];
+        for (const [id, r] of b) {
+            const p = a.get(id);
+            if (!p) out.push({ kind: 'placed', ...view(r) });
+            else if (pinBlockIdx(p, blocks) !== pinBlockIdx(r, blocks) || Number(p.boss_number) !== Number(r.boss_number))
+                out.push({ kind: 'moved', ...view(r), fromBlockIdx: pinBlockIdx(p, blocks), fromBossNumber: Number(p.boss_number) });
+            else if (body(p) !== body(r)) out.push({ kind: 'changed', ...view(r) });
+        }
+        // 外した人は、いまの行 (status 'released') の released_by に残る (行ごと消えていれば分からない = null)
+        const now = new Map((Array.isArray(nextRows) ? nextRows : []).filter(Boolean).map(r => [Number(r.id), r]));
+        for (const [id, r] of a) if (!b.has(id)) out.push({ kind: 'removed', ...view(r), by: (now.get(id) && now.get(id).released_by) || null });
+        return out;
+    }
+
     /** プランの凸のうち、このブロックの範囲・このレベルのもの (時刻の順) */
     function attacksAt(plan, block, level) {
         const all = pc() ? pc().attacksIn(plan, block) : [];
@@ -345,6 +373,63 @@
     }
 
     /**
+     * 🧭 ピースのガイド (2026-11-12 ふるり「ピースを握ったとき・ポイントしたときに、そのメンバーのほかに凸できる時間・編成・ダメージ、
+     *   この編成を使うことでほかの編成にどう影響するかを見たい」)。見せるだけ (置けるかの判定は canDrop / bossState のまま・増やさない)。
+     * @param {{ piece:Object, tray:Object[], ov:Object[], idx:number, first?:number }} a  piece / tray = trayPieces の結果 (同じブロック)
+     * @returns {null|{ piece:Object,
+     *   mates:Array<{ key, attr, slot, dmgB, team:string[], hit:string[], state:'placed'|'used'|'dup'|'clash'|'free', placedIdx:number|null }>,
+     *     state: placed = もう置いてある / used = きょう使ったキャラを含む / dup = 置いた別の編成と被ってもう使えない / clash = この編成を使うと使えなくなる / free = 残る
+     *   drop: null (もう置いてある) | { ok:true, bossNumber, name, infinite:boolean, remB:number|null, afterB:number|null, kill:boolean, overB:number } | { ok:false, st:Object (bossState) },
+     *   total: null | { n:number, best:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, withThis:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, diffB:number } }}
+     *   total = その人の残り n 凸 (このブロックで置ける数) で出せる合計 (模擬どおり・同じキャラは 1 日 1 回)。その人だけの数字 — ボスの残り HP・ほかの人は見ない
+     */
+    function pieceGuide({ piece, tray, ov, idx, first = 0 } = {}) {
+        if (!piece) return null;
+        const mine = (Array.isArray(tray) ? tray : []).filter(p => p && String(p.memberId) === String(piece.memberId));
+        const teamOf = (p) => (Array.isArray(p.team) ? p.team : []);
+        const shared = (a, b) => teamOf(a).filter(c => teamOf(b).includes(c));
+        const mates = mine.filter(p => p.key !== piece.key).map(p => {
+            const hit = shared(p, piece);
+            const state = p.placedIdx != null ? 'placed' : (p.blocked === 'used' ? 'used' : (p.blocked === 'dup' ? 'dup' : (hit.length ? 'clash' : 'free')));
+            return { key: p.key, attr: p.attr, slot: Number(p.slot) || 1, dmgB: Number(p.dmgB) || 0, team: teamOf(p).slice(), hit, state, placedIdx: p.placedIdx != null ? p.placedIdx : null };
+        });
+        let drop = null;
+        if (piece.placedIdx == null) {
+            const st = bossState({ ov, idx, first, attr: piece.attr });
+            if (st && st.ok) {
+                const row = st.row, inf = !!row.infinite;
+                const after = inf ? null : Number(row.remB) - (Number(piece.dmgB) || 0);
+                drop = { ok: true, bossNumber: Number(row.bossNumber), name: row.name, infinite: inf, remB: inf ? null : Number(row.remB),
+                    afterB: inf ? null : Math.max(0, after), kill: !inf && after <= EPS, overB: inf ? 0 : Math.max(0, -after) };
+            } else if (st) drop = { ok: false, st };
+        }
+        // その人の残り凸で出せる合計: まだ置いていない・使える編成から、キャラが被らない組を全部試す (編成は多くて十数個・凸は 3 つまで)
+        let total = null;
+        const n = Math.max(0, Math.min(3, Number(piece.remaining) || 0));
+        const usable = (p) => p.placedIdx == null && !p.blocked && Number(p.dmgB) > 0;
+        if (n > 0 && usable(piece)) {
+            const pool = mine.filter(usable);
+            const search = (must) => {
+                let top = { sumB: must ? Number(must.dmgB) : 0, picks: must ? [must] : [] };
+                const go = (i, picks, sum) => {
+                    if (sum > top.sumB + 1e-9) top = { sumB: sum, picks: picks.slice() };
+                    if (picks.length >= n) return;
+                    for (let k = i; k < pool.length; k++) {
+                        const p = pool[k];
+                        if (picks.includes(p) || picks.some(q => shared(p, q).length)) continue;
+                        picks.push(p); go(k + 1, picks, sum + Number(p.dmgB)); picks.pop();
+                    }
+                };
+                go(0, must ? [must] : [], must ? Number(must.dmgB) : 0);
+                return { sumB: top.sumB, picks: top.picks.map(p => ({ attr: p.attr, slot: Number(p.slot) || 1, dmgB: Number(p.dmgB) })) };
+            };
+            const best = search(null), withThis = search(piece);
+            total = { n, best, withThis, diffB: withThis.sumB - best.sumB };
+        }
+        return { piece, mates, drop, total };
+    }
+
+    /**
      * 組んだプランから駒を 1 個だけ外す (元のプランは変えない・2026-10-31 ふるり「ピースは 1 つずつ外したい」)。
      * 同じカード (人 × ボス × 編成) はきょう 1 回なので、これで 1 個に決まる。fromIdx / toIdx = そのブロックの時間 (決定から読み戻したプランは全ブロックの凸を持つ)
      * @returns {{ plan:Object, removed:Object|null }}
@@ -383,5 +468,5 @@
         }) };
     }
 
-    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, dropPiece, withoutPieces, lockKind, bossState, lockOutlook, EPS };
+    root.blockBuildDomain = { pinBlockIdx, blockPins, pinsPlan, pinsFingerprint, attacksAt, overview, availableBlocks, inBlockOf, trayPieces, canDrop, hourIdxOfIso, dropPiece, withoutPieces, lockKind, bossState, lockOutlook, pieceGuide, pinChanges, EPS };
 })(typeof window !== 'undefined' ? window : globalThis);

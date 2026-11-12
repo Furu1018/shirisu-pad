@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>運営の入力と組む モック</title>
+<meta name="description" content="しりすこPAD 前日の運営の作業の改修案: ① 模擬をキーボードだけで続けて入れる ② ほかの運営が組んだ結果を反映する ③ ピースを握ったときのガイド。実装前のモック (名前は架空)。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap">
+<style>
+:root { --bg: #f3f2f7; --card: #ffffff; --s1: #f6f5fa; --s2: #ebe9f1; --line: #e3e1ea; --ink: #16151c; --body: #3f3e4a; --muted: #6f6e7c;
+  --ops: #6c42f0; --ops-bg: #efeafd; --ok: #1f8f4e; --ok-bg: #e6f6ec; --warn: #b56a00; --warn-bg: #fff3dc; --bad: #c8322e; --bad-bg: #fde9e7; --on-fill: #ffffff;
+  --fire: #d7432f; --fire-bg: #fdeae7; --water: #2c76d2; --water-bg: #e6effc; --electric: #7c3fd6; --electric-bg: #efe7fb; --iron: #b57a12; --iron-bg: #fbf0d8; --wind: #1f9358; --wind-bg: #e4f5ea;
+  --b1: #1FA95C; --b2: #F2B705; --b3: #E5484D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141319; --card: #1f1e27; --s1: #26252f; --s2: #2d2c37; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --warn: #f0b24a; --warn-bg: #3d2f12; --bad: #f07a76; --bad-bg: #44201f; --on-fill: #16151c;
+  --fire: #f08a7a; --water: #7fb0f0; --electric: #b99af5; --iron: #e0b05a; --wind: #6fd09a;
+  --fire-bg: #3a1f1c; --water-bg: #1b2a40; --electric-bg: #2b1f40; --iron-bg: #3a2f14; --wind-bg: #17311f; } }
+:root[data-theme="dark"] { --bg: #141319; --card: #1f1e27; --s1: #26252f; --s2: #2d2c37; --line: #35343f; --ink: #f4f3f8; --body: #cfcdda; --muted: #9b99a8;
+  --ops: #a78bfa; --ops-bg: #2a2340; --ok: #5ad48a; --ok-bg: #173a27; --warn: #f0b24a; --warn-bg: #3d2f12; --bad: #f07a76; --bad-bg: #44201f; --on-fill: #16151c;
+  --fire: #f08a7a; --water: #7fb0f0; --electric: #b99af5; --iron: #e0b05a; --wind: #6fd09a;
+  --fire-bg: #3a1f1c; --water-bg: #1b2a40; --electric-bg: #2b1f40; --iron-bg: #3a2f14; --wind-bg: #17311f; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: 'Noto Sans JP', system-ui, sans-serif; font-size: 14px; line-height: 1.55; padding: 12px 16px 80px; }
+.wrap { max-width: 980px; margin: 0 auto; }
+.crumb { font-size: 11px; font-weight: 800; color: var(--muted); margin: 2px 0; }
+h1 { font-size: 18px; font-weight: 900; margin: 0 0 2px; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.tabs { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
+.tabs button { font: inherit; font-weight: 900; font-size: 12.5px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--body); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.screen { display: none; } .screen.on { display: block; }
+.card { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid var(--line); }
+.card h2 { font-size: 14px; font-weight: 900; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-wrap: balance; }
+.tag { font-size: 10px; font-weight: 900; border-radius: 999px; padding: 2px 8px; color: var(--ops); background: var(--ops-bg); }
+.tag.now { color: var(--muted); background: var(--s2); }
+.note { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; } .note b { color: var(--body); }
+.btn { font: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 12px; border-radius: 9px; border: 0; cursor: pointer; background: var(--s2); color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--card); } .btn.ops { background: var(--ops); color: var(--on-fill); }
+.btn[disabled] { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ops); outline-offset: 2px; }
+kbd { font: inherit; font-size: 10.5px; font-weight: 900; background: var(--s2); color: var(--body); border-radius: 5px; padding: 1px 6px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+.a-fire { background: var(--fire-bg); color: var(--fire); } .a-water { background: var(--water-bg); color: var(--water); } .a-electric { background: var(--electric-bg); color: var(--electric); }
+.a-iron { background: var(--iron-bg); color: var(--iron); } .a-wind { background: var(--wind-bg); color: var(--wind); }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 2px 8px; background: var(--s2); color: var(--body); white-space: nowrap; }
+table.plain { width: 100%; border-collapse: collapse; font-size: 12px; } table.plain th, table.plain td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+table.plain th { font-weight: 900; color: var(--muted); font-size: 11px; border-top: 0; }
+.scroll-x { overflow-x: auto; }
+/* キャラの顔 (モックでは頭 2 文字 + バーストの点) */
+.face { position: relative; width: 30px; height: 30px; border-radius: 8px; background: var(--s2); color: var(--body); font-size: 10px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.face i { position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--card); }
+.face.empty { border: 1.5px dashed var(--line); background: none; color: var(--muted); }
+.face.hit { outline: 2px solid var(--bad); outline-offset: 1px; }
+.faces { display: inline-flex; gap: 3px; }
+/* ---- ① 続けて入力 ---- */
+.mi { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; }
+@media (max-width: 720px) { .mi { grid-template-columns: minmax(0, 1fr); } }
+.mi-search { width: 100%; font: inherit; font-weight: 700; padding: 8px 10px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--s1); color: var(--ink); }
+.mi-list { display: grid; gap: 4px; margin-top: 8px; max-height: 420px; overflow-y: auto; }
+.mi-p { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 9px; border: 1.5px solid transparent; background: var(--s1); font: inherit; color: var(--ink); cursor: pointer; text-align: left; }
+.mi-p.on { border-color: var(--ops); background: var(--ops-bg); }
+.mi-p .nm { font-weight: 900; font-size: 12.5px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mi-p .dl { font-size: 10px; color: var(--muted); font-weight: 800; white-space: nowrap; }
+.mi-p .n { font-size: 10.5px; font-weight: 900; color: var(--muted); font-variant-numeric: tabular-nums; } .mi-p .n.full { color: var(--ok); }
+.mi-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.mi-head .who { font-size: 16px; font-weight: 900; }
+.mi-row { display: grid; grid-template-columns: 92px 176px 96px minmax(0, 1fr); gap: 8px; align-items: center; padding: 8px; border-radius: 10px; border: 1.5px solid transparent; }
+.mi-row + .mi-row { margin-top: 4px; }
+.mi-row.cur { background: var(--s1); border-color: var(--line); }
+@media (max-width: 720px) { .mi-row { grid-template-columns: 84px minmax(0, 1fr) 92px; } .mi-row .mi-pre { grid-column: 1 / -1; } }
+.mi-attr { font-weight: 900; font-size: 12px; border-radius: 8px; padding: 5px 8px; } .mi-attr small { display: block; font-weight: 700; font-size: 10px; opacity: .85; }
+.mi-dmg { display: flex; align-items: center; gap: 4px; }
+.mi-dmg input { width: 100%; font: inherit; font-weight: 900; font-size: 15px; padding: 6px 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.mi-dmg span { font-weight: 900; font-size: 12px; color: var(--muted); }
+.mi-team { display: flex; align-items: center; gap: 6px; min-width: 0; } .mi-team .st { font-size: 10px; font-weight: 900; color: var(--muted); white-space: nowrap; } .mi-team .st.ok { color: var(--ok); } .mi-team .st.warn { color: var(--bad); }
+.mi-pre { display: flex; gap: 5px; flex-wrap: wrap; border-radius: 9px; padding: 2px; }
+.mi-pre.choosing { outline: 2px solid var(--ops); outline-offset: 2px; background: var(--ops-bg); }
+.mi-ps { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); font: inherit; color: var(--body); cursor: pointer; font-size: 10.5px; font-weight: 800; }
+.mi-ps.on { border-color: var(--ink); background: var(--s2); color: var(--ink); }
+.mi-ps .face { width: 22px; height: 22px; font-size: 8.5px; border-radius: 6px; } .mi-ps .face i { width: 7px; height: 7px; }
+.mi-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.mi-foot .msg { font-size: 12px; font-weight: 800; color: var(--ok); flex: 1; min-width: 120px; }
+.keys { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); font-weight: 700; margin: 0 0 10px; }
+/* ---- 盤 (② ③ 共通) ---- */
+.obb-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 620px) { .obb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.obb { display: flex; flex-direction: column; gap: 2px; padding: 8px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--s1); font-size: 10.5px; color: var(--muted); min-height: 74px; }
+.obb.on { border-color: var(--ops); background: var(--ops-bg); }
+.obb .nm { font-weight: 900; font-size: 12px; color: var(--ink); } .obb .who { margin-top: auto; display: flex; gap: 3px; flex-wrap: wrap; }
+.av { font-size: 9.5px; font-weight: 900; border-radius: 999px; padding: 1px 6px; background: var(--ink); color: var(--card); white-space: nowrap; }
+.av.other { background: var(--warn-bg); color: var(--warn); }
+.obr { display: grid; grid-template-columns: 118px minmax(0, 1fr) 92px; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 10px; border: 1.5px solid transparent; }
+.obr + .obr { margin-top: 4px; }
+@media (max-width: 620px) { .obr { grid-template-columns: 92px minmax(0, 1fr); } .obr .res { grid-column: 1 / -1; text-align: left; } }
+.obr .h { font-weight: 900; font-size: 12px; border-radius: 8px; padding: 5px 8px; } .obr .h small { display: block; font-size: 10px; font-weight: 700; opacity: .85; }
+.obr .bar { position: relative; min-height: 34px; border-radius: 8px; background: var(--s2); display: flex; flex-wrap: wrap; gap: 3px; padding: 3px; align-items: center; }
+.obr .res { font-size: 11px; font-weight: 900; text-align: right; color: var(--body); font-variant-numeric: tabular-nums; } .obr .res.ok { color: var(--ok); } .obr .res.ng { color: var(--bad); }
+.obr.can { border-color: var(--ops); background: var(--ops-bg); } .obr.dead { opacity: .55; }
+.pc { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 900; border-radius: 7px; padding: 4px 7px; white-space: nowrap; border: 1.5px solid transparent; }
+.pc small { font-weight: 800; opacity: .8; } .pc .by { font-size: 9px; border-radius: 999px; padding: 0 5px; background: var(--card); color: var(--body); }
+.pc.new { border-color: var(--warn); animation: flash 1.2s ease-out 2; } .pc.ghost { border-style: dashed; border-color: currentColor; opacity: .7; }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 var(--warn); } 100% { box-shadow: 0 0 0 8px transparent; } }
+@media (prefers-reduced-motion: reduce) { .pc.new { animation: none; } }
+.syncbar { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; font-size: 12px; font-weight: 800; }
+.syncbar ul { margin: 4px 0 0; padding-left: 18px; font-weight: 700; } .syncbar .grow { flex: 1; min-width: 200px; }
+.syncbar.done { background: var(--ok-bg); color: var(--ok); }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; color: var(--body); cursor: pointer; }
+/* ---- ③ ガイド ---- */
+.gd { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; align-items: start; }
+@media (max-width: 820px) { .gd { grid-template-columns: minmax(0, 1fr); } }
+.tray { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.tp { display: inline-flex; flex-direction: column; gap: 1px; align-items: flex-start; font: inherit; border-radius: 9px; padding: 6px 9px; border: 1.5px solid transparent; cursor: pointer; font-size: 11px; font-weight: 900; }
+.tp small { font-weight: 800; font-size: 10px; opacity: .85; } .tp.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } .tp.dim { opacity: .35; }
+.tp .lk { font-size: 9.5px; color: var(--ops); background: var(--card); border-radius: 999px; padding: 0 6px; }
+.gp { position: sticky; top: 8px; }
+.gp h3 { font-size: 15px; font-weight: 900; margin: 0; } .gp .sec { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.gp .lb { font-size: 10.5px; font-weight: 900; color: var(--muted); letter-spacing: .04em; margin-bottom: 4px; }
+.blks { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+.blks span { text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 4px 0; background: var(--s2); color: var(--muted); }
+.blks span.on { background: var(--ops); color: var(--on-fill); } .blks span.now { outline: 2px solid var(--bad); outline-offset: 1px; }
+.eff { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; font-size: 11.5px; padding: 5px 0; }
+.eff .mk { font-weight: 900; font-size: 11px; border-radius: 6px; padding: 2px 7px; white-space: nowrap; } .eff .mk.x { background: var(--bad-bg); color: var(--bad); } .eff .mk.o { background: var(--ok-bg); color: var(--ok); }
+.eff .why { grid-column: 2; font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.sum { background: var(--s1); border-radius: 10px; padding: 8px 10px; font-size: 12px; font-weight: 800; } .sum b { font-size: 15px; font-variant-numeric: tabular-nums; } .sum .d { color: var(--bad); } .sum .z { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="crumb">しりすこPAD · 改修案のモック (2026-11-12) · 名前は架空・数字は見本</p>
+  <h1>運営の入力と組む: 前日の 3 つの改修案</h1>
+  <p class="sub">押して動きます。実装はまだです。どれを採るか・直したい所を教えてください。</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-s="s1">① 模擬を続けて入れる</button>
+    <button role="tab" aria-selected="false" data-s="s2">② ほかの運営の結果を反映</button>
+    <button role="tab" aria-selected="false" data-s="s3">③ ピースを握ったときのガイド</button>
+  </div>
+
+  <!-- ============ ① ============ -->
+  <section class="screen on" id="s1">
+    <div class="card">
+      <h2>① 模擬を続けて入れる <span class="tag">案</span></h2>
+      <p class="note">スマホで Discord を見ながら、PC は<b>キーボードだけ</b>で打てる形です。いまの「✏️ まとめて入力」を 1 人ずつ開くモーダルから、<b>左に人の一覧・右に 5 属性</b>の 1 画面に変えます。保存の仕組み (属性ごとに今の保存を順に呼ぶ) は変えません。</p>
+      <p class="keys"><span><kbd>/</kbd> 名前で探す</span><span>数字 → <kbd>Enter</kbd> 次の欄へ</span><span>編成を選ぶ番で <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> (<kbd>Enter</kbd> = 1)</span><span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 保存して次の人</span><span>空のまま <kbd>Enter</kbd> = その属性は飛ばす</span></p>
+      <div class="mi">
+        <div>
+          <input class="mi-search" id="miSearch" placeholder="Discord の名前で探す ( / )" autocomplete="off">
+          <div class="mi-list" id="miList"></div>
+        </div>
+        <div>
+          <div class="mi-head" id="miHead"></div>
+          <div id="miRows"></div>
+          <div class="mi-foot"><span class="msg" id="miMsg"></span><button class="btn primary" id="miSave">✅ 保存して次の人 (Ctrl+Enter)</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>変わる所 <span class="tag now">いま → 案</span></h2>
+      <div class="scroll-x"><table class="plain">
+        <tr><th>困りごと</th><th>いま</th><th>案</th></tr>
+        <tr><td>誰の模擬かを探す</td><td>表から名前を探して押す → モーダル</td><td>名前の頭を打って <kbd>Enter</kbd>。一覧は 〆 の早い順・n/5 つき</td></tr>
+        <tr><td>数字の導線</td><td>プリセットをマウスで押す → 欄に焦点 → 次の属性はまたマウス</td><td>数字 → <kbd>Enter</kbd> → 番号 → 次の属性。手はキーボードから離れない</td></tr>
+        <tr><td>編成の入力</td><td>毎回プリセットを選ぶ</td><td>「前回の自分」があればそれを 1 番に仮置き。合っていれば <kbd>Enter</kbd> だけ</td></tr>
+        <tr><td>数字の打ち方</td><td>B 単位の小数だけ</td><td>「28.4」でも「28412345678」でも (1,000,000 以上は桁として読む = ふるり値試算と同じ読み方)</td></tr>
+        <tr><td>次の人へ</td><td>保存 → 「次の人 →」</td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd> の 1 回</td></tr>
+      </table></div>
+      <p class="note" style="margin-top:8px;"><b>画像の保存について</b>: PC の Discord で画像を右クリック →「画像をコピー」→ PAD で <kbd>Ctrl</kbd>+<kbd>V</kbd> なら、保存せずに読み取れます (📸 模擬の取り込みのカードは貼り付けを受けます)。この画面でも、人を選んだ状態で貼ると<b>その人の模擬として</b>読み取って欄に入れる形にできます (読み取りは今の仕組みのまま)。</p>
+    </div>
+  </section>
+
+  <!-- ============ ② ============ -->
+  <section class="screen" id="s2">
+    <div class="card">
+      <h2>② ほかの運営が組んだ結果を反映 <span class="tag">案</span></h2>
+      <p class="note">いまの仕組み: <b>手で置いた駒 (📌) は DB にあり、ほかの運営にも見えます</b>が、相手の画面に出るのは上の ↻ を押したときです。<b>🧮 自動で組んだ結果はその端末だけ</b>で、✅ 決定するまでほかの運営には見えません。</p>
+      <div class="syncbar" id="syncBar">
+        <div class="grow">🔄 さくら さんの変更が 3 件あります (20 秒前)
+          <ul><li>A 朝 · B3 鉄甲 に <b>ミケ 鉄甲 29.3B</b> を置いた</li><li>A 朝 · B1 灼熱 の <b>クロ 灼熱 21.0B</b> を外した</li><li>B 午前 を 🧮 自動で組んだ (下書き・14 凸)</li></ul>
+        </div>
+        <button class="btn ops" id="syncBtn">反映する</button>
+      </div>
+      <div class="obb-grid" id="s2Blocks"></div>
+      <div style="margin-top:10px;" id="s2Board"></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:center;">
+        <label class="switch"><input type="checkbox" id="autoSync" checked> 手を動かしていないときは自動で反映する</label>
+        <span class="note" style="margin:0;">ピースを握っている間・🧮 の最中は、バーで知らせるだけにします (握った駒が消えないように)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>3 段に分けて入れられます</h2>
+      <div class="scroll-x"><table class="plain">
+        <tr><th>段</th><th>できること</th><th>遅れ</th><th>要るもの</th></tr>
+        <tr><td><b>A 見回りで取り直す</b></td><td>手で置いた駒 (📌) の変更を 10 秒ごとに見て、バーに「だれが・何を」。駒に置いた人の名前。「反映する」または自動</td><td>〜10 秒</td><td>アプリだけ (SQL なし)。いまの見回りに 1 本足す</td></tr>
+        <tr><td><b>B 下書きの共有</b></td><td>🧮 自動で組んだ結果も、ほかの運営に見える。「さくら が B 午前 を組みました — 読み込む」。だれがどのブロックを開いているかの札</td><td>〜10 秒</td><td>SQL 1 本 (下書きの置き場の表)</td></tr>
+        <tr><td><b>C すぐ届く</b></td><td>A・B の変更が押した瞬間に届く (Supabase のリアルタイム)。画面は A・B と同じ</td><td>1 秒以内</td><td>Supabase 側の設定 (表を配信に足す) + 切れたときは A の見回りに戻る作り</td></tr>
+      </table></div>
+      <p class="note" style="margin-top:8px;"><b>すすめ</b>: A → B の順。C は A・B が安定してから (届く速さが変わるだけで、見え方は同じ)。「仕様上むずかしい」ことはありません。決定 (✅) は今までどおり、押した時点の DB で照合して、別の運営が先に決めていたら止めます。</p>
+    </div>
+  </section>
+
+  <!-- ============ ③ ============ -->
+  <section class="screen" id="s3">
+    <div class="card">
+      <h2>③ ピースを握ったときのガイド <span class="tag">案</span></h2>
+      <p class="note">下のピースを押す (PC はポインタを乗せるだけでも) と、右に<b>その人の出られるブロック・編成・ダメージ</b>と、<b>この編成を使うとほかの編成がどうなるか</b>が出ます。盤の行には「ここに置くとどうなるか」を先に出します。スマホでは右の箱が盤の下に出ます。</p>
+      <div class="gd">
+        <div>
+          <div class="pill" style="margin-bottom:8px;">C 午後 13〜16:40 · Lv2</div>
+          <div id="s3Board"></div>
+          <div class="tray" id="s3Tray"></div>
+        </div>
+        <div class="card gp" id="s3Panel" style="margin:0;"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>材料はすべて今の盤面にあります</h2>
+      <p class="note" style="margin:0;">出られるブロック・残り凸・その人の全部の模擬 (キャラ・ダメージ)・ボスの残り HP は、🧱 組む がいま読んでいるものです。<b>SQL なし・通信も増えません</b>。「同じキャラは 1 日 1 回」の判定は、模擬ダメージ表の赤い枠と同じものを使います。</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('.tabs button'); if (!t) return;
+    $$('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b === t)));
+    $$('.screen').forEach(s => s.classList.toggle('on', s.id === t.dataset.s));
+  });
+  const ATTR = { fire: '灼熱', wind: '風圧', iron: '鉄甲', electric: '電撃', water: '水冷' };
+  const ORDER = ['fire', 'wind', 'iron', 'electric', 'water'];
+  const BOSS = { fire: 'B1 モダニア', wind: 'B2 クラーケン', iron: 'B3 オベリスク', electric: 'B4 チャンバー', water: 'B5 ドリアン' };
+  const BURST = { クラウン: 2, リター: 1, レッドフード: 3, アリス: 3, ナガ: 2, ティア: 1, ラピRH: 3, マクスウェル: 3, ブラン: 2, ノワール: 3, ドロシー: 1, シンデレラ: 3, プリバティ: 3, グレイブ: 2, 紅蓮: 3, モダニア: 3, リバーレリオ: 3, アニス星: 1, モラン: 2, エイダ: 3, ルージュ: 1, ヘルム: 3, マスト: 2 };
+  const face = (c, hit) => c ? `<span class="face${hit ? ' hit' : ''}" title="${esc(c)}${hit ? ' — 被り' : ''}">${esc(c.slice(0, 2))}<i style="background:var(--b${BURST[c] || 3});"></i></span>` : '<span class="face empty">?</span>';
+  const faces = (team, hits = []) => `<span class="faces">${(team || [null, null, null, null, null]).map(c => face(c, c && hits.includes(c))).join('')}</span>`;
+
+  // ---------------- ① 続けて入力 ----------------
+  const PRESET = {
+    fire: [['クラウン', 'リター', 'レッドフード', 'アリス', 'ナガ'], ['ドロシー', 'クラウン', 'モダニア', 'アリス', 'ナガ'], ['リター', 'ブラン', 'ノワール', 'レッドフード', 'モダニア']],
+    wind: [['クラウン', 'ティア', 'ナガ', 'シンデレラ', 'プリバティ'], ['リター', 'グレイブ', 'シンデレラ', 'エイダ', 'ヘルム']],
+    iron: [['クラウン', 'ティア', 'ナガ', 'ラピRH', 'マクスウェル'], ['ルージュ', 'マスト', 'ラピRH', 'マクスウェル', 'ヘルム'], ['ドロシー', 'ブラン', 'ノワール', 'ラピRH', 'プリバティ']],
+    electric: [['ブラン', 'ノワール', 'ドロシー', 'シンデレラ', 'プリバティ'], ['アニス星', 'モラン', 'エイダ', 'シンデレラ', 'プリバティ']],
+    water: [['リター', 'グレイブ', '紅蓮', 'モダニア', 'リバーレリオ'], ['アニス星', 'モラン', '紅蓮', 'リバーレリオ', 'エイダ']],
+  };
+  const PCOUNT = { fire: [9, 5, 2], wind: [18, 3], iron: [8, 6, 3], electric: [11, 4], water: [7, 5] };
+  const mk = (name, dl, filled) => ({ name, dl, rows: Object.fromEntries(ORDER.map(a => [a, filled[a] ? { dmg: filled[a], team: PRESET[a][0], sure: true, saved: true } : { dmg: '', team: null, sure: false }])), last: {} });
+  const people = [
+    mk('おはぎ', '〆 A 朝の前', {}), mk('こむぎ', '〆 A 朝の前', { fire: '24.1' }), mk('クロ', '〆 8:40', {}), mk('コトラ', '〆 8:40', {}),
+    mk('ミケ', '〆 12:40', { fire: '22.0', wind: '20.6', iron: '29.3', electric: '27.0', water: '22.5' }), mk('シロ', '〆 12:40', {}), mk('トラ', '〆 16:40', {}), mk('ハチ', 'いつでも', {}),
+  ];
+  people[0].last = { fire: 1, iron: 0 }; people[2].last = { wind: 0 }; people[3].last = { electric: 1, water: 0 };   // 前回の自分 (プリセットの添字)
+  let cur = 0, choosing = null, q = '';
+  const filledN = (p) => ORDER.filter(a => parseDmg(p.rows[a].dmg) > 0).length;
+  function parseDmg(v) { const n = Number(String(v || '').replace(/,/g, '')); if (!Number.isFinite(n) || n <= 0) return 0; return n >= 1e6 ? n / 1e9 : n; }
+  const presetsOf = (p, a) => { const idx = PRESET[a].map((_, i) => i); const l = p.last[a]; return (l == null ? idx : [l, ...idx.filter(i => i !== l)]).map(i => ({ i, team: PRESET[a][i], n: PCOUNT[a][i], mine: i === l })); };
+  function listHtml() {
+    const hit = people.map((p, i) => ({ p, i })).filter(x => !q || x.p.name.includes(q));
+    $('#miList').innerHTML = hit.map(({ p, i }) => { const n = filledN(p); return `<button class="mi-p${i === cur ? ' on' : ''}" data-i="${i}"><span class="nm">${esc(p.name)}</span><span class="dl">${esc(p.dl)}</span><span class="n${n >= 5 ? ' full' : ''}">${n}/5</span></button>`; }).join('') || '<p class="note">見つかりません</p>';
+    return hit;
+  }
+  function rowsHtml() {
+    const p = people[cur];
+    $('#miHead').innerHTML = `<span class="who">${esc(p.name)}</span><span class="pill">${esc(p.dl)}</span><span class="pill">${filledN(p)} / 5 属性</span>`;
+    const used = (a) => ORDER.filter(x => x !== a && p.rows[x].team && parseDmg(p.rows[x].dmg) > 0).flatMap(x => p.rows[x].team);
+    $('#miRows').innerHTML = ORDER.map(a => {
+      const r = p.rows[a], ps = presetsOf(p, a), shown = r.team || ps[0].team, hits = r.team ? r.team.filter(c => used(a).includes(c)) : [];
+      const st = !r.team ? '<span class="st">仮 (1 番)</span>' : hits.length ? `<span class="st warn">⚠ 被り ${hits.length}</span>` : (r.saved ? '<span class="st ok">保存済み</span>' : '<span class="st ok">✓</span>');
+      return `<div class="mi-row${choosing === a ? ' cur' : ''}" data-a="${a}">
+        <div class="mi-attr a-${a}">${ATTR[a]}PT<small>${BOSS[a]}</small></div>
+        <div class="mi-team"><span style="opacity:${r.team ? 1 : .45}">${faces(shown, hits)}</span>${st}</div>
+        <label class="mi-dmg"><input inputmode="decimal" value="${esc(r.dmg)}" placeholder="例 28.4" data-dmg="${a}" aria-label="${ATTR[a]} のダメージ"><span>B</span></label>
+        <div class="mi-pre${choosing === a ? ' choosing' : ''}" data-pre="${a}" tabindex="-1">${ps.map((x, k) => `<button class="mi-ps${r.team === x.team ? ' on' : ''}" data-a="${a}" data-k="${k}" tabindex="-1"><kbd>${k + 1}</kbd>${faces(x.team)}<span>${x.mine ? '前回の自分' : x.n + ' 人'}</span></button>`).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+  function focusDmg(a) { const el = $(`[data-dmg="${a}"]`); if (el) { el.focus(); el.select(); } }
+  function nextAfter(a) { const i = ORDER.indexOf(a); if (i < ORDER.length - 1) focusDmg(ORDER[i + 1]); else $('#miSave').focus(); }
+  function pick(a, k) { const p = people[cur], ps = presetsOf(p, a)[k]; if (!ps) return; p.rows[a].team = ps.team; p.rows[a].sure = true; p.rows[a].saved = false; choosing = null; rowsHtml(); listHtml(); nextAfter(a); }
+  function select(i, focus = true) { cur = i; choosing = null; listHtml(); rowsHtml(); $('#miMsg').textContent = ''; if (focus) { const a = ORDER.find(x => !(parseDmg(people[cur].rows[x].dmg) > 0)) || ORDER[0]; focusDmg(a); } }
+  function save() {
+    const p = people[cur]; let n = 0;
+    ORDER.forEach(a => { const r = p.rows[a]; if (parseDmg(r.dmg) > 0 && !r.saved) { if (!r.team) r.team = presetsOf(p, a)[0].team; r.saved = true; n++; } });
+    const nx = people.findIndex((x, i) => i > cur && filledN(x) < 5);
+    if (nx >= 0) { const nm = p.name; select(nx); $('#miMsg').textContent = `✓ ${nm} の模擬を ${n} 件保存しました → 次は ${people[nx].name}`; }
+    else { listHtml(); rowsHtml(); $('#miMsg').textContent = `✓ ${p.name} の模擬を ${n} 件保存しました (残りの人はいません)`; }
+  }
+  $('#miRows').addEventListener('input', (e) => { const a = e.target.dataset.dmg; if (!a) return; const r = people[cur].rows[a]; r.dmg = e.target.value; r.saved = false; });
+  $('#miRows').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); return; }
+    const a = e.target.dataset.dmg || e.target.dataset.pre;
+    if (e.target.dataset.dmg && e.key === 'Enter') {
+      e.preventDefault(); const r = people[cur].rows[a];
+      if (!(parseDmg(r.dmg) > 0) || r.sure) { rowsHtml(); listHtml(); nextAfter(a); return; }
+      choosing = a; rowsHtml(); listHtml(); $(`[data-pre="${a}"]`).focus();
+    } else if (e.target.dataset.pre) {
+      if (/^[1-9]$/.test(e.key)) { e.preventDefault(); pick(a, Number(e.key) - 1); }
+      else if (e.key === 'Enter') { e.preventDefault(); pick(a, 0); }
+      else if (e.key === 'Escape') { choosing = null; rowsHtml(); focusDmg(a); }
+    }
+  });
+  $('#miRows').addEventListener('click', (e) => { const b = e.target.closest('.mi-ps'); if (b) pick(b.dataset.a, Number(b.dataset.k)); });
+  $('#miList').addEventListener('click', (e) => { const b = e.target.closest('.mi-p'); if (b) select(Number(b.dataset.i)); });
+  $('#miSave').addEventListener('click', save);
+  $('#miSearch').addEventListener('input', (e) => { q = e.target.value.trim(); listHtml(); });
+  $('#miSearch').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const hit = listHtml(); if (hit[0]) { e.target.value = ''; q = ''; select(hit[0].i); } } });
+  document.addEventListener('keydown', (e) => {
+    if (!$('#s1').classList.contains('on')) return;
+    if (e.key === '/' && document.activeElement !== $('#miSearch')) { e.preventDefault(); $('#miSearch').focus(); }
+    else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.target.closest('#miRows')) { e.preventDefault(); save(); }
+  });
+  select(0, false);
+
+  // ---------------- ② 反映 ----------------
+  const BL = ['A 朝', 'B 午前', 'C 午後', 'D 夕方', 'E 夜', 'F 深夜'], HR = ['5〜8:40', '9〜12:40', '13〜16:40', '17〜20:40', '21〜翌0:40', '翌1〜5'];
+  let synced = false;
+  const s2rows = () => [
+    { a: 'fire', hp: 42.0, pcs: [['こむぎ', 24.1, 'ふるり'], ...(synced ? [] : [['クロ', 21.0, 'ふるり']])] },
+    { a: 'wind', hp: 40.0, pcs: [['シロ', 20.6, 'ふるり'], ['トラ', 19.8, 'ふるり']] },
+    { a: 'iron', hp: 55.0, pcs: [['おはぎ', 30.0, 'ふるり'], ...(synced ? [['ミケ', 29.3, 'さくら', true]] : [])] },
+    { a: 'electric', hp: 50.0, pcs: [['コトラ', 27.0, 'ふるり']] },
+    { a: 'water', hp: 45.0, pcs: [] },
+  ];
+  function s2() {
+    $('#s2Blocks').innerHTML = BL.map((b, i) => `<div class="obb${i === 0 ? ' on' : ''}"><span class="nm">${b}</span><span>${HR[i]}</span><span>${i === 0 ? 'Lv1 を組み中' : i === 1 ? (synced ? '下書き 14 凸 (さくら)' : 'まだ空') : 'まだ空'}</span><span class="who">${i === 0 ? '<span class="av">あなた</span>' : ''}${i === 1 ? '<span class="av other">さくら が開いています</span>' : ''}</span></div>`).join('');
+    $('#s2Board').innerHTML = s2rows().map(r => {
+      const got = r.pcs.reduce((s, p) => s + p[1], 0), rem = r.hp - got;
+      return `<div class="obr"><div class="h a-${r.a}">${BOSS[r.a]}<small>${ATTR[r.a]}PT · ${r.hp.toFixed(1)}B</small></div>
+        <div class="bar">${r.pcs.map(p => `<span class="pc a-${r.a}${p[3] ? ' new' : ''}">${esc(p[0])} <small>${p[1].toFixed(1)}B</small><span class="by" title="置いた人">${esc(p[2])}</span></span>`).join('') || '<span class="note" style="margin:0 4px;">まだ空</span>'}</div>
+        <div class="res${rem <= 0 ? ' ok' : ''}">${rem <= 0 ? `撃破 ✓ 余り ${(-rem).toFixed(1)}B` : `あと ${rem.toFixed(1)}B`}</div></div>`;
+    }).join('');
+    const bar = $('#syncBar');
+    if (synced) { bar.className = 'syncbar done'; bar.innerHTML = '<div class="grow">✓ さくら さんの変更 3 件を反映しました。光っている駒が変わった所です。B 午前 の下書きはブロックを開くと読み込めます</div><button class="btn" id="syncUndo">モックを戻す</button>'; }
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'syncBtn') { synced = true; s2(); }
+    if (e.target.id === 'syncUndo') location.reload();
+  });
+  s2();
+
+  // ---------------- ③ ガイド ----------------
+  const NOW = 2;
+  const board3 = { fire: { rem: 18.2 }, wind: { rem: 0 }, iron: { rem: 26.0 }, electric: { rem: 31.5 }, water: { rem: 9.4 } };
+  const M = [
+    { name: 'こむぎ', left: 3, av: [2, 3, 4], lo: { fire: [24.1, PRESET.fire[0]], iron: [29.3, PRESET.iron[0]], electric: [27.0, PRESET.electric[0]], water: [22.5, PRESET.water[0]], wind: [20.6, PRESET.wind[1]] } },
+    { name: 'おはぎ', left: 2, av: [2], lo: { iron: [30.0, PRESET.iron[1]], fire: [21.4, PRESET.fire[2]], electric: [26.2, PRESET.electric[1]] } },
+    { name: 'クロ', left: 1, av: [0, 2, 5], lo: { water: [23.8, PRESET.water[1]], wind: [19.9, PRESET.wind[0]], fire: [20.2, PRESET.fire[1]] } },
+    { name: 'コトラ', left: 3, av: [2, 3], lo: { electric: [28.4, PRESET.electric[0]], iron: [27.7, PRESET.iron[2]], fire: [23.0, PRESET.fire[0]], water: [21.1, PRESET.water[0]] } },
+  ];
+  let sel = { m: 0, a: 'fire' };
+  const share = (t1, t2) => t1.filter(c => t2.includes(c));
+  // 残り凸で出せる最大の合計 (同じキャラは 1 日 1 回)。must = 必ず入れる属性
+  function best(m, must) {
+    const keys = Object.keys(m.lo); let top = { sum: 0, set: [] };
+    const go = (i, set, usedC, sum) => {
+      if (sum > top.sum && (!must || set.includes(must))) top = { sum, set: [...set] };
+      if (set.length >= m.left) return;
+      for (let k = i; k < keys.length; k++) { const [d, t] = m.lo[keys[k]]; if (t.some(c => usedC.has(c))) continue; go(k + 1, [...set, keys[k]], new Set([...usedC, ...t]), sum + d); }
+    };
+    go(0, [], new Set(), 0); return top;
+  }
+  function s3() {
+    const m = M[sel.m], [dmg, team] = m.lo[sel.a];
+    $('#s3Board').innerHTML = ORDER.map(a => {
+      const b = board3[a], dead = b.rem <= 0, can = a === sel.a && !dead, after = b.rem - dmg;
+      const res = dead ? (a === sel.a ? '<span class="res ng">置けない: Lv2 で撃破済み</span>' : '<span class="res">撃破済み</span>')
+        : can ? `<span class="res ${after <= 0 ? 'ok' : ''}">ここに置くと ${after <= 0 ? `撃破 ✓ 余り ${(-after).toFixed(1)}B` : `あと ${after.toFixed(1)}B`}</span>` : `<span class="res">あと ${b.rem.toFixed(1)}B</span>`;
+      return `<div class="obr${can ? ' can' : ''}${dead ? ' dead' : ''}"><div class="h a-${a}">${BOSS[a]}<small>${ATTR[a]}PT が有利</small></div>
+        <div class="bar">${can ? `<span class="pc ghost a-${a}">${esc(m.name)} <small>${dmg.toFixed(1)}B</small></span>` : ''}</div>${res}</div>`;
+    }).join('');
+    $('#s3Tray').innerHTML = M.flatMap((x, mi) => Object.keys(x.lo).map(a => {
+      const on = mi === sel.m && a === sel.a, sameM = mi === sel.m && !on, clash = sameM && share(x.lo[a][1], team).length > 0;
+      return `<button class="tp a-${a}${on ? ' on' : ''}${clash ? ' dim' : ''}" data-m="${mi}" data-a="${a}" title="${clash ? 'いま握っている編成とキャラが被ります' : ''}"><span>${esc(x.name)} · ${ATTR[a]}</span><small>${x.lo[a][0].toFixed(1)}B${x.av.length === 1 ? ' <span class="lk">このブロックのみ</span>' : ''}</small></button>`;
+    })).join('');
+    const others = Object.keys(m.lo).filter(a => a !== sel.a).map(a => ({ a, d: m.lo[a][0], t: m.lo[a][1], hit: share(m.lo[a][1], team) }));
+    const bAll = best(m), bWith = best(m, sel.a), diff = bWith.sum - bAll.sum;
+    const names = (set) => set.map(a => ATTR[a]).join(' + ');
+    $('#s3Panel').innerHTML = `
+      <h3>${esc(m.name)} <span class="pill a-${sel.a}">${ATTR[sel.a]}PT → ${BOSS[sel.a]}</span></h3>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">${faces(team)}<b style="font-size:17px;font-variant-numeric:tabular-nums;">${dmg.toFixed(1)}B</b><span class="pill">残り ${m.left} 凸</span></div>
+      <div class="sec"><div class="lb">出られるブロック${m.av.length === 1 ? ' — このブロックのみ' : (Math.max(...m.av) === NOW ? ' — このブロックで最後' : '')}</div>
+        <div class="blks">${BL.map((b, i) => `<span class="${m.av.includes(i) ? 'on' : ''}${i === NOW ? ' now' : ''}" title="${b} ${HR[i]}">${b[0]}</span>`).join('')}</div>
+        <p class="note" style="margin:6px 0 0;">${m.av.filter(i => i !== NOW).length ? `ほかに ${m.av.filter(i => i !== NOW).map(i => BL[i]).join('・')} でも置けます` : 'ほかのブロックには置けません (先に置く人)'}</p></div>
+      <div class="sec"><div class="lb">この編成を使うと、ほかの編成は</div>
+        ${others.map(o => `<div class="eff"><span class="mk ${o.hit.length ? 'x' : 'o'}">${o.hit.length ? '✕ 使えない' : '○ 残る'}</span><span><b>${ATTR[o.a]}</b> ${o.d.toFixed(1)}B ${faces(o.t, o.hit)}</span>${o.hit.length ? `<span class="why">${esc(o.hit.join('・'))} が被り (同じキャラは 1 日 1 回)</span>` : ''}</div>`).join('')}</div>
+      <div class="sec"><div class="lb">この人の残り ${m.left} 凸の合計 (模擬どおりなら)</div>
+        <div class="sum">この編成を使う: <b>${bWith.sum.toFixed(1)}B</b> <span style="font-weight:700;color:var(--muted);">(${names(bWith.set)})</span><br>
+        いちばん高い組み合わせ: <b>${bAll.sum.toFixed(1)}B</b> <span style="font-weight:700;color:var(--muted);">(${names(bAll.set)})</span><br>
+        ${diff < -0.05 ? `<span class="d">差 ${diff.toFixed(1)}B — この人だけで見ると、別の編成のほうが出ます</span>` : '<span class="z">差なし — この編成はいちばん高い組み合わせに入っています</span>'}</div></div>`;
+  }
+  const s3pick = (e) => { const b = e.target.closest('.tp'); if (!b) return; const n = { m: Number(b.dataset.m), a: b.dataset.a }; if (n.m === sel.m && n.a === sel.a) return; sel = n; s3(); };
+  $('#s3Tray').addEventListener('click', s3pick);
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) $('#s3Tray').addEventListener('mouseover', s3pick);
+  s3();
+})();
+</script>
+</body>
+</html>
