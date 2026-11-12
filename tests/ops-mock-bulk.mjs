@@ -367,7 +367,9 @@ await t('⑨ ⌨ 数字: B 単位でも桁そのままでも・全角・カン�
     const h = makeEnv();
     await h.openOpsMockBulk(2);
     const d = (v) => { h._mkbSetDmg('iron', 0, v); return h._mkb.rows.iron[0].damageB; };
-    assert.equal(d('28.4'), 28.4); assert.equal(d('28412345678'), 28.412345678); assert.equal(d('28,412,345,678'), 28.412345678);
+    assert.equal(d('28.4'), 28.4); assert.equal(d('28412345678'), 28.41, '桁のままの数字を B の小数 2 桁にそろえていない (欄の表示と保存する値がずれる)'); assert.equal(d('28,412,345,678'), 28.41);
+    assert.equal(d('28.'), 28); assert.equal(d('.5'), 0.5); assert.equal(d('1000000'), null, '0.00B になる桁を受けた');
+    for (const bad of ['0x10', '0b10', '1e3', '+5', '1.2.3', '12abc', 'Infinity']) assert.equal(d(bad), null, `十進でない書き方を数字として読んだ: ${bad}`);
     assert.equal(d('２８．４'), 28.4, '全角の数字を読まない'); assert.equal(d(' 31 '), 31); assert.equal(d('999999'), 999999, '1,000,000 未満は B のまま');
     assert.equal(d('abc'), null); assert.equal(d('0'), null); assert.equal(d('-3'), null); assert.equal(d(''), null);
     d('28412345678');
@@ -404,6 +406,10 @@ await t('⑩ ⌨ 人の一覧: 表の並び・登録済みの属性の数 (い�
     assert.ok(/class="mkb-p on" data-mkb-go="2"/.test(list()));
     h._mkbGoto('x'); h._mkbGoto(null);
     assert.equal(h._mkb.playerId, 2);
+    // 絞り込んだまま閉じて、表の名前から別の人を開く → 絞り込みは戻っている (一覧が空のままにならない)
+    h._mkbSearch('どこにもいない'); h.closeOpsMockBulk(true);
+    await h.openOpsMockBulk(1);
+    assert.equal(h._mkb.q, ''); assert.ok(/data-mkb-go="2"/.test(list()) && !side().includes('どこにもいない'), '前の絞り込みが残った');
 });
 
 await t('⑪ ⌨ Ctrl+Enter: 保存して次の人へ (結果は知らせに) / 失敗が残れば進まない / 変えていなければそのまま次へ / 最後の人ならそう言う', async () => {
@@ -429,6 +435,15 @@ await t('⑪ ⌨ Ctrl+Enter: 保存して次の人へ (結果は知らせに) / 
     await n.openOpsMockBulk(1);
     await n._mkbSaveNext(); await tick(); await tick();
     assert.equal(n.env.saved.length, 0); assert.equal(n._mkb.playerId, 2);
+    // 素早く 2 回押しても 1 人飛ばさない (人を切り替えている間は受けない)
+    const q = makeEnv({ players: [{ id: 1, name: 'A', availableSlots: ['h17'], loadoutsByAttr: {} }, { id: 2, name: 'B', availableSlots: ['h17'], loadoutsByAttr: {} }, { id: 4, name: 'C', availableSlots: ['h17'], loadoutsByAttr: {} }] });
+    q.env._mockIntake.order.push(4);
+    await q.openOpsMockBulk(1);
+    const p1 = q._mkbSaveNext(), p2 = q._mkbSaveNext();
+    await p1; await p2; await tick(); await tick();
+    assert.equal(q._mkb.playerId, 2, 'Ctrl+Enter を 2 回押したら 1 人飛ばした'); assert.equal(q._mkb.moving, false, '切り替え中の印が立ったまま');
+    await q._mkbSaveNext(); await tick();
+    assert.equal(q._mkb.playerId, 4, '切り替えが終わったあとの Ctrl+Enter を受けない');
     // 編成だけ入れてダメージの無い枠 (保存されない) が残るなら、進む前に確かめる
     const c = makeEnv();
     await c.openOpsMockBulk(1);
@@ -448,6 +463,10 @@ await t('⑫ ⌨ キーの受け口 (1 回だけ): Ctrl+Enter / ダメージの�
     assert.equal(key(h, 'a', { dataset: { mkbPre: 'iron:0' } }).prevented, false);
     assert.equal(key(h, '1', { dataset: { mkbPre: 'iron:0' } }).prevented, true);
     assert.deepEqual(h._mkb.rows.iron[0].team, T('KLMNO'));
+    // 選ぶ番でないとき (箱に焦点があるだけ) は番号キーで編成を入れない
+    assert.equal(h._mkb.choose, null);
+    assert.equal(key(h, '2', { dataset: { mkbPre: 'iron:0' } }).prevented, false);
+    assert.deepEqual(h._mkb.rows.iron[0].team, T('KLMNO'), '選ぶ番でないのに番号キーで編成が入れ替わった');
     // 「/」: ダメージの欄からも・欄の外からも検索欄へ。ほかの入力欄 (検索欄) では文字として打てる
     h.env.focused.length = 0;
     assert.equal(key(h, '/', dmgT('fire:0')).prevented, true); assert.equal(h.env.focused.at(-1), '#mkbSearch');
@@ -464,6 +483,19 @@ await t('⑫ ⌨ キーの受け口 (1 回だけ): Ctrl+Enter / ダメージの�
     // 閉じているときは受けない
     h.closeOpsMockBulk(true);
     assert.equal(key(h, 'Enter', dmgT('iron:0')).prevented, false);
+});
+
+await t('⑭ 盤面の読み込みを待つ間に続けて 2 人開いても、遅れて戻った先の人が後の人を上書きしない (世代は入口で発行)', async () => {
+    const h = makeEnv({ noBoard: true });
+    const players = h.env._mockIntake.players, bosses = [{ boss_number: 1, name: 'オベリスク', weakness: 'iron' }, { boss_number: 5, name: 'ブラックスミス', weakness: 'water' }];
+    const gates = [];
+    h.env.opsStore.load = () => new Promise(r => gates.push(() => r({ season: { id: 46, metadata: {} }, players, bosses })));
+    const a = h.openOpsMockBulk(1), b = h.openOpsMockBulk(2);
+    await tick();
+    gates[1](); await b; await tick();
+    assert.equal(h._mkb.playerId, 2);
+    gates[0](); await a; await tick();
+    assert.equal(h._mkb.playerId, 2, '先に開いた人が、あとから開いた人を上書きした'); assert.equal(h._mkb.name, '銀狐');
 });
 
 await t('⑬ ⌨ 描き直しても打っている欄と文字を保つ / PC は開いたとき最初の空の欄へ焦点 (スマホは当てない)', async () => {

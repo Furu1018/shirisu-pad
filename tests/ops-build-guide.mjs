@@ -317,10 +317,27 @@ test('反映 (Codex B): 「反映する」の通信待ちの間に別のピー�
     let open; s.gate.hold = new Promise(r => { open = r; });
     const p = s.api._obSyncNow();
     await Promise.resolve();
-    s._ob.sel = '2:iron:1';   // 待っている間に選んだ / ドラッグを始めた
+    s._ob.sel = '2:iron:1'; s._ob.selSeq = (s._ob.selSeq || 0) + 1;   // 待っている間に選んだ / ドラッグを始めた (_obSelect・dragstart が回数を進める)
     open(); await p;
     assert.equal(s._ob.sel, '2:iron:1', '待っている間の選択を取り消した'); assert.equal(s._ob.pins, before, '選んでいる最中に駒を差し替えた');
     assert.ok(!s.log.includes('render'), '選んでいる最中に盤を描き直した'); assert.equal(s._ob.syncing, false);
+});
+test('反映 (Codex 2 回目): 待っている間に同じピースを選び直しても (A → 解除 → A) 取り消さない — 値でなく押した回数で見る / 押していなければ反映して握ったピースを外す', async () => {
+    const s = mkSync({ pins: base(), sel: '1:fire:1' }); const before = s._ob.pins;
+    s.gate.next = other();
+    let open; s.gate.hold = new Promise(r => { open = r; });
+    const p = s.api._obSyncNow();
+    await Promise.resolve();
+    s._ob.selSeq = (s._ob.selSeq || 0) + 2;   // 解除 → 選び直し (sel の値は同じ)
+    open(); await p;
+    assert.equal(s._ob.sel, '1:fire:1', '選び直したピースを外した'); assert.equal(s._ob.pins, before);
+    const t = mkSync({ pins: base(), sel: '1:fire:1' });
+    t.gate.next = other();
+    await t.api._obSyncNow();
+    assert.equal(t._ob.sel, null); assert.equal(t._ob.pins, t.gate.next, '押していないのに反映しなかった');
+    const sel = between('        function _obSelect(key) {', '            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;');
+    assert.ok(/_ob\.selSeq = \(_ob\.selSeq \|\| 0\) \+ 1;/.test(sel), 'ピースを押した回数を進めていない');
+    assert.ok(/host\.addEventListener\('dragstart', \(e\) => \{ if \(_ob\.busy\) \{ e\.preventDefault\(\); return; \} const pc = e\.target\.closest\('\[data-ob-piece\]'\); if \(!pc\) return; _ob\.selSeq = \(_ob\.selSeq \|\| 0\) \+ 1; _ob\.sel = pc\.dataset\.obPiece;/.test(html), 'ドラッグの始まりで回数を進めていない');
 });
 test('反映: 読んでいる間にこの端末が駒を書き換えた / 処理中になった / シーズンが変わった → 古い読み取りを捨てる (自分で置いた駒が消えない)', async () => {
     for (const mutate of [(o) => { o.pins = [...o.pins, pin(50)]; }, (o) => { o.busy = true; }, (o) => { o.epoch++; }]) {
