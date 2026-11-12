@@ -1245,6 +1245,26 @@ test('🧪 リハーサル: 本番の写しで始まる (模擬・参加可能�
         assert.deepEqual(r3.rehearsal, { start: 'eve', from: null, placeholder: true });
         assert.deepEqual(DB().bosses.map(b => b.name), [1, 2, 3, 4, 5].map(n => 'テストボス' + n));
         assert.equal(DB().seasons[0].metadata.rebuild_minutes, W.raidBlocksDomain.DEFAULT_REBUILD_MINUTES, '写せる本番が無いとき、新しい本番と同じ再編成時間になっていない');
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+
+        // ---- シーズン作成のシートの 🧪 (ポスターのボス・シートのハード日): 差し替えるのはそれだけ。区切り・再編成時間・今期の確認は直前の本番から ----
+        db.restore(keep);
+        const prod2 = DB().seasons.find(x => x.id === IDS.season);
+        prod2.is_active = false; prod2.metadata = { blocks, rebuild_minutes: 15 };
+        const poster = [['Z.E.U.S.', 'ポスター1', 'tyrant'], ['A.N.M.I.', 'ポスター2', 'lord'], ['D.M.T.R.', 'ポスター3', 'lord'], ['H.S.T.A.', 'ポスター4', 'lord'], ['P.S.I.D.', 'ポスター5', 'lord']]
+            .map(([bossCode, name, tier], i) => ({ bossNumber: i + 1, bossCode, name, tier }));
+        const r4 = await W.supabaseQuickCreateTestSeason({ bosses: poster, hardDate: '2031-02-03', monthKey: 'TEST-SHEET' });
+        const s4 = DB().seasons.find(x => x.id === r4.id);
+        assert.deepEqual([s4.hard_date, s4.month_key, s4.is_test, s4.metadata.blocks, s4.metadata.rebuild_minutes, s4.metadata.rehearsal], ['2031-02-03', 'TEST-SHEET', true, blocks, 15, { start: 'sheet', from: prod2.month_key }]);
+        assert.deepEqual(DB().bosses.filter(b => b.season_id === r4.id).sort((a, b) => a.boss_number - b.boss_number).map(b => [b.boss_code, b.name, b.tier]), poster.map(b => [b.bossCode, b.name, b.tier]), 'ポスターのボスになっていない');
+        assert.equal(pick('player_damages', MOCK), mock0, 'シートの 🧪 で模擬が変わった');
+        assert.ok(DB().availability_confirmations.filter(x => x.season_id === r4.id).length > 0 && r4.confirmationsError === null, 'シートの 🧪 で今期の確認を写していない');
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        // 今期の確認を写せなかった (元の行が壊れていて、写す先で主キーに当たる): テストは始まるが、理由を返す (画面が知らせる)
+        DB().availability_confirmations.push({ ...DB().availability_confirmations.find(x => x.season_id === IDS.season) });
+        const r5 = await W.supabaseQuickCreateTestSeason({ start: 'day' });
+        assert.equal(r5.confirmationsCopied, null); assert.ok(r5.confirmationsError, '写せなかった理由を返していない');
+        assert.ok(DB().seasons.some(x => x.id === r5.id && x.is_active) && !DB().availability_confirmations.some(x => x.season_id === r5.id), '写せなかったときに半端に写した / テストが始まっていない');
     } finally { db.restore(keep); W.supabaseSetTestViewer(false); }
 });
 test('🧪 リハーサル: 控えを取れなければ始めない (シーズンを作らない) / テスト中に消されたメンバーの時間は戻さず、ほかの人は戻す / 古い版のテスト (時間の控え無し) は時間に触らない', async () => {

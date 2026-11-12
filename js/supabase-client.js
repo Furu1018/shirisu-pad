@@ -3098,7 +3098,7 @@ window.supabaseCreateSeason = async function (payload) {
 
     // 🧪 今期の確認 (37: 確認済み・今回は難しい・ブロックごとの凸数) を直前の本番から写す = 運営が ⏰ を登録し終えた前日の状態。
     //   写せなくてもテストは始まる (全員「未確認」から)。テストの行はシーズンと一緒に消える (CASCADE)
-    let confirmationsCopied = null;
+    let confirmationsCopied = null, confirmationsError = null;   // 写せなかったら理由を返す (画面が知らせる・黙って「全員 未確認」にしない: Codex 監査 5924782)
     if (isTest && payload.copyConfirmationsFrom != null) {
         try {
             const { data: rows, error: cErr } = await supabase.from('availability_confirmations').select('*').eq('season_id', payload.copyConfirmationsFrom);
@@ -3111,16 +3111,19 @@ window.supabaseCreateSeason = async function (payload) {
             confirmationsCopied = copy.length;
         } catch (e) {
             console.warn('[createSeason] 今期の確認を写せませんでした:', e?.message || e);
+            confirmationsError = String(e?.message || e);
         }
     }
 
-    return { ...season, availabilityCleared, confirmationsCopied, kept: isTest ? { mocks: (metadata.damages_snapshot || []).length, availability: (metadata.availability_snapshot || []).length } : null };
+    return { ...season, availabilityCleared, confirmationsCopied, confirmationsError, kept: isTest ? { mocks: (metadata.damages_snapshot || []).length, availability: (metadata.availability_snapshot || []).length } : null };
 };
 
 // 🧪 リハーサル: 直前の本番シーズンの写しでテストのシーズンを作る (1 クリック)。
 // ボス・ブロックの区切り・再編成時間・メンバーの入力の出し方 は直前の本番から、模擬・編成・参加可能時間は いまの DB のまま。
 // 形を決めるのは testSeasonDomain.rehearsalSpec (本番が 1 つも無ければ「テストボス1〜5」)。
 // opts.start: 'eve' (既定・前日として = ハード日が次のレイド日) / 'day' (当日として = ハード日がいまのレイド日・凸ゼロ・全ボス満タン)
+// opts.bosses / opts.hardDate / opts.monthKey: シーズン作成のシートの 🧪 (ポスターのボス・シートのハード日でリハーサル)。渡したものだけ差し替え、
+//   区切り・再編成時間・メンバーの入力の出し方・今期の確認 は同じく直前の本番から写す (シートだけ写さない、を作らない: Codex 監査 5924782)
 // ★ 動いているシーズンがあれば作れない (supabaseCreateSeason の _assertNoActiveSeason)
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
@@ -3140,16 +3143,18 @@ window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     }
     const rb = (window.raidBlocksDomain && Number.isInteger(window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES)) ? window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES : 20;
     const spec = dom.rehearsalSpec({ start: opts.start, nowMs: Date.now(), prev: prevSeason ? { season: prevSeason, bosses: prevBosses } : null, defaultRebuild: rb });
+    const poster = Array.isArray(opts.bosses) && opts.bosses.length === 5;
+    const start = (poster || opts.hardDate) ? 'sheet' : spec.start;
     const r = await window.supabaseCreateSeason({
-        hardDate: spec.hardDate,
-        monthKey: spec.monthKey,
-        bosses: spec.bosses,
+        hardDate: opts.hardDate || spec.hardDate,
+        monthKey: opts.monthKey || spec.monthKey,
+        bosses: poster ? opts.bosses : spec.bosses,
         isTest: true,
         testMeta: spec.meta,
-        rehearsal: { start: spec.start, from: spec.from },
+        rehearsal: { start, from: spec.from },
         copyConfirmationsFrom: prevSeason ? prevSeason.id : null,
     });
-    return { ...r, rehearsal: { start: spec.start, from: spec.from, placeholder: spec.placeholder } };
+    return { ...r, rehearsal: { start, from: spec.from, placeholder: !poster && spec.placeholder } };
 };
 
 // ============ 凸プラン配信 ============
@@ -3952,7 +3957,7 @@ window.supabasePreviewTestSeasonEnd = async function () {
     let changed = { mocks: null, availPlayers: null };
     try {
         const [dNow, aNow] = await Promise.all([
-            supabase.from('player_damages').select('player_id, attribute, slot, damage_b, characters, levels, excluded_at'),
+            supabase.from('player_damages').select('player_id, attribute, slot, damage_b, characters, boss_level, levels, excluded_at, excluded_by, excluded_reason'),   // 終了で戻す列を全部 (数え漏らさない)
             avSnap ? supabase.from('availability').select('player_id, time_slot') : Promise.resolve({ data: null, error: null }),
         ]);
         changed = dom.snapshotDiff({

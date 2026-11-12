@@ -162,7 +162,9 @@
     }
 
     const mockKey = (r) => `${r.player_id}|${r.attribute}|${Number(r.slot) || 1}`;
-    const mockSig = (r) => JSON.stringify([Number(r.damage_b) || 0, Array.isArray(r.characters) ? r.characters : [], r.levels ?? null, r.excluded_at ?? null]);
+    // 終了で戻す列を全部見る (ダメージ・編成・測定レベルの互換の列・運営除外)。1 つでも違えば「変えた」
+    const mockSig = (r) => JSON.stringify([Number(r.damage_b) || 0, Array.isArray(r.characters) ? r.characters : [], r.boss_level ?? null, r.levels ?? null,
+        r.excluded_at ?? null, r.excluded_by ?? null, r.excluded_reason ?? null]);
 
     /**
      * テスト中に変わったもの (終了で控えに戻るもの) を数える。

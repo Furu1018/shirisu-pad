@@ -3435,7 +3435,7 @@ console.log('\ntestSeasonDomain:');
         assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: now, availSnap: [...av(1, 'h05', 'h06'), ...av(2, 'h21')], availNow: [...av(1, 'h06', 'h05'), ...av(3, 'h10')] }), { mocks: 3, availPlayers: 2 });
         assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: snap.slice().reverse(), availSnap: [], availNow: [] }), { mocks: 0, availPlayers: 0 }, '並びが違うだけで「変わった」');
         assert.equal(dom.snapshotDiff({ damagesSnap: [d(1, 'fire', 1, 30, ['a', 'b'])], damagesNow: [d(1, 'fire', 1, 30, ['b', 'a'])] }).mocks, 1, '編成の並びの違いは変更に数える (枠の順は意味を持つ)');
-        assert.equal(dom.snapshotDiff({ damagesSnap: [{ ...snap[0], excluded_at: null }], damagesNow: [{ ...snap[0], excluded_at: 'x' }] }).mocks, 1, '運営除外の変更を数えていない');
+        for (const col of ['excluded_at', 'excluded_by', 'excluded_reason', 'boss_level', 'levels']) assert.equal(dom.snapshotDiff({ damagesSnap: [{ ...snap[0], [col]: null }], damagesNow: [{ ...snap[0], [col]: 'x' }] }).mocks, 1, col + ' の変更を数えていない (終了で戻す列は全部見る)');
         assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: null, availSnap: null, availNow: [] }), { mocks: null, availPlayers: null }, '読めないものを 0 と言った');
         assert.deepEqual(dom.snapshotDiff(), { mocks: null, availPlayers: null });
         const rows = dom.restorableAvailability([...av(1, 'h05', 'h05', 'h23'), ...av(2, 'h21'), { player_id: 1, time_slot: 'h24' }, { player_id: 1, time_slot: 'morning' }, { player_id: null, time_slot: 'h05' }, null], [1, '3']);
@@ -4738,6 +4738,10 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(/handleOpsQuickCreateTestSeason\('eve'\)/.test(html) && /handleOpsQuickCreateTestSeason\('day'\)/.test(html), '前日として・当日として のボタンが無い');
         assert.ok(!/handleOpsQuickCreateTestSeason\('(fresh|midraid)'\)/.test(html) && !/mockSeed|attackSeed/.test(html), '古い入口・種の表示が残っている');
         assert.ok(/await window\.supabaseQuickCreateTestSeason\(\{ start: day \? 'day' : 'eve' \}\)/.test(html), '始め方を渡していない');
+        // 作成シートの 🧪 も同じ口 (シートだけ写さない、を作らない) / 今期の確認を写せなかったら 2 つの入口とも知らせる (Codex 監査 5924782)
+        assert.ok(/const r = isTest\s*\n\s*\? await window\.supabaseQuickCreateTestSeason\(\{ bosses, hardDate, monthKey \}\)\s*\n\s*: await window\.supabaseCreateSeason\(/.test(html), '作成シートの 🧪 がリハーサルの口を通らない');
+        assert.equal((html.match(/_opsRehearsalConfirmNote\(r\)/g) || []).length, 3, '今期の確認を写せなかった知らせ (定義 + 2 つの入口)');
+        assert.ok(/confirmationsError = String\(e\?\.message \|\| e\);/.test(core) && /confirmationsCopied, confirmationsError, kept:/.test(core), '写せなかった理由を結果に入れていない');
         // 終了: 参加可能時間を戻すのはシーズンを消す前・名簿が読めないまま消さない
         const end = client.match(/window\.supabaseDeleteActiveTestSeason = async function[\s\S]*?\n};\n/)?.[0] || '';
         const iPl = end.indexOf("await supabase.from('players').select('id')"), iClr = end.indexOf("await supabase.from('availability').delete().gte('player_id', 0)"), iDel = end.indexOf('await _deleteSeasonRow(season.id');
@@ -4776,6 +4780,7 @@ console.log('\n運営除外の配線 (ソース突合):');
                 const getCurrentIdentity = () => (st.id == null ? null : { id: st.id });
                 const seasonStore = { invalidate: () => { st.redraw++; } }, opsStore = { invalidate: () => {} };
                 const _invalidateTabRenderCache = () => {}, switchTab = (t) => { st.tab = t; };
+                Object.defineProperty(globalThis, '_identityGen', { get: () => st.gen || 0, configurable: true });
                 let _testViewerSeq = 0;
                 ${body}
                 return _syncTestViewer;`)(st, w, { warn() {} }, { querySelector: () => ({ id: 'tab-mypage' }) });
@@ -4795,6 +4800,8 @@ console.log('\n運営除外の配線 (ソース突合):');
         e = mk({ viewer: true }); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); e.st.fail(); await p; } assert.deepEqual([e.st.viewer, e.st.redraw], [true, 0]);
         // 待っている間に名乗り直した → 捨てる
         e = mk({ viewer: true }); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); e.st.id = 8; e.st.release(); await p; } assert.equal(e.st.viewer, true, '別の人向けの応答で決めた');
+        // A→B→A と名乗り直した: id は同じでも世代が違う = 最初の A 向けの遅い応答は捨てる (Codex 監査 5924782)
+        e = mk({ viewer: true }); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); e.st.gen = 2; e.st.release(); await p; } assert.deepEqual([e.st.viewer, e.st.redraw], [true, 0], '世代の違う応答で決めた');
         // 追い越し: 遅いメンバー向けの応答が、あとから来た運営担当の決定を上書きしない
         e = mk(); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); await e.fn({ id: 7 }, 'ops'); e.st.release(); await p; } assert.deepEqual([e.st.viewer, e.st.redraw], [true, 1]);
         // 練習中は触らない

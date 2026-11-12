@@ -21523,6 +21523,10 @@
         // 🧪 リハーサル = 本番の写しでテストのシーズンを作る (2026-11-12 ふるり「テストと本番は明確に切り分けつつ、本番同様の状態で」)。
         //   start: 'eve' 前日として / 'day' 当日として。中身は supabaseQuickCreateTestSeason (形は testSeasonDomain.rehearsalSpec)
         let _opsRehearsalBusy = false;
+        // 今期の確認 (確認済み・今回は難しい・凸数) を直前の本番から写せなかったら、そう言う (黙って「全員 未確認」で始めない: Codex 監査 5924782)
+        function _opsRehearsalConfirmNote(r) {
+            return r && r.confirmationsError ? ' ⚠ 今期の確認は写せませんでした (全員「未確認」から始まります。👥 の ⏰ で確認し直せます)' : '';
+        }
         async function handleOpsQuickCreateTestSeason(start = 'eve') {
             if (_opsRehearsalBusy) return;
             const day = start === 'day';
@@ -21543,7 +21547,7 @@
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 const src = r.rehearsal?.placeholder ? 'テストボス1〜5 (写せる本番シーズンがありません)' : `${r.rehearsal?.from || '直前の本番'} の写し`;
-                showNotification(`✅ 🧪 リハーサルを始めました — ${src}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま`);
+                showNotification(`✅ 🧪 リハーサルを始めました — ${src}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま${_opsRehearsalConfirmNote(r)}`);
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ リハーサルを始められませんでした: ${e?.message || e}`);
@@ -29198,14 +29202,17 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 availWarn = `\n\n⏰ 全員の参加可能時間${nAv != null ? ` (いま ${nAv} 人ぶん)` : ''}を空にします。Discord で聞いて 👥 › ⏰ で登録し直してください。`;
             }
             const confirmMsg = isTest
-                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n模擬・編成・参加可能時間は、いま登録されている本物をそのまま使います (作り物は入れません)。\n「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻ります。\nテストのシーズンは運営担当の端末にだけ出ます。`
+                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\nボスはこのシートのもの、ブロックの区切り・再編成時間は直前の本番シーズンと同じにします。\n模擬・編成・参加可能時間は、いま登録されている本物をそのまま使います (作り物は入れません)。\n「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻ります。\nテストのシーズンは運営担当の端末にだけ出ます。`
                 : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}${availWarn}`;
             if (!confirm(confirmMsg)) return;
 
             try {
                 set('作成中...'); msg.style.color = 'var(--t-body)';
-                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, resetAvailability: resetAvail });
-                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました${r?.availabilityCleared ? ' (参加可能時間を空にしました)' : ''}`);
+                // 🧪 はリハーサルの口へ (ポスターのボス・シートのハード日だけ差し替え。区切り・再編成時間・今期の確認は直前の本番から写す: Codex 監査 5924782)
+                const r = isTest
+                    ? await window.supabaseQuickCreateTestSeason({ bosses, hardDate, monthKey })
+                    : await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, resetAvailability: resetAvail });
+                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました${r?.availabilityCleared ? ' (参加可能時間を空にしました)' : ''}${isTest ? _opsRehearsalConfirmNote(r) : ''}`);
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);
@@ -33106,12 +33113,14 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const dom = window.testSeasonDomain;
             if (!dom || typeof dom.canSeeTest !== 'function' || typeof window.supabaseSetTestViewer !== 'function') return;
             const seq = ++_testViewerSeq;
+            const gen = _identityGen;   // 名乗りの世代 (A→B→A の後着よけ・_syncOpsRole と同じ)
             const named = !!(me && me.id != null);
             let notifyTest;   // undefined = 読めていない (48 未適用・通信の失敗)
             if (named && role === null) {
                 try { notifyTest = await window.supabaseLoadNotifyTest(me.id); } catch { notifyTest = undefined; }
                 if (seq !== _testViewerSeq) return;                                               // 追い越された
                 if (String(getCurrentIdentity()?.id ?? '') !== String(me.id)) return;             // 待っている間に名乗り直した
+                if (gen !== _identityGen) return;                                                 // A→B→A: id は同じでも世代が違う = 古い応答
             }
             const can = named ? dom.canSeeTest({ role, notifyTest, remembered: window.supabaseTestViewer() }) : false;
             if (!window.supabaseSetTestViewer(can)) return;   // 変わっていない
