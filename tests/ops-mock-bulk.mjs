@@ -49,7 +49,8 @@ function makeEnv(o = {}) {
     const els = new Map();
     let bodyHtml = '', open = false;
     const el = (id) => {
-        if (!els.has(id)) els.set(id, { id, style: {}, textContent: '', innerHTML: '', hidden: false, disabled: false,
+        if (!els.has(id)) els.set(id, { id, style: {}, textContent: '', innerHTML: '', hidden: false, disabled: false, value: '', offsetParent: {}, dataset: {},
+            addEventListener: (type, fn) => { (env.handlers[type] = env.handlers[type] || []).push(fn); }, focus: () => { env.focused.push('#' + id); }, select: () => {},
             classList: { add: (c) => { if (id === 'opsMockBulkModal' && c === 'open') open = true; }, remove: (c) => { if (id === 'opsMockBulkModal' && c === 'open') open = false; }, contains: (c) => id === 'opsMockBulkModal' && c === 'open' && open } });
         return els.get(id);
     };
@@ -97,10 +98,17 @@ function makeEnv(o = {}) {
         renderMyDamagePanels: () => { env.myPanels++; },
         document: {
             getElementById: el,
-            querySelector: (sel) => { const m = /\[data-mkb-dmg="([a-z]+):(\d+)"\]/.exec(sel); if (!m) return null; const k = `${m[1]}:${m[2]}`; return { get value() { return inputs[k] || ''; }, focus() { env.focused.push(k); } }; },
+            querySelector: (sel) => {
+                const pre = /\[data-mkb-pre="([a-z]+):(\d+)"\]/.exec(sel);
+                if (pre) { const k = `${pre[1]}:${pre[2]}`; return bodyHtml.includes(`data-mkb-pre="${k}"`) ? { focus() { env.focused.push('pre:' + k); } } : null; }
+                const m = /\[data-mkb-dmg="([a-z]+):(\d+)"\]/.exec(sel); if (!m) return null; const k = `${m[1]}:${m[2]}`;
+                return { get value() { return inputs[k] || ''; }, set value(v) { inputs[k] = String(v); }, disabled: false, focus() { env.focused.push(k); }, select() {}, setSelectionRange(a, b) { env.caret = [k, a, b]; } };
+            },
+            get activeElement() { return env.active || null; },
         },
         window: {
             mockIntakeDomain: globalThis.mockIntakeDomain, raidBlocksDomain: globalThis.raidBlocksDomain,
+            matchMedia: () => ({ matches: !!env.fine }),
             supabaseLoadGrowthSeasons: async () => [{ id: 46, is_active: true, is_test: false, month_key: '2026-12' }, { id: 47, is_active: false, is_test: true, month_key: '2026-12t' }, { id: 45, is_active: false, is_test: false, month_key: '2026-11' }, { id: 44, is_active: false, is_test: false, month_key: '2026-10' }],
             supabaseRegisterOcrCharacters: async (names) => { reg.push(names.slice()); return { canonical: names.map(n => n + '!') }; },
             supabaseSaveMockSubmission: async (pid, attr, opts) => { if (env._saveGate) await env._saveGate(attr); if (env._failAttr === attr) throw new Error(`${attr} だめ`); saved.push({ pid, attr, ...opts });
@@ -108,12 +116,13 @@ function makeEnv(o = {}) {
                 return { slot: env._redirectTo && attr === env._redirectAttr ? env._redirectTo : opts.slot }; },
         },
         console,
+        handlers: {}, active: null, fine: !!o.fine, caret: null,
         saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, myPanels: 0, _confirm: true, _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
         body: () => bodyHtml, isOpen: () => open,
     };
     const names = ['_opsMode', 'PT_ATTRS', 'SLOT_JP', 'MY_TEAM_SLOTS', '_MK_ATTR_CSS', 'escapeHtml', '_charIconHtml', 'resolveNikkeChar', 'fuzzyResolveCharacter', '_mockIntake', 'opsStore',
         'showNotification', 'confirm', 'getCurrentIdentity', '_loadTeamSubs', '_teamHistCache', '_teamGroupsFor', 'openIconPicker', '_opsReloadBoardCards', 'renderMyDamagePanels', 'document', 'window', 'console'];
-    const fns = new Function(...names, SRC + '\nreturn { _mkb, openOpsMockBulk, closeOpsMockBulk, _mkbRender, _mkbPick, _mkbPickChar, _mkbSetDmg, _mkbAddRow, _mkbNext, _mkbNextId, handleOpsMockBulkSave, _mkbFlatRows, _mkbPresetsOf };')(...names.map(n => env[n]));
+    const fns = new Function(...names, SRC + '\nreturn { _mkb, openOpsMockBulk, closeOpsMockBulk, _mkbRender, _mkbPick, _mkbPickChar, _mkbSetDmg, _mkbAddRow, _mkbNext, _mkbNextId, handleOpsMockBulkSave, _mkbFlatRows, _mkbPresetsOf, _mkbEnter, _mkbChooseKey, _mkbFixDmg, _mkbSearch, _mkbGoto, _mkbSaveNext, _mkbSideRender, _mkbFocusFirst };')(...names.map(n => env[n]));
     return { env, ...fns };
 }
 const tick = () => new Promise(r => setTimeout(r, 0));
@@ -295,6 +304,183 @@ await t('④ 保存中は閉じられない・二重に押せない・開き直�
     // 盤面が無い / 運営OFF / 書庫の人
     const z = makeEnv({ noBoard: true }); await z.openOpsMockBulk(1); assert.ok(!z.env.isOpen() && z.env.toasts.some(m => /盤面/.test(m)));
     const y = makeEnv(); await y.openOpsMockBulk(3); assert.ok(!y.env.isOpen() && y.env.toasts.some(m => /見つかりません/.test(m)));
+});
+
+
+// ============================== ⌨ 続けて入力 (2026-11-12) ==============================
+const key = (h, k, target, o = {}) => { const ev = { key: k, target, ctrlKey: !!o.ctrl, metaKey: false, isComposing: !!o.ime, prevented: false, preventDefault() { this.prevented = true; }, stopPropagation() {} }; h.env.handlers.keydown[0](ev); return ev; };
+const dmgT = (k) => ({ dataset: { mkbDmg: k }, tagName: 'INPUT' });
+
+await t('⑦ ⌨ Enter の導線: ダメージ → Enter → (編成が空なら) 番号キーで編成 → 次の欄 / 空のまま Enter は飛ばす / 編成があれば次へ / Esc で戻る / 最後は保存ボタン', async () => {
+    const h = makeEnv();
+    await h.openOpsMockBulk(2);   // 銀狐 (何も入っていない)
+    h._mkbSetDmg('iron', 0, '26.1');
+    h.env.focused.length = 0;
+    h._mkbEnter('iron', 0);
+    assert.equal(h._mkb.choose, 'iron:0', '編成を選ぶ番にならない');
+    assert.ok(/class="mkb-presets choosing" data-mkb-pre="iron:0" tabindex="-1"/.test(h.env.body()) && h.env.body().includes('⌨ 編成を選んでください'), '選ぶ番の見た目・案内が無い');
+    assert.ok(/<kbd class="mkb-k" aria-hidden="true">1<\/kbd><span class="faces"><i>K<\/i>/.test(h.env.body()) && /<kbd class="mkb-k" aria-hidden="true">2<\/kbd>/.test(h.env.body()), 'プリセットに番号が無い');
+    assert.equal(h.env.focused.at(-1), 'pre:iron:0', 'プリセットへ焦点が移らない (番号キーを受けられない)');
+    assert.equal(h._mkbChooseKey('iron', 0, 'x'), false, '関係ないキーを受けた'); assert.equal(h._mkbChooseKey('iron', 0, '9'), false, '無い番号を受けた');
+    assert.equal(h._mkb.choose, 'iron:0');
+    assert.equal(h._mkbChooseKey('iron', 0, '2'), true);
+    assert.deepEqual(h._mkb.rows.iron[0].team.slice().sort(), T('AWXYZ'), '2 番のプリセットが入らない');
+    assert.equal(h._mkb.choose, null); assert.equal(h.env.focused.at(-1), 'electric:0', '選んだあと次の欄へ進まない');
+    assert.equal(h._mkb.rows.iron[0].damageB, 26.1, '打ってあったダメージが消えた');
+    // 空のまま Enter = その属性は飛ばす (選ぶ番にしない)
+    h._mkbEnter('electric', 0);
+    assert.equal(h._mkb.choose, null); assert.equal(h.env.focused.at(-1), 'fire:0');
+    // 編成がもうある枠は選ぶ番にしない
+    h._mkbEnter('iron', 0);
+    assert.equal(h._mkb.choose, null); assert.equal(h.env.focused.at(-1), 'electric:0');
+    // プリセットの無い属性 (灼熱) はダメージだけで次へ
+    h._mkbSetDmg('fire', 0, '30'); h._mkbEnter('fire', 0);
+    assert.equal(h._mkb.choose, null); assert.equal(h.env.focused.at(-1), 'wind:0');
+    // プリセットのある属性 (水冷) でも、ダメージが空のまま Enter なら選ぶ番にしない (飛ばす = 最後なので保存ボタンへ)
+    h._mkbEnter('water', 0);
+    assert.equal(h._mkb.choose, null, 'ダメージが空なのに編成を選ぶ番になった'); assert.equal(h.env.focused.at(-1), '#mkbSaveBtn');
+    // Enter = 選べるいちばん上 / Esc = 選ばずに戻る
+    h._mkbSetDmg('water', 0, '31'); h._mkbEnter('water', 0);
+    assert.equal(h._mkb.choose, 'water:0');
+    assert.equal(h._mkbChooseKey('water', 0, 'Escape'), true);
+    assert.equal(h._mkb.choose, null); assert.equal(h.env.focused.at(-1), 'water:0'); assert.ok(!h._mkb.rows.water[0].team.some(Boolean), 'Esc で編成が入った');
+    h._mkbEnter('water', 0); h._mkbChooseKey('water', 0, 'Enter');
+    assert.deepEqual(h._mkb.rows.water[0].team, T('FGHIJ')); assert.equal(h.env.focused.at(-1), '#mkbSaveBtn', '最後の欄のあと保存ボタンへ進まない');
+    // 保存中は受けない
+    h._mkb.busy = true; h._mkb.rows.wind[0].damageB = 5; h._mkbEnter('wind', 0);
+    assert.equal(h._mkb.choose, null); assert.equal(h._mkbChooseKey('wind', 0, '1'), false);
+});
+
+await t('⑧ ⌨ 選べないプリセット (同じ属性の別の編成と被る) は番号で押しても入らず、選ぶ番のまま / Enter は選べるいちばん上', async () => {
+    const h = makeEnv({ pop: { water: [{ team: T('FGHIJ'), count: 4, mockCount: 4, histCount: 0 }, { team: T('PQRST'), count: 2, mockCount: 2, histCount: 0 }] } });
+    await h.openOpsMockBulk(1);
+    h._mkbAddRow('water'); h._mkbSetDmg('water', 1, '20'); h._mkbEnter('water', 1);
+    assert.equal(h._mkb.choose, 'water:1');
+    h._mkbChooseKey('water', 1, '1');   // 編成①と同じ 5 人 = 選べない
+    assert.ok(!h._mkb.rows.water[1].team.some(Boolean), '選べないプリセットが入った'); assert.equal(h._mkb.choose, 'water:1', '選ぶ番が終わってしまった');
+    assert.ok(h.env.toasts.some(m => /選べません/.test(m)), '理由を言っていない');
+    h._mkbChooseKey('water', 1, 'Enter');
+    assert.deepEqual(h._mkb.rows.water[1].team, T('PQRST'), 'Enter が選べるいちばん上を選ばない');
+});
+
+await t('⑨ ⌨ 数字: B 単位でも桁そのままでも・全角・カンマ・空白 / 読めなければ空 / 欄を離れたら B の表示に直す', async () => {
+    const h = makeEnv();
+    await h.openOpsMockBulk(2);
+    const d = (v) => { h._mkbSetDmg('iron', 0, v); return h._mkb.rows.iron[0].damageB; };
+    assert.equal(d('28.4'), 28.4); assert.equal(d('28412345678'), 28.412345678); assert.equal(d('28,412,345,678'), 28.412345678);
+    assert.equal(d('２８．４'), 28.4, '全角の数字を読まない'); assert.equal(d(' 31 '), 31); assert.equal(d('999999'), 999999, '1,000,000 未満は B のまま');
+    assert.equal(d('abc'), null); assert.equal(d('0'), null); assert.equal(d('-3'), null); assert.equal(d(''), null);
+    d('28412345678');
+    const el = { value: '28412345678' }; h._mkbFixDmg('iron', 0, el);
+    assert.equal(el.value, '28.41');
+    d(''); const el2 = { value: 'あ' }; h._mkbFixDmg('iron', 0, el2);
+    assert.equal(el2.value, 'あ', '読めない入力を勝手に消した');
+    assert.ok(/<input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="" placeholder="例 28.4" onchange="_mkbFixDmg\('iron', 0, this\)" data-mkb-dmg="iron:0"/.test(h.env.body()), '欄が数字専用のまま (桁のカンマ・全角を打てない)');
+});
+
+await t('⑩ ⌨ 人の一覧: 表の並び・登録済みの属性の数 (いまの人は保存済みの枠) / 名前で探す (ひらがな・カタカナ・全角を同じに) / 押すと移る (未保存なら確認・保存中は移らない)', async () => {
+    const h = makeEnv();
+    await h.openOpsMockBulk(1);
+    const side = () => h.env.els.get('opsMockBulkSide').innerHTML, list = () => h.env.els.get('mkbSideList').innerHTML;
+    assert.ok(/id="mkbSearch"[^>]*oninput="_mkbSearch\(this\.value\)"/.test(side()), '検索欄が無い');
+    assert.deepEqual([...list().matchAll(/data-mkb-go="(\d+)"[^>]*><span class="nm">([^<]*)<\/span><span class="n[^"]*">([^<]*)</g)].map(m => [m[1], m[2], m[3]]), [['1', 'ミリン', '2/5'], ['2', '銀狐', '0/5']], '表の並び・登録済みの数が違う / 書庫の人が出ている');
+    assert.ok(/class="mkb-p on" data-mkb-go="1" aria-current="true"/.test(list()), 'いまの人の印が無い');
+    // 打っただけ (未保存) は数えない
+    h._mkbSetDmg('iron', 0, '20'); h._mkbRender();
+    assert.ok(list().includes('>2/5<'), '未保存の枠を登録済みに数えた');
+    h._mkbSetDmg('iron', 0, '');
+    h._mkbSearch('みりん');
+    assert.deepEqual(h._mkb.sideHit, [1], 'ひらがなでカタカナの名前に当たらない');
+    h._mkbSearch('ＸＹＺ'); assert.deepEqual(h._mkb.sideHit, []); assert.ok(list().includes('見つかりません'));
+    h._mkbSearch('銀');
+    assert.deepEqual(h._mkb.sideHit, [2]);
+    // 未保存の変更があれば確認
+    h._mkbSetDmg('iron', 0, '20'); h.env._confirm = false; h._mkbGoto(2);
+    assert.equal(h._mkb.playerId, 1, '確認を断ったのに移った');
+    h._mkb.busy = true; h.env._confirm = true; h._mkbGoto(2);
+    assert.equal(h._mkb.playerId, 1, '保存中に移った');
+    h._mkb.busy = false; h._mkbGoto(2); await tick(); await tick();
+    assert.equal(h._mkb.playerId, 2); assert.equal(h._mkb.q, '', '移ったあとも絞り込んだまま');
+    assert.ok(/class="mkb-p on" data-mkb-go="2"/.test(list()));
+    h._mkbGoto('x'); h._mkbGoto(null);
+    assert.equal(h._mkb.playerId, 2);
+});
+
+await t('⑪ ⌨ Ctrl+Enter: 保存して次の人へ (結果は知らせに) / 失敗が残れば進まない / 変えていなければそのまま次へ / 最後の人ならそう言う', async () => {
+    const h = makeEnv();
+    await h.openOpsMockBulk(1);
+    h._mkbSetDmg('electric', 0, '15');
+    await h._mkbSaveNext(); await tick(); await tick();
+    assert.deepEqual(h.env.saved.map(x => [x.pid, x.attr, x.damageB]), [[1, 'electric', 15]]);
+    assert.equal(h._mkb.playerId, 2, '保存のあと次の人へ進まない');
+    assert.ok(h.env.toasts.some(m => /✅ ミリン: 電撃 15\.0B を登録しました/.test(m)), '保存の結果を知らせていない');
+    // 最後の人: 保存して、そう言う
+    h._mkbSetDmg('wind', 0, '9');
+    await h._mkbSaveNext(); await tick();
+    assert.equal(h._mkb.playerId, 2); assert.ok(/表の最後の人です/.test(h._mkb.msg) && /登録しました/.test(h._mkb.msg), '最後の人と言っていない / 保存の結果が消えた');
+    // 失敗が残れば進まない
+    const g = makeEnv();
+    await g.openOpsMockBulk(1);
+    g._mkbSetDmg('electric', 0, '15'); g.env._failAttr = 'electric';
+    await g._mkbSaveNext(); await tick();
+    assert.equal(g._mkb.playerId, 1, '保存に失敗したのに次の人へ進んだ'); assert.ok(/保存できませんでした/.test(g._mkb.msg));
+    // 変えていなければ保存せずに次へ
+    const n = makeEnv();
+    await n.openOpsMockBulk(1);
+    await n._mkbSaveNext(); await tick(); await tick();
+    assert.equal(n.env.saved.length, 0); assert.equal(n._mkb.playerId, 2);
+    // 編成だけ入れてダメージの無い枠 (保存されない) が残るなら、進む前に確かめる
+    const c = makeEnv();
+    await c.openOpsMockBulk(1);
+    c._mkbPick('iron', 0, 'K|L|M|N|O'); c.env._confirm = false;
+    await c._mkbSaveNext(); await tick();
+    assert.equal(c._mkb.playerId, 1, '保存されない変更を確かめずに捨てた');
+});
+
+await t('⑫ ⌨ キーの受け口 (1 回だけ): Ctrl+Enter / ダメージの欄の Enter / 選ぶ番の番号 / 「/」で検索欄へ / 検索欄の Enter で最初の人へ / 日本語入力の確定は受けない', async () => {
+    const h = makeEnv();
+    await h.openOpsMockBulk(2);
+    await h.openOpsMockBulk(2);
+    assert.equal(h.env.handlers.keydown.length, 1, 'キーの受け口を開くたびに足している');
+    h._mkbSetDmg('iron', 0, '26.1');
+    assert.equal(key(h, 'Enter', dmgT('iron:0'), { ime: true }).prevented, false); assert.equal(h._mkb.choose, null, '日本語入力の確定の Enter を受けた');
+    assert.equal(key(h, 'Enter', dmgT('iron:0')).prevented, true); assert.equal(h._mkb.choose, 'iron:0');
+    assert.equal(key(h, 'a', { dataset: { mkbPre: 'iron:0' } }).prevented, false);
+    assert.equal(key(h, '1', { dataset: { mkbPre: 'iron:0' } }).prevented, true);
+    assert.deepEqual(h._mkb.rows.iron[0].team, T('KLMNO'));
+    // 「/」: ダメージの欄からも・欄の外からも検索欄へ。ほかの入力欄 (検索欄) では文字として打てる
+    h.env.focused.length = 0;
+    assert.equal(key(h, '/', dmgT('fire:0')).prevented, true); assert.equal(h.env.focused.at(-1), '#mkbSearch');
+    assert.equal(key(h, '/', { dataset: {}, tagName: 'DIV' }).prevented, true);
+    assert.equal(key(h, '/', { id: 'mkbSearch', dataset: {}, tagName: 'INPUT' }).prevented, false, '検索欄で「/」を打てない');
+    // 検索欄の Enter = 絞り込んだ最初の人へ
+    h._mkbSearch('ミリ'); h.env._confirm = true;
+    key(h, 'Enter', { id: 'mkbSearch', dataset: {}, tagName: 'INPUT' }); await tick(); await tick();
+    assert.equal(h._mkb.playerId, 1);
+    // Ctrl+Enter はどこからでも
+    h._mkbSetDmg('electric', 0, '15');
+    assert.equal(key(h, 'Enter', dmgT('electric:0'), { ctrl: true }).prevented, true); await tick(); await tick(); await tick();
+    assert.deepEqual(h.env.saved.map(x => x.attr), ['electric']); assert.equal(h._mkb.playerId, 2);
+    // 閉じているときは受けない
+    h.closeOpsMockBulk(true);
+    assert.equal(key(h, 'Enter', dmgT('iron:0')).prevented, false);
+});
+
+await t('⑬ ⌨ 描き直しても打っている欄と文字を保つ / PC は開いたとき最初の空の欄へ焦点 (スマホは当てない)', async () => {
+    const h = makeEnv({ fine: true });
+    await h.openOpsMockBulk(1);
+    assert.equal(h.env.focused[0], 'iron:0', 'PC で最初の空の欄へ焦点が当たらない (登録済みの灼熱・水冷を飛ばす)');
+    h.env.active = { dataset: { mkbDmg: 'electric:0' }, value: '26.', selectionStart: 3, selectionEnd: 3 };
+    h.env.focused.length = 0;
+    h._mkbRender();
+    assert.equal(h.env.inputs['electric:0'], '26.', '打っている途中の文字 (26.) が消えた');
+    assert.deepEqual(h.env.focused, ['electric:0']); assert.deepEqual(h.env.caret, ['electric:0', 3, 3]);
+    const m = makeEnv();
+    await m.openOpsMockBulk(1);
+    assert.deepEqual(m.env.focused, [], 'スマホで開いたときに焦点を当てた (キーボードが勝手に開く)');
+    const f = makeEnv({ fine: true, players: [{ id: 1, name: 'ミリン', availableSlots: ['h17'], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 30, team: T('KLMNO') }] } }, { id: 2, name: '銀狐', availableSlots: ['h17'], loadoutsByAttr: {} }] });
+    await f.openOpsMockBulk(1);
+    assert.equal(f.env.focused[0], 'electric:0', '先頭の欄が登録済みなのに、そこから始まった (最初の空の欄へ行かない)');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

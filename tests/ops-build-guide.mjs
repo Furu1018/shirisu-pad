@@ -122,6 +122,20 @@ test('pieceGuide: きょう使ったキャラの編成は used・置いた編成
     assert.equal(gp.mates.find(m => m.attr === 'fire').state, 'dup', '置いた編成と被ってもう使えない編成を「残る」と言った');
     assert.equal(bb.pieceGuide({ ...placed, piece: null }), null);
 });
+test('pieceGuide (Codex D): 残り = canDrop と同じ数え方 — このブロックにもう置いた凸を引く (1 凸置いたあとは 2 凸ぶんの合計)', () => {
+    const p0 = pin(1, { block_from: blocks[2].from, block_to: blocks[2].to, boss_number: 4, expected_damage_b: 27, characters_snapshot: ['ブラン', 'ノワール', 'ドロシー', 'シンデレラ', 'プリバティ'] });
+    const ctx = ctxOf(mkBoard(), { pins: [p0], placed: new Map([['1:electric:1', 2]]) });
+    assert.equal(piece(ctx, '1:fire:1').remaining, 3, '前提: trayPieces の remaining はこのブロックの駒を引かない');
+    const g = bb.pieceGuide({ piece: piece(ctx, '1:fire:1'), ...ctx });
+    assert.equal(g.left, 2); assert.equal(g.total.n, 2, 'このブロックに置いた 1 凸を引いていない');
+    assert.ok(Math.abs(g.total.best.sumB - 51.8) < 1e-6, `best ${g.total.best.sumB}`);   // 鉄甲 29.3 + 水冷 22.5 (置いた電撃は入れない)
+    assert.ok(Math.abs(g.total.withThis.sumB - 44.7) < 1e-6, `withThis ${g.total.withThis.sumB}`);   // 灼熱 24.1 + 風圧 20.6
+    // このブロックで 3 凸置き切ったら、置けない (合計も出さない)
+    const b3 = mkBoard(); b3.players[0].attackCount = 2;
+    const c3 = ctxOf(b3, { pins: [p0], placed: new Map([['1:electric:1', 2]]) });
+    const g3 = bb.pieceGuide({ piece: piece(c3, '1:fire:1'), ...c3 });
+    assert.equal(g3.left, 0); assert.equal(g3.total, null);
+});
 
 // ============================== ② 🔄 差分 (純ロジック) ==============================
 const pin = (id, o = {}) => ({ id, status: 'pinned', time_mode: 'block', block_from: blocks[0].from, block_to: blocks[0].to, player_id: 1, boss_number: 1, loadout_slot: 1,
@@ -192,6 +206,16 @@ test('ガイドの描画: ポインタを乗せたピースが先・無ければ
     const hp = G._obGuideHtml(placed, '1:iron:1');
     assert.ok(hp.includes('D 夕方 に置いてあります') && hp.includes('この編成を置いたので、ほかの編成は') && !hp.includes('obg-sum'), '置いてあるピースの出し方が違う');
     assert.ok(G._obGuideHtml(placed, '1:fire:1').includes('⚠ 使えない: 置いた別の編成とキャラが被ります'));
+    // 過ぎたブロックは「ほかに置ける」に数えない (タイルには薄く出る)
+    const bp = mkBoard(); bp.players[0].availableSlots = slotsOf([0, 2, 3]);
+    const hPast = G._obGuideHtml(ctxOf(bp), '1:fire:1');
+    assert.ok(hPast.includes('ほかに D 夕方 でも置けます') && !hPast.includes('A 朝・D 夕方'), '過ぎたブロックを「ほかに置ける」と言った');
+    assert.ok(/<span class="on past" title="A 朝/.test(hPast), '過ぎたブロックに出られた印がタイルに無い');
+    // このブロックで置ける凸を使い切った人 (Codex D: 置いた凸を引く)
+    const b3 = mkBoard(); b3.players[0].attackCount = 2;
+    const pinE = pin(1, { block_from: blocks[2].from, block_to: blocks[2].to, boss_number: 4, expected_damage_b: 27, characters_snapshot: ['ブラン'] });
+    const h3 = G._obGuideHtml(ctxOf(b3, { pins: [pinE], placed: new Map([['1:electric:1', 2]]) }), '1:wind:1');
+    assert.ok(h3.includes('⚠ このブロックで置ける凸がありません') && h3.includes('このブロックであと置ける凸 0'), '置ける凸を使い切ったと言っていない');
     ob.ctxLast = null; el.innerHTML = 'そのまま';
     G._obGuidePaint();
     assert.equal(el.innerHTML, 'そのまま', '盤を描く前に描いた');
@@ -265,10 +289,38 @@ test('反映: 自動 OFF は知らせるだけ — 「反映する」は押し�
     const t = mkSync({ pins: base(), auto: false });
     t.gate.next = other();
     await t.api._obSyncPins();
+    const fresh = [...other(), pin(11, { player_id: 1, boss_number: 5, pinned_by: 'さくら' })];
+    t.gate.next = fresh;   // 知らせたあとに DB がまた変わった
     t.api._obSetSyncAuto(true);
-    assert.equal(t.store.has('shirisuko_ob_sync_auto_v1'), false); assert.equal(t._ob.pins, t.gate.next, 'ON に戻しても待っていた分を反映しない');
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(t.store.has('shirisuko_ob_sync_auto_v1'), false); assert.equal(t._ob.pins, fresh, 'ON に戻したとき、知らせたときの古い行を当てた (押した時点の DB を読み直していない)');
     t.api._obSetSyncAuto(false);
     assert.equal(t.store.get('shirisuko_ob_sync_auto_v1'), '0'); assert.equal(t.api._obSyncAuto(), false);
+});
+test('反映 (Codex A): 知らせたあとにこの端末が駒を置いたら、知らせは捨てる — 自動を ON に戻しても自分の駒は消えない', async () => {
+    const s = mkSync({ pins: base(), auto: false });
+    s.gate.next = other();
+    await s.api._obSyncPins();
+    assert.ok(s._ob.syncPending, '知らせていない');
+    const mine = [...other(), pin(60, { player_id: 1, boss_number: 2, pinned_by: 'ふるり' })];   // 自分で置いた (置く処理が読み直した行 = 相手の変更も入っている)
+    s._ob.pins = mine; s.gate.next = mine.map(r => ({ ...r }));
+    assert.ok(s.api._obSyncHtml().includes('ob-sync idle'), 'この端末が駒を書き換えたのに、古い知らせが残った');
+    assert.equal(s._ob.syncPending, null);
+    s.api._obSetSyncAuto(true);
+    await new Promise(r => setTimeout(r, 0));
+    assert.ok(s._ob.pins.some(r => r.id === 60), '自分で置いた駒が消えた');
+});
+test('反映 (Codex B): 「反映する」の通信待ちの間に別のピースを選んだら、何も変えない (選択を取り消さない・駒を差し替えない)', async () => {
+    const s = mkSync({ pins: base(), sel: '1:fire:1' }); const before = s._ob.pins;
+    s.gate.next = other();
+    await s.api._obSyncPins();
+    let open; s.gate.hold = new Promise(r => { open = r; });
+    const p = s.api._obSyncNow();
+    await Promise.resolve();
+    s._ob.sel = '2:iron:1';   // 待っている間に選んだ / ドラッグを始めた
+    open(); await p;
+    assert.equal(s._ob.sel, '2:iron:1', '待っている間の選択を取り消した'); assert.equal(s._ob.pins, before, '選んでいる最中に駒を差し替えた');
+    assert.ok(!s.log.includes('render'), '選んでいる最中に盤を描き直した'); assert.equal(s._ob.syncing, false);
 });
 test('反映: 読んでいる間にこの端末が駒を書き換えた / 処理中になった / シーズンが変わった → 古い読み取りを捨てる (自分で置いた駒が消えない)', async () => {
     for (const mutate of [(o) => { o.pins = [...o.pins, pin(50)]; }, (o) => { o.busy = true; }, (o) => { o.epoch++; }]) {

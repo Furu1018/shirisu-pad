@@ -3815,6 +3815,25 @@
         .mk-name.btn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
         .mk-only { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 900; color: var(--ops-deep); background: var(--ops-bg); vertical-align: middle; white-space: nowrap; }
         /* ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08) */
+        /* ⌨ 続けて入力 (2026-11-12): PC (ポインタあり・900px〜) は 人の一覧 + 5 属性 の 2 列。それ以外は今までどおり 1 列 */
+        #opsMockBulkModal .mkb-sheet { max-width: 560px; }
+        .mkb-cols { min-width: 0; } .mkb-side { display: none; } .mkb-keys, .mkb-k { display: none; }
+        @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+            #opsMockBulkModal .mkb-sheet { max-width: 900px; }
+            .mkb-cols { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 14px; align-items: start; }
+            .mkb-side { display: block; position: sticky; top: 0; padding-top: 6px; min-width: 0; }
+            .mkb-keys { display: flex; gap: 4px 12px; flex-wrap: wrap; margin: 6px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+            .mkb-k { display: inline-block; }
+            .mkb-preset { grid-template-columns: auto minmax(0, 1fr) auto; }
+        }
+        .mkb-keys kbd, .mkb-k { font: inherit; font-size: 10px; font-weight: 900; padding: 0 5px; border-radius: 5px; background: var(--s2); color: var(--t-body); border-bottom: 2px solid var(--line); white-space: nowrap; }
+        .mkb-search { width: 100%; font: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 9px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); }
+        .mkb-plist { display: grid; gap: 3px; margin-top: 7px; max-height: 56vh; overflow-y: auto; overflow-x: hidden; }
+        .mkb-p { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; border: 1.5px solid transparent; background: var(--s1); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; text-align: left; min-width: 0; }
+        .mkb-p.on { border-color: var(--ops); background: var(--ops-bg); } .mkb-p:disabled { opacity: .5; cursor: default; }
+        .mkb-p .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; } .mkb-p .n { font-size: 10.5px; font-weight: 900; color: var(--t-muted); font-variant-numeric: tabular-nums; } .mkb-p .n.full { color: var(--ok-deep); }
+        .mkb-presets.choosing { outline: 2px solid var(--ops); outline-offset: 3px; border-radius: 10px; }
+        .mkb-choose { margin: 6px 0 0; font-size: 11px; font-weight: 900; color: var(--ops-deep); }
         .mkb-head { margin: 2px 0 4px; }
         .mkb-pills { display: flex; gap: 5px; flex-wrap: wrap; }
         .mkb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--t-body); background: var(--s1); }
@@ -7012,12 +7031,13 @@
 
     <!-- ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08): 📸 模擬ダメージ表の名前を押す → その人の 5 属性を 1 枚で。描くのは _mkbRender -->
     <div class="player-select-modal" id="opsMockBulkModal" data-ops-only>
-                <div class="player-select-content" style="max-width:560px;">
+                <div class="player-select-content mkb-sheet">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2 id="opsMockBulkTitle">✏️ 模擬をまとめて入力</h2>
                         <button onclick="closeOpsMockBulk()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
-                    <div id="opsMockBulkBody"></div>
+                    <!-- ⌨ 続けて入力 (2026-11-12): PC は左に人の一覧 (名前で探す)・右にその人の 5 属性。スマホは一覧を出さない (「次の人 →」で進む) -->
+                    <div class="mkb-cols"><aside class="mkb-side" id="opsMockBulkSide" aria-label="模擬を入れる人"></aside><div id="opsMockBulkBody"></div></div>
                 </div>
             </div>
 
@@ -19244,6 +19264,7 @@
             // ▶︎ 模擬ダメージ表 (S1): 人 × 属性 (ボス 1〜5 の順)。純ロジックは mockIntakeDomain.tableRows
             const tbl = dom.tableRows({ players, blocks, bosses: snap.bosses || [], b5Weakness: b5Weak });
             _mockIntake.order = tbl.rows.map(r => Number(r.id));   // ✏️ まとめて入力の「次の人 →」= この並び (〆 の早い順)
+            if (typeof _mkbSideRender === 'function' && document.getElementById('opsMockBulkModal')?.classList.contains('open')) _mkbSideRender(true);   // ⌨ 開いている まとめて入力 の人の一覧 (n/5) を保存のあとの盤面に合わせる
             const bossOf = (a) => (snap.bosses || []).find(b => String(b.weakness || '').toLowerCase() === a) || null;
             const C = _MK_ATTR_CSS;
             const head = tbl.attrs.map(a => { const b = bossOf(a); const pt = PT_ATTRS.find(x => x.key === a)?.name || a;
@@ -19357,7 +19378,7 @@
                 attrs: dom.attrOrderOfBosses(snap.bosses || []),
                 deadline: dom.deadlineOf(p, blocks), only: dom.onlyBlockOf(p, blocks), noSlots: !p.flexTime && !(Array.isArray(p.availableSlots) && p.availableSlots.length),
                 b5Weak, b5: dom.b5SecondOf(p, b5Weak),
-                rows: {}, pop: {}, last: {}, prev: null, loading: true, busy: false, msg: '',
+                rows: {}, pop: {}, last: {}, prev: null, loading: true, busy: false, msg: '', choose: null,
             });
             // 枠: いまの登録 (盤面の loadoutsByAttr) をそのまま (slot 順)。無い属性は空の編成① を 1 つ
             for (const a of _mkb.attrs) {
@@ -19368,6 +19389,9 @@
             }
             document.getElementById('opsMockBulkModal').classList.add('open');
             _mkbRender();
+            // ⌨ 続けて入力: キーの受け口 (1 回だけ)・人の一覧・PC は最初の空の欄へ焦点 (スマホはキーボードが勝手に開くので当てない)
+            _mkbBindKeys(); _mkbSideRender();
+            if (_mkbFine()) _mkbFocusFirst();
             // プリセットの材料: 📚 人気編成と同じ (今回の模擬 + 過去の凸) を読み直す + 前のレイド (前回の自分)。片方が失敗しても もう片方は使う
             await Promise.allSettled([_loadTeamSubs(true), _mkbLoadPrevSeason()]);
             if (gen !== _mkb.gen) return;   // 待っている間に別の人を開いた / 閉じた
@@ -19436,7 +19460,8 @@
             const curKey = _mkbKey(r.team);
             const same = _mkbOthers(a, i, true).flat(), cross = _mkbOthers(a, i).flat();
             const dis = _mkb.busy ? ' disabled' : '';   // 保存中は触れない (保存した中身と画面がずれる — Codex P1)
-            const pres = presets.map(p => {
+            const choosing = _mkb.choose === `${a}:${i}`;   // ⌨ ダメージを打って Enter → 編成を番号キーで選ぶ番
+            const pres = presets.map((p, pk) => {
                 const meta = (p.source === 'last'
                     ? `<span class="mine">前回の自分</span><br>${p.count ? `${p.count} 人が使用` : '実凸の編成'}`
                     : `<b>${p.count} 人</b>が使用<br>模擬${p.mockCount}+過去の凸${p.histCount}${p.mine ? ' · <span class="mine">前回の自分も</span>' : ''}`)
@@ -19444,7 +19469,7 @@
                 const t = p.blocked ? ` title="同じ属性の別の編成とキャラが被ります (${escapeHtml(p.blockedWith.join('・'))}) — 2 編成目は両方使うので選べません"`
                     : p.dup ? ` title="別の属性の編成とキャラが被ります (${escapeHtml(p.dupWith.join('・'))}) — 1 日に両方は使えません (選べます)"` : ' title="押すと 5 枠に入ります"';
                 // 名前は onclick に埋めない (引用符で壊れる) — 鍵は data 属性で渡す
-                return `<button type="button" class="mkb-preset${curKey === p.key ? ' on' : ''}${p.blocked ? ' ng' : p.dup ? ' warn' : ''}" data-key="${escapeHtml(p.key)}" onclick="_mkbPick('${a}', ${i}, this.dataset.key)"${p.blocked ? ' aria-disabled="true"' : ''}${dis}${t}><span class="faces">${p.team.map(c => _charIconHtml(c, 24)).join('')}</span><span class="pm">${meta}</span></button>`;
+                return `<button type="button" class="mkb-preset${curKey === p.key ? ' on' : ''}${p.blocked ? ' ng' : p.dup ? ' warn' : ''}" data-key="${escapeHtml(p.key)}" onclick="_mkbPick('${a}', ${i}, this.dataset.key)"${p.blocked ? ' aria-disabled="true"' : ''}${dis}${t}>${pk < 9 ? `<kbd class="mkb-k" aria-hidden="true">${pk + 1}</kbd>` : ''}<span class="faces">${p.team.map(c => _charIconHtml(c, 24)).join('')}</span><span class="pm">${meta}</span></button>`;
             }).join('');
             const faces = r.team.map((c, k) => {
                 const dup = !!c && same.includes(c), rr = c ? resolveNikkeChar(c) : null;
@@ -19455,8 +19480,9 @@
             const dmg = r.damageB != null ? String(+Number(r.damageB).toFixed(2)) : '';
             return `<div class="mkb-row">
                 <div class="mkb-rl">編成${SLOT_JP[r.slot] || r.slot}<span id="mkbSt-${a}-${i}">${_mkbStHtml(r)}</span>${r.note ? `<span class="st">${escapeHtml(r.note)}</span>` : ''}${crossDup.length ? `<span class="st warn" title="別の属性の編成と同じキャラ: ${escapeHtml(crossDup.join('・'))} — 表の赤い枠と同じ (1 日に両方は使えない・使う属性は組むときに決まる)">⚠ 別の属性と被り: ${escapeHtml(_mkbFew(crossDup))}</span>` : ''}</div>
-                ${presets.length ? `<div class="mkb-presets">${pres}</div>` : (_mkb.loading ? '' : '<p class="mkb-note">この属性のプリセットはまだありません — 顔を押して 1 人ずつ選んでください</p>')}
-                <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="number" inputmode="decimal" step="0.01" min="0" value="${dmg}" placeholder="例 28.4" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"${dis}><span>B</span></label></div>
+                ${choosing && presets.length ? '<p class="mkb-choose">⌨ 編成を選んでください: 番号キー (Enter = 1 番・Esc = 選ばずに戻る)</p>' : ''}
+                ${presets.length ? `<div class="mkb-presets${choosing ? ' choosing' : ''}" data-mkb-pre="${a}:${i}" tabindex="-1">${pres}</div>` : (_mkb.loading ? '' : '<p class="mkb-note">この属性のプリセットはまだありません — 顔を押して 1 人ずつ選んでください</p>')}
+                <div class="mkb-slots"><div class="mkb-faces">${faces}</div><label class="mkb-dmg"><input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${dmg}" placeholder="例 28.4" onchange="_mkbFixDmg('${a}', ${i}, this)" data-mkb-dmg="${a}:${i}" oninput="_mkbSetDmg('${a}', ${i}, this.value)"${dis}><span>B</span></label></div>
             </div>`;
         }
         function _mkbRender() {
@@ -19472,7 +19498,8 @@
             if (_mkb.b5 && _mkb.b5Weak) pills.push(`<span class="mkb-pill">18 時以降に出られる → ${escapeHtml(_mkbPt(_mkb.b5Weak))}PT (ボス 5) は 2 編成</span>`);
             const filled = _mkb.attrs.filter(a => (_mkb.rows[a] || []).some(r => Number(r.damageB) > 0));
             const head = `<div class="mkb-head"><div class="mkb-pills">${pills.join('')}</div>
-                <p class="mkb-note"><b id="mkbProg">${filled.length} / ${_mkb.attrs.length} 属性</b> · ボスの順。<b>プリセットを押すと 5 キャラが入ります</b> (顔を押すと 1 人ずつ選べます)。ダメージは B 単位。保存するのは変えた枠だけです。${_mkb.loading ? ' <span class="mkb-loading">プリセットを読み込み中…</span>' : ''}</p></div>`;
+                <p class="mkb-note"><b id="mkbProg">${filled.length} / ${_mkb.attrs.length} 属性</b> · ボスの順。<b>プリセットを押すと 5 キャラが入ります</b> (顔を押すと 1 人ずつ選べます)。ダメージは B 単位。保存するのは変えた枠だけです。${_mkb.loading ? ' <span class="mkb-loading">プリセットを読み込み中…</span>' : ''}</p>
+                <p class="mkb-keys"><span>⌨ 数字 → <kbd>Enter</kbd> で次の欄</span><span>編成が空なら番号キー <kbd>1</kbd>〜<kbd>9</kbd> で選ぶ (<kbd>Enter</kbd> = 1 番)</span><span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 保存して次の人</span><span><kbd>/</kbd> 名前で探す</span><span>数字は「28.4」でも桁そのままでも</span></p></div>`;
             const attrsHtml = _mkb.attrs.map(a => {
                 const b = bossOf(a), rows = _mkb.rows[a] || [];
                 const done = rows.some(r => Number(r.damageB) > 0 && !_mkbIsDirty(r));
@@ -19491,7 +19518,16 @@
                 ${nextId != null ? `<button type="button" class="mkb-btn" onclick="_mkbNext()"${_mkb.busy ? ' disabled' : ''}>次の人 → ${escapeHtml(nextName)}</button>` : ''}
                 <button type="button" class="mkb-btn main" id="mkbSaveBtn" onclick="handleOpsMockBulkSave()"${(_mkb.busy || !canSave) ? ' disabled' : ''}>${_mkb.busy ? '保存中…' : `✅ ${escapeHtml(_mkb.name)} の模擬をまとめて保存`}</button>
                 <p class="mkb-msg" id="mkbMsg">${_mkb.msg ? escapeHtml(_mkb.msg) : ''}</p></div>`;
+            // ⌨ 入力の途中で描き直しても (プリセットの読み込みが終わった・編成を選んだ)、打っていた欄と文字を保つ
+            const act = document.activeElement, fk = (act && act.dataset && act.dataset.mkbDmg) || null;
+            const typed = fk ? { value: act.value, a: act.selectionStart, b: act.selectionEnd } : null;
             body.innerHTML = head + attrsHtml + foot;
+            if (fk) {
+                const el = document.querySelector(`[data-mkb-dmg="${fk}"]`);
+                if (el && !el.disabled) { el.value = typed.value; el.focus(); try { el.setSelectionRange(typed.a, typed.b); } catch (_) { /* 選択範囲を持たない欄 */ } }
+            }
+            if (_mkb.choose) { const pre = document.querySelector(`[data-mkb-pre="${_mkb.choose}"]`); if (pre && pre.focus) pre.focus(); else _mkb.choose = null; }
+            _mkbSideRender(true);   // 人の一覧の n/5 と「保存中は押せない」を合わせる (検索欄は描き直さない)
         }
         // 入力中は描き直さない (焦点が飛ぶ) — 件数・保存ボタン・進み・✓・その枠の状態だけ
         function _mkbSyncFooter() {
@@ -19510,9 +19546,125 @@
             const p = _mkbPresetsOf(attr, i).find(x => x.key === key); if (!p) return;
             if (p.blocked) { showNotification(`同じ属性の別の編成とキャラが被ります (${p.blockedWith.join('・')}) — 2 編成目は両方使うので選べません`); return; }
             r.team = _mkbTeam5(p.team); r.err = '';
+            const chosen = _mkb.choose === `${attr}:${i}`;   // ⌨ 番号キーで選んだ (ダメージは先に打ってある) → 次の欄へ
+            _mkb.choose = null;
             _mkbRender();
             const inp = document.querySelector(`[data-mkb-dmg="${attr}:${i}"]`);
-            if (inp && !(Number(inp.value) > 0)) inp.focus();   // 編成が入ったらダメージを打つだけ
+            if (inp && !(Number(r.damageB) > 0)) inp.focus();   // 編成が入ったらダメージを打つだけ
+            else if (chosen) _mkbFocusNext(attr, i);
+        }
+        // ---- ⌨ 続けて入力 (2026-11-12 ふるり「スマホで Discord を見て PC で模擬を入力した。ダメージと編成が入れやすい UI・数字の入力の導線」) ----
+        //   PC でキーボードから手を離さずに進める: 名前で探す (/) → 数字 → Enter → (編成が空なら) 番号キーで編成 → 次の属性 … → Ctrl+Enter で保存して次の人。
+        //   保存の仕組み (変えた枠だけを属性の順に _saveMockFor)・被りの判定・プリセットの並び (Q4: よく使われる編成 → 前回の自分) は変えない
+        const _mkbFine = () => !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+        // 名前の突き合わせ: 全角・半角 / 大文字・小文字 / ひらがな・カタカナ / 空白 を同じに読む
+        const _mkbNorm = (s) => String(s || '').normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/\s+/g, '');
+        const _mkbSeq = () => { const out = []; for (const a of _mkb.attrs) (_mkb.rows[a] || []).forEach((r, i) => out.push({ attr: a, i, r })); return out; };
+        function _mkbFocusDmg(attr, i) {
+            const el = document.querySelector(`[data-mkb-dmg="${attr}:${i}"]`);
+            if (!el || !el.focus) return false;
+            el.focus(); if (el.select) el.select();
+            return true;
+        }
+        // 最初の空の欄 (全部入っていれば先頭)
+        function _mkbFocusFirst() { const seq = _mkbSeq(); const t = seq.find(x => !(Number(x.r.damageB) > 0)) || seq[0]; if (t) _mkbFocusDmg(t.attr, t.i); }
+        // 次の欄 (ボスの順・同じ属性の 2 編成目も)。最後なら保存ボタンへ
+        function _mkbFocusNext(attr, i) {
+            const seq = _mkbSeq(), k = seq.findIndex(x => x.attr === attr && x.i === i), nx = seq[k + 1];
+            if (nx) _mkbFocusDmg(nx.attr, nx.i);
+            else { const b = document.getElementById('mkbSaveBtn'); if (b && b.focus) b.focus(); }
+        }
+        // ダメージの欄で Enter: ダメージが入っていて編成が空なら「編成を選ぶ番」(番号キー)。それ以外は次の欄へ (空のまま Enter = その属性は飛ばす)
+        function _mkbEnter(attr, i) {
+            if (_mkb.busy) return;
+            const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
+            if (Number(r.damageB) > 0 && !r.team.some(Boolean) && _mkbPresetsOf(attr, i).some(p => !p.blocked)) { _mkb.choose = `${attr}:${i}`; _mkbRender(); return; }
+            _mkbFocusNext(attr, i);
+        }
+        // 編成を選ぶ番のキー: 1〜9 = その番号のプリセット / Enter = 選べるいちばん上 / Esc = 選ばずにダメージの欄へ戻る。受けたら true
+        function _mkbChooseKey(attr, i, key) {
+            if (_mkb.busy) return false;
+            if (key === 'Escape') { _mkb.choose = null; _mkbRender(); _mkbFocusDmg(attr, i); return true; }
+            const ps = _mkbPresetsOf(attr, i);
+            const k = key === 'Enter' ? ps.findIndex(p => !p.blocked) : (/^[1-9]$/.test(key) ? Number(key) - 1 : -1);
+            if (k < 0 || !ps[k]) return false;
+            _mkbPick(attr, i, ps[k].key);   // 選べないプリセット (同じ属性の別の編成と被る) は _mkbPick が理由を言う — 選ぶ番のまま
+            return true;
+        }
+        // 桁のまま打った数字 (28412345678) を B の表示に直す (欄を離れたとき)。打っている最中は直さない
+        function _mkbFixDmg(attr, i, el) {
+            const r = (_mkb.rows[attr] || [])[i];
+            if (r && el && r.damageB != null) el.value = String(+Number(r.damageB).toFixed(2));
+        }
+        // 人の一覧 (PC だけ見える): 表と同じ並び (〆 の早い順)・登録済みの属性の数。いまの人は画面の中身 (保存済みの枠) で数える
+        function _mkbSideList() {
+            const order = Array.isArray(_mockIntake.order) ? _mockIntake.order : [];
+            const byId = new Map((Array.isArray(_mockIntake.players) ? _mockIntake.players : []).filter(Boolean).map(p => [Number(p.id), p]));
+            const total = _mkb.attrs.length;
+            return order.map(id => {
+                const p = byId.get(Number(id)); if (!p) return null;
+                const cur = Number(id) === Number(_mkb.playerId);
+                const n = cur ? _mkb.attrs.filter(a => (_mkb.rows[a] || []).some(r => Number(r.damageB) > 0 && !_mkbIsDirty(r))).length
+                    : _mkb.attrs.filter(a => (p.loadoutsByAttr && Array.isArray(p.loadoutsByAttr[a]) ? p.loadoutsByAttr[a] : []).some(l => l && Number(l.dmgB) > 0)).length;
+                return { id: Number(id), name: String(p.name || ''), n, total, cur };
+            }).filter(Boolean);
+        }
+        function _mkbSideRender(listOnly = false) {
+            const side = document.getElementById('opsMockBulkSide');
+            if (!side || !_mkb.playerId) return;
+            const q = _mkbNorm(_mkb.q);
+            const all = _mkbSideList(), hit = q ? all.filter(x => _mkbNorm(x.name).includes(q)) : all;
+            _mkb.sideHit = hit.map(x => x.id);
+            // 名前は onclick に埋めない — id だけを data 属性で渡す
+            const items = hit.length ? hit.map(x => `<button type="button" class="mkb-p${x.cur ? ' on' : ''}" data-mkb-go="${x.id}"${x.cur ? ' aria-current="true"' : ''}${_mkb.busy ? ' disabled' : ''}><span class="nm">${escapeHtml(x.name)}</span><span class="n${x.n >= x.total ? ' full' : ''}">${x.n}/${x.total}</span></button>`).join('')
+                : `<p class="mkb-note">${q ? '見つかりません' : '表を読み込んでいます…'}</p>`;
+            const list = listOnly ? document.getElementById('mkbSideList') : null;
+            if (list) { list.innerHTML = items; return; }
+            side.innerHTML = `<input type="search" id="mkbSearch" class="mkb-search" placeholder="名前で探す ( / )" autocomplete="off" aria-label="名前で探す" value="${escapeHtml(_mkb.q || '')}" oninput="_mkbSearch(this.value)">`
+                + `<div class="mkb-plist" id="mkbSideList">${items}</div><p class="mkb-note">〆 の早い順。数字は登録済みの属性</p>`;
+        }
+        function _mkbSearch(v) { _mkb.q = String(v || ''); _mkbSideRender(true); }
+        function _mkbGoto(id) {
+            if (_mkb.busy || id == null || !Number.isFinite(Number(id))) return;
+            if (Number(id) === Number(_mkb.playerId)) { _mkb.q = ''; _mkbSideRender(); _mkbFocusFirst(); return; }
+            if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに別の人へ進みますか?')) return;
+            _mkb.q = '';
+            openOpsMockBulk(Number(id));
+        }
+        // Ctrl+Enter: 保存して次の人へ。失敗した枠・保存の間に変えた枠が残っていれば進まない (残した枠を見てもらう)
+        async function _mkbSaveNext() {
+            if (_mkb.busy) return;
+            const pid = _mkb.playerId, gen = _mkb.gen;
+            if (_mkbFlatRows().some(r => r.dirty && Number(r.damageB) > 0)) await handleOpsMockBulkSave();
+            if (_mkb.busy || _mkb.playerId !== pid || _mkb.gen !== gen) return;   // 待っている間に閉じた・別の人を開いた
+            const flat = _mkbFlatRows();
+            if (flat.some(r => r.ref.err) || flat.some(r => r.dirty && Number(r.damageB) > 0)) return;
+            if (_mkbNextId() == null) { _mkb.msg = `${_mkb.msg ? _mkb.msg + ' — ' : ''}表の最後の人です`; _mkbRender(); return; }
+            if (_mkb.msg) showNotification(_mkb.msg);   // 次の人を開くと下の文が消えるので、保存の結果は知らせに出す
+            _mkbNext();
+        }
+        function _mkbBindKeys() {
+            const modal = document.getElementById('opsMockBulkModal');
+            if (_mkb.bound || !modal || !modal.addEventListener) return;
+            _mkb.bound = true;
+            modal.addEventListener('keydown', (e) => {
+                if (e.isComposing || !modal.classList.contains('open')) return;   // 日本語入力の確定の Enter は受けない
+                const t = e.target, ds = (t && t.dataset) || {};
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); _mkbSaveNext(); return; }
+                if (ds.mkbPre) { const [a, i] = ds.mkbPre.split(':'); if (_mkbChooseKey(a, Number(i), e.key)) { e.preventDefault(); e.stopPropagation(); } return; }
+                if (ds.mkbDmg && e.key === 'Enter') { e.preventDefault(); const [a, i] = ds.mkbDmg.split(':'); _mkbEnter(a, Number(i)); return; }
+                if (t && t.id === 'mkbSearch') {
+                    if (e.key === 'Enter') { e.preventDefault(); const id = (_mkb.sideHit || [])[0]; if (id != null) _mkbGoto(id); }
+                    else if (e.key === 'Escape' && _mkb.q) { e.preventDefault(); e.stopPropagation(); _mkb.q = ''; t.value = ''; _mkbSideRender(true); }
+                    return;
+                }
+                // 「/」= 名前で探す (ダメージの欄では「/」は数字にならないので、そこからも飛べる。ほかの入力欄では文字として打てる)
+                if (e.key === '/' && (ds.mkbDmg || !(t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '')))) {
+                    const s = document.getElementById('mkbSearch');
+                    if (s && s.offsetParent != null) { e.preventDefault(); s.focus(); if (s.select) s.select(); }
+                }
+            });
+            modal.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-mkb-go]') : null; if (b) _mkbGoto(Number(b.dataset.mkbGo)); });
         }
         function _mkbPickChar(attr, i, k) {
             if (_mkb.busy) return;
@@ -19539,8 +19691,9 @@
         function _mkbSetDmg(attr, i, v) {
             if (_mkb.busy) return;   // 欄は disabled だが、保存の最中に届いた入力は受けない
             const r = (_mkb.rows[attr] || [])[i]; if (!r) return;
-            const n = Number(String(v || '').replace(/,/g, ''));
-            r.damageB = Number.isFinite(n) && n > 0 ? n : null;
+            // B 単位でも桁そのままでも (1,000,000 以上は桁 = formatDomain.parseDamageInput と同じ読み方)。全角の数字・カンマ・空白も読む
+            const n = Number(String(v || '').normalize('NFKC').replace(/[,\s]/g, ''));
+            r.damageB = Number.isFinite(n) && n > 0 ? (n >= 1e6 ? n / 1e9 : n) : null;
             r.err = '';
             _mkbSyncFooter();
         }
@@ -23670,7 +23823,8 @@
         const _obSyncAuto = () => { try { return localStorage.getItem(_OB_SYNC_AUTO_KEY) !== '0'; } catch (_) { return true; } };
         function _obSetSyncAuto(on) {
             try { if (on) localStorage.removeItem(_OB_SYNC_AUTO_KEY); else localStorage.setItem(_OB_SYNC_AUTO_KEY, '0'); } catch (_) { /* 覚えられないだけ */ }
-            if (on && _ob.syncPending && !_ob.sel && !_ob.busy) _obSyncApply(_ob.syncPending.rows, _ob.syncPending.changes); else _obSyncPaint();
+            // ★ 待たせていた分は、知らせたときの行をそのまま当てない — 押した時点の DB を読み直す (その間にこの端末が駒を置いていたら、古い行で自分の駒が消える: Codex 監査 c929196 A)
+            if (on && _ob.syncPending && !_ob.sel && !_ob.busy) _obSyncNow(); else _obSyncPaint();
         }
         // 行の中身の鍵 (✓ で実行済みになった・外れた も含めて、駒と拘束に効く値)。同じなら何もしない
         const _obRawSig = (rows) => (Array.isArray(rows) ? rows : []).filter(Boolean).map(r => JSON.stringify([Number(r.id), String(r.status), r.release_reason || '', r.time_mode || '',
@@ -23693,7 +23847,7 @@
             // 駒の出入りは無いが中身が違う (✓ で実行済みになった・時刻の約束が変わった): 言うほどのことではないので、手が空いていれば黙って合わせる
             if (!changes.length) { if (idle) { _ob.pins = rows; _ob.syncPending = null; renderOpsBuild(); } return; }
             if (idle && _obSyncAuto()) _obSyncApply(rows, changes);
-            else { _ob.syncPending = { rows, changes }; _obSyncPaint(); }
+            else { _ob.syncPending = { changes, base: before }; _obSyncPaint(); }   // base = 比べた相手の駒。この端末が駒を書き換えたら (base が古くなったら) 知らせは捨てる (_obSyncHtml)
         }
         function _obSyncApply(rows, changes) {
             if (_ob.busy) return;
@@ -23708,11 +23862,12 @@
         async function _obSyncNow() {
             const snap = opsStore.get();
             if (!snap?.season || _ob.busy || _ob.syncing) return;
-            const sid = snap.season.id, epoch = _ob.epoch, before = _ob.pins;
+            const sid = snap.season.id, epoch = _ob.epoch, before = _ob.pins, sel0 = _ob.sel;
             _ob.syncing = true; _obSyncPaint();
             let rows = null;
             try { rows = await window.supabaseLoadReservations(sid); } catch (_) { rows = null; } finally { _ob.syncing = false; }
-            if (!_obSame(epoch, sid) || _ob.busy || _ob.pins !== before) { _obSyncPaint(); return; }
+            // 待っている間にこの端末が動いた (駒を書き換えた・処理中・別のピースを選んだ / ドラッグを始めた) → 何も変えない (始めた操作を取り消さない: Codex 監査 c929196 B)。知らせは次の見回りが出し直す
+            if (!_obSame(epoch, sid) || _ob.busy || _ob.pins !== before || _ob.sel !== sel0) { _obSyncPaint(); return; }
             if (!Array.isArray(rows)) { showNotification('⚠️ ほかの運営の変更を読めませんでした。もう一度お試しください'); _obSyncPaint(); return; }
             const rv = window.reservationsDomain, bb = window.blockBuildDomain;
             const blocks = _ob.blocks || window.raidBlocksDomain.blocksOfSeason(snap.season);
@@ -23742,6 +23897,7 @@
             const blocks = _ob.blocks || [];
             const list = (changes) => { const top = changes.slice(0, 6); return `<ul>${top.map(c => `<li>${escapeHtml(_obSyncLine(c, snap, blocks))}</li>`).join('')}${changes.length > top.length ? `<li>ほか ${changes.length - top.length} 件</li>` : ''}</ul>`; };
             const auto = `<label class="ob-sync-auto" title="ほかの運営が手で置いた・外した駒を 10 秒ごとに確かめています。ピースを選んでいる間は、知らせるだけで反映しません"><input type="checkbox" onchange="_obSetSyncAuto(this.checked)"${_obSyncAuto() ? ' checked' : ''}>ほかの運営の駒を自動で反映する</label>`;
+            if (_ob.syncPending && _ob.syncPending.base !== _ob.pins) _ob.syncPending = null;   // この端末が駒を読み直した・書き換えた = 知らせた差分はもう古い (次の見回りが比べ直す)
             const pend = _ob.syncPending;
             if (pend) {
                 // この端末で 🧮 した (まだ決定していない) 結果があれば、反映で組み直しになり得ると先に言う
@@ -24125,13 +24281,13 @@
                 ? `<span class="obg-faces">${team.map(c => `<span class="obg-face${hit.includes(c) ? ' hit' : ''}">${_charIconHtml(c, 26)}</span>`).join('')}</span>`
                 : '<span class="obg-noteam">キャラの登録なし</span>';
             const picksTxt = (picks) => picks.map(x => `${pt(x.attr)}${slotTxt(x.slot)}`).join(' + ');
-            const head = `<div class="obg-h"><span>${escapeHtml(p.name)}</span><span class="obt-pt" style="background:${fill};color:${ink};">${escapeHtml(pt(p.attr))}PT${escapeHtml(slotTxt(p.slot))}</span>${faces(p.team, [])}<span class="obg-dmg">${p.dmgB.toFixed(1)}B</span><span class="obg-left">このブロックで置ける凸 ${Math.max(0, Number(p.remaining) || 0)}</span></div>`;
+            const head = `<div class="obg-h"><span>${escapeHtml(p.name)}</span><span class="obt-pt" style="background:${fill};color:${ink};">${escapeHtml(pt(p.attr))}PT${escapeHtml(slotTxt(p.slot))}</span>${faces(p.team, [])}<span class="obg-dmg">${p.dmgB.toFixed(1)}B</span><span class="obg-left">このブロックであと置ける凸 ${g.left}</span></div>`;
             // 置き先: ここに置くとどうなるか / 置けない理由 (文は盤・ピースと同じ _obDeadText)
             let dropTxt;
             if (p.placedIdx != null) dropTxt = `<span class="obg-drop">${escapeHtml(blocks[p.placedIdx]?.short || '別のブロック')} に置いてあります</span>`;
             else if (p.blocked === 'used') dropTxt = '<span class="obg-drop ng">⚠ 使えない: この編成のキャラは、きょうもう使っています</span>';
             else if (p.blocked === 'dup') dropTxt = '<span class="obg-drop ng">⚠ 使えない: 置いた別の編成とキャラが被ります (同じキャラは 1 日 1 回)</span>';
-            else if (!(p.remaining > 0)) dropTxt = '<span class="obg-drop ng">⚠ このブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)</span>';
+            else if (!(g.left > 0)) dropTxt = '<span class="obg-drop ng">⚠ このブロックで置ける凸がありません (3 凸 / 凸数の希望 / 後ろのブロックに置いた分)</span>';
             else if (g.drop && g.drop.ok) {
                 const d = g.drop, b = `B${d.bossNumber} ${escapeHtml(d.name || '')}`;
                 dropTxt = d.infinite ? `<span class="obg-drop ok">${b} (HP 無限) に置けます</span>`

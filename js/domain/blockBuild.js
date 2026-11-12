@@ -380,7 +380,8 @@
      *   mates:Array<{ key, attr, slot, dmgB, team:string[], hit:string[], state:'placed'|'used'|'dup'|'clash'|'free', placedIdx:number|null }>,
      *     state: placed = もう置いてある / used = きょう使ったキャラを含む / dup = 置いた別の編成と被ってもう使えない / clash = この編成を使うと使えなくなる / free = 残る
      *   drop: null (もう置いてある) | { ok:true, bossNumber, name, infinite:boolean, remB:number|null, afterB:number|null, kill:boolean, overB:number } | { ok:false, st:Object (bossState) },
-     *   total: null | { n:number, best:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, withThis:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, diffB:number } }}
+     *   total: null | { n:number, best:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, withThis:{ sumB:number, picks:Array<{attr,slot,dmgB}> }, diffB:number },
+     *   left:number }}  left = このブロックであと置ける凸 (canDrop と同じ: remaining − このブロックにもう置いた凸)
      *   total = その人の残り n 凸 (このブロックで置ける数) で出せる合計 (模擬どおり・同じキャラは 1 日 1 回)。その人だけの数字 — ボスの残り HP・ほかの人は見ない
      */
     function pieceGuide({ piece, tray, ov, idx, first = 0 } = {}) {
@@ -404,8 +405,11 @@
             } else if (st) drop = { ok: false, st };
         }
         // その人の残り凸で出せる合計: まだ置いていない・使える編成から、キャラが被らない組を全部試す (編成は多くて十数個・凸は 3 つまで)
+        // ★ 残り = canDrop と同じ数え方: trayPieces の remaining (このブロックの始まりの残り) − このブロックにもう置いた凸 (Codex 監査 c929196 D: 引かないと、1 凸置いたあとも 3 凸ぶんの合計を出した)
         let total = null;
-        const n = Math.max(0, Math.min(3, Number(piece.remaining) || 0));
+        const o = (Array.isArray(ov) ? ov : [])[idx];
+        const usedHere = o && Array.isArray(o.rows) ? o.rows.reduce((t, r) => t + (Array.isArray(r.pieces) ? r.pieces : []).filter(a => String(a.memberId) === String(piece.memberId)).length, 0) : 0;
+        const n = Math.max(0, Math.min(3, (Number(piece.remaining) || 0) - usedHere));
         const usable = (p) => p.placedIdx == null && !p.blocked && Number(p.dmgB) > 0;
         if (n > 0 && usable(piece)) {
             const pool = mine.filter(usable);
@@ -426,7 +430,7 @@
             const best = search(null), withThis = search(piece);
             total = { n, best, withThis, diffB: withThis.sumB - best.sumB };
         }
-        return { piece, mates, drop, total };
+        return { piece, mates, drop, total, left: n };
     }
 
     /**
