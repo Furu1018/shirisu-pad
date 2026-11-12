@@ -1299,6 +1299,23 @@ window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
     if (error) throw error;
 };
 
+// ===== 🧪 テストのシーズンを見せる相手 (2026-11-12 ふるり「テストと本番は明確に切り分け」) =====
+// テストのシーズン (seasons.is_test) は、運営担当と「テスト通知を受け取る」を ON にした人の端末にだけ見せる。
+// 判定は testSeasonDomain.canSeeTest が唯一で、画面 (_syncTestViewer) が役割を読んでここへ渡す。端末に覚える (起動のたびにちらつかせない)。
+// ★ 門は「メンバーの画面がシーズンを知る口」の 2 つ: supabaseLoadActiveSeasonWithBosses (盤面ローダもこれを通る) と supabaseGetPublishedPlans。
+//   認可ではない (RLS は anon 全許可) — メンバーの画面にテストを出さないための表示の切り分け
+const TEST_VIEWER_KEY = 'shirisuko_test_viewer_v1';
+let _testViewer = (() => { try { return localStorage.getItem(TEST_VIEWER_KEY) === '1'; } catch { return false; } })();
+window.supabaseTestViewer = function () { return _testViewer; };
+// 戻り値: 変わったか (変わったら画面はシーズンの写しを捨てて描き直す)
+window.supabaseSetTestViewer = function (on) {
+    const next = !!on;
+    if (next === _testViewer) return false;
+    _testViewer = next;
+    try { if (next) localStorage.setItem(TEST_VIEWER_KEY, '1'); else localStorage.removeItem(TEST_VIEWER_KEY); } catch { /* 覚えられなくても、この起動の間は効く */ }
+    return true;
+};
+
 // アクティブシーズン + そのボス5体を取得
 window.supabaseLoadActiveSeasonWithBosses = async function () {
     const { data: season, error: sErr } = await supabase
@@ -1310,6 +1327,7 @@ window.supabaseLoadActiveSeasonWithBosses = async function () {
         .maybeSingle();
     if (sErr) throw sErr;
     if (!season) return { season: null, bosses: [] };
+    if (season.is_test && !_testViewer) return { season: null, bosses: [], hiddenTest: true };   // 🧪 テストはメンバーの端末に見せない
     // updated_at (HP鮮度表示用) は 20_bosses_updated_at.sql 適用後のみ存在 → 未適用環境はフォールバック
     let bosses = null;
     try {
@@ -2891,8 +2909,11 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 // payload: { hardDate, monthKey, bosses: [...], isTest? }
 // 注意: 本番シーズンの前回ダメージ引継ぎは廃止しました (空スタートが正しい挙動)。
 //       模擬戦提出は各メンバーがシーズン期間中に行う運用です。
-//       テストシーズン (isTest=true) のみ、動作確認・入力練習用に模擬戦データを
-//       自動シードします (前回実績 + ランダム補完 / 終了時にスナップショットから復元)。
+// ★ テストシーズン (isTest=true) は **本番の写しでリハーサル** (2026-11-12 ふるり): 模擬・編成・参加可能時間は
+//   いま DB にある本物をそのまま使う (消さない・作り物を入れない)。始めるときに控え (metadata) を取り、🧪 ✕ 終了 で控えへ戻す。
+//   それまでは模擬を全部消して乱数のダメージとキャラ名の順の編成を入れていた → 「よく使う編成」に作り物が出た
+// payload (テストのとき): testMeta = 本番から写す設定 (blocks / rebuild_minutes / member_input)・rehearsal = { start, from } (記録)・
+//   copyConfirmationsFrom = 今期の確認 (37) を写す元のシーズン id
 // 動いているシーズンがあれば止める (作成の前・2026-10-30 の決まり「アクティブは 1 つだけ」)。2 つ以上あっても limit(1) で読む
 async function _assertNoActiveSeason() {
     const { data, error } = await supabase.from('seasons').select('id, month_key, is_test').eq('is_active', true).limit(1);
@@ -2937,6 +2958,11 @@ window.supabaseCreateSeason = async function (payload) {
     const rbDefault = (typeof window !== 'undefined' && window.raidBlocksDomain && Number.isInteger(window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES)) ? window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES : 20;
     let metadata = isTest ? {} : { rebuild_minutes: rbDefault };
     if (isTest) {
+        // ⏰ 参加可能時間の控え。テスト中に運営が ⏰ で変えた時間を、終了で元に戻すため (以前は戻さず本番に残っていた)。
+        //   ★ 取れなければ始めない (控えの無いテストは終了で戻せない)。1000 行 = PostgREST の既定の上限に当たっていたら切れているかもしれないので始めない
+        const { data: avRows, error: avSnapErr } = await supabase.from('availability').select('player_id, time_slot');
+        if (avSnapErr) throw new Error(`参加可能時間の控えを取れなかったので、テストを始めません: ${avSnapErr.message}`);
+        if (!Array.isArray(avRows) || avRows.length >= 1000) throw new Error('参加可能時間の控えを取り切れないので、テストを始めません (行が多すぎます。開発側に相談してください)');
         // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
         let dmgs = null;
         // ★ boss_level / levels を必ず含めること。テスト終了時にこのスナップショットで
@@ -2955,6 +2981,8 @@ window.supabaseCreateSeason = async function (payload) {
                 if (!r.error) { dmgs = r.data || []; break; }
             } catch { /* fallthrough */ }
         }
+        // ★ 模擬の控えも、取れなければ始めない (以前は取れなくても [] で進み、終了で模擬が全部消え得た)
+        if (!Array.isArray(dmgs) || dmgs.length >= 1000) throw new Error('模擬の控えを取れなかったので、テストを始めません (通信を確かめてもう一度)');
         // ★ この版の上限 (MOCK_SLOT_MAX) を超える編成が DB にあれば、この版は古い (上限を上げた版が先に出ている)。
         //   黙って落とすと、終了時の「全削除 → 入れ直し」でその行が消えるので、始めない (Codex 監査 2026-10-24)
         _assertSlotsWithinThisBuild(dmgs, '始め');
@@ -2968,9 +2996,15 @@ window.supabaseCreateSeason = async function (payload) {
             charNames = (chars || []).map(c => c.canonical_name);
         } catch { /* テーブル未マイグ環境では空配列のまま */ }
         // 本番の上には作らない (上の _assertNoActiveSeason) ので、終了時に戻す「前のアクティブ」は無い (previous_active_season_id は書かない)
+        const tm = (payload.testMeta && typeof payload.testMeta === 'object' && !Array.isArray(payload.testMeta)) ? payload.testMeta : {};
         metadata = {
+            ...(Array.isArray(tm.blocks) && tm.blocks.length ? { blocks: tm.blocks } : {}),
+            ...(tm.member_input === 'full' ? { member_input: 'full' } : {}),
+            ...(Number.isInteger(tm.rebuild_minutes) && tm.rebuild_minutes > 0 && tm.rebuild_minutes <= 59 ? { rebuild_minutes: tm.rebuild_minutes } : {}),
             is_test: true,
+            rehearsal: { start: payload.rehearsal?.start || null, from: payload.rehearsal?.from || null },
             damages_snapshot: dmgs,
+            availability_snapshot: avRows,
             nikke_characters_snapshot: charNames,
         };
     }
@@ -3053,432 +3087,69 @@ window.supabaseCreateSeason = async function (payload) {
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
     if (bErr) throw afterClear(bErr);
 
-    // 模擬戦データ (player_damages) をクリア → メンバーが新シーズン期間中に再提出する運用
-    // テストシーズンの場合は metadata.damages_snapshot に保存済みなのでテスト終了時に復元される。
-    const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
-    if (clrErr) console.warn('[createSeason] player_damages クリアに失敗:', clrErr?.message);
+    // 模擬戦データ (player_damages) をクリア → メンバーが新シーズン期間中に再提出する運用。
+    // ★ テストでは消さない (本物の模擬のままリハーサルする)。作り物も入れない
+    if (!isTest) {
+        const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
+        if (clrErr) console.warn('[createSeason] player_damages クリアに失敗:', clrErr?.message);
+    }
 
     window.supabaseLogActivity?.('ops', `シーズン ${payload.monthKey} を作成${isTest ? ' (テスト)' : ''}`);
 
-    // テストシーズンのみ: 模擬戦データをテスト用にシード (本番は空スタートを維持)
-    let mockSeed = null;
-    let attackSeed = null;
-    if (isTest) {
+    // 🧪 今期の確認 (37: 確認済み・今回は難しい・ブロックごとの凸数) を直前の本番から写す = 運営が ⏰ を登録し終えた前日の状態。
+    //   写せなくてもテストは始まる (全員「未確認」から)。テストの行はシーズンと一緒に消える (CASCADE)
+    let confirmationsCopied = null;
+    if (isTest && payload.copyConfirmationsFrom != null) {
         try {
-            mockSeed = await window.supabaseSeedTestMockDamages(season.id, metadata.damages_snapshot || []);
-        } catch (e) {
-            console.warn('[createSeason] テスト用模擬戦データのシードに失敗:', e?.message || e);
-        }
-        // レイド中盤らしい状態: ランダムな数名を凸済みに (登録値を基準に使うので模擬戦シードの後)。
-        // ★ testScenario = 'fresh' (序盤) のときはシードしない (2026-09-07 ユーザー要望)。
-        //   凸をシードすると HP の小さいテストボスは撃破済みになり、「未凸の状態で予約を組む」
-        //   体験ができない。Lv1・全ボス満タン・凸ゼロから始める
-        if (payload.testScenario !== 'fresh') {
-            try {
-                attackSeed = await window.supabaseSeedTestMockAttacks(season.id, season.hard_date);
-            } catch (e) {
-                console.warn('[createSeason] テスト用凸データのシードに失敗:', e?.message || e);
+            const { data: rows, error: cErr } = await supabase.from('availability_confirmations').select('*').eq('season_id', payload.copyConfirmationsFrom);
+            if (cErr) throw cErr;
+            const copy = (rows || []).map(r => ({ ...r, season_id: season.id }));
+            if (copy.length) {
+                const { error: iErr } = await supabase.from('availability_confirmations').insert(copy);
+                if (iErr) throw iErr;
             }
+            confirmationsCopied = copy.length;
+        } catch (e) {
+            console.warn('[createSeason] 今期の確認を写せませんでした:', e?.message || e);
         }
     }
 
-    return { ...season, mockSeed, attackSeed, availabilityCleared, testScenario: isTest ? (payload.testScenario || 'midraid') : null };
+    return { ...season, availabilityCleared, confirmationsCopied, kept: isTest ? { mocks: (metadata.damages_snapshot || []).length, availability: (metadata.availability_snapshot || []).length } : null };
 };
 
-// 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る
-// プレースホルダのボス (テストボス1〜5) + 既存5コードのローテーション + 標準ティア配分
-// 完全独立: 前回シーズンからのシードなし、終了時に player_damages と nikke_characters は復元される。
-// opts.scenario: 'midraid' (既定・数名が凸済みのレイド中盤) / 'fresh' (序盤・未凸・全ボス満タン = 予約の練習用)
-// ★ 動いているシーズンがあれば作れない (supabaseCreateSeason の _assertNoActiveSeason)。「本番のボスでテスト」は 2026-10-30 に外した (本番の上に作らない)
+// 🧪 リハーサル: 直前の本番シーズンの写しでテストのシーズンを作る (1 クリック)。
+// ボス・ブロックの区切り・再編成時間・メンバーの入力の出し方 は直前の本番から、模擬・編成・参加可能時間は いまの DB のまま。
+// 形を決めるのは testSeasonDomain.rehearsalSpec (本番が 1 つも無ければ「テストボス1〜5」)。
+// opts.start: 'eve' (既定・前日として = ハード日が次のレイド日) / 'day' (当日として = ハード日がいまのレイド日・凸ゼロ・全ボス満タン)
+// ★ 動いているシーズンがあれば作れない (supabaseCreateSeason の _assertNoActiveSeason)
 window.supabaseQuickCreateTestSeason = async function (opts = {}) {
-    const testScenario = opts.scenario === 'fresh' ? 'fresh' : 'midraid';
-    const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];
-    const tiers = ['lord', 'lord', 'tyrant', 'lord', 'tyrant'];   // B1,2,4=lord / B3,5=tyrant
-    const bosses = codes.map((code, i) => ({
-        bossNumber: i + 1,
-        bossCode: code,
-        name: `テストボス${i + 1}`,
-        tier: tiers[i],
-    }));
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-    return window.supabaseCreateSeason({
-        testScenario,
-        hardDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
-        monthKey: `TEST-${ts}`,
-        bosses,
+    const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
+    if (!dom || typeof dom.rehearsalSpec !== 'function') throw new Error('js/domain/testSeason.js が読み込まれていません');
+    // 直前の本番 (is_test が NULL の古い行も本番)。読めなければ始めない (黙ってプレースホルダにしない)
+    const { data: list, error: pErr } = await supabase.from('seasons')
+        .select('id, month_key, hard_date, metadata')
+        .or('is_test.is.null,is_test.eq.false')
+        .order('hard_date', { ascending: false }).order('id', { ascending: false }).limit(1);
+    if (pErr) throw new Error(`直前の本番シーズンを読めませんでした: ${pErr.message}`);
+    const prevSeason = Array.isArray(list) ? (list[0] || null) : null;
+    let prevBosses = [];
+    if (prevSeason) {
+        const { data: bs, error: bErr } = await supabase.from('bosses').select('boss_number, boss_code, name, tier').eq('season_id', prevSeason.id);
+        if (bErr) throw new Error(`直前の本番シーズンのボスを読めませんでした: ${bErr.message}`);
+        prevBosses = bs || [];
+    }
+    const rb = (window.raidBlocksDomain && Number.isInteger(window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES)) ? window.raidBlocksDomain.DEFAULT_REBUILD_MINUTES : 20;
+    const spec = dom.rehearsalSpec({ start: opts.start, nowMs: Date.now(), prev: prevSeason ? { season: prevSeason, bosses: prevBosses } : null, defaultRebuild: rb });
+    const r = await window.supabaseCreateSeason({
+        hardDate: spec.hardDate,
+        monthKey: spec.monthKey,
+        bosses: spec.bosses,
         isTest: true,
+        testMeta: spec.meta,
+        rehearsal: { start: spec.start, from: spec.from },
+        copyConfirmationsFrom: prevSeason ? prevSeason.id : null,
     });
-};
-
-// 前回レイドの実攻撃ダメージから各メンバーの属性別ダメージを初期登録
-// 同じPT属性に複数回凸している場合は「最大値」を採用
-// newSeasonId: 今作成したシーズン (除外用)
-// ※本番シーズンの引継ぎ運用は廃止済み。現在はテストシーズンのシード
-//   (supabaseSeedTestMockDamages) からのみ呼ばれる。
-window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
-    // 直近の本番シーズン候補 (新シーズンを除く、テストシーズン除外、hard_date 降順)
-    const { data: seasons, error: sErr } = await supabase
-        .from('seasons')
-        .select('id, hard_date')
-        .neq('id', newSeasonId)
-        .eq('is_test', false)
-        .order('hard_date', { ascending: false })
-        .limit(6);
-    if (sErr) throw sErr;
-    if (!seasons || seasons.length === 0) return { seeded: 0, reason: 'no_previous' };
-
-    // 凸記録のあるシーズンが見つかるまで新しい順に遡る
-    // (作成直後で凸ゼロの本番シーズンなどはスキップ)
-    let prevId = null;
-    let atks = null;
-    for (const s of seasons) {
-        let rows = null;
-        try {
-            const r = await supabase
-                .from('attacks').select('player_id, boss_code, damage_raw, characters').eq('season_id', s.id);
-            if (!r.error) rows = r.data;
-        } catch { /* fallthrough */ }
-        if (rows == null) {
-            // characters カラム未マイグ環境ではフォールバック
-            const r2 = await supabase
-                .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', s.id);
-            rows = r2.data;
-        }
-        if (Array.isArray(rows) && rows.length > 0) {
-            prevId = s.id;
-            atks = rows;
-            break;
-        }
-    }
-    if (!prevId) return { seeded: 0, reason: 'no_attacks' };
-
-    // 前シーズンのボス boss_code -> weakness(=PT属性)
-    const { data: bosses } = await supabase
-        .from('bosses').select('boss_code, weakness').eq('season_id', prevId);
-    const weaknessByCode = new Map((bosses || []).map(b => [b.boss_code, b.weakness]));
-
-    // (player_id, ptAttr) ごとに「最大ダメージ凸の damage + characters」を保持
-    const maxMap = new Map();
-    (atks || []).forEach(a => {
-        const attr = weaknessByCode.get(a.boss_code);
-        if (!attr) return;
-        const key = `${a.player_id}:${attr}`;
-        const dmg = Number(a.damage_raw) || 0;
-        const cur = maxMap.get(key);
-        if (!cur || dmg > cur.dmg) {
-            const chars = Array.isArray(a.characters)
-                ? a.characters.filter(_isLikelyCharName)  // ← ファイルパス等を除外
-                : [];
-            maxMap.set(key, { dmg, characters: chars });
-        }
-    });
-
-    const rows = [];
-    for (const [key, v] of maxMap.entries()) {
-        const idx = key.lastIndexOf(':');
-        const pid = Number(key.slice(0, idx));
-        const attr = key.slice(idx + 1);
-        if (v.dmg <= 0) continue;
-        const dmgB = Number((v.dmg / 1e9).toFixed(3));
-        rows.push({
-            player_id: pid,
-            attribute: attr,
-            damage_b: dmgB,
-            // 実凸ベースの引き継ぎはレベル未指定の1測定として明示 —
-            // 既存行の古い boss_level タグを引き継がない (過大評価バグの修正)
-            levels: { '0': dmgB },
-            boss_level: null,
-            characters: v.characters,  // 最大ダメ凸の編成も一緒に引き継ぎ
-            updated_at: new Date().toISOString(),
-        });
-    }
-    if (rows.length > 0) {
-        // characters カラムが未マイグの環境では characters を抜いてリトライ
-        const r1 = await _upsertPlayerDamages(rows);
-        if (r1.error) {
-            const fallbackRows = rows.map(({ characters, ...rest }) => rest);
-            const r2 = await _upsertPlayerDamages(fallbackRows);
-            if (r2.error) throw r2.error;
-        }
-    }
-    const charSeedCount = rows.filter(r => Array.isArray(r.characters) && r.characters.length > 0).length;
-    return { seeded: rows.length, charactersSeeded: charSeedCount };
-};
-
-// 🧪 テストシーズン専用: 模擬戦データ (player_damages) をテスト用にシードする
-// 1) 直近の凸記録がある本番シーズンから引き継ぎ (supabaseSeedDamagesFromPreviousSeason)
-// 2) それでも埋まらない (プレイヤー × 属性) はランダム値で補完
-//    基準値はそのプレイヤーの実績平均 → 無ければテスト直前の提出値 (snapshotRows) → 全体平均
-// 本番シーズンでは呼ばないこと (空スタートが正しい挙動)。
-// 🧪 テスト用の「現実に寄せた編成」ジェネレータ。
-// NIKKE の実際の傾向を再現する:
-//   - B1/B2 (サポート) は環境で固定 = メンバー間・属性間で同じ数体を使い回す → 被りの主因
-//   - B3 (アタッカー) は属性ごとに決まる → 属性が違えば別キャラ
-// これにより「朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない」という
-// 実際のキャラ被り (同キャラ1日1回) がテストシーズンでも自然に発生する。
-// 戻り値: (playerId, attr) => string[5]  (キャラマスタが薄い環境では [] を返す)
-function _makeTestTeamGenerator(chars) {
-    const byBurst = { B1: [], B2: [], B3: [] };
-    (chars || []).forEach(c => {
-        const b = c.burst;
-        if (byBurst[b] && c.canonical_name) byBurst[b].push(c.canonical_name);
-    });
-    // 呼び出し側の order に依存しないよう、ここでも名前順に固定する (生成の決定性)
-    Object.values(byBurst).forEach(a => a.sort());
-    // 必要数の根拠: サポートは3グループに別々の B1/B2 を割り当てる → 各3体。
-    // アタッカーは 5属性 × 3枠 = 15体を重複なしで配れると「3属性選べば被りなし」が成立する。
-    // 満たせない薄いマスタ (新規/テストDB) では編成を作らない = 従来どおり [] で動く
-    if (byBurst.B1.length < 3 || byBurst.B2.length < 3 || byBurst.B3.length < 15) return () => [];
-
-    // 決定的な擬似乱数 (同じ入力なら同じ編成 = 再現性のためシード固定)
-    const pick = (arr, seed) => arr[Math.abs(seed) % arr.length];
-    const hash = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return h; };
-    // 環境トップの想定: B1/B2 の上位数体を「みんなが使うサポート」として共有プールにする
-    const META_B1 = byBurst.B1.slice(0, 6);
-    const META_B2 = byBurst.B2.slice(0, 6);
-    const ATTR_IDX = { fire: 0, water: 1, electric: 2, iron: 3, wind: 4 };
-
-    return (playerId, attr) => {
-        const pSeed = hash(playerId);
-        const aIdx = ATTR_IDX[attr] ?? 0;
-        // サポート2枠: プレイヤーごとに好みは違うが、属性が変わっても同じ人を使いがち (=被りの種)。
-        // ただし全属性で同じサポートにすると「被りなし3部隊」が1つも組めず、残り凸が常に
-        // 詰まって最適プランの検証にならない。実際のプレイヤーも属性帯ごとに手持ちが違うため、
-        // 5属性を3グループに分ける: これで「3属性を選べば被りなしで3凸できるが、
-        // 選び方を誤ると被って出せない」= 最適プランが解くべき本来の問題が再現される
-        const grp = aIdx % 3;   // fire/iron=0 / water/wind=1 / electric=2
-        const s1 = pick(META_B1, pSeed + grp * 101);
-        const s2 = pick(META_B2, pSeed + 7 + grp * 211);
-        // アタッカー3枠: 属性ごとに完全に別の3体。プレイヤーごとに開始位置をずらしつつ、
-        // 同一プレイヤー内では 5属性 × 3枠 = 15体が重複しないよう連続領域を割り当てる
-        // (これで「3属性を選べば被りなし3凸」が成立する = プランが解くべき問題になる)
-        const pool = byBurst.B3;
-        const off = Math.abs(pSeed) % pool.length;
-        const at = (n) => pool[(off + aIdx * 3 + n) % pool.length];
-        const team = [...new Set([s1, s2, at(0), at(1), at(2)])];
-        // サポートとアタッカーが偶然重なった場合の埋め合わせ (同キャラ2枠は不正)
-        let k = 15;
-        while (team.length < 5 && k < pool.length + 15) {
-            const cand = pool[(off + k) % pool.length];
-            if (!team.includes(cand)) team.push(cand);
-            k++;
-        }
-        return team.length === 5 ? team : [];
-    };
-}
-
-window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) {
-    const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
-
-    // 1) 前回本番の凸結果ベースで引き継ぎ
-    let fromPrevious = 0;
-    try {
-        const r = await window.supabaseSeedDamagesFromPreviousSeason(newSeasonId);
-        fromPrevious = r?.seeded || 0;
-    } catch (e) {
-        console.warn('[testSeed] 前回シーズンからの引き継ぎに失敗:', e?.message || e);
-    }
-
-    // 2) 全プレイヤー × 5属性 の不足分をランダム補完
-    const { data: players, error: pErr } = await supabase.from('players').select('id');
-    if (pErr) throw pErr;
-    // ⚠ 旧スキーマ互換: slot (21) / characters (07) が未適用の環境でも壊れないよう段階的に落とす。
-    //    エラーを無視して existing を空にすると、引き継いだ実績をランダム値で上書きしてしまう
-    let existing = null, lastErr = null;
-    for (const cols of ['player_id, attribute, damage_b, characters, slot',
-                        'player_id, attribute, damage_b, characters',
-                        'player_id, attribute, damage_b']) {
-        const r = await supabase.from('player_damages').select(cols);
-        if (!r.error) { existing = r.data; break; }
-        console.warn(`[testSeed] player_damages select 失敗 (${cols}):`, r.error.message);
-        lastErr = r.error;
-    }
-    // 全て失敗したら中断する: 空配列で続行すると「既存の実績値をランダム値で上書き」してしまう
-    if (existing === null) throw lastErr || new Error('player_damages を読めませんでした');
-    existing = existing.filter(d => isUsableSlot(d.slot));   // 2枠運用に合わせる
-
-    // 「編成が入っている行」だけを have 扱いにする。前シーズン引継ぎ分は編成が空のことがあり
-    // (元の凸が characters 未記録だった等)、そのまま除外すると空編成のまま凸シードへ流れて
-    // キャラ被りの検証ができない (今回の検証失敗の再発)。空/不完全な行は下で編成を補う
-    const have = new Set();
-    const needTeam = [];   // 編成が空の既存行 = 生成編成で埋める対象
-    existing.forEach(d => {
-        const key = `${d.player_id}:${d.attribute}`;
-        if (_isValidTeam5(d.characters)) have.add(key);   // 有効な編成つき = そのまま使う
-        else needTeam.push(d);                          // 編成なし/不正/不完全 = 補完対象
-    });
-
-    // プレイヤーごとの基準値: 引継ぎ済みの実績 + テスト直前の提出値 (スナップショット) の平均
-    const sums = new Map();
-    const addToSums = (d) => {
-        const v = Number(d.damage_b) || 0;
-        if (v <= 0) return;
-        const s = sums.get(d.player_id) || { total: 0, n: 0 };
-        s.total += v; s.n++;
-        sums.set(d.player_id, s);
-    };
-    (existing || []).forEach(addToSums);
-    (Array.isArray(snapshotRows) ? snapshotRows : []).forEach(addToSums);
-
-    let globalTotal = 0, globalN = 0;
-    for (const s of sums.values()) { globalTotal += s.total; globalN += s.n; }
-    const globalAvg = globalN > 0 ? globalTotal / globalN : 20;  // 実績ゼロ環境のフォールバック (B単位)
-
-    // 編成も現実に寄せて生成する (B1/B2共有・B3属性別)。
-    // 編成が無いとキャラ被り (同キャラ1日1回) が起きず、最適プランの被り回避を検証できない
-    // ⚠ order 必須: 返却順が変わると生成編成も変わり「決定的」でなくなる
-    const { data: charMaster } = await supabase
-        .from('nikke_characters')
-        .select('canonical_name, burst')
-        .order('canonical_name');
-    const teamFor = _makeTestTeamGenerator(charMaster || []);
-
-    const rows = [];
-    // (a) 編成が空の既存行 (前シーズン引継ぎ分など) は、ダメージを保ったまま編成だけ補う
-    needTeam.forEach(d => {
-        const team = teamFor(d.player_id, d.attribute);
-        if (team.length === 0) return;              // マスタが薄い環境では触らない
-        const dmgKeep = Number(d.damage_b) || 0;
-        rows.push({
-            player_id: d.player_id,
-            attribute: d.attribute,
-            slot: d.slot || 1,                      // 既存行を更新する (別スロットを増やさない)
-            damage_b: dmgKeep,                      // 引き継いだ実績値はそのまま
-            // 編成を生成編成に差し替えるので、レベルタグは未指定に仕切り直す
-            levels: dmgKeep > 0 ? { '0': dmgKeep } : null,
-            boss_level: null,
-            characters: team,
-            updated_at: new Date().toISOString(),
-        });
-    });
-    // (b) そもそも未登録の (player, attr) はダメージも編成もランダム生成
-    (players || []).forEach(p => {
-        const s = sums.get(p.id);
-        const base = s && s.n > 0 ? s.total / s.n : globalAvg;
-        ATTRS.forEach(attr => {
-            if (have.has(`${p.id}:${attr}`)) return;
-            if (needTeam.some(d => d.player_id === p.id && d.attribute === attr)) return;  // (a)で処理済み
-            const dmg = base * (0.7 + Math.random() * 0.6);  // 基準値の 70〜130% でばらつかせる
-            const dmgB = Number(dmg.toFixed(3));
-            rows.push({
-                player_id: p.id,
-                attribute: attr,
-                damage_b: dmgB,
-                levels: { '0': dmgB },
-                boss_level: null,
-                characters: teamFor(p.id, attr),
-                updated_at: new Date().toISOString(),
-            });
-        });
-    });
-
-    if (rows.length > 0) {
-        const r1 = await _upsertPlayerDamages(rows);
-        if (r1.error) {
-            // characters カラム未マイグ環境ではフォールバック
-            const basicRows = rows.map(({ characters, ...rest }) => rest);
-            const r2 = await _upsertPlayerDamages(basicRows);
-            if (r2.error) throw r2.error;
-        }
-    }
-    return { fromPrevious, randomFilled: rows.length };
-};
-
-// 🧪 テストシーズン専用: レイド中盤らしい状態を作るため、ランダムな数名を凸済みにする
-// - メンバーの 30〜60% が 1〜3凸済み (1凸が多め)
-// - ダメージは本人の登録模擬戦値の 85〜110% → ボス残HPにも反映 (削れた/倒れたボスができる)
-// 本番シーズンでは呼ばないこと。supabaseSeedTestMockDamages の後に呼ぶ (登録値を基準に使うため)。
-window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
-    const { data: bosses, error: bErr } = await supabase
-        .from('bosses')
-        .select('boss_number, boss_code, weakness, remaining_hp_raw')
-        .eq('season_id', seasonId);
-    if (bErr) throw bErr;
-    if (!bosses || bosses.length === 0) return { players: 0, attacks: 0 };
-
-    const { data: players, error: pErr } = await supabase.from('players').select('id, name');
-    if (pErr) throw pErr;
-    // 模擬の登録編成も一緒に読む: 凸には「実際に使った編成」を記録する必要がある。
-    // これが無いと完了凸のキャラ消費が判定できず、最適プランのキャラ被り回避
-    // (同キャラ1日1回 — 朝に鉄甲でラピを使ったら灼熱のラピ入りは出せない) を検証できない
-    // 旧スキーマ互換 (slot/characters 未適用環境) — 読めた範囲で動く
-    let dmgs = null, lastDmgErr = null;
-    for (const cols of ['player_id, attribute, damage_b, characters, slot',
-                        'player_id, attribute, damage_b, characters',
-                        'player_id, attribute, damage_b']) {
-        const r = await supabase.from('player_damages').select(cols);
-        if (!r.error) { dmgs = r.data; break; }
-        lastDmgErr = r.error;
-    }
-    // 読めないまま続行すると編成なし・ランダムダメージの凸になり検証にならない
-    if (dmgs === null) throw lastDmgErr || new Error('player_damages を読めませんでした');
-    dmgs = dmgs.filter(d => isUsableSlot(d.slot));   // 2枠運用に合わせる
-    // ⚠ ダメージと編成は「同じ行」から取ること。1属性2編成 (slot=1|2) があるため、
-    //    別々に上書きすると「slot2のダメージ + slot1の編成」という食い違いが起きる。
-    //    slot 1 (主編成) を優先し、無ければ最初に見つかった行を使う
-    const loOf = new Map();     // 'pid:attr' -> {dmg, team}
-    (dmgs || []).forEach(d => {
-        const k = `${d.player_id}:${d.attribute}`;
-        const cur = loOf.get(k);
-        const slot = Number(d.slot) || 1;
-        if (cur && !(slot === 1 && cur.slot !== 1)) return;   // 既存が slot1 なら据え置き
-        loOf.set(k, {
-            slot,
-            dmg: Number(d.damage_b) || 0,
-            team: Array.isArray(d.characters) ? d.characters : [],
-        });
-    });
-
-    // 30〜60% のメンバーを凸済みに。1凸:45% / 2凸:35% / 3凸:20%
-    // ※ 基準者 (ふるり) はテストで締め凸依頼フローを自分宛てに確認できるよう
-    //    常に凸済みシードから除外し、3凸フル残し = 締凸候補に必ず入る状態にする
-    const baseName = globalThis.fururiBasePlayerName || 'ふるり';
-    const ratio = 0.3 + Math.random() * 0.3;
-    const chosen = (players || []).filter(p => p.name !== baseName && Math.random() < ratio);
-    const rows = [];
-    const bossDamage = new Map();   // boss_number -> 合計 raw
-    for (const p of chosen) {
-        const roll = Math.random();
-        const nAtk = roll < 0.45 ? 1 : (roll < 0.8 ? 2 : 3);
-        const pool = [...bosses].sort(() => Math.random() - 0.5).slice(0, nAtk);
-        pool.forEach((b, i) => {
-            const lo = loOf.get(`${p.id}:${b.weakness}`);
-            const base = (lo && lo.dmg > 0) ? lo.dmg : (12 + Math.random() * 12);
-            const dmgB = base * (0.85 + Math.random() * 0.25);
-            const raw = Math.max(1, Math.round(dmgB * 1e9));
-            rows.push({
-                season_id: seasonId,
-                player_id: p.id,
-                attack_date: hardDate,
-                boss_number: b.boss_number,
-                boss_code: b.boss_code,
-                damage_raw: raw,
-                attack_number: i + 1,
-                level: 1,
-                // その属性で登録している編成を「実際に使った編成」として記録。
-                // → 最適プランがこのキャラを使用済みとして扱い、他属性の同キャラ編成を提案しなくなる
-                characters: (lo && _isValidTeam5(lo.team)) ? lo.team : [],
-            });
-            bossDamage.set(b.boss_number, (bossDamage.get(b.boss_number) || 0) + raw);
-        });
-    }
-    if (rows.length === 0) return { players: 0, attacks: 0 };
-
-    const { error: aErr } = await supabase.from('attacks').insert(rows);
-    if (aErr) throw aErr;
-
-    // ボス残HPに反映 (0 まで削れたボスは撃破扱いになる)
-    for (const b of bosses) {
-        const dealt = bossDamage.get(b.boss_number);
-        if (!dealt) continue;
-        const rem = Math.max(0, Number(b.remaining_hp_raw) - dealt);
-        await supabase.from('bosses')
-            .update({ remaining_hp_raw: rem })
-            .eq('season_id', seasonId)
-            .eq('boss_number', b.boss_number);
-    }
-    return { players: chosen.length, attacks: rows.length };
+    return { ...r, rehearsal: { start: spec.start, from: spec.from, placeholder: spec.placeholder } };
 };
 
 // ============ 凸プラン配信 ============
@@ -3722,9 +3393,10 @@ window.supabaseGetPublishedPlans = async function (limit = 60) {
     // ★ error を見ないと、取得失敗を「配信プランなし」と混同する (Codex指摘)。
     //   撃破通知の宛先計算で「割当ゼロ」に化けて通知が消えるため throw する
     const { data: season, error: sErr } = await supabase
-        .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
+        .from('seasons').select('id, month_key, is_test').eq('is_active', true).maybeSingle();
     if (sErr) throw sErr;
     if (!season) return [];
+    if (season.is_test && !_testViewer) return [];   // 🧪 テストの配信・決定はメンバーの端末に見せない
     // ★ 並びは **id 降順だけ** にする (L3・2026-09-07)。履歴を消さなくなったので
     //   「最新の1件」の決め方が効いてくる。published_at は DB 側の NOW() なので端末の時計とは無関係だが、
     //   ほぼ同時の2件で**同値になり得る** (同値だと最新が不定)。id は BIGSERIAL で必ず一意・単調なので
@@ -4275,9 +3947,27 @@ window.supabasePreviewTestSeasonEnd = async function () {
         currentRows: await _loadCharsForTestEnd(),
         testSeasonId: season.id,
     });
+    // 終了で控えに戻るもの (テスト中に変えた模擬・参加可能時間) を数える。読めなければ null (0 と言わない)
+    const avSnap = Array.isArray(season.metadata?.availability_snapshot) ? season.metadata.availability_snapshot : null;   // null = 古い版で始めたテスト (時間は戻さない)
+    let changed = { mocks: null, availPlayers: null };
+    try {
+        const [dNow, aNow] = await Promise.all([
+            supabase.from('player_damages').select('player_id, attribute, slot, damage_b, characters, levels, excluded_at'),
+            avSnap ? supabase.from('availability').select('player_id, time_slot') : Promise.resolve({ data: null, error: null }),
+        ]);
+        changed = dom.snapshotDiff({
+            damagesSnap: Array.isArray(season.metadata?.damages_snapshot) ? snapshot : null,
+            damagesNow: dNow.error ? null : dNow.data,
+            availSnap: avSnap,
+            availNow: (avSnap && !aNow.error) ? aNow.data : null,
+        });
+    } catch { /* 数えられなくても終了はできる */ }
     return {
         season: { id: season.id, month_key: season.month_key },
         restoreRows: snapshot.length,
+        restoreAvailRows: avSnap ? avSnap.length : null,
+        changed,
+        rehearsal: season.metadata?.rehearsal || null,
         attacks,
         restoredKey,
         chars,
@@ -4357,6 +4047,23 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
                     //   characters 列以外の失敗も必ず表に出す (Codex指摘 2026-08-12)
                     throw r1.error;
                 }
+            }
+        }
+
+        // ⏰ 参加可能時間を控えへ戻す (2026-11-12)。模擬と同じ「全部消して控えを入れ直す」= 押し直しても同じ結果。
+        //   控えが無い (古い版で始めたテスト) なら触らない。テスト中に消されたメンバーの行は入れない (外部キーで全部が失敗する)
+        const avSnap = season.metadata?.availability_snapshot;
+        if (Array.isArray(avSnap)) {
+            const dom0 = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
+            if (!dom0 || typeof dom0.restorableAvailability !== 'function') throw new Error('js/domain/testSeason.js が読み込まれていません');
+            const { data: pl, error: plErr } = await supabase.from('players').select('id');
+            if (plErr) throw plErr;   // 名簿が読めないまま消さない
+            const rowsAv = dom0.restorableAvailability(avSnap, (pl || []).map(p => p.id));
+            const { error: avClr } = await supabase.from('availability').delete().gte('player_id', 0);
+            if (avClr) throw avClr;
+            if (rowsAv.length) {
+                const { error: avIns } = await supabase.from('availability').insert(rowsAv);
+                if (avIns) throw avIns;
             }
         }
 

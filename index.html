@@ -5122,12 +5122,12 @@
                 <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:var(--t-ink);color:var(--card);"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
-                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 テスト (序盤・凸ゼロ)</button>
-                    <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-testlink" data-stage="prep">🧪 クイックテスト (中盤)</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('eve')" class="dc-ops-testlink" data-stage="prep">🧪 リハーサル (前日として)</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('day')" class="dc-ops-testlink" data-stage="prep">🧪 リハーサル (当日として)</button>
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" data-prod-only style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>テスト (序盤・凸ゼロ)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 の 1 周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
+                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 リハーサルは<b>本番の写し</b>で動かします。模擬・編成・参加可能時間は いま登録されている本物のまま、ボス・ブロックの区切り・再編成時間は直前の本番シーズンから写します (作り物のデータは入れません)。テストのシーズンは<b>運営担当の端末にだけ</b>出て、メンバーの画面には出ません。「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前の状態に戻ります。<b>前日として</b> = ハード日があした / <b>当日として</b> = ハード日がきょう (凸ゼロ・全ボス満タン)。</p>
             </div>
 
             <!-- 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり「A,B,C…とブロックを作って 5～9 時と設定・時計で分かりやすく」)。描くのは renderOpsBlocks / 判定は raidBlocksDomain -->
@@ -6798,7 +6798,7 @@
                 </label>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged()" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
-                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--t-body);">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
+                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--t-body);">ポスターのボスでリハーサルします。模擬・編成・参加可能時間は いまの本物のまま使い、「🧪 ✕ 終了」でテスト中の変更を元に戻します。運営担当の端末にだけ出ます。</span></span>
                 </label>
             </div>
 
@@ -15916,7 +15916,7 @@
                         <input type="checkbox" id="myNotifyTest" ${testOn ? 'checked' : ''} onchange="handleMyNotifyTestToggle(this)" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
                         <span style="flex:1;">
                             <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);">🧪 開発中のテスト通知も受け取る</span>
-                            <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">テスト回の通知や、運営の動作確認の通知です。OFF でも、あなた宛の連絡とレイド当日のチームの状況は届きます。</span>
+                            <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">テスト回の通知や、運営の動作確認の通知です。ON の間は、運営がテストしているシーズンもこの端末に出ます。OFF でも、あなた宛の連絡とレイド当日のチームの状況は届きます。</span>
                         </span>
                     </label>`;
                 actionsEl.innerHTML = `${testRow}
@@ -15973,6 +15973,7 @@
             const want = !!box?.checked;
             try {
                 await window.supabaseSetNotifyTest(id.id, want);
+                if (typeof _syncOpsRole === 'function') _syncOpsRole();   // 🧪 テストのシーズンを見せる相手かを決め直す (_syncTestViewer)
                 if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = want ? '✅ テスト通知も受け取ります' : '✅ テスト通知は受け取りません (本番の連絡は届きます)'; }
             } catch (e) {
                 if (box) box.checked = !want;   // 保存できなかったら見た目を戻す (ON に見えて届かない、を作らない)
@@ -21519,22 +21520,35 @@
             }
         }
 
-        async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
-            const fresh = scenario === 'fresh';
-            const msg = fresh
-                ? '🧪 テスト (序盤・凸ゼロ) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (模擬 → 🧱 組む → ✅ 決定 → ✓ 凸の記録 を練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約・締め凸依頼・配信も一緒に消えます。ただし送った Push の履歴と、端末に届いた通知は残ります)'
-                : '🧪 クイックテスト (中盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元';
+        // 🧪 リハーサル = 本番の写しでテストのシーズンを作る (2026-11-12 ふるり「テストと本番は明確に切り分けつつ、本番同様の状態で」)。
+        //   start: 'eve' 前日として / 'day' 当日として。中身は supabaseQuickCreateTestSeason (形は testSeasonDomain.rehearsalSpec)
+        let _opsRehearsalBusy = false;
+        async function handleOpsQuickCreateTestSeason(start = 'eve') {
+            if (_opsRehearsalBusy) return;
+            const day = start === 'day';
+            const msg = `🧪 リハーサル (${day ? '当日として' : '前日として'}) を始めますか？\n\n`
+                + '始めると\n'
+                + `・テストのシーズンを作ります (ハード日は${day ? 'きょう。凸ゼロ・全ボス満タン' : 'あした'})\n`
+                + '・ボス・ブロックの区切り・再編成時間は、直前の本番シーズンと同じにします\n'
+                + '・模擬・編成・参加可能時間は、いま登録されている本物をそのまま使います (作り物は入れません)\n\n'
+                + '切り分け\n'
+                + '・テストのシーズンは運営担当の端末にだけ出ます (メンバーの画面には出ません)\n'
+                + '・通知は運営担当と「テスト通知も受け取る」の人にだけ届きます\n'
+                + '・「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻り、テスト中の凸・決定・予約は消えます\n\n'
+                + '※ テストの間に届いた本物の模擬や時間は、終了のあとに登録してください (テスト中に入れると終了で消えます)';
             if (!confirm(msg)) return;
+            _opsRehearsalBusy = true;
             try {
-                const r = await window.supabaseQuickCreateTestSeason({ scenario });
+                const r = await window.supabaseQuickCreateTestSeason({ start: day ? 'day' : 'eve' });
                 seasonStore.invalidate();
                 opsStore.invalidate();
-                const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
-                const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : (fresh ? ' / 凸ゼロ・全ボス満タン' : '');
-                showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード${atkInfo})` : ''}`);
+                const src = r.rehearsal?.placeholder ? 'テストボス1〜5 (写せる本番シーズンがありません)' : `${r.rehearsal?.from || '直前の本番'} の写し`;
+                showNotification(`✅ 🧪 リハーサルを始めました — ${src}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま`);
                 renderOpsDashboard();
             } catch (e) {
-                alert(`❌ クイックテスト作成失敗: ${e?.message || e}`);
+                alert(`❌ リハーサルを始められませんでした: ${e?.message || e}`);
+            } finally {
+                _opsRehearsalBusy = false;
             }
         }
 
@@ -21558,10 +21572,17 @@
                 const restored = p.restoredKey
                     ? `${escapeHtml(p.restoredKey)} を復活`
                     : 'なし (テスト作成前もアクティブシーズン無し)';
+                // 🧪 終了で控えに戻るもの (テスト中に変えたぶん)。数えられなかったら数を言わない (0 と言わない)
+                const ch = p.changed || {};
+                const chMock = ch.mocks == null ? '' : (ch.mocks > 0 ? ` — <b style="color:var(--bad-deep);">テスト中に変えた ${ch.mocks} 件は元に戻ります</b>` : ' — テスト中の変更なし');
+                const avLine = p.restoreAvailRows == null
+                    ? '<div><strong>参加可能時間:</strong> 戻しません (古い版で始めたテストなので控えがありません)</div>'
+                    : `<div><strong>復元:</strong> 参加可能時間 ${p.restoreAvailRows}枠${ch.availPlayers == null ? '' : (ch.availPlayers > 0 ? ` — <b style="color:var(--bad-deep);">テスト中に変えた ${ch.availPlayers} 人ぶんは元に戻ります</b>` : ' — テスト中の変更なし')}</div>`;
                 sumEl.innerHTML = `
-                    <div><strong>対象:</strong> 🧪 ${escapeHtml(p.season.month_key)}</div>
-                    <div><strong>復元:</strong> 模擬戦データ ${p.restoreRows}行 · 元シーズン ${restored}</div>
-                    <div><strong>削除:</strong> テスト中の凸 ${p.attacks}件 · 配信プラン・締め凸依頼はテストシーズンごと消えます</div>`;
+                    <div><strong>対象:</strong> 🧪 ${escapeHtml(p.season.month_key)}${p.rehearsal?.from ? ` (${escapeHtml(String(p.rehearsal.from))} の写し)` : ''}</div>
+                    <div><strong>復元:</strong> 模擬 ${p.restoreRows}行${chMock}${p.restoredKey ? ` · 元シーズン ${restored}` : ''}</div>
+                    ${avLine}
+                    <div><strong>削除:</strong> テスト中の凸 ${p.attacks}件 · 決定・配信・予約・今期の確認はテストシーズンごと消えます</div>`;
                 if (p.chars.length === 0) {
                     listEl.innerHTML = '<p style="margin:0;color:var(--t-body);font-size:12px;">テスト作成後に増えたキャラマスタはありません。</p>';
                 } else {
@@ -29177,7 +29198,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 availWarn = `\n\n⏰ 全員の参加可能時間${nAv != null ? ` (いま ${nAv} 人ぶん)` : ''}を空にします。Discord で聞いて 👥 › ⏰ で登録し直してください。`;
             }
             const confirmMsg = isTest
-                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。\n模擬戦データはテスト用に自動シードされます (前回実績 + ランダム補完)。`
+                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n模擬・編成・参加可能時間は、いま登録されている本物をそのまま使います (作り物は入れません)。\n「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻ります。\nテストのシーズンは運営担当の端末にだけ出ます。`
                 : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}${availWarn}`;
             if (!confirm(confirmMsg)) return;
 
@@ -33056,7 +33077,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         async function _syncOpsRole() {
             const me = getCurrentIdentity();
             const gen = _identityGen;   // 名乗りの世代 (A→B→A の後着よけ・全体監査 #10)
-            if (!me || me.id == null) { _opsRole = { playerId: null, role: undefined }; _applyOpsModeForIdentity(); return; }
+            if (!me || me.id == null) { _opsRole = { playerId: null, role: undefined }; _applyOpsModeForIdentity(); _syncTestViewer(null, undefined); return; }
             let role;
             try {
                 const raw = typeof window.supabaseLoadOpsRole === 'function' ? await window.supabaseLoadOpsRole(me.id) : undefined;
@@ -33072,7 +33093,36 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const changed = _opsRole.role !== role || String(_opsRole.playerId) !== String(me.id);
             _opsRole = { playerId: me.id, role };
             _applyOpsModeForIdentity();
+            _syncTestViewer(me, role);   // 🧪 テストのシーズンを見せる相手か (待たない)
             if (changed && typeof renderSettingsTab === 'function') renderSettingsTab().catch(() => { /* 次に開いたとき */ });   // 👑 区画 (互換ゲート・運営担当・メンバー管理) を役割で描き直す
+        }
+        // 🧪 テストのシーズンを見せる相手か (2026-11-12 ふるり「テストと本番は明確に切り分け」)。判定は testSeasonDomain.canSeeTest が唯一:
+        //   運営担当 (master / ops) と「テスト通知も受け取る」を ON にした人だけ。門は js/supabase-client.js の読み込み口 (supabaseSetTestViewer)。
+        //   変わったら (任命された・スイッチを切り替えた・名乗り直した) シーズンの写しを捨てて、いまのタブを描き直す。
+        //   役割が読めていない間は端末が前に決めた値のまま (canSeeTest の remembered)。名乗っていない端末には見せない。練習中は触らない (テストのシーズンが無い)
+        let _testViewerSeq = 0;
+        async function _syncTestViewer(me, role) {
+            if (window.PAD_PRACTICE) return;
+            const dom = window.testSeasonDomain;
+            if (!dom || typeof dom.canSeeTest !== 'function' || typeof window.supabaseSetTestViewer !== 'function') return;
+            const seq = ++_testViewerSeq;
+            const named = !!(me && me.id != null);
+            let notifyTest;   // undefined = 読めていない (48 未適用・通信の失敗)
+            if (named && role === null) {
+                try { notifyTest = await window.supabaseLoadNotifyTest(me.id); } catch { notifyTest = undefined; }
+                if (seq !== _testViewerSeq) return;                                               // 追い越された
+                if (String(getCurrentIdentity()?.id ?? '') !== String(me.id)) return;             // 待っている間に名乗り直した
+            }
+            const can = named ? dom.canSeeTest({ role, notifyTest, remembered: window.supabaseTestViewer() }) : false;
+            if (!window.supabaseSetTestViewer(can)) return;   // 変わっていない
+            try {
+                seasonStore.invalidate();
+                opsStore.invalidate();
+                _invalidateTabRenderCache();
+                const active = document.querySelector('.tab-content.active');
+                const tabName = active ? active.id.replace('tab-', '') : null;
+                if (tabName) switchTab(tabName);
+            } catch (e) { console.warn('[test viewer] 描き直せませんでした:', e?.message || e); }
         }
         // 運営あての Push: master + 運営担当の全員へ (押した本人は除く)。時間帯フィルタは通さない (迅速に対応するため)。46 未適用なら誰にも送らない
         async function _notifyOps({ title, body, url = './?tab=ops', tag = null, except = null } = {}) {

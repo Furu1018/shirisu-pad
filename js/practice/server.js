@@ -415,6 +415,20 @@ export function createPracticeClient(opts = {}) {
 
     // ---- RPC (supabase/40 と 47 の写し) ----
     const RPC = {
+        // シーズンを消す口 (57_season_rules.sql の delete_season と同じ動き: テストはいつでも / 本番は止めてあって凸 0 件のときだけ /
+        // 無い id は NULL / 子 (ボス・凸・配信・予約と履歴・確認) は CASCADE)。練習の課題では使わない — 🧪 リハーサルの通し確認 (tests/practice.mjs) が使う
+        delete_season(a) {
+            const row = T.seasons.find(s => eqv(s.id, a.p_season_id));
+            if (!row) return null;
+            if (row.is_test !== true) {
+                if (row.is_active) throw check(`いま動いている本番シーズン (${row.month_key}) は消せません`);
+                const n = T.attacks.filter(x => eqv(x.season_id, row.id)).length;
+                if (n > 0) throw check(`本番シーズン (${row.month_key}) には凸の記録が ${n} 件あるので消せません`);
+            }
+            const was = deleteRows.cascading; deleteRows.cascading = true;   // 予約の履歴 (append-only) も、この口の中だけ通す
+            try { deleteRows('seasons', [row]); } finally { deleteRows.cascading = was; }
+            return row.month_key;
+        },
         // 🧱 ブロックの区切りをシーズンに保存 (50_season_blocks_rpc.sql と同じ動き: metadata の他の鍵は残す・null で鍵を消す・アクティブのときだけ)
         ops_set_season_blocks(a) {
             const row = T.seasons.find(s => eqv(s.id, a.p_season_id) && s.is_active === true);

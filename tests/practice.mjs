@@ -600,7 +600,7 @@ globalThis.CustomEvent = class { constructor(t, o) { this.type = t; this.detail 
 globalThis.fetch = async (url, o) => { fetched.push({ url: String(url), o }); return { ok: true, status: 200, json: async () => FALLBACK_CHARACTERS.map(c => ({ ...c, icon_paths: ['./i.webp'] })) }; };
 const origLog = console.log; console.log = () => { };   // 接続確認の 1 行を黙らせる
 await import(pathToFileURL(path.join(ROOT, 'js/domain/notifyPolicy.js')).href);   // 🔔 通知の宛先の判定 (本番では index.html が読む)。sendPushNotification が必ず通す
-for (const f of ['js/domain/raidBlocks.js', 'js/domain/publishedPlans.js']) await import(pathToFileURL(path.join(ROOT, f)).href);   // 🧱 段階 7: 撃破の通知の宛先が「ブロックごとに効いている配信」を読む (本番では index.html が読む)
+for (const f of ['js/domain/raidBlocks.js', 'js/domain/publishedPlans.js', 'js/domain/testSeason.js']) await import(pathToFileURL(path.join(ROOT, f)).href);   // 🧱 段階 7: 撃破の通知の宛先が「ブロックごとに効いている配信」を読む (本番では index.html が読む)
 await imp('js/supabase-client.js');
 console.log = origLog;
 const W = globalThis;
@@ -876,8 +876,8 @@ test('見張り: js/supabase-client.js が使う 表・RPC・問い合わせの�
     for (const t of tables) assert.ok(SCHEMA[t], `本番が使う表 ${t} を偽のサーバが知らない`);
     const rpcs = new Set([...CLIENT.matchAll(/\.rpc\('([a-z_0-9]+)'/g)].map(m => m[1]));
     const implemented = [...SERVER.matchAll(/\n        ([a-z_]+)\(a\) \{/g)].map(m => m[1]);
-    // 練習で使えない RPC (運営の シーズン編集・復元・シーズンを消す (57))。「見つからない」と返す → クライアントは未適用として扱う
-    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences', 'restore_insert_published_plans', 'delete_season'];
+    // 練習で使えない RPC (運営の シーズン編集・復元)。「見つからない」と返す → クライアントは未適用として扱う
+    const NOT_IN_PRACTICE = ['ops_update_season_meta', 'restore_fix_sequences', 'restore_insert_published_plans'];
     assert.deepEqual([...rpcs].sort(), [...implemented, ...NOT_IN_PRACTICE].sort(), '本番が使う RPC と、偽のサーバの対応が食い違っている');
     // 問い合わせの口: PostgREST の口のうち本番が使っているもの ⊆ 偽のサーバが持つもの
     const POSTGREST = ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'likeAllOf', 'likeAnyOf', 'ilikeAllOf', 'ilikeAnyOf',
@@ -1161,6 +1161,122 @@ test('見張り: やめた・やり直したあと (closed) の案内は何も�
         assert.ok(/this\.closed = true;/.test(body), `${k} が closed を立てていない`);
         assert.ok(body.indexOf('this.closed = true;') < Math.max(body.indexOf('location.replace'), body.indexOf('location.reload')), `${k}: 画面を離れる前に closed を立てていない`);
     }
+});
+
+// ============================== 🧪 リハーサル (本番の写しでテスト・2026-11-12) ==============================
+// 本物の js/supabase-client.js を偽のサーバ相手に: 始める → 見せる相手 → テスト中に変える → 終了で始める前に戻る
+test('🧪 リハーサル: 本番の写しで始まる (模擬・参加可能時間はそのまま・作り物なし) / メンバーの端末には見せない / 終了で模擬と参加可能時間が始める前に戻り、テストの行は残らない', async () => {
+    const db = W.PAD_PRACTICE.db, keep = db.dump();
+    const pick = (t, cols) => JSON.stringify(DB()[t].map(r => cols.map(c => r[c])).sort((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : 1));
+    const MOCK = ['player_id', 'attribute', 'slot', 'damage_b', 'characters'], AV = ['player_id', 'time_slot'];
+    try {
+        // 動いているシーズンがあれば始めない (アクティブは 1 つだけ)
+        await assert.rejects(W.supabaseQuickCreateTestSeason({ start: 'eve' }), /いま動いているシーズン/);
+        // 直前の本番 = 練習のシーズンを止めたもの。区切り・再編成時間・今期の確認を持たせる
+        const prod = DB().seasons.find(x => x.id === IDS.season);
+        const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
+        prod.is_active = false; prod.metadata = { blocks, rebuild_minutes: 15, damages_snapshot: ['古い控え'] };
+        DB().availability_confirmations = DB().availability_confirmations.filter(x => x.season_id !== IDS.season);
+        db.insert('availability_confirmations', { season_id: IDS.season, player_id: IDS.me, unavailable: false, slot_count: 3, block_counts: { '17-4': 2 } });
+        assert.ok(DB().player_damages.length > 50 && DB().availability.length > 50, '種データに模擬・時間が無い');
+        const mock0 = pick('player_damages', MOCK), av0 = pick('availability', AV), chars0 = DB().nikke_characters.length;
+
+        // ---- 始める (当日として) ----
+        const r = await W.supabaseQuickCreateTestSeason({ start: 'day' });
+        const ts = DB().seasons.find(x => x.is_active);
+        assert.ok(ts && ts.is_test === true && ts.id === r.id && /^TEST-\d{14}$/.test(ts.month_key));
+        assert.equal(ts.hard_date, W.testSeasonDomain.raidDayOf(Date.now()), '当日として = ハード日がいまのレイド日 でない');
+        assert.deepEqual(r.rehearsal, { start: 'day', from: prod.month_key, placeholder: false });
+        assert.deepEqual([ts.metadata.blocks, ts.metadata.rebuild_minutes, ts.metadata.rehearsal], [blocks, 15, { start: 'day', from: prod.month_key }], '区切り・再編成時間を本番から写していない');
+        // ボスは本番と同じ 5 体・HP は満タン
+        const bOf = (sid) => DB().bosses.filter(b => b.season_id === sid).sort((a, b) => a.boss_number - b.boss_number);
+        assert.deepEqual(bOf(ts.id).map(b => [b.boss_number, b.boss_code, b.name, b.tier, b.attribute, b.weakness]), bOf(IDS.season).map(b => [b.boss_number, b.boss_code, b.name, b.tier, b.attribute, b.weakness]));
+        assert.ok(bOf(ts.id).every(b => b.remaining_hp_raw === b.total_hp_raw && b.total_hp_raw > 0));
+        // ★ 模擬・参加可能時間・キャラ表はそのまま (消さない・作り物を入れない)。凸も入れない
+        assert.equal(pick('player_damages', MOCK), mock0, '模擬が変わった (消した / 作り物を入れた)');
+        assert.equal(pick('availability', AV), av0, '参加可能時間が変わった');
+        assert.equal(DB().nikke_characters.length, chars0);
+        assert.equal(DB().attacks.filter(a => a.season_id === ts.id).length, 0, '凸の種を入れている');
+        assert.deepEqual([r.kept.mocks, r.kept.availability], [DB().player_damages.length, DB().availability.length]);
+        assert.deepEqual([ts.metadata.damages_snapshot.length, ts.metadata.availability_snapshot.length], [DB().player_damages.length, DB().availability.length], '控えを取っていない');
+        // 今期の確認を写す (本番の行は残す)
+        const cf = DB().availability_confirmations.filter(x => x.season_id === ts.id);
+        assert.deepEqual(cf.map(x => [x.player_id, x.slot_count, x.block_counts]), [[IDS.me, 3, { '17-4': 2 }]]);
+        assert.equal(r.confirmationsCopied, 1);
+        assert.equal(DB().availability_confirmations.filter(x => x.season_id === IDS.season).length, 1);
+
+        // ---- 見せる相手: メンバーの端末 (既定) にはシーズン無し・配信無し ----
+        assert.equal(W.supabaseTestViewer(), false);
+        assert.deepEqual(await W.supabaseLoadActiveSeasonWithBosses(), { season: null, bosses: [], hiddenTest: true });
+        db.insert('published_plans', { season_id: ts.id, plan: { levels: [] }, published_by_name: 'x' });
+        assert.deepEqual(await W.supabaseGetPublishedPlans(), [], 'テストの配信がメンバーの端末に見える');
+        assert.equal(W.supabaseSetTestViewer(true), true); assert.equal(W.supabaseSetTestViewer(true), false, '変わっていないのに「変わった」');
+        const seen = await W.supabaseLoadActiveSeasonWithBosses();
+        assert.deepEqual([seen.season.id, seen.bosses.length], [ts.id, 5]);
+        assert.equal((await W.supabaseGetPublishedPlans()).length, 1);
+        assert.equal((await W.supabaseLoadOpsDashboardData()).season.id, ts.id, '盤面ローダが運営にテストを見せない');
+
+        // ---- テスト中に変える: 時間 1 人・模擬 2 件 (直す / 消す)・凸 1 件 ----
+        const d0 = DB().player_damages[0], d1 = DB().player_damages[1];
+        await W.supabaseSaveAvailability(IDS.me, ['h05']);
+        d0.damage_b = Number(d0.damage_b) + 7;
+        DB().player_damages = DB().player_damages.filter(x => x !== d1);
+        db.insert('attacks', { season_id: ts.id, player_id: IDS.me, attack_date: ts.hard_date, attack_number: 1, boss_number: 1, damage_raw: 1 });
+        const pv = await W.supabasePreviewTestSeasonEnd();
+        assert.deepEqual([pv.changed, pv.restoreRows, pv.restoreAvailRows, pv.attacks, pv.rehearsal.from], [{ mocks: 2, availPlayers: 1 }, ts.metadata.damages_snapshot.length, ts.metadata.availability_snapshot.length, 1, prod.month_key]);
+
+        // ---- 終了: 始める前に戻る・テストの行は残らない・本番はそのまま ----
+        const out = await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        assert.equal(out.ok, true);
+        assert.equal(pick('player_damages', MOCK), mock0, '模擬が始める前に戻っていない');
+        assert.equal(pick('availability', AV), av0, '参加可能時間が始める前に戻っていない');
+        assert.ok(!DB().seasons.some(x => x.is_test) && !DB().seasons.some(x => x.is_active), 'テストのシーズンが残っている');
+        for (const t of ['bosses', 'attacks', 'published_plans', 'availability_confirmations']) assert.ok(!DB()[t].some(x => x.season_id === ts.id), 'テストの ' + t + ' が残っている');
+        assert.equal(DB().availability_confirmations.filter(x => x.season_id === IDS.season).length, 1, '本番の確認まで消した');
+        assert.deepEqual(DB().seasons.find(x => x.id === IDS.season).metadata.damages_snapshot, ['古い控え'], '本番のシーズンを書き換えた');
+
+        // ---- 前日として = ハード日が次のレイド日 / 写せる本番が無ければプレースホルダ・既定の再編成時間 ----
+        const r2 = await W.supabaseQuickCreateTestSeason({ start: 'eve' });
+        const next = new Date(Date.parse(W.testSeasonDomain.raidDayOf(Date.now()) + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+        assert.equal(DB().seasons.find(x => x.id === r2.id).hard_date, next);
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        DB().seasons = []; DB().bosses = [];
+        const r3 = await W.supabaseQuickCreateTestSeason({});
+        assert.deepEqual(r3.rehearsal, { start: 'eve', from: null, placeholder: true });
+        assert.deepEqual(DB().bosses.map(b => b.name), [1, 2, 3, 4, 5].map(n => 'テストボス' + n));
+        assert.equal(DB().seasons[0].metadata.rebuild_minutes, W.raidBlocksDomain.DEFAULT_REBUILD_MINUTES, '写せる本番が無いとき、新しい本番と同じ再編成時間になっていない');
+    } finally { db.restore(keep); W.supabaseSetTestViewer(false); }
+});
+test('🧪 リハーサル: 控えを取れなければ始めない (シーズンを作らない) / テスト中に消されたメンバーの時間は戻さず、ほかの人は戻す / 古い版のテスト (時間の控え無し) は時間に触らない', async () => {
+    const db = W.PAD_PRACTICE.db, keep = db.dump();
+    try {
+        DB().seasons.find(x => x.id === IDS.season).is_active = false;
+        // 控えが上限 (1000 行) に当たる = 切れているかもしれない → 始めない
+        const extra = [];
+        for (let i = 0; i < 1000; i++) extra.push({ player_id: 900000 + i, time_slot: 'h05' });
+        const avKeep = DB().availability; DB().availability = avKeep.concat(extra);
+        await assert.rejects(W.supabaseQuickCreateTestSeason({ start: 'day' }), /参加可能時間の控えを取り切れないので、テストを始めません/);
+        assert.ok(!DB().seasons.some(x => x.is_active), '控えを取れないのにシーズンを作った');
+        DB().availability = avKeep;
+        // テスト中にメンバーが消えた
+        const r = await W.supabaseQuickCreateTestSeason({ start: 'day' });
+        const gone = DB().availability.find(a => a.player_id !== IDS.me).player_id;
+        const before = DB().availability.filter(a => a.player_id !== gone).length;
+        DB().players = DB().players.filter(p => p.id !== gone);
+        DB().availability = [];
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        assert.equal(DB().availability.length, before, '残っている人の時間を戻していない');
+        assert.ok(!DB().availability.some(a => a.player_id === gone), '消されたメンバーの時間を入れた');
+        assert.ok(!DB().seasons.some(x => x.id === r.id));
+        // 古い版で始めたテスト (availability_snapshot が無い): 時間は触らない
+        const r2 = await W.supabaseQuickCreateTestSeason({ start: 'day' });
+        delete DB().seasons.find(x => x.id === r2.id).metadata.availability_snapshot;
+        await W.supabaseSaveAvailability(IDS.me, ['h23']);
+        const pv = await W.supabasePreviewTestSeasonEnd();
+        assert.deepEqual([pv.restoreAvailRows, pv.changed.availPlayers], [null, null], '控えが無いのに「戻す」と言っている');
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        assert.deepEqual(DB().availability.filter(a => a.player_id === IDS.me).map(a => a.time_slot), ['h23'], '控えが無いのに時間を消した');
+    } finally { db.restore(keep); W.supabaseSetTestViewer(false); }
 });
 
 for (const [name, fn] of tests) {

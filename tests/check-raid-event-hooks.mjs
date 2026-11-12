@@ -132,8 +132,6 @@ const KNOWN_DIRECT_WRITERS = [
     'supabaseDeleteAttack',         // 凸削除でHPを戻す (同上)
     'supabaseUpdateAttackDamage',   // 凸ダメージ編集の差分反映 (同上)
     'supabaseUpdateBossHp',         // 運営のHP保存 (同上)
-    'supabaseSeedTestMockAttacks',  // ★通知対象外: テストシーズンの初期盤面を作るシード。
-                                    //   新シーズンの初回観測は通知しない設計と整合する
 ];
 const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').split('\n');
 let curFn = null;

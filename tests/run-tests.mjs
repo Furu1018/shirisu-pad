@@ -3382,6 +3382,67 @@ console.log('\ntestSeasonDomain:');
         assert.equal(out[1].sighting_count, 0);
         assert.equal(out[1].defaultDelete, false);
     });
+    // 🧪 リハーサル (本番の写しでテスト・2026-11-12)
+    test('★ rehearsalSpec: ハード日は 前日として = 次のレイド日 / 当日として = いまのレイド日 (0〜4 時は前の日)・月キーは JST の時刻', () => {
+        const at = (iso) => Date.parse(iso + '+09:00');
+        assert.equal(dom.raidDayOf(at('2026-11-12T10:00:00')), '2026-11-12');
+        assert.equal(dom.raidDayOf(at('2026-11-12T04:59:59')), '2026-11-11', '翌 4 時台は前のレイド日');
+        assert.equal(dom.raidDayOf(at('2026-11-12T05:00:00')), '2026-11-12');
+        let s = dom.rehearsalSpec({ start: 'day', nowMs: at('2026-11-12T02:30:05') });
+        assert.deepEqual([s.start, s.hardDate, s.monthKey], ['day', '2026-11-11', 'TEST-20261112023005']);
+        s = dom.rehearsalSpec({ start: 'eve', nowMs: at('2026-12-31T23:10:00') });
+        assert.deepEqual([s.start, s.hardDate], ['eve', '2027-01-01'], '年をまたげない');
+        assert.equal(dom.rehearsalSpec({ nowMs: at('2026-11-12T10:00:00') }).start, 'eve', '既定が 前日として でない');
+        assert.equal(dom.rehearsalSpec({ start: 'midraid', nowMs: at('2026-11-12T10:00:00') }).hardDate, '2026-11-13', '知らない始め方を 当日 にしている');
+    });
+    test('★ rehearsalSpec: ボス・区切り・再編成時間・メンバーの入力 は直前の本番の写し / そろわなければプレースホルダ / 控えなど別の鍵は写さない', () => {
+        const nowMs = Date.parse('2026-11-12T10:00:00+09:00');
+        const bosses = [3, 1, 5, 2, 4].map(n => ({ boss_number: n, boss_code: 'C' + n, name: n === 2 ? '' : 'ボス' + n, tier: n === 3 ? 'tyrant' : 'lord' }));
+        const blocks = [{ name: '朝', from: 5, to: 16 }, { name: '夜', from: 17, to: 4 }];
+        let s = dom.rehearsalSpec({ start: 'eve', nowMs, defaultRebuild: 20, prev: { season: { month_key: '2026-11', metadata: { blocks, member_input: 'full', rebuild_minutes: 15, damages_snapshot: [1], is_test: true } }, bosses } });
+        assert.deepEqual(s.bosses.map(b => [b.bossNumber, b.bossCode, b.name, b.tier]), [[1, 'C1', 'ボス1', 'lord'], [2, 'C2', null, 'lord'], [3, 'C3', 'ボス3', 'tyrant'], [4, 'C4', 'ボス4', 'lord'], [5, 'C5', 'ボス5', 'lord']]);
+        assert.deepEqual(s.meta, { blocks, member_input: 'full', rebuild_minutes: 15 }, '写す鍵が違う (控えまで写している?)');
+        assert.deepEqual([s.from, s.placeholder], ['2026-11', false]);
+        // 再編成時間: 本番が 0 分 (なし) と決めていればなし / 鍵が無い古い本番は新しい本番と同じ既定
+        assert.deepEqual(dom.rehearsalSpec({ nowMs, defaultRebuild: 20, prev: { season: { metadata: { rebuild_minutes: 0 } }, bosses } }).meta, {});
+        assert.deepEqual(dom.rehearsalSpec({ nowMs, defaultRebuild: 20, prev: { season: { metadata: {} }, bosses } }).meta, { rebuild_minutes: 20 });
+        assert.deepEqual(dom.rehearsalSpec({ nowMs, defaultRebuild: 20, prev: { season: { metadata: { rebuild_minutes: 99 } }, bosses } }).meta, { rebuild_minutes: 20 }, '壊れた分数を写した');
+        assert.deepEqual(dom.rehearsalSpec({ nowMs, prev: { season: { metadata: null }, bosses } }).meta, {});
+        // ボスが 5 体そろわない (4 体・番号の重複・コード無し)・本番が無い → プレースホルダ
+        for (const bad of [null, { season: {}, bosses: bosses.slice(0, 4) }, { season: {}, bosses: [...bosses.slice(0, 4), { ...bosses[0] }] }, { season: {}, bosses: bosses.map(b => (b.boss_number === 5 ? { ...b, boss_code: '' } : b)) }]) {
+            s = dom.rehearsalSpec({ nowMs, prev: bad });
+            assert.equal(s.placeholder, true);
+            assert.deepEqual(s.bosses.map(b => [b.bossNumber, b.name, b.tier]), [[1, 'テストボス1', 'lord'], [2, 'テストボス2', 'lord'], [3, 'テストボス3', 'tyrant'], [4, 'テストボス4', 'lord'], [5, 'テストボス5', 'tyrant']]);
+            assert.equal(new Set(s.bosses.map(b => b.bossCode)).size, 5);
+        }
+    });
+    test('★ canSeeTest: 運営担当は見える / メンバーは「テスト通知も受け取る」のときだけ / 読めていない間は端末が前に決めた値 (初めては見せない)', () => {
+        assert.equal(dom.canSeeTest({ role: 'master' }), true);
+        assert.equal(dom.canSeeTest({ role: 'ops', notifyTest: false, remembered: false }), true);
+        assert.equal(dom.canSeeTest({ role: null, notifyTest: true }), true);
+        assert.equal(dom.canSeeTest({ role: null, notifyTest: false, remembered: true }), false, 'メンバーに端末の記憶で見せた');
+        assert.equal(dom.canSeeTest({ role: null, notifyTest: undefined, remembered: true }), true, 'スイッチが読めない間に落とした');
+        assert.equal(dom.canSeeTest({ role: null, notifyTest: undefined }), false);
+        assert.equal(dom.canSeeTest({ role: undefined, remembered: true }), true);
+        assert.equal(dom.canSeeTest({ role: undefined, notifyTest: true }), false, '役割が分からない初めての端末に見せた');
+        assert.equal(dom.canSeeTest(), false);
+    });
+    test('★ snapshotDiff / restorableAvailability: 終了で戻るものを数える (読めなければ null) / 戻すのは いまも居る人の正しい行だけ', () => {
+        const d = (p, a, sl, dmg, ch) => ({ player_id: p, attribute: a, slot: sl, damage_b: dmg, characters: ch });
+        const snap = [d(1, 'fire', 1, 30, ['a', 'b']), d(1, 'water', 1, 20, []), d(2, 'fire', 1, 10, ['c'])];
+        const now = [d(1, 'fire', 1, 30, ['a', 'b']), d(1, 'water', 1, 21, []), d(3, 'wind', 2, 5, [])];   // 直した 1・消えた 1・増えた 1
+        const av = (p, ...hs) => hs.map(h => ({ player_id: p, time_slot: h }));
+        assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: now, availSnap: [...av(1, 'h05', 'h06'), ...av(2, 'h21')], availNow: [...av(1, 'h06', 'h05'), ...av(3, 'h10')] }), { mocks: 3, availPlayers: 2 });
+        assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: snap.slice().reverse(), availSnap: [], availNow: [] }), { mocks: 0, availPlayers: 0 }, '並びが違うだけで「変わった」');
+        assert.equal(dom.snapshotDiff({ damagesSnap: [d(1, 'fire', 1, 30, ['a', 'b'])], damagesNow: [d(1, 'fire', 1, 30, ['b', 'a'])] }).mocks, 1, '編成の並びの違いは変更に数える (枠の順は意味を持つ)');
+        assert.equal(dom.snapshotDiff({ damagesSnap: [{ ...snap[0], excluded_at: null }], damagesNow: [{ ...snap[0], excluded_at: 'x' }] }).mocks, 1, '運営除外の変更を数えていない');
+        assert.deepEqual(dom.snapshotDiff({ damagesSnap: snap, damagesNow: null, availSnap: null, availNow: [] }), { mocks: null, availPlayers: null }, '読めないものを 0 と言った');
+        assert.deepEqual(dom.snapshotDiff(), { mocks: null, availPlayers: null });
+        const rows = dom.restorableAvailability([...av(1, 'h05', 'h05', 'h23'), ...av(2, 'h21'), { player_id: 1, time_slot: 'h24' }, { player_id: 1, time_slot: 'morning' }, { player_id: null, time_slot: 'h05' }, null], [1, '3']);
+        assert.deepEqual(rows, [{ player_id: 1, time_slot: 'h05' }, { player_id: 1, time_slot: 'h23' }], '居ない人・重複・壊れた時間帯を入れた');
+        assert.deepEqual(dom.restorableAvailability(null, [1]), []);
+        assert.deepEqual(dom.restorableAvailability(av(1, 'h05'), null), [], '名簿が無いのに入れた');
+    });
 }
 
 // ---- finishDomain: 締め凸コンソール (今 vs 待つ) — 2026-09-10 ----------------------
@@ -4212,7 +4273,7 @@ console.log('\nopsStageDomain:');
         assert.ok(/onclick="_opsGotoMasterTab\(\)"/.test(etcInit) && /function _opsGotoMasterTab\(\) \{\s*\n\s*if \(!_opsIsMasterNow\(\)\) return;/.test(html), '設定タブに移した先の案内が無い');
         assert.ok(/if \(typeof _opsRoleForCurrent === 'function' && _opsRoleForCurrent\(\) === 'master'\) \{\s*tasks\.push\(renderSettingsMemberCount\(\), renderClientGateSettings\(\), renderSettingsRoles\(\)\);/.test(stg), '設定タブが master の区画を役割で描いていない');
         assert.ok(/onclick="openOpsSeasonCreateModal\(\)" class="dc-ops-action" data-stage="prep"/.test(html), 'シーズン作成が準備段階に限られていない');
-        assert.equal((html.match(/handleOpsQuickCreateTestSeason\('(fresh|midraid)'\)" class="dc-ops-testlink" data-stage="prep"/g) || []).length, 2, 'テスト作成が小リンクになっていない');
+        assert.equal((html.match(/handleOpsQuickCreateTestSeason\('(eve|day)'\)" class="dc-ops-testlink" data-stage="prep"/g) || []).length, 2, 'テスト作成が小リンクになっていない');
         assert.ok(/onclick="handleOpsEndSeason\(\)" class="dc-ops-action" data-stage="end"/.test(html) && /onclick="handleOpsResetDamages\(\)" class="dc-ops-action" data-stage="end"/.test(html), '終了・リセットが終了段階に限られていない');
         const ng = html.match(/async function _opsNudgeGroup\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/dom\.nudgeTargets\(_mb\.rows, kind\)/.test(ng) && /showPushPreview\(groups\)/.test(ng), '催促の対象と確認が無い');
@@ -4653,21 +4714,91 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(html.includes('id="myTeamEditExclNote"'), '編成編集モーダルに除外の案内');
         assert.ok(/mock_exclude:\s*\{/.test(html), '設定タブのログ種別');
     });
-    test('★ 予約テスト (序盤): testScenario=fresh は凸をシードしない / 中盤は従来どおり', () => {
-        // 凸をシードすると HP の小さいテストボスは撃破済みになり「未凸の状態で予約を組む」体験ができない
+    test('★ 🧪 リハーサル (配線): テストは模擬を消さない・作り物の種が無い・控え (模擬 + 参加可能時間) を取れなければ始めない / 入口は 前日として・当日として', () => {
+        // 2026-11-12 ふるり「適当に割り振られたキャラクターがよく使う編成に出てしまう」「テストと本番は明確に切り分けつつ、本番同様の状態で」
         const core = client.match(/window\.supabaseCreateSeason = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(core, 'シーズン作成の本体が見つからない');
-        assert.ok(/if \(payload\.testScenario !== 'fresh'\) \{[\s\S]{0,200}supabaseSeedTestMockAttacks\(/.test(core),
-            '序盤シナリオで凸のシードを飛ばしていない');
-        assert.ok(/testScenario: isTest \? \(payload\.testScenario \|\| 'midraid'\) : null/.test(core));
+        // 乱数の種・キャラ名の順の編成は仕組みごと無い (戻すと落ちる)
+        for (const k of ['supabaseSeedTestMockDamages', 'supabaseSeedTestMockAttacks', 'supabaseSeedDamagesFromPreviousSeason', '_makeTestTeamGenerator', 'testScenario']) assert.ok(!client.includes(k), k + ' が残っている');
+        assert.ok(!/Math\.random\(/.test(core), 'シーズン作成に乱数がある');
+        // 模擬を消すのは本番の作成だけ
+        assert.equal((core.match(/from\('player_damages'\)\.delete\(\)/g) || []).length, 1);
+        assert.ok(/if \(!isTest\) \{\s*\n\s*const \{ error: clrErr \} = await supabase\.from\('player_damages'\)\.delete\(\)\.gte\('player_id', 0\);/.test(core), 'テストでも模擬を消している');
+        // 控え: 参加可能時間も取る・取れなければ始めない (シーズンを入れる前)
+        const iAv = core.indexOf("await supabase.from('availability').select('player_id, time_slot')"), iIns = core.indexOf('.insert({\n            month_key: payload.monthKey,');
+        assert.ok(iAv > 0 && iIns > iAv, '参加可能時間の控えをシーズンを作る前に取っていない');
+        assert.ok(/if \(avSnapErr\) throw new Error\(/.test(core) && /if \(!Array\.isArray\(avRows\) \|\| avRows\.length >= 1000\) throw new Error\(/.test(core), '時間の控えを取れなくても始める');
+        assert.ok(/if \(!Array\.isArray\(dmgs\) \|\| dmgs\.length >= 1000\) throw new Error\(/.test(core), '模擬の控えを取れなくても始める');
+        assert.ok(/damages_snapshot: dmgs,\s*\n\s*availability_snapshot: avRows,/.test(core), '控えを metadata に入れていない');
+        // 入口
         const quick = client.match(/window\.supabaseQuickCreateTestSeason = async function \(opts = \{\}\)[\s\S]*?\n};\n/)?.[0] || '';
-        assert.ok(quick, 'クイックテストがシナリオを受け取っていない');
-        assert.ok(/const testScenario = opts\.scenario === 'fresh' \? 'fresh' : 'midraid';/.test(quick), '既定が中盤でない (従来の挙動が変わる)');
-        assert.ok(/return window\.supabaseCreateSeason\(\{\s*\n\s*testScenario,/.test(quick), '本体へ渡していない');
-        // 運営画面に2つの入口
-        assert.ok(/handleOpsQuickCreateTestSeason\('fresh'\)/.test(html), '序盤のボタンが無い');
-        assert.ok(/handleOpsQuickCreateTestSeason\('midraid'\)/.test(html), '中盤のボタンが無い');
-        assert.ok(/await window\.supabaseQuickCreateTestSeason\(\{ scenario \}\)/.test(html), 'シナリオを渡していない');
+        assert.ok(/dom\.rehearsalSpec\(\{ start: opts\.start, nowMs: Date\.now\(\), prev: /.test(quick), '形を testSeasonDomain.rehearsalSpec で決めていない');
+        assert.ok(/\.or\('is_test\.is\.null,is_test\.eq\.false'\)/.test(quick), '直前の本番の選び方 (is_test が NULL の古い行も本番)');
+        assert.ok(/if \(pErr\) throw new Error\(/.test(quick) && /if \(bErr\) throw new Error\(/.test(quick), '本番を読めないとき黙ってプレースホルダにしている');
+        assert.ok(/handleOpsQuickCreateTestSeason\('eve'\)/.test(html) && /handleOpsQuickCreateTestSeason\('day'\)/.test(html), '前日として・当日として のボタンが無い');
+        assert.ok(!/handleOpsQuickCreateTestSeason\('(fresh|midraid)'\)/.test(html) && !/mockSeed|attackSeed/.test(html), '古い入口・種の表示が残っている');
+        assert.ok(/await window\.supabaseQuickCreateTestSeason\(\{ start: day \? 'day' : 'eve' \}\)/.test(html), '始め方を渡していない');
+        // 終了: 参加可能時間を戻すのはシーズンを消す前・名簿が読めないまま消さない
+        const end = client.match(/window\.supabaseDeleteActiveTestSeason = async function[\s\S]*?\n};\n/)?.[0] || '';
+        const iPl = end.indexOf("await supabase.from('players').select('id')"), iClr = end.indexOf("await supabase.from('availability').delete().gte('player_id', 0)"), iDel = end.indexOf('await _deleteSeasonRow(season.id');
+        assert.ok(iPl > 0 && iClr > iPl && iDel > iClr, '名簿を読む → 時間を消す → 入れ直す → シーズンを消す の順でない');
+        assert.ok(/if \(plErr\) throw plErr;/.test(end) && /if \(avClr\) throw avClr;/.test(end) && /if \(avIns\) throw avIns;/.test(end), '時間を戻す失敗を握り潰している');
+        assert.ok(/if \(Array\.isArray\(avSnap\)\) \{/.test(end), '控えが無い (古い版のテスト) のに時間に触る');
+    });
+    test('★ 🧪 テストを見せる相手 (配線): 門はメンバーがシーズンを知る 2 つの口 / 画面は役割から決めて、変わったら写しを捨てて描き直す', () => {
+        const load = client.match(/window\.supabaseLoadActiveSeasonWithBosses = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/if \(season\.is_test && !_testViewer\) return \{ season: null, bosses: \[\], hiddenTest: true \};/.test(load), '盤面の口に門が無い');
+        const pubs = client.match(/window\.supabaseGetPublishedPlans = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/select\('id, month_key, is_test'\)/.test(pubs) && /if \(season\.is_test && !_testViewer\) return \[\];/.test(pubs), '配信の口に門が無い');
+        assert.equal((client.match(/!_testViewer\)/g) || []).length, 2, '門の数が変わった (足したら CLAUDE.md の ★ 🧪 リハーサル も直す)');
+        // 盤面ローダは門のある口を通る (別に seasons を読まない)
+        const board = client.slice(client.indexOf('window.supabaseLoadOpsDashboardData = async function'), client.indexOf('window.supabaseLoadOpsDashboardData = async function') + 600);
+        assert.ok(/await window\.supabaseLoadActiveSeasonWithBosses\(\)/.test(board), '盤面ローダが門を通らない');
+        // 通知の宛先の判定は門を通さない (テスト回かどうかを知る必要がある)
+        const aud = client.match(/async function _pushAudience\(\) \{[\s\S]*?\n}\n/)?.[0] || '';
+        assert.ok(/from\('seasons'\)\.select\('id, is_test, hard_date'\)\.eq\('is_active', true\)/.test(aud) && !/_testViewer/.test(aud));
+        const sync = html.match(/async function _syncOpsRole\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.equal((sync.match(/_syncTestViewer\(/g) || []).length, 2, '役割が決まったとき・名乗っていないとき の両方で決め直していない');
+        assert.ok(/await window\.supabaseSetNotifyTest\(id\.id, want\);\s*\n\s*if \(typeof _syncOpsRole === 'function'\) _syncOpsRole\(\);/.test(html), 'スイッチを変えたあとに決め直していない');
+    });
+    await testAsync('★ 🧪 テストを見せる相手 (実行): 運営担当は見える / メンバーはスイッチしだい / 変わったときだけ描き直す / 名乗り直し・追い越しは捨てる / 練習中は触らない', async () => {
+        const body = html.match(/async function _syncTestViewer\(me, role\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(body, '_syncTestViewer が見つからない');
+        const mk = ({ viewer = false, notify = false, practice = false } = {}) => {
+            const st = { id: 7, viewer, redraw: 0, loads: 0, hold: null };
+            const w = {
+                PAD_PRACTICE: practice ? {} : undefined, testSeasonDomain: globalThis.testSeasonDomain,
+                supabaseTestViewer: () => st.viewer,
+                supabaseSetTestViewer: (on) => { const ch = st.viewer !== !!on; st.viewer = !!on; return ch; },
+                supabaseLoadNotifyTest: () => { st.loads++; return st.hold ? new Promise((res, rej) => { st.release = () => res(notify); st.fail = () => rej(new Error('net')); }) : Promise.resolve(notify); },
+            };
+            const fn = new Function('st', 'window', 'console', 'document', `
+                const getCurrentIdentity = () => (st.id == null ? null : { id: st.id });
+                const seasonStore = { invalidate: () => { st.redraw++; } }, opsStore = { invalidate: () => {} };
+                const _invalidateTabRenderCache = () => {}, switchTab = (t) => { st.tab = t; };
+                let _testViewerSeq = 0;
+                ${body}
+                return _syncTestViewer;`)(st, w, { warn() {} }, { querySelector: () => ({ id: 'tab-mypage' }) });
+            return { st, fn };
+        };
+        let e = mk();
+        await e.fn({ id: 7 }, 'master'); assert.deepEqual([e.st.viewer, e.st.redraw, e.st.tab, e.st.loads], [true, 1, 'mypage', 0], 'マスターに見せていない / 描き直していない / 要らないスイッチを読んだ');
+        await e.fn({ id: 7 }, 'ops'); assert.equal(e.st.redraw, 1, '変わっていないのに描き直した');
+        await e.fn({ id: 7 }, null); assert.deepEqual([e.st.viewer, e.st.redraw, e.st.loads], [false, 2, 1], '任命を外された人に見せたまま');
+        e = mk({ notify: true }); await e.fn({ id: 7 }, null); assert.equal(e.st.viewer, true, '「テスト通知も受け取る」の人に見せていない');
+        // 役割が読めていない間は端末が前に決めた値のまま
+        e = mk({ viewer: true }); await e.fn({ id: 7 }, undefined); assert.deepEqual([e.st.viewer, e.st.redraw], [true, 0]);
+        e = mk(); await e.fn({ id: 7 }, undefined); assert.equal(e.st.viewer, false, '役割が分からない初めての端末に見せた');
+        // 名乗っていない端末には見せない
+        e = mk({ viewer: true }); e.st.id = null; await e.fn(null, undefined); assert.deepEqual([e.st.viewer, e.st.redraw], [false, 1]);
+        // スイッチが読めなかったら前のまま
+        e = mk({ viewer: true }); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); e.st.fail(); await p; } assert.deepEqual([e.st.viewer, e.st.redraw], [true, 0]);
+        // 待っている間に名乗り直した → 捨てる
+        e = mk({ viewer: true }); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); e.st.id = 8; e.st.release(); await p; } assert.equal(e.st.viewer, true, '別の人向けの応答で決めた');
+        // 追い越し: 遅いメンバー向けの応答が、あとから来た運営担当の決定を上書きしない
+        e = mk(); e.st.hold = true; { const p = e.fn({ id: 7 }, null); await Promise.resolve(); await e.fn({ id: 7 }, 'ops'); e.st.release(); await p; } assert.deepEqual([e.st.viewer, e.st.redraw], [true, 1]);
+        // 練習中は触らない
+        e = mk({ practice: true }); await e.fn({ id: 7 }, 'master'); assert.equal(e.st.viewer, false);
     });
     test('99_check_applied.sql に 35 の判定行がある', () => {
         assert.ok(check.includes("'35_player_damages_exclusion'"));
@@ -5187,6 +5318,7 @@ console.log('\nreservationsDomain (凸の予約):');
             const run = new Function('st', 'window', 'console', `
                 const getCurrentIdentity = () => ({ id: st.id, name: 'x' });
                 const _applyOpsModeForIdentity = () => {};
+                const _syncTestViewer = () => {};
                 const renderSettingsTab = async () => {};
                 Object.defineProperty(globalThis, '_identityGen', { get: () => st.gen, configurable: true });
                 let _opsRole = st.opsRole;
@@ -14664,7 +14796,7 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
                 } });
                 return o;
             };
-            const win = { supabaseLogActivity: () => {}, supabaseSeedTestMockDamages: async () => ({}), supabaseSeedTestMockAttacks: async () => ({}) };
+            const win = { supabaseLogActivity: () => {} };
             const codes = { C1: 'fire', C2: 'water', C3: 'wind', C4: 'iron', C5: 'electric' };
             const fn = new Function('supabase', 'window', '_assertNoActiveSeason', '_deleteSeasonRow', 'SEASON_ATTR_FROM_CODE', 'SEASON_WEAKNESS_BY_ATTR', '_invalidateActiveTestSeasonCache', '_assertSlotsWithinThisBuild', src + '\nreturn window.supabaseCreateSeason;')(
                 { from }, win, async () => {}, async () => {}, codes, { fire: 'wind', water: 'fire', wind: 'iron', iron: 'electric', electric: 'water' }, () => {}, () => {});
@@ -17207,7 +17339,8 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(html.includes('**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**'), 'Discord 用の文面に無い');
         assert.ok(/\| \*\*再編成時間\*\* \|/.test(rd('docs/用語集.md')), '用語集に無い');
         const notes = JSON.parse(rd('data/release-notes.json')).notes;
-        assert.equal(notes[0].id, 2026110201); assert.match(notes[0].title, /再編成時間/);
+        { const n = notes.find(x => x.id === 2026110201); assert.ok(n, '再編成時間の項目が無い'); assert.match(n.title, /再編成時間/); }
+        { const n = notes[0]; assert.equal(n.id, 2026111201, 'いちばん新しい項目 (🧪 テストがメンバーの画面に出ない)'); assert.match(n.title, /テスト/); assert.ok(n.lines.some(l => l.includes('開発中のテスト通知も受け取る')), 'スイッチの名前が画面と違う'); }
         assert.ok(/const CLIENT_BUILD = 2026110201;/.test(html), '版を上げていない');
     });
 }
