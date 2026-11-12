@@ -33581,8 +33581,11 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
             _renderOpsSubTabs(st.stage, tab, { mbRows, reservations });
             // 段階つきの部品 (シーズン制御のボタン等): data-stage="prep end" のように空白区切り
+            // ★ シーズンが無い間 (自動判定 = 準備) は、段階を手動で 前日 / 当日 / 終了 にしていても 準備の部品 (シーズン作成・🧪 リハーサル) を消さない
+            //   (2026-11-13 ふるり「運営タブにシーズン作成が見当たりません」: 手動の段階はシーズン無しのまま端末に残り、作る入口がどこにも出なくなっていた)
             document.querySelectorAll('#tab-ops [data-stage]').forEach(el => {
-                el.style.display = String(el.dataset.stage || '').split(/\s+/).includes(st.stage) ? '' : 'none';
+                const want = String(el.dataset.stage || '').split(/\s+/);
+                el.style.display = (want.includes(st.stage) || (st.auto === 'prep' && want.includes('prep'))) ? '' : 'none';
             });
             // 「シーズン終了」は本番のときだけ。テストは上の「🧪 テスト稼働中 ✕ 終了」で消して元に戻す (2026-10-30 の決まり「テストシーズンは履歴に残さない」。
             //   テストを「シーズン終了」で止めると行とテスト用の模擬が残っていた)

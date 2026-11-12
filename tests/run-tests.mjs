@@ -4760,6 +4760,19 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(/if \(plErr\) throw plErr;/.test(end) && /if \(avClr\) throw avClr;/.test(end) && /if \(avIns\) throw avIns;/.test(end), '時間を戻す失敗を握り潰している');
         assert.ok(/if \(Array\.isArray\(avSnap\)\) \{/.test(end), '控えが無い (古い版のテスト) のに時間に触る');
     });
+    test('★ シーズンが無い間は、段階を手動で変えていても「シーズン作成」「🧪 リハーサル」を消さない (2026-11-13 実機)', () => {
+        const loop = html.match(/document\.querySelectorAll\('#tab-ops \[data-stage\]'\)\.forEach\(el => \{[\s\S]*?\n            \}\);/)?.[0] || '';
+        assert.ok(loop, '段階つきの部品の出し分けが見つからない');
+        const els = ['prep', 'prep', 'end', 'prep end'].map(stage => ({ dataset: { stage }, style: {} }));
+        const run = (st) => { new Function('document', 'st', loop)({ querySelectorAll: () => els }, st); return els.map(e => e.style.display); };
+        assert.deepEqual(run({ stage: 'prep', auto: 'prep' }), ['', '', 'none', '']);
+        assert.deepEqual(run({ stage: 'day', auto: 'prep' }), ['', '', 'none', ''], 'シーズン無しで「当日」に手動で変えたら作成の入口が消えた');
+        assert.deepEqual(run({ stage: 'end', auto: 'prep' }), ['', '', '', ''], 'シーズン無しで「終了」に手動で変えたら作成の入口が消えた');
+        assert.deepEqual(run({ stage: 'day', auto: 'day' }), ['none', 'none', 'none', 'none'], 'シーズンがあるのに作成の入口を出した');
+        assert.deepEqual(run({ stage: 'prep', auto: 'day' }), ['', '', 'none', ''], '手動の「準備」は従来どおり');
+        // 作成の入口は 3 つとも準備の部品
+        assert.equal((html.match(/class="dc-ops-(action|testlink)" data-stage="prep"/g) || []).length, 3);
+    });
     test('★ 🧪 テストを見せる相手 (配線): 門はメンバーがシーズンを知る 2 つの口 / 画面は役割から決めて、変わったら写しを捨てて描き直す', () => {
         const load = client.match(/window\.supabaseLoadActiveSeasonWithBosses = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(/if \(season\.is_test && !_testViewer\) return \{ season: null, bosses: \[\], hiddenTest: true \};/.test(load), '盤面の口に門が無い');
