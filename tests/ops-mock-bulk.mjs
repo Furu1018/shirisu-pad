@@ -375,8 +375,21 @@ await t('⑨ ⌨ 数字: B 単位でも桁そのままでも・全角・カン�
     d('28412345678');
     const el = { value: '28412345678' }; h._mkbFixDmg('iron', 0, el);
     assert.equal(el.value, '28.41');
-    d(''); const el2 = { value: 'あ' }; h._mkbFixDmg('iron', 0, el2);
+    d(''); const cls = new Set(); const el2 = { value: 'あ', classList: { toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); } } }; h._mkbFixDmg('iron', 0, el2);
     assert.equal(el2.value, 'あ', '読めない入力を勝手に消した');
+    assert.ok(cls.has('bad') && /数字として読めません/.test(el2.title), '読めない入力 (中身は空あつかい) に印が無い — 入っているように見える');
+    d('1000000'); el2.value = '1000000'; h._mkbFixDmg('iron', 0, el2); assert.ok(cls.has('bad'), '0.00B になる桁に印が無い');
+    d('28.4'); el2.value = '28.4'; h._mkbFixDmg('iron', 0, el2); assert.ok(!cls.has('bad') && el2.title === '', '読める数字に印が残った');
+    d(''); el2.value = ''; h._mkbFixDmg('iron', 0, el2); assert.ok(!cls.has('bad'), '空の欄に印が付いた');
+    // 以前の登録が小数 3 桁以上: 欄に出ている数字 (2 桁) を打ち直しただけなら「変更あり」にしない・もとの値のまま
+    const pr = makeEnv({ players: [{ id: 1, name: 'ミリン', availableSlots: ['h17'], loadoutsByAttr: { iron: [{ slot: 1, dmgB: 28.412345678, team: T('KLMNO') }] } }, { id: 2, name: '銀狐', availableSlots: ['h17'], loadoutsByAttr: {} }] });
+    await pr.openOpsMockBulk(1);
+    assert.ok(/value="28.41"/.test(pr.env.body()));
+    pr._mkbSetDmg('iron', 0, '28.41');
+    assert.equal(pr._mkb.rows.iron[0].damageB, 28.412345678, '表示どおりに打ち直しただけで、もとの値を丸めた');
+    assert.ok(!pr._mkbFlatRows().find(r => r.attr === 'iron').dirty, '表示どおりに打ち直しただけで「変更あり」になった');
+    pr._mkbSetDmg('iron', 0, '28.42');
+    assert.equal(pr._mkb.rows.iron[0].damageB, 28.42); assert.ok(pr._mkbFlatRows().find(r => r.attr === 'iron').dirty);
     assert.ok(/<input type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="" placeholder="例 28.4" onchange="_mkbFixDmg\('iron', 0, this\)" data-mkb-dmg="iron:0"/.test(h.env.body()), '欄が数字専用のまま (桁のカンマ・全角を打てない)');
 });
 
@@ -442,6 +455,10 @@ await t('⑪ ⌨ Ctrl+Enter: 保存して次の人へ (結果は知らせに) / 
     const p1 = q._mkbSaveNext(), p2 = q._mkbSaveNext();
     await p1; await p2; await tick(); await tick();
     assert.equal(q._mkb.playerId, 2, 'Ctrl+Enter を 2 回押したら 1 人飛ばした'); assert.equal(q._mkb.moving, false, '切り替え中の印が立ったまま');
+    // 切り替えている最中は「次の人 →」・人の一覧も受けない (A → B の途中に押して C まで進まない)
+    q._mkb.moving = true; q._mkbNext(); q._mkbGoto(4); await tick(); await tick();
+    assert.equal(q._mkb.playerId, 2, '切り替えの最中に別の人へ進んだ');
+    q._mkb.moving = false;
     await q._mkbSaveNext(); await tick();
     assert.equal(q._mkb.playerId, 4, '切り替えが終わったあとの Ctrl+Enter を受けない');
     // 編成だけ入れてダメージの無い枠 (保存されない) が残るなら、進む前に確かめる
@@ -496,6 +513,25 @@ await t('⑭ 盤面の読み込みを待つ間に続けて 2 人開いても、�
     assert.equal(h._mkb.playerId, 2);
     gates[0](); await a; await tick();
     assert.equal(h._mkb.playerId, 2, '先に開いた人が、あとから開いた人を上書きした'); assert.equal(h._mkb.name, '銀狐');
+    // 開いている人のプリセットの読み込み中に、開けない人 (盤面にいない) を開こうとしても、いまの人の読み込みは捨てない (「読み込み中…」のまま残さない)
+    const k = makeEnv();
+    let done; k.env._loadGate = () => new Promise(r => { done = r; });
+    const pa = k.openOpsMockBulk(1);
+    await tick();
+    assert.equal(k._mkb.loading, true);
+    await k.openOpsMockBulk(99);
+    assert.equal(k._mkb.playerId, 1, '開けない人で画面が替わった');
+    done([]); await pa; await tick();
+    assert.equal(k._mkb.loading, false, '開けない人を開こうとしただけで、いまの人が「読み込み中…」のまま残った');
+    assert.ok(!/mkb-loading/.test(k.env.body()));
+    // 開こうとしている途中 (盤面の読み込み待ち) に閉じたら、あとから開かない
+    const c2 = makeEnv({ noBoard: true });
+    let rel; c2.env.opsStore.load = () => new Promise(r => { rel = () => r({ season: { id: 46, metadata: {} }, players: c2.env._mockIntake.players, bosses }); });
+    const pc = c2.openOpsMockBulk(1);
+    await tick();
+    c2.closeOpsMockBulk(true);
+    rel(); await pc; await tick();
+    assert.ok(!c2.env.isOpen(), '閉じたのに、遅れて戻った読み込みで開いた');
 });
 
 await t('⑬ ⌨ 描き直しても打っている欄と文字を保つ / PC は開いたとき最初の空の欄へ焦点 (スマホは当てない)', async () => {

@@ -3866,6 +3866,7 @@
         .mkb-dmg { display: flex; align-items: center; gap: 4px; margin-left: auto; }
         .mkb-dmg input { width: 96px; font: inherit; font-size: 17px; font-weight: 900; text-align: right; padding: 5px 7px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .mkb-dmg span { font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .mkb-dmg input.bad { border-color: var(--bad); background: var(--bad-bg); }
         .mkb-add { margin-top: 7px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--line); background: transparent; color: var(--t-body); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .mkb-foot { position: sticky; bottom: 0; background: var(--card); padding: 10px 0 2px; margin-top: 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .mkb-foot .cnt { flex: 1 1 100%; min-width: 0; font-size: 11px; font-weight: 800; color: var(--t-muted); }
@@ -19365,13 +19366,17 @@
             if (_mkb.busy) { showNotification('保存中です — 終わってから開いてください'); return; }
             const dom = window.mockIntakeDomain, rb = window.raidBlocksDomain;
             if (!dom) { showNotification('模擬の取り込みの機能を読み込めていません (再読み込みしてください)'); return; }
-            const gen = ++_mkb.gen;   // 世代は入口で発行する (Codex 監査 3748921: 盤面の読み込みを待つ間に別の人を開くと、遅れて戻ったほうが上書きした)
+            // 開く要求の番号は入口で発行する (Codex 監査 3748921: 盤面の読み込みを待つ間に別の人を開くと、遅れて戻ったほうが上書きした)。
+            //   ★ 画面の世代 (_mkb.gen) は、切り替えると決まってから進める — 入口で進めると、開けずに戻ったとき (人が見つからない・盤面なし) に、
+            //     いま開いている人のプリセットの読み込みまで捨てて「読み込み中…」のまま残った (Codex 監査 238a93a)
+            const req = _mkb.req = (_mkb.req || 0) + 1;
             let snap = opsStore.get();
             if (!snap) { try { snap = await opsStore.load(); } catch { snap = null; } }   // 保存直後は invalidate 直後で盤面が無い — 読み終わるのを待つ
-            if (gen !== _mkb.gen) return;   // 待っている間に別の人を開いた / 閉じた
+            if (req !== _mkb.req) return;   // 待っている間に別の人を開いた / 閉じた
             if (!snap?.season?.id) { showNotification('盤面を読み込めていません (↻ で取り直してください)'); return; }
             const p = (snap.players || []).find(x => x && Number(x.id) === Number(playerId) && !x.archived) || null;
             if (!p) { showNotification('その人が盤面に見つかりません (↻ で取り直してください)'); return; }
+            const gen = ++_mkb.gen;
             const blocks = rb ? rb.blocksOfSeason(snap.season) : [];
             const b5Weak = (snap.bosses || []).find(b => Number(b.boss_number) === 5)?.weakness || null;
             Object.assign(_mkb, {
@@ -19403,7 +19408,7 @@
         function closeOpsMockBulk(force = false) {
             if (_mkb.busy) { showNotification('保存中です — 終わるまで待ってください'); return; }
             if (!force && _mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。閉じますか?')) return;
-            ++_mkb.gen;
+            ++_mkb.gen; _mkb.req = (_mkb.req || 0) + 1;   // 開こうとしている途中の人も捨てる
             document.getElementById('opsMockBulkModal').classList.remove('open');
         }
         // 前のレイド (「前回の自分」の材料) = 本番シーズンのうち終わっているものの最新 (いまのシーズンは除く)。無ければ null (前回の自分は出ない)
@@ -19595,7 +19600,12 @@
         // 桁のまま打った数字 (28412345678) を B の表示に直す (欄を離れたとき)。打っている最中は直さない
         function _mkbFixDmg(attr, i, el) {
             const r = (_mkb.rows[attr] || [])[i];
-            if (r && el && r.damageB != null) el.value = String(+Number(r.damageB).toFixed(2));
+            if (!r || !el) return;
+            if (r.damageB != null) el.value = String(+Number(r.damageB).toFixed(2));
+            // 読めない入力 (文字・0x10・0.00B になる桁) は欄に残すが、赤い枠と title で「入っていない」と分かるようにする (中身は空あつかい: Codex 監査 238a93a)
+            const bad = r.damageB == null && String(el.value || '').trim() !== '';
+            if (el.classList) el.classList.toggle('bad', bad);
+            el.title = bad ? '数字として読めません (この枠は保存されません)。例: 28.4' : '';
         }
         // 人の一覧 (PC だけ見える): 表と同じ並び (〆 の早い順)・登録済みの属性の数。いまの人は画面の中身 (保存済みの枠) で数える
         function _mkbSideList() {
@@ -19626,7 +19636,7 @@
         }
         function _mkbSearch(v) { _mkb.q = String(v || ''); _mkbSideRender(true); }
         function _mkbGoto(id) {
-            if (_mkb.busy || id == null || !Number.isFinite(Number(id))) return;
+            if (_mkb.busy || _mkb.moving || id == null || !Number.isFinite(Number(id))) return;
             if (Number(id) === Number(_mkb.playerId)) { _mkb.q = ''; _mkbSideRender(); _mkbFocusFirst(); return; }
             if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに別の人へ進みますか?')) return;
             _mkb.q = '';
@@ -19705,12 +19715,14 @@
             const txt = String(v || '').normalize('NFKC').replace(/[,\s]/g, '');
             const n = /^(\d+\.?\d*|\.\d+)$/.test(txt) ? Number(txt) : NaN;
             const b = !Number.isFinite(n) ? 0 : (n >= 1e6 ? Math.round(n / 1e7) / 100 : n);
-            r.damageB = b > 0 ? b : null;
+            //   ★ 欄に出ている数字 (もとの値の小数 2 桁) をそのまま打ち直しただけなら、もとの値を保つ — 見た目が同じなのに「変更あり」になり、以前の登録を丸めて保存し直していた (Codex 監査 238a93a)
+            const same = b > 0 && r.orig.damageB != null && +Number(r.orig.damageB).toFixed(2) === b;
+            r.damageB = same ? r.orig.damageB : (b > 0 ? b : null);
             r.err = '';
             _mkbSyncFooter();
         }
         function _mkbNext() {
-            if (_mkb.busy) return;
+            if (_mkb.busy || _mkb.moving) return;   // Ctrl+Enter で次の人へ切り替えている最中は受けない (2 人進まない: Codex 監査 238a93a)
             const next = _mkbNextId(); if (next == null) return;
             if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに次の人へ進みますか?')) return;
             openOpsMockBulk(next);
