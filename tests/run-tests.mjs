@@ -4741,6 +4741,17 @@ console.log('\n運営除外の配線 (ソース突合):');
         // 作成シートの 🧪 も同じ口 (シートだけ写さない、を作らない) / 今期の確認を写せなかったら 2 つの入口とも知らせる (Codex 監査 5924782)
         assert.ok(/const r = isTest\s*\n\s*\? await window\.supabaseQuickCreateTestSeason\(\{ bosses, hardDate, monthKey \}\)\s*\n\s*: await window\.supabaseCreateSeason\(/.test(html), '作成シートの 🧪 がリハーサルの口を通らない');
         assert.equal((html.match(/_opsRehearsalConfirmNote\(r\)/g) || []).length, 3, '今期の確認を写せなかった知らせ (定義 + 2 つの入口)');
+        // 何を写したかは事実どおりに (写せる本番が無いのに「写し」と言わない: Codex 再監査 3079bb2)
+        assert.equal((html.match(/_opsRehearsalSrcNote\(r\)/g) || []).length, 3, '写した元の言い方 (定義 + 2 つの入口)');
+        {
+            const note = new Function(html.match(/function _opsRehearsalSrcNote\(r\) \{[\s\S]*?\n        \}\n/)[0] + '\nreturn _opsRehearsalSrcNote;')();
+            assert.equal(note({ rehearsal: { from: '2026-11', placeholder: false, poster: false } }), '2026-11 の写し');
+            assert.equal(note({ rehearsal: { from: '2026-11', placeholder: false, poster: true } }), 'ボスはこのシートのもの・区切りと再編成時間は 2026-11 の写し');
+            assert.equal(note({ rehearsal: { from: null, placeholder: false, poster: true } }), 'ボスはこのシートのもの・写せる本番シーズンが無いので区切りは既定です');
+            assert.equal(note({ rehearsal: { from: null, placeholder: true, poster: false } }), 'ボスはテストボス1〜5・写せる本番シーズンが無いので区切りは既定です');
+            assert.equal(note({ rehearsal: { from: '2026-11', placeholder: true, poster: false } }), 'ボスはテストボス1〜5・区切りと再編成時間は 2026-11 の写し', '本番はあるがボスがそろわない');
+            assert.ok(!note({}).includes('の写し') && !note(null).includes('の写し'), '分からないのに「写し」と言った');
+        }
         assert.ok(/confirmationsError = String\(e\?\.message \|\| e\);/.test(core) && /confirmationsCopied, confirmationsError, kept:/.test(core), '写せなかった理由を結果に入れていない');
         // 終了: 参加可能時間を戻すのはシーズンを消す前・名簿が読めないまま消さない
         const end = client.match(/window\.supabaseDeleteActiveTestSeason = async function[\s\S]*?\n};\n/)?.[0] || '';

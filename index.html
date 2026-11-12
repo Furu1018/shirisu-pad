@@ -21523,6 +21523,13 @@
         // 🧪 リハーサル = 本番の写しでテストのシーズンを作る (2026-11-12 ふるり「テストと本番は明確に切り分けつつ、本番同様の状態で」)。
         //   start: 'eve' 前日として / 'day' 当日として。中身は supabaseQuickCreateTestSeason (形は testSeasonDomain.rehearsalSpec)
         let _opsRehearsalBusy = false;
+        // 何を写したかを事実どおりに言う (写せる本番が無いのに「写し」と言わない: Codex 再監査 3079bb2)。from = 設定を写した本番の月キー
+        function _opsRehearsalSrcNote(r) {
+            const h = (r && r.rehearsal) || {};
+            const boss = h.poster ? 'ボスはこのシートのもの' : h.placeholder ? 'ボスはテストボス1〜5' : null;
+            if (!h.from) return `${boss || 'ボスはテストボス1〜5'}・写せる本番シーズンが無いので区切りは既定です`;
+            return boss ? `${boss}・区切りと再編成時間は ${h.from} の写し` : `${h.from} の写し`;
+        }
         // 今期の確認 (確認済み・今回は難しい・凸数) を直前の本番から写せなかったら、そう言う (黙って「全員 未確認」で始めない: Codex 監査 5924782)
         function _opsRehearsalConfirmNote(r) {
             return r && r.confirmationsError ? ' ⚠ 今期の確認は写せませんでした (全員「未確認」から始まります。👥 の ⏰ で確認し直せます)' : '';
@@ -21546,8 +21553,7 @@
                 const r = await window.supabaseQuickCreateTestSeason({ start: day ? 'day' : 'eve' });
                 seasonStore.invalidate();
                 opsStore.invalidate();
-                const src = r.rehearsal?.placeholder ? 'テストボス1〜5 (写せる本番シーズンがありません)' : `${r.rehearsal?.from || '直前の本番'} の写し`;
-                showNotification(`✅ 🧪 リハーサルを始めました — ${src}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま${_opsRehearsalConfirmNote(r)}`);
+                showNotification(`✅ 🧪 リハーサルを始めました — ${_opsRehearsalSrcNote(r)}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま${_opsRehearsalConfirmNote(r)}`);
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ リハーサルを始められませんでした: ${e?.message || e}`);
@@ -29212,7 +29218,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const r = isTest
                     ? await window.supabaseQuickCreateTestSeason({ bosses, hardDate, monthKey })
                     : await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, resetAvailability: resetAvail });
-                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました${r?.availabilityCleared ? ' (参加可能時間を空にしました)' : ''}${isTest ? _opsRehearsalConfirmNote(r) : ''}`);
+                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました${r?.availabilityCleared ? ' (参加可能時間を空にしました)' : ''}${isTest ? ` (${_opsRehearsalSrcNote(r)})${_opsRehearsalConfirmNote(r)}` : ''}`);
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);

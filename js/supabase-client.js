@@ -3154,7 +3154,8 @@ window.supabaseQuickCreateTestSeason = async function (opts = {}) {
         rehearsal: { start, from: spec.from },
         copyConfirmationsFrom: prevSeason ? prevSeason.id : null,
     });
-    return { ...r, rehearsal: { start, from: spec.from, placeholder: !poster && spec.placeholder } };
+    // from = 設定を写した本番の月キー (無ければ null = 区切りは既定・今期の確認は無し)。placeholder = ボスが「テストボス1〜5」/ poster = ボスはシートのもの
+    return { ...r, rehearsal: { start, from: spec.from, placeholder: !poster && spec.placeholder, poster } };
 };
 
 // ============ 凸プラン配信 ============

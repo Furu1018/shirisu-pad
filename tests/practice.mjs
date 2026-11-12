@@ -1186,7 +1186,7 @@ test('🧪 リハーサル: 本番の写しで始まる (模擬・参加可能�
         const ts = DB().seasons.find(x => x.is_active);
         assert.ok(ts && ts.is_test === true && ts.id === r.id && /^TEST-\d{14}$/.test(ts.month_key));
         assert.equal(ts.hard_date, W.testSeasonDomain.raidDayOf(Date.now()), '当日として = ハード日がいまのレイド日 でない');
-        assert.deepEqual(r.rehearsal, { start: 'day', from: prod.month_key, placeholder: false });
+        assert.deepEqual(r.rehearsal, { start: 'day', from: prod.month_key, placeholder: false, poster: false });
         assert.deepEqual([ts.metadata.blocks, ts.metadata.rebuild_minutes, ts.metadata.rehearsal], [blocks, 15, { start: 'day', from: prod.month_key }], '区切り・再編成時間を本番から写していない');
         // ボスは本番と同じ 5 体・HP は満タン
         const bOf = (sid) => DB().bosses.filter(b => b.season_id === sid).sort((a, b) => a.boss_number - b.boss_number);
@@ -1242,9 +1242,15 @@ test('🧪 リハーサル: 本番の写しで始まる (模擬・参加可能�
         await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
         DB().seasons = []; DB().bosses = [];
         const r3 = await W.supabaseQuickCreateTestSeason({});
-        assert.deepEqual(r3.rehearsal, { start: 'eve', from: null, placeholder: true });
+        assert.deepEqual(r3.rehearsal, { start: 'eve', from: null, placeholder: true, poster: false });
         assert.deepEqual(DB().bosses.map(b => b.name), [1, 2, 3, 4, 5].map(n => 'テストボス' + n));
-        assert.equal(DB().seasons[0].metadata.rebuild_minutes, W.raidBlocksDomain.DEFAULT_REBUILD_MINUTES, '写せる本番が無いとき、新しい本番と同じ再編成時間になっていない');
+        await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
+        // 写せる本番が無いのにシートのポスターで始めた: ボスはポスター・from は null (画面は「写し」と言わない: Codex 再監査 3079bb2)
+        const p0 = ['Z.E.U.S.', 'A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.'].map((bossCode, i) => ({ bossNumber: i + 1, bossCode, name: 'P' + (i + 1), tier: 'lord' }));
+        const r3b = await W.supabaseQuickCreateTestSeason({ bosses: p0, hardDate: '2031-02-01' });
+        assert.deepEqual(r3b.rehearsal, { start: 'sheet', from: null, placeholder: false, poster: true });
+        assert.deepEqual(DB().bosses.map(b => b.name), p0.map(b => b.name));
+        assert.equal(DB().seasons.find(x => x.id === r3b.id).metadata.rebuild_minutes, W.raidBlocksDomain.DEFAULT_REBUILD_MINUTES, '写せる本番が無いとき、新しい本番と同じ再編成時間になっていない');
         await W.supabaseDeleteActiveTestSeason({ charsToDelete: [] });
 
         // ---- シーズン作成のシートの 🧪 (ポスターのボス・シートのハード日): 差し替えるのはそれだけ。区切り・再編成時間・今期の確認は直前の本番から ----
