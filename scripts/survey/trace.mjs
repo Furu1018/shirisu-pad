@@ -63,7 +63,10 @@ window.WebSocket = function () { throw new Error('WebSocket は調査の道具�
 window.EventSource = function () { throw new Error('EventSource は調査の道具が止めています'); };
 window.Worker = function () { throw new Error('Worker は調査の道具が止めています'); };
 window.SharedWorker = function () { throw new Error('SharedWorker は調査の道具が止めています'); };
-try { Navigator.prototype.sendBeacon = function () { return false; }; } catch (e) {}`;
+try { Navigator.prototype.sendBeacon = function () { return false; }; } catch (e) {}
+// 新しいタブ・ウィンドウは見張れない (この道具が付いているのは 1 つのタブだけ) → 開かせない (Codex 監査 156bcd0)。道具はリンクを押さず switchTab を呼ぶだけ
+window.open = function () { return null; };
+document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[target]'); if (a && a.target !== '_self') e.preventDefault(); }, true);`;
 const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
 const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
 const S = (method, params) => send(method, params, sid);
