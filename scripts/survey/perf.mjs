@@ -36,17 +36,24 @@ ws.onmessage = (ev) => {
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
     if (m.method === 'Page.javascriptDialogOpening') ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: false }, sessionId: m.sessionId }));
     if (m.method === 'Fetch.requestPaused') {
-        const rq = m.params.request; const ok = ['GET', 'HEAD', 'OPTIONS'].includes(rq.method);
+        const rq = m.params.request;
+        // 読むだけ: GET / HEAD / OPTIONS のうち、表の読み取り (/rest/v1/) と保存領域の読み取り (/storage/v1/) だけ通す。Edge Function (/functions/) などは GET でも落とす
+        const ok = ['GET', 'HEAD', 'OPTIONS'].includes(rq.method) && /^https:\/\/[^/]+\/(rest|storage)\/v1\//.test(rq.url);
         if (!ok) blocked.push(`${rq.method} ${rq.url.replace(/^https:\/\/[^/]+/, '').slice(0, 70)}`);
         if (t0 && rq.method !== 'OPTIONS') reqs.push({ t: Date.now() - t0, m: rq.method, u: rq.url.replace(/^https:\/\/[^/]+/, '').replace(/\?.*/, '') });
         ws.send(JSON.stringify({ id: ++id, method: ok ? 'Fetch.continueRequest' : 'Fetch.failRequest', params: ok ? { requestId: m.params.requestId } : { requestId: m.params.requestId, errorReason: 'BlockedByClient' }, sessionId: m.sessionId }));
     }
 };
+// ★ 守り (Codex 監査 9e7f6a3): ページの通信は CDP の Fetch で止めているが、Service Worker と WebSocket はそこを通らない → どのページでも最初に使えなくする
+const GUARD = `try { delete Navigator.prototype.serviceWorker; } catch (e) {}   // 'serviceWorker' in navigator が false = 非対応の端末と同じ道を通る
+window.WebSocket = function () { throw new Error('WebSocket は調査の道具が止めています'); };
+window.EventSource = function () { throw new Error('EventSource は調査の道具が止めています'); };`;
 const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
 const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
 const S = (method, params) => send(method, params, sid);
 await S('Page.enable'); await S('Runtime.enable'); await S('Performance.enable');
-await S('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }] });
+await S('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }, { urlPattern: '*supabase.in*' }] });
+await S('Page.addScriptToEvaluateOnNewDocument', { source: GUARD });
 await S('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 const ev = async (expr) => { const r = await S('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 await S('Page.navigate', { url: ORIGIN + '/__blank' }); await wait(400);

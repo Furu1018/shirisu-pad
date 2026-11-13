@@ -57,13 +57,18 @@ const STAT = `(() => {
     buttons: btns.length, tinyButtons: tiny, inputs: all.filter(e => /INPUT|SELECT|TEXTAREA/.test(e.tagName)).length,
     fontSizes: fs.size, fontTop: top(fs, 12), small, textEls, colors: col.size, btnHeights: top(bh, 10), btnRadius: top(rad, 8) };
 })()`;
+// ★ 守り (Codex 監査 9e7f6a3): ページの通信は CDP の Fetch で止めているが、Service Worker と WebSocket はそこを通らない → どのページでも最初に使えなくする
+const GUARD = `try { delete Navigator.prototype.serviceWorker; } catch (e) {}   // 'serviceWorker' in navigator が false = 非対応の端末と同じ道を通る
+window.WebSocket = function () { throw new Error('WebSocket は調査の道具が止めています'); };
+window.EventSource = function () { throw new Error('EventSource は調査の道具が止めています'); };`;
 const report = [];
 for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['ops-day', 390, 844], ['member', 1366, 800], ['ops-day', 1366, 800]]) {
     const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
     const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
     const S = (method, params) => send(method, params, sid);
     await S('Page.enable'); await S('Runtime.enable');
-    await S('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }] });
+    await S('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }, { urlPattern: '*supabase.in*' }] });
+    await S('Page.addScriptToEvaluateOnNewDocument', { source: GUARD });
     await S('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 700 });
     const ev = async (expr) => { const r = await S('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
     await S('Page.navigate', { url: `${ORIGIN}/index.html?practice=${scenario}` }); await wait(6000);
