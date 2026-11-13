@@ -87,7 +87,36 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- フォントは @import (発見が遅い) をやめて link で先行取得 -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap">
+    <!-- ★ Roboto はどこでも使っていなかったので指定から外した (2026-11-14・読み込まれてもいなかった = 見た目は変わらない) -->
+    <link id="padFontCss" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap">
+    <!-- 🔤 文字の試し (2026-11-14 全体の見直し・段階 1)。起動の重さのいちばんの原因は日本語の Web フォントだった:
+         Noto Sans JP は 70 個ほどの小さなファイルに分かれて届き、届くたびに画面の文字を組み直す
+         (CPU を 4 倍遅くした計測で、いつも使っている人の起動でもレイアウト 1.1 秒 → 英数字だけ残すと 0.36 秒・初回は 3.9〜5.3 秒 → 2.3 秒)。
+         ただし日本語の字の形が端末のフォント (iPhone = ヒラギノ) に変わるので、全員に入れる前に**試した端末だけ**切り替える:
+         ?font=device で試す / ?font=web で戻す (設定 › 見た目 にも 👑 マスターだけの切り替え)。既定 (何も無い端末) は今までどおり。
+         ★ ここは上の link の**あと**に置く (前に置いても、静的な link の読み込みは止められない)。日本語のファイルが取りに行かれるのは文字を組むとき
+           = この時点ではまだなので、指定を差し替えれば 1 個も読まれない -->
+    <script>
+        (function () {
+            var KEY = 'shirisuko_font_trial_v1';
+            window.PAD_FONT_KEY = KEY;
+            window.PAD_FONT_DEVICE_CSS = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap';
+            window.padFontPref = function () {
+                try { return localStorage.getItem(KEY) === 'device' ? 'device' : 'web'; }
+                catch (_) { return 'web'; }
+            };
+            try {
+                var q = /[?&]font=(device|web)(?:&|$)/.exec(location.search || '');
+                if (q && q[1] === 'device') localStorage.setItem(KEY, 'device');
+                else if (q) localStorage.removeItem(KEY);
+            } catch (_) { /* 保存できない端末は今までどおり */ }
+            if (window.padFontPref() === 'device') {
+                var l = document.getElementById('padFontCss');
+                if (l) l.setAttribute('href', window.PAD_FONT_DEVICE_CSS);
+                document.documentElement.setAttribute('data-font', 'device');
+            }
+        })();
+    </script>
     <!-- Chart.js は描画関数内でのみ使用 → defer で初期パースをブロックしない -->
 
     <!-- ★ 版を固定する (2026-11-13 安定化)。版なしだと配布元が大きく更新した日に、分析のグラフが何も直していないのに壊れ得る。上げるときはここを書き換えて分析タブを確かめる -->
@@ -2132,6 +2161,12 @@
             display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap;
             transition:background .15s ease, color .15s ease}
         .th-b[aria-pressed="true"] { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px var(--hair)}
+        /* 🔤 文字の試し (👑 マスターだけ・決まったら外す) */
+        .th-trial { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
+        .th-trial-t { font-size:12px; font-weight:800; color:var(--t-ink); }
+        .th-trial-n { font-size:11px; font-weight:700; color:var(--t-muted); margin-left:4px; }
+        .th-trial-d { font-size:11px; color:var(--t-muted); margin-top:3px; line-height:1.6; }
+        .th-trial .th-seg { margin-top:9px; }
 
         /* ========== Notification ========== */
         .notification {
@@ -6425,6 +6460,15 @@
                     <button type="button" class="th-b" data-theme-pick="auto"  onclick="handleThemePick('auto')"><span data-sp-icon="refresh" data-sp-size="13"></span> 端末に合わせる</button>
                     <button type="button" class="th-b" data-theme-pick="light" onclick="handleThemePick('light')"><span data-sp-icon="sun" data-sp-size="13"></span> ライト</button>
                     <button type="button" class="th-b" data-theme-pick="dark"  onclick="handleThemePick('dark')"><span data-sp-icon="moon" data-sp-size="13"></span> ダーク</button>
+                </div>
+                <!-- 🔤 文字の試し (2026-11-14)。全員に入れるか決めるまで 👑 マスターだけ。決まったらこの区画ごと外す -->
+                <div data-master-only class="th-trial">
+                    <div class="th-trial-t">🔤 試し: 日本語の文字 <span class="th-trial-n">👑 マスターだけに見えます</span></div>
+                    <div class="th-trial-d">日本語の Web フォントを読むのをやめると起動が軽くなります。字の形はその端末のフォント (iPhone はヒラギノ) になります。数字と英字は今のまま。この端末だけの切り替えで、押すと読み込み直します。</div>
+                    <div id="settingsFontSeg" class="th-seg" role="group" aria-label="日本語の文字">
+                        <button type="button" class="th-b" data-font-pick="web"    onclick="handleFontPick('web')">今のまま</button>
+                        <button type="button" class="th-b" data-font-pick="device" onclick="handleFontPick('device')">端末のフォント (軽い)</button>
+                    </div>
                 </div>
             </div>
 
@@ -32398,6 +32442,26 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             });
         }
         window.addEventListener('DOMContentLoaded', () => { syncThemeSeg(); window.padSyncThemeColor(); });
+        // ===== 🔤 文字の試し (2026-11-14) =====
+        // ★ 実際の切り替えは <head> (フォントの指定を差し替える) が持つ。ここは「押されたら端末に覚えて読み込み直す」だけ —
+        //   読み込んだあとから指定を外しても、もう届いた日本語のファイルは捨てられず、軽さを確かめられない。
+        function handleFontPick(pref) {
+            if (pref !== 'web' && pref !== 'device') return;
+            if (window.padFontPref() === pref) { syncFontSeg(); return; }   // 同じものを押しても読み込み直さない
+            try {
+                if (pref === 'device') localStorage.setItem(window.PAD_FONT_KEY, 'device');
+                else localStorage.removeItem(window.PAD_FONT_KEY);
+            } catch (_) { showNotification('⚠ この端末では切り替えを覚えられません'); return; }
+            if (window.padFontPref() !== pref) { showNotification('⚠ この端末では切り替えを覚えられません'); return; }   // 書けたように見えて残らない端末 (読み込み直しても変わらないので、直さない)
+            _reloadFresh();
+        }
+        function syncFontSeg() {
+            const cur = window.padFontPref();
+            document.querySelectorAll('[data-font-pick]').forEach((b) => {
+                b.setAttribute('aria-pressed', b.dataset.fontPick === cur ? 'true' : 'false');
+            });
+        }
+        window.addEventListener('DOMContentLoaded', syncFontSeg);
 
         // ===== タップ地点の波紋 (リップル) =====
         // どこをタップしても指の位置から波紋。要素に紐づかないオーバーレイ方式なので
