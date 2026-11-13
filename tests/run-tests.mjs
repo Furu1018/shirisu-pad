@@ -2271,6 +2271,16 @@ await testAsync('★ ensure: 同時に呼ばれても読み込みは 1 本を分
     seasonStore.invalidate();
     const fr = await Promise.all([seasonStore.ensure(), seasonStore.ensure()]);
     assert.equal(fails, 1); assert.equal(fr[0].season, null); assert.equal(fr[0], fr[1]);
+    // ローダを差し替えたら、前のローダで読み込み中だった結果を使わない (Codex 監査 c103408)
+    let oldDone;
+    seasonStore.configure({ load: () => new Promise(r => { oldDone = () => r({ season: { id: 'old' }, bosses: [] }); }) });
+    seasonStore.invalidate();
+    const po = seasonStore.ensure();
+    await new Promise(r => setTimeout(r, 0));
+    seasonStore.configure({ load: async () => ({ season: { id: 'new' }, bosses: [] }) });
+    oldDone();
+    assert.equal((await po).season.id, 'new', '差し替える前のローダの結果を返した');
+    assert.equal(seasonStore.get().season.id, 'new');
 });
 const _perfHtml = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 test('★ グラフの部品 (Chart.js) は版を固定して読む (2026-11-13 安定化)', () => {

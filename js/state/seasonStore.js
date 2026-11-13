@@ -98,7 +98,8 @@
         },
 
         /** テスト用: ローダ差し替え (null で既定に戻す)。本番コードから呼ばないこと */
-        configure({ load } = {}) { loadFn = load || null; },
+        //   ★ 世代も進める: 差し替える前のローダで読み込み中だった結果を、差し替えたあとの data に入れない (Codex 監査 c103408)
+        configure({ load } = {}) { loadFn = load || null; generation++; },
     };
 
     root.seasonStore = seasonStore;
