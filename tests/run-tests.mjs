@@ -2313,24 +2313,41 @@ test('★ 実行: 🔤 文字の試し — 既定は今までどおり・?font=d
     assert.ok(!/Roboto/.test(link[1]), '使っていない Roboto を読む指定が残っている');
     assert.equal((html.match(/fonts\.googleapis\.com\/css2/g) || []).length, 2, 'フォントの指定は 既定 と 試し の 2 つだけ');
     const at = html.indexOf(link[0]);
-    const src = html.slice(html.indexOf('<script>', at) + 8, html.indexOf('</script>', at));
-    assert.match(src, /var KEY = 'shirisuko_font_trial_v1';/, '試しの起動スクリプトが link の直後に無い');
-    const run = ({ stored = null, search = '', throws = false } = {}) => {
+    const keyAt = html.indexOf("var KEY = 'shirisuko_font_trial_v1';");
+    assert.ok(keyAt > 0 && keyAt < at, '試しの起動スクリプトが link の前に無い');
+    // ★ link のあと・最初の defer のスクリプトまでに、インラインのスクリプトを置かない (置くと、何も無い端末でも Google Fonts の応答までページの解析が止まる: Codex 監査 4b3dd5a)
+    const after = html.slice(at, html.indexOf('<script defer src="https://cdn.jsdelivr.net', at));
+    assert.ok(after.length > 0 && !/<script>/.test(after), 'フォントの link の直後にインラインのスクリプトがある');
+    const src = html.slice(html.lastIndexOf('<script>', keyAt) + 8, html.indexOf('</script>', keyAt));
+    // mo = MutationObserver が使えるか / late = link が見張りより後に置かれる (本番の並び) か、はじめから在るか
+    const run = ({ stored = null, search = '', throws = false, mo = true, late = true } = {}) => {
         const store = new Map(); if (stored) store.set('shirisuko_font_trial_v1', stored);
-        const attrs = {}; const el = { href: link[1], setAttribute(k, v) { if (k === 'href') this.href = v; } };
+        const attrs = {}; const el = { href: link[1], getAttribute(k) { return k === 'href' ? this.href : null; }, setAttribute(k, v) { if (k === 'href') { this.href = v; sets.n++; } } };
+        const sets = { n: 0 }; let present = !late; const seen = { cbs: [], dcl: [], disconnected: 0, observed: 0 };
         const window = {};
         const localStorage = { getItem: (k) => { if (throws) throw new Error('x'); return store.has(k) ? store.get(k) : null; }, setItem: (k, v) => { if (throws) throw new Error('x'); store.set(k, String(v)); }, removeItem: (k) => { if (throws) throw new Error('x'); store.delete(k); } };
-        const document = { getElementById: (id) => (id === 'padFontCss' ? el : null), documentElement: { setAttribute: (k, v) => { attrs[k] = v; } } };
-        new Function('window', 'localStorage', 'document', 'location', src)(window, localStorage, document, { search });
-        return { href: el.href, attrs, store, pref: window.padFontPref(), window };
+        const document = { getElementById: (id) => (id === 'padFontCss' && present ? el : null), documentElement: { setAttribute: (k, v) => { attrs[k] = v; } }, addEventListener: (t, f) => { if (t === 'DOMContentLoaded') seen.dcl.push(f); } };
+        const MutationObserver = mo ? class { constructor(cb) { seen.cbs.push(cb); } observe() { seen.observed++; } disconnect() { seen.disconnected++; } } : undefined;
+        new Function('window', 'localStorage', 'document', 'location', 'MutationObserver', src)(window, localStorage, document, { search }, MutationObserver);
+        seen.cbs.forEach(cb => cb());           // link より前の部品が置かれた (まだ link は無い)
+        const beforeLink = el.href; present = true;
+        seen.cbs.forEach(cb => cb());           // link が置かれた
+        const atInsert = el.href;
+        seen.dcl.forEach(f => f());             // 読み込みの終わり (保険)
+        return { href: el.href, beforeLink, atInsert, attrs, store, pref: window.padFontPref(), window, seen, sets: sets.n };
     };
     const base = run();
     assert.equal(base.href, link[1], '何も無い端末で指定を変えた'); assert.equal(base.pref, 'web'); assert.deepEqual(base.attrs, {});
+    assert.equal(base.seen.observed + base.seen.dcl.length, 0, '何も無い端末で見張り・受け口を足している (今までどおりでない)');
     const dev = run({ stored: 'device' });
     assert.equal(dev.pref, 'device'); assert.equal(dev.attrs['data-font'], 'device');
     assert.ok(!/Noto/.test(dev.href), '試しでも日本語の Web フォントを読んでいる');
     assert.match(dev.href, /family=Inter[^"]*family=Manrope/, '試しで数字・英字のフォントまで外した');
     assert.equal(dev.href, dev.window.PAD_FONT_DEVICE_CSS);
+    assert.equal(dev.atInsert, dev.window.PAD_FONT_DEVICE_CSS, 'link が置かれた瞬間に差し替えていない (読み込みの終わりまで待つと日本語のファイルが届く)');
+    assert.equal(dev.seen.disconnected, 1, '差し替えたあとも見張り続けている'); assert.equal(dev.sets, 1, '同じ指定を何度も入れ直している (入れ直すたびに CSS を取りに行く)');
+    const noMo = run({ stored: 'device', mo: false });
+    assert.equal(noMo.href, noMo.window.PAD_FONT_DEVICE_CSS, '見張れない環境で差し替わらない (保険が無い)'); assert.equal(noMo.attrs['data-font'], 'device');
     const viaUrl = run({ search: '?tab=raid&font=device' });
     assert.equal(viaUrl.pref, 'device'); assert.equal(viaUrl.store.get('shirisuko_font_trial_v1'), 'device', 'URL で試したことを覚えていない (PWA を開き直すと戻る)');
     const back = run({ stored: 'device', search: '?font=web' });
@@ -2357,6 +2374,16 @@ test('★ 実行: 🔤 文字の試し — 既定は今までどおり・?font=d
     const same = pick('device', 'device'); assert.deepEqual(same.log, [], '同じものを押して読み込み直した'); assert.deepEqual(same.pressed, { web: 'false', device: 'true' });
     assert.deepEqual(pick('web', 'device', { stick: false }).log, ['note'], '覚えられない端末で読み込み直しを繰り返す');
     assert.deepEqual(pick('web', 'bogus').log, []);
+    // 読み込み直しが始まったあとに逆を押しても、覚えた値を上書きしない・読み込み直しを重ねない
+    {
+        const store = new Map(); const log = [];
+        const window = { PAD_FONT_KEY: 'k', padFontPref: () => (store.get('k') === 'device' ? 'device' : 'web') };
+        const localStorage = { setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
+        const document = { querySelectorAll: () => [] };
+        const fn = new Function('window', 'localStorage', 'document', 'showNotification', '_reloadFresh', pickSrc + '\nreturn handleFontPick;')(window, localStorage, document, () => log.push('note'), () => log.push('reload'));
+        fn('device'); fn('web'); fn('device');
+        assert.deepEqual(log, ['reload'], '読み込み直しを重ねた'); assert.equal(window.padFontPref(), 'device', '読み込み直しの間に覚えた値を上書きした');
+    }
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
