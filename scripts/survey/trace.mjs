@@ -80,7 +80,8 @@ try { Navigator.prototype.sendBeacon = function () { return false; }; } catch (e
 // 新しいタブ・ウィンドウは見張れない (この道具が付いているのは 1 つのタブだけ) → 開かせない (Codex 監査 156bcd0)。道具はリンクを押さず switchTab を呼ぶだけ
 window.open = function () { return null; };
 document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[target]'); if (a && a.target !== '_self') e.preventDefault(); }, true);`;
-creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' }); own.add(targetId);
+creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+if (!own.has(targetId)) { own.add(targetId); creating--; }   // 応答が通知より先に来たときは、ここで数を戻す (通知が先なら上の受け口が戻している)。数が残ると、次にできた別のタブを道具のものと取り違える (Codex 監査 8dee538)
 const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
 const S = (method, params) => send(method, params, sid);
 await S('Page.enable'); await S('Runtime.enable'); await S('Performance.enable');

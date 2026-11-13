@@ -95,7 +95,8 @@ window.open = function () { return null; };
 document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[target]'); if (a && a.target !== '_self') e.preventDefault(); }, true);`;
 const report = [];
 for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['ops-day', 390, 844], ['member', 1366, 800], ['ops-day', 1366, 800]]) {
-    creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' }); own.add(targetId);
+    creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+    if (!own.has(targetId)) { own.add(targetId); creating--; }   // 応答が通知より先に来たときは、ここで数を戻す (通知が先なら上の受け口が戻している)。数が残ると、次にできた別のタブを道具のものと取り違える (Codex 監査 8dee538)
     const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
     const S = (method, params) => send(method, params, sid);
     await S('Page.enable'); await S('Runtime.enable');
