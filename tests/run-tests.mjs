@@ -2243,6 +2243,48 @@ await testAsync('レース: invalidate 中の ensure は古い結果を返さず
     assert.equal(seasonStore.get().season.id, 2, 'ストアも最新世代');
 });
 
+await testAsync('★ ensure: 同時に呼ばれても読み込みは 1 本を分け合う (2026-11-13 軽量化: 起動時に同じシーズンを 10 回以上読んでいた)', async () => {
+    let calls = 0; const releases = [];
+    seasonStore.configure({ load: () => new Promise(r => { const id = ++calls; releases.push(() => r({ season: { id }, bosses: [] })); }) });
+    seasonStore.invalidate();
+    const ps = [seasonStore.ensure(), seasonStore.ensure(), seasonStore.ensure()];
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(calls, 1, '同じ世代の読み込みが複数走った');
+    releases[0]();
+    const rs = await Promise.all(ps);
+    assert.ok(rs.every(r => r === rs[0] && r.season.id === 1), '全員が同じ結果を受け取る');
+    // 世代が進んだら、古い 1 本を分け合わない (無効化前のシーズンを返さない)
+    seasonStore.invalidate();
+    const p1 = seasonStore.ensure();
+    await new Promise(r => setTimeout(r, 0));
+    seasonStore.invalidate();
+    const p2 = seasonStore.ensure();
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(calls, 3, '無効化のあとの ensure が、無効化前の読み込みを分け合った');
+    releases[1](); releases[2]();
+    const [a, b] = await Promise.all([p1, p2]);
+    assert.equal(a.season.id, 3); assert.equal(b.season.id, 3);
+    assert.equal(calls, 3, '余計に読み直した');
+    // 失敗も分け合い、キャッシュする (不変条件 1)
+    let fails = 0;
+    seasonStore.configure({ load: async () => { fails++; throw new Error('network'); } });
+    seasonStore.invalidate();
+    const fr = await Promise.all([seasonStore.ensure(), seasonStore.ensure()]);
+    assert.equal(fails, 1); assert.equal(fr[0].season, null); assert.equal(fr[0], fr[1]);
+});
+const _perfHtml = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+test('★ グラフの部品 (Chart.js) は版を固定して読む (2026-11-13 安定化)', () => {
+    const html = _perfHtml;
+    const tags = html.match(/<script[^>]*cdn\.jsdelivr\.net\/npm\/chart\.js[^>]*>/g) || [];
+    assert.equal(tags.length, 1);
+    assert.match(tags[0], /chart\.js@\d+\.\d+\.\d+"/, '版なしで読んでいる (配布元の更新で突然壊れ得る)');
+});
+test('★ 役割が変わっても、開いていない設定タブは描かない (2026-11-13 軽量化)', () => {
+    const html = _perfHtml;
+    const fn = html.match(/async function _syncOpsRole\(\)[\s\S]*?\n        \}/)?.[0] || '';
+    assert.match(fn, /if \(changed && !document\.getElementById\('tab-settings'\)\?\.classList\.contains\('active'\)\) _invalidateTabRenderCache\('settings'\);\s*\n\s*else if \(changed && typeof renderSettingsTab === 'function'\) renderSettingsTab\(\)/);
+});
+
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
     seasonStore.invalidate();
@@ -5351,6 +5393,8 @@ console.log('\nreservationsDomain (凸の予約):');
                 const _applyOpsModeForIdentity = () => {};
                 const _syncTestViewer = () => {};
                 const renderSettingsTab = async () => {};
+                const _invalidateTabRenderCache = () => {};
+                const document = { getElementById: () => null };
                 Object.defineProperty(globalThis, '_identityGen', { get: () => st.gen, configurable: true });
                 let _opsRole = st.opsRole;
                 ${body}

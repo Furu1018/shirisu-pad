@@ -27,6 +27,7 @@
     let data = null;
     let loadFn = null;        // テスト用差し替え。既定は supabaseLoadActiveSeasonWithBosses (遅延解決)
     let generation = 0;       // 世代番号: invalidate で進む (進行中ロードの結果を破棄)
+    let inflight = null;      // 読み込み中の 1 本 {gen, fn, p}。同じ世代の ensure() はこれを分け合う
     const listeners = [];     // invalidate のたびに呼ぶ (画面側の描画キャッシュ破棄など)
 
     const seasonStore = {
@@ -48,13 +49,22 @@
                 if (data) return data;
                 if (typeof fn !== 'function') return null;
                 const gen = generation;
-                let fresh;
-                try {
-                    fresh = await fn();
-                } catch (e) {
-                    if (typeof console !== 'undefined') console.warn('[seasonStore] アクティブシーズン取得失敗:', e);
-                    fresh = { season: null, bosses: [] };
+                // ★ 同じ世代の読み込みは 1 本を分け合う (2026-11-13 軽量化)。起動時はホームのカード 10 枚前後が
+                //   キャッシュの無いうちに一斉に ensure() を呼び、同じシーズンとボスを 10 回以上読んでいた。
+                //   世代が進んだら (invalidate) 古い 1 本は使わず、新しい世代で読み直す (不変条件 4 はそのまま)
+                if (!inflight || inflight.gen !== gen || inflight.fn !== fn) {
+                    const mine = { gen, fn, p: null };
+                    let started;
+                    try { started = Promise.resolve(fn()); } catch (e) { started = Promise.reject(e); }   // ローダはその場で呼ぶ (従来と同じ順序)
+                    mine.p = started.catch((e) => {
+                        if (typeof console !== 'undefined') console.warn('[seasonStore] アクティブシーズン取得失敗:', e);
+                        return { season: null, bosses: [] };
+                    });
+                    // ★ 済んだあとも片付けない: 同じ世代の遅れて来た ensure() (無効化で回り直した人) が、済んだ 1 本の結果を受け取れる。
+                    //   片付けると、その人が data の入る直前に来たときにもう 1 本読んでいた。世代が進めば使われない
+                    inflight = mine;
                 }
+                const fresh = await inflight.p;
                 if (gen === generation) {
                     if (!data) data = fresh;
                     return data;

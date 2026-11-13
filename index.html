@@ -90,7 +90,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap">
     <!-- Chart.js は描画関数内でのみ使用 → defer で初期パースをブロックしない -->
 
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ★ 版を固定する (2026-11-13 安定化)。版なしだと配布元が大きく更新した日に、分析のグラフが何も直していないのに壊れ得る。上げるときはここを書き換えて分析タブを確かめる -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1"></script>
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
     <script defer src="./js/domain/attributes.js"></script>
@@ -33107,7 +33108,10 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             _opsRole = { playerId: me.id, role };
             _applyOpsModeForIdentity();
             _syncTestViewer(me, role);   // 🧪 テストのシーズンを見せる相手か (待たない)
-            if (changed && typeof renderSettingsTab === 'function') renderSettingsTab().catch(() => { /* 次に開いたとき */ });   // 👑 区画 (互換ゲート・運営担当・メンバー管理) を役割で描き直す
+            // ★ 設定タブを開いていないときは描かない (2026-11-13 軽量化: 起動のたびに、開いてもいない設定タブのために 4 本読んでいた)。
+            //   描いた印を消しておけば、次に開いたときに必ず描き直す
+            if (changed && !document.getElementById('tab-settings')?.classList.contains('active')) _invalidateTabRenderCache('settings');
+            else if (changed && typeof renderSettingsTab === 'function') renderSettingsTab().catch(() => { /* 次に開いたとき */ });   // 👑 区画 (互換ゲート・運営担当・メンバー管理) を役割で描き直す
         }
         // 🧪 テストのシーズンを見せる相手か (2026-11-12 ふるり「テストと本番は明確に切り分け」)。判定は testSeasonDomain.canSeeTest が唯一:
         //   運営担当 (master / ops) と「テスト通知も受け取る」を ON にした人だけ。門は js/supabase-client.js の読み込み口 (supabaseSetTestViewer)。
