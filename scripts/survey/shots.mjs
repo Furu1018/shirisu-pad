@@ -35,7 +35,10 @@ ws.onmessage = (ev) => {
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push('console.error: ' + m.params.args.map(a => a.value ?? a.description ?? '').join(' ').slice(0, 300));
     if (m.method === 'Page.javascriptDialogOpening') ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: false }, sessionId: m.sessionId }));
-    if (m.method === 'Fetch.requestPaused') ws.send(JSON.stringify({ id: ++id, method: 'Fetch.failRequest', params: { requestId: m.params.requestId, errorReason: 'BlockedByClient' }, sessionId: m.sessionId }));
+    if (m.method === 'Fetch.requestPaused') {
+        const { ok } = judge(m.params.request);   // Supabase は全部落とす・ほかは GET / HEAD / OPTIONS だけ通す
+        ws.send(JSON.stringify({ id: ++id, method: ok ? 'Fetch.continueRequest' : 'Fetch.failRequest', params: ok ? { requestId: m.params.requestId } : { requestId: m.params.requestId, errorReason: 'BlockedByClient' }, sessionId: m.sessionId }));
+    }
 };
 const STAT = `(() => {
   const root = document.querySelector('.tab-content.active') || document.body;
@@ -57,17 +60,30 @@ const STAT = `(() => {
     buttons: btns.length, tinyButtons: tiny, inputs: all.filter(e => /INPUT|SELECT|TEXTAREA/.test(e.tagName)).length,
     fontSizes: fs.size, fontTop: top(fs, 12), small, textEls, colors: col.size, btnHeights: top(bh, 10), btnRadius: top(rad, 8) };
 })()`;
+const READ_PROD = false;   // 練習モードの写真は本番を 1 本も読まない
+// ★ 全部の通信を見張る (Codex 再監査 027423a)。通すのは GET / HEAD / OPTIONS だけ。Supabase は**このアプリのプロジェクトのホスト**の 表 (/rest/v1/) と 保存領域 (/storage/v1/) だけ
+const SB_ORIGIN = (fs.readFileSync(path.join(ROOT, 'js/supabase-client.js'), 'utf8').match(/const SUPABASE_URL = '(https:\/\/[a-z0-9]+\.supabase\.co)'/) || [])[1];
+if (!SB_ORIGIN) { console.error('js/supabase-client.js から Supabase のホストを読めません'); process.exit(1); }
+const judge = (rq) => {
+    let u; try { u = new URL(rq.url); } catch (e) { return { ok: false, sb: false }; }
+    const sb = /(^|\.)supabase\.(co|in|com|net)$/.test(u.hostname);
+    const safe = ['GET', 'HEAD', 'OPTIONS'].includes(rq.method);
+    return { sb, ok: safe && (!sb || (READ_PROD && u.origin === SB_ORIGIN && /^\/(rest|storage)\/v1\//.test(u.pathname))) };
+};
 // ★ 守り (Codex 監査 9e7f6a3): ページの通信は CDP の Fetch で止めているが、Service Worker と WebSocket はそこを通らない → どのページでも最初に使えなくする
 const GUARD = `try { delete Navigator.prototype.serviceWorker; } catch (e) {}   // 'serviceWorker' in navigator が false = 非対応の端末と同じ道を通る
 window.WebSocket = function () { throw new Error('WebSocket は調査の道具が止めています'); };
-window.EventSource = function () { throw new Error('EventSource は調査の道具が止めています'); };`;
+window.EventSource = function () { throw new Error('EventSource は調査の道具が止めています'); };
+window.Worker = function () { throw new Error('Worker は調査の道具が止めています'); };
+window.SharedWorker = function () { throw new Error('SharedWorker は調査の道具が止めています'); };
+try { Navigator.prototype.sendBeacon = function () { return false; }; } catch (e) {}`;
 const report = [];
 for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['ops-day', 390, 844], ['member', 1366, 800], ['ops-day', 1366, 800]]) {
     const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
     const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
     const S = (method, params) => send(method, params, sid);
     await S('Page.enable'); await S('Runtime.enable');
-    await S('Fetch.enable', { patterns: [{ urlPattern: '*supabase.co*' }, { urlPattern: '*supabase.in*' }] });
+    await S('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
     await S('Page.addScriptToEvaluateOnNewDocument', { source: GUARD });
     await S('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 700 });
     const ev = async (expr) => { const r = await S('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
