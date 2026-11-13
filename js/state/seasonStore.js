@@ -42,11 +42,11 @@
          *  無効化前のシーズンを返すと古いシーズンへの書き込みになり得る)。
          */
         async ensure() {
-            const fn = loadFn || root.supabaseLoadActiveSeasonWithBosses;
             // 取り直しは実用上1〜2回で収束する (invalidate はユーザー操作起点)。
             // 上限は無限ループ保険で、超えたら「取得不能」として null (呼び出し側は ?.season ガード済み)
             for (let attempt = 0; attempt < 5; attempt++) {
                 if (data) return data;
+                const fn = loadFn || root.supabaseLoadActiveSeasonWithBosses;   // 回り直すたびに解決する (差し替え前のローダで読み直さない: Codex 再監査 701b640)
                 if (typeof fn !== 'function') return null;
                 const gen = generation;
                 // ★ 同じ世代の読み込みは 1 本を分け合う (2026-11-13 軽量化)。起動時はホームのカード 10 枚前後が
