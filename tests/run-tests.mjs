@@ -2294,6 +2294,17 @@ test('★ 役割が変わっても、開いていない設定タブは描かな�
     const fn = html.match(/async function _syncOpsRole\(\)[\s\S]*?\n        \}/)?.[0] || '';
     assert.match(fn, /if \(changed && !document\.getElementById\('tab-settings'\)\?\.classList\.contains\('active'\)\) _invalidateTabRenderCache\('settings'\);\s*\n\s*else if \(changed && typeof renderSettingsTab === 'function'\) renderSettingsTab\(\)/);
 });
+test('★ ホームの配信カードの取り直しは 30 秒ごと (2026-11-13 ふるりの決定)', () => {
+    const html = _perfHtml;
+    const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n        function _stopCoordPolling/)?.[0] || '';
+    assert.ok(poll, '見回りが見つからない');
+    const calls = poll.match(/[^\n]*\n[^\n]*renderMyPublishedPlan\(id\)/g) || [];
+    assert.equal(calls.length, 1, '見回りの中で配信カードを読む所が 1 つでない');
+    assert.match(calls[0], /if \(_coordPollTick === 1 && document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\)\s*\n\s*&& typeof renderMyPublishedPlan === 'function'\) renderMyPublishedPlan\(id\)/, '10 秒ごとに読んでいる (配信・模擬・凸 を 1 分に 24 本)');
+    // 裏から戻ったときはすぐ読む (30 秒待たせない)
+    const vis = html.match(/document\.addEventListener\('visibilitychange', \(\) => \{\s*\n\s*if \(document\.hidden\) _stopCoordPolling\(\);[\s\S]*?\n        \}\);/)?.[0] || '';
+    assert.match(vis, /_refreshCoordOnce\(id\); _startCoordPolling\(\);[\s\S]*?if \(document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\) && typeof renderMyPublishedPlan === 'function'\) renderMyPublishedPlan\(id\);/, '前面に戻ったときに配信カードを読まない (最大 30 秒古い)');
+});
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
