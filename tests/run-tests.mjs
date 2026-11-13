@@ -2327,7 +2327,8 @@ test('★ 実行: 🔤 文字の試し — 既定は今までどおり・?font=d
         const window = {};
         const localStorage = { getItem: (k) => { if (throws) throw new Error('x'); return store.has(k) ? store.get(k) : null; }, setItem: (k, v) => { if (throws) throw new Error('x'); store.set(k, String(v)); }, removeItem: (k) => { if (throws) throw new Error('x'); store.delete(k); } };
         const document = { getElementById: (id) => (id === 'padFontCss' && present ? el : null), documentElement: { setAttribute: (k, v) => { attrs[k] = v; } }, addEventListener: (t, f) => { if (t === 'DOMContentLoaded') seen.dcl.push(f); } };
-        const MutationObserver = mo ? class { constructor(cb) { seen.cbs.push(cb); } observe() { seen.observed++; } disconnect() { seen.disconnected++; } } : undefined;
+        // ★ 見張りを始めて (子孫の出入りを見る指定で)・やめていない間だけ呼ぶ (始めていない見張りを呼ぶと、observe を外す変異がすり抜けた)
+        const MutationObserver = mo ? class { constructor(cb) { const self = this; self.on = false; seen.cbs.push(() => { if (self.on) cb(); }); } observe(t, o) { seen.observed++; this.on = !!(t === document.documentElement && o && o.childList && o.subtree); } disconnect() { seen.disconnected++; this.on = false; } } : undefined;
         new Function('window', 'localStorage', 'document', 'location', 'MutationObserver', src)(window, localStorage, document, { search }, MutationObserver);
         seen.cbs.forEach(cb => cb());           // link より前の部品が置かれた (まだ link は無い)
         const beforeLink = el.href; present = true;
