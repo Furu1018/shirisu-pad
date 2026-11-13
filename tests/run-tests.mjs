@@ -2298,12 +2298,12 @@ test('★ ホームの配信カードの取り直しは 30 秒ごと (2026-11-13
     const html = _perfHtml;
     const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n        function _stopCoordPolling/)?.[0] || '';
     assert.ok(poll, '見回りが見つからない');
-    const calls = poll.match(/[^\n]*\n[^\n]*renderMyPublishedPlan\(id\)/g) || [];
+    const calls = poll.match(/[^\n]*\n[^\n]*renderMyPublishedPlan\(id\)[^\n]*/g) || [];
     assert.equal(calls.length, 1, '見回りの中で配信カードを読む所が 1 つでない');
-    assert.match(calls[0], /if \(_coordPollTick === 1 && document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\)\s*\n\s*&& typeof renderMyPublishedPlan === 'function'\) renderMyPublishedPlan\(id\)/, '10 秒ごとに読んでいる (配信・模擬・凸 を 1 分に 24 本)');
+    assert.match(calls[0], /if \(_coordPollTick === 1 && document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\)\s*\n\s*&& typeof renderMyPublishedPlan === 'function'\) Promise\.resolve\(renderMyPublishedPlan\(id\)\)\.catch\(/, '10 秒ごとに読んでいる (配信・模擬・凸 を 1 分に 24 本) / 失敗を受けていない');
     // 裏から戻ったときはすぐ読む (30 秒待たせない)
     const vis = html.match(/document\.addEventListener\('visibilitychange', \(\) => \{\s*\n\s*if \(document\.hidden\) _stopCoordPolling\(\);[\s\S]*?\n        \}\);/)?.[0] || '';
-    assert.match(vis, /_refreshCoordOnce\(id\); _startCoordPolling\(\);[\s\S]*?if \(document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\) && typeof renderMyPublishedPlan === 'function'\) renderMyPublishedPlan\(id\);/, '前面に戻ったときに配信カードを読まない (最大 30 秒古い)');
+    assert.match(vis, /_refreshCoordOnce\(id\); _startCoordPolling\(\);[\s\S]*?if \(document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\) && typeof renderMyPublishedPlan === 'function'\) Promise\.resolve\(renderMyPublishedPlan\(id\)\)\.catch\(/, '前面に戻ったときに配信カードを読まない (最大 30 秒古い) / 失敗を受けていない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {

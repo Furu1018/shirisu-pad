@@ -15741,7 +15741,7 @@
                 //   ★ 30 秒ごと (3 回に 1 回・2026-11-13 ふるりの決定)。以前は 10 秒ごとで、ホームを開いているだけで 配信・模擬・凸 を 1 分に 24 本読んでいた。
                 //     運営の決定がホームに出るまで最大 30 秒 (決定の通知から開いたとき・裏から戻ったとき・タブに入ったときはすぐ読む)
                 if (_coordPollTick === 1 && document.getElementById('tab-mypage')?.classList.contains('active')
-                    && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
+                    && typeof renderMyPublishedPlan === 'function') Promise.resolve(renderMyPublishedPlan(id)).catch(() => { /* 次の周期で */ });
                 // 🔒 承認・却下・📣 の返事はホームを開きっぱなしでも追従させる (監査 A3・2026-09-12)。
                 //   ★ このティックは 10 秒。3 回に 1 回 (30 秒) だけ取り直す (Codex指摘: 毎回だと 10 秒ごとになる)
                 if (_coordPollTick === 1 && document.getElementById('tab-mypage')?.classList.contains('active')
@@ -15842,7 +15842,7 @@
                 if (id?.id) {
                     _refreshCoordOnce(id); _startCoordPolling();
                     // ★ 前面に戻ったら配信カードをすぐ読む (見回りは 30 秒ごとになったので、通知を見て戻った人を最大 30 秒待たせない: 2026-11-13)
-                    if (document.getElementById('tab-mypage')?.classList.contains('active') && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
+                    if (document.getElementById('tab-mypage')?.classList.contains('active') && typeof renderMyPublishedPlan === 'function') Promise.resolve(renderMyPublishedPlan(id)).catch(() => { /* 次の見回りで (Codex 監査 761e13c) */ });
                 }
             }
             // ⏱ シンプルなメンバーのホームは見回りでシーズンを取り直さない → 前面に戻ったとき 1 回だけ見る (通知を開いたとき古い再編成時間で出さない: ⑥ レビュー data-1)
