@@ -35,6 +35,16 @@ ws.onmessage = (ev) => {
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
     if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') errors.push('console.error: ' + m.params.args.map(a => a.value ?? a.description ?? '').join(' ').slice(0, 300));
     if (m.method === 'Page.javascriptDialogOpening') ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: false }, sessionId: m.sessionId }));
+    // ★ 道具が作ったタブ以外は見張れない → できた瞬間に閉じる (Codex 監査 533b2f7)。ページが開いた子 (ポップアップなど) は、動き出す前に止めた状態で付くので、再開せずに閉じる
+    if (m.method === 'Target.targetCreated' && !own.has(m.params.targetInfo.targetId)) {
+        const ti = m.params.targetInfo;   // Chrome に組み込みの拡張のワーカー (chrome-extension:) は触らない — 閉じても立ち上がり直すだけで、アプリの通信はしない
+        if (creating > 0 && ti.type === 'page') { creating--; own.add(ti.targetId); }
+        else if (['page', 'iframe', 'worker', 'shared_worker', 'service_worker'].includes(ti.type) && !/^(chrome-extension|chrome|devtools):/.test(String(ti.url))) { strays.push(`${ti.type} ${String(ti.url).slice(0, 80)}`); ws.send(JSON.stringify({ id: ++id, method: 'Target.closeTarget', params: { targetId: ti.targetId } })); }
+    }
+    if (m.method === 'Target.attachedToTarget' && !own.has(m.params.targetInfo.targetId)) {
+        strays.push(`子 ${m.params.targetInfo.type} ${String(m.params.targetInfo.url).slice(0, 80)}`);
+        ws.send(JSON.stringify({ id: ++id, method: 'Target.closeTarget', params: { targetId: m.params.targetInfo.targetId } }));   // 再開 (runIfWaitingForDebugger) はしない
+    }
     if (m.method === 'Fetch.requestPaused') {
         const { ok } = judge(m.params.request);   // Supabase は全部落とす・ほかは GET / HEAD / OPTIONS だけ通す
         ws.send(JSON.stringify({ id: ++id, method: ok ? 'Fetch.continueRequest' : 'Fetch.failRequest', params: ok ? { requestId: m.params.requestId } : { requestId: m.params.requestId, errorReason: 'BlockedByClient' }, sessionId: m.sessionId }));
@@ -60,6 +70,9 @@ const STAT = `(() => {
     buttons: btns.length, tinyButtons: tiny, inputs: all.filter(e => /INPUT|SELECT|TEXTAREA/.test(e.tagName)).length,
     fontSizes: fs.size, fontTop: top(fs, 12), small, textEls, colors: col.size, btnHeights: top(bh, 10), btnRadius: top(rad, 8) };
 })()`;
+// ★ 道具が作ったタブの一覧。これ以外のタブ・ワーカーは、できた瞬間に閉じる (上の Target.targetCreated)
+const own = new Set((await send('Target.getTargets')).targetInfos.map(t => t.targetId)); let creating = 0; const strays = [];
+await send('Target.setDiscoverTargets', { discover: true });
 const READ_PROD = false;   // 練習モードの写真は本番を 1 本も読まない
 // ★ 全部の通信を見張る (Codex 再監査 027423a)。通すのは GET / HEAD / OPTIONS だけ。Supabase は**このアプリのプロジェクトのホスト**の 表 (/rest/v1/) と 保存領域 (/storage/v1/) だけ
 const SB_ORIGIN = (fs.readFileSync(path.join(ROOT, 'js/supabase-client.js'), 'utf8').match(/const SUPABASE_URL = '(https:\/\/[a-z0-9]+\.supabase\.co)'/) || [])[1];
@@ -82,11 +95,12 @@ window.open = function () { return null; };
 document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[target]'); if (a && a.target !== '_self') e.preventDefault(); }, true);`;
 const report = [];
 for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['ops-day', 390, 844], ['member', 1366, 800], ['ops-day', 1366, 800]]) {
-    const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+    creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' }); own.add(targetId);
     const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
     const S = (method, params) => send(method, params, sid);
     await S('Page.enable'); await S('Runtime.enable');
     await S('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
+    await S('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });   // このタブが開く子は、動き出す前に止める
     await S('Page.addScriptToEvaluateOnNewDocument', { source: GUARD });
     await S('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 700 });
     const ev = async (expr) => { const r = await S('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
@@ -120,4 +134,5 @@ for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['o
 }
 fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 1));
 console.log('--- エラー', errors.length); for (const e of [...new Set(errors)].slice(0, 15)) console.log('  ' + String(e).slice(0, 300));
+console.log('--- 閉じたタブ・ワーカー (道具が作っていないもの)', strays.length, strays.slice(0, 8));
 ws.close(); done(); process.exit(0);

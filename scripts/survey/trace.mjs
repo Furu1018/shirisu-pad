@@ -40,6 +40,16 @@ ws.onmessage = (ev) => {
     if (m.id && waits.has(m.id)) { const w = waits.get(m.id); waits.delete(m.id); m.error ? w.ng(new Error(m.error.message)) : w.ok(m.result); return; }
     if (m.method === 'Runtime.exceptionThrown') errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
     if (m.method === 'Page.javascriptDialogOpening') ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: false }, sessionId: m.sessionId }));
+    // ★ 道具が作ったタブ以外は見張れない → できた瞬間に閉じる (Codex 監査 533b2f7)。ページが開いた子 (ポップアップなど) は、動き出す前に止めた状態で付くので、再開せずに閉じる
+    if (m.method === 'Target.targetCreated' && !own.has(m.params.targetInfo.targetId)) {
+        const ti = m.params.targetInfo;   // Chrome に組み込みの拡張のワーカー (chrome-extension:) は触らない — 閉じても立ち上がり直すだけで、アプリの通信はしない
+        if (creating > 0 && ti.type === 'page') { creating--; own.add(ti.targetId); }
+        else if (['page', 'iframe', 'worker', 'shared_worker', 'service_worker'].includes(ti.type) && !/^(chrome-extension|chrome|devtools):/.test(String(ti.url))) { strays.push(`${ti.type} ${String(ti.url).slice(0, 80)}`); ws.send(JSON.stringify({ id: ++id, method: 'Target.closeTarget', params: { targetId: ti.targetId } })); }
+    }
+    if (m.method === 'Target.attachedToTarget' && !own.has(m.params.targetInfo.targetId)) {
+        strays.push(`子 ${m.params.targetInfo.type} ${String(m.params.targetInfo.url).slice(0, 80)}`);
+        ws.send(JSON.stringify({ id: ++id, method: 'Target.closeTarget', params: { targetId: m.params.targetInfo.targetId } }));   // 再開 (runIfWaitingForDebugger) はしない
+    }
     if (m.method === 'Fetch.requestPaused') {
         const rq = m.params.request; const { ok, sb } = judge(rq);
         if (!ok) blocked.push(`${rq.method} ${rq.url.replace(/^https:\/\/[^/]+/, '').slice(0, 70)}`);
@@ -47,6 +57,9 @@ ws.onmessage = (ev) => {
         ws.send(JSON.stringify({ id: ++id, method: ok ? 'Fetch.continueRequest' : 'Fetch.failRequest', params: ok ? { requestId: m.params.requestId } : { requestId: m.params.requestId, errorReason: 'BlockedByClient' }, sessionId: m.sessionId }));
     }
 };
+// ★ 道具が作ったタブの一覧。これ以外のタブ・ワーカーは、できた瞬間に閉じる (上の Target.targetCreated)
+const own = new Set((await send('Target.getTargets')).targetInfos.map(t => t.targetId)); let creating = 0; const strays = [];
+await send('Target.setDiscoverTargets', { discover: true });
 const READ_PROD = true;
 // ★ 全部の通信を見張る (Codex 再監査 027423a)。通すのは GET / HEAD / OPTIONS だけ。Supabase は**このアプリのプロジェクトのホスト**の 表 (/rest/v1/) と 保存領域 (/storage/v1/) だけ
 const SB_ORIGIN = (fs.readFileSync(path.join(ROOT, 'js/supabase-client.js'), 'utf8').match(/const SUPABASE_URL = '(https:\/\/[a-z0-9]+\.supabase\.co)'/) || [])[1];
@@ -67,11 +80,12 @@ try { Navigator.prototype.sendBeacon = function () { return false; }; } catch (e
 // 新しいタブ・ウィンドウは見張れない (この道具が付いているのは 1 つのタブだけ) → 開かせない (Codex 監査 156bcd0)。道具はリンクを押さず switchTab を呼ぶだけ
 window.open = function () { return null; };
 document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[target]'); if (a && a.target !== '_self') e.preventDefault(); }, true);`;
-const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
+creating++; const { targetId } = await send('Target.createTarget', { url: 'about:blank' }); own.add(targetId);
 const { sessionId: sid } = await send('Target.attachToTarget', { targetId, flatten: true });
 const S = (method, params) => send(method, params, sid);
 await S('Page.enable'); await S('Runtime.enable'); await S('Performance.enable');
 await S('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
+await S('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });   // このタブが開く子は、動き出す前に止める
 await S('Page.addScriptToEvaluateOnNewDocument', { source: GUARD });
 await S('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 const ev = async (expr) => { const r = await S('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
@@ -110,6 +124,7 @@ for (const t of ['raid', 'ranking', 'settings', 'ops', 'mypage']) {
 }
 console.log('■ 例外', errors.length, [...new Set(errors)].slice(0, 5).map(e => String(e).slice(0, 200)));
 console.log('■ 止めた書き込み', blocked.length, [...new Set(blocked)].slice(0, 8));
+console.log('■ 閉じたタブ・ワーカー (道具が作っていないもの)', strays.length, strays.slice(0, 8));
 const gz = (f) => zlib.gzipSync(fs.readFileSync(path.join(ROOT, f))).length;
 console.log('■ 転送の大きさ (gzip): index.html', (gz('index.html') / 1024).toFixed(0) + 'KB', '/ supabase-client.js', (gz('js/supabase-client.js') / 1024).toFixed(0) + 'KB', '/ optimal-plan.js', (gz('js/optimal-plan.js') / 1024).toFixed(0) + 'KB', '/ domain 全部', (fs.readdirSync(path.join(ROOT, 'js/domain')).reduce((a, f) => a + gz('js/domain/' + f), 0) / 1024).toFixed(0) + 'KB');
 ws.close(); done(); process.exit(0);
