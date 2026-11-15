@@ -2305,86 +2305,24 @@ test('★ ホームの配信カードの取り直しは 30 秒ごと (2026-11-13
     const vis = html.match(/document\.addEventListener\('visibilitychange', \(\) => \{\s*\n\s*if \(document\.hidden\) _stopCoordPolling\(\);[\s\S]*?\n        \}\);/)?.[0] || '';
     assert.match(vis, /_refreshCoordOnce\(id\); _startCoordPolling\(\);[\s\S]*?if \(document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\) && typeof renderMyPublishedPlan === 'function'\) Promise\.resolve\(renderMyPublishedPlan\(id\)\)\.catch\(/, '前面に戻ったときに配信カードを読まない (最大 30 秒古い) / 失敗を受けていない');
 });
-test('★ 実行: 🔤 文字の試し — 既定は今までどおり・?font=device / 端末の記憶 でだけ日本語の Web フォントを外す (2026-11-14)', () => {
+test('★ 日本語の Web フォントは読まない (数字と英字の 2 書体だけ)・フォントの link のあとにインラインのスクリプトを置かない (2026-11-14 ふるりの決定・11/16 から全員)', () => {
     const html = _perfHtml;
-    const link = html.match(/<link id="padFontCss" rel="stylesheet" href="([^"]+)">/);
-    assert.ok(link, 'フォントの指定に id が無い (試しが差し替えられない)');
-    assert.match(link[1], /family=Noto\+Sans\+JP/, '既定の指定から日本語のフォントが消えている (全員の見た目が変わる — ふるりの決定を待つ)');
-    assert.ok(!/Roboto/.test(link[1]), '使っていない Roboto を読む指定が残っている');
-    assert.equal((html.match(/fonts\.googleapis\.com\/css2/g) || []).length, 2, 'フォントの指定は 既定 と 試し の 2 つだけ');
-    const at = html.indexOf(link[0]);
-    const keyAt = html.indexOf("var KEY = 'shirisuko_font_trial_v1';");
-    assert.ok(keyAt > 0 && keyAt < at, '試しの起動スクリプトが link の前に無い');
-    // ★ link のあと・最初の defer のスクリプトまでに、インラインのスクリプトを置かない (置くと、何も無い端末でも Google Fonts の応答までページの解析が止まる: Codex 監査 4b3dd5a)
+    const links = [...html.matchAll(/<link[^>]*href="(https:\/\/fonts\.googleapis\.com\/css2[^"]*)"[^>]*>/g)];
+    assert.equal(links.length, 1, 'フォントの指定が 1 つでない');
+    const url = links[0][1];
+    // 起動の重さのいちばんの原因だった (約 70 個のファイル・届くたびに文字を組み直す)。日本語は端末のフォントで出す
+    assert.ok(!/Noto|JP|Gothic|Mincho|Zen|Kosugi|Sawarabi|M\+PLUS|BIZ/i.test(url), '日本語の Web フォントを読んでいる (起動が重くなる — 足し直さない)');
+    assert.equal(url, 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap', '読む書体が 数字と英字の 2 つ (Inter・Manrope) でない');
+    assert.equal((html.match(/fonts\.(googleapis|gstatic)\.com\/(css|s\/)/g) || []).length, 1, 'ほかの所でも Web フォントを読んでいる (スクリプトで足す・直に読む)');
+    assert.ok(!/@font-face/.test(html) && !/@import\s+url\(/.test(html), '自前で書体を読んでいる');
+    // 名前は残す: 端末に Noto Sans JP が入っていればそれを使い (Windows 11)、無ければ system-ui (iPhone = ヒラギノ / Android = 端末の Noto)
+    assert.match(html, /--font-body: 'Inter', 'Noto Sans JP', system-ui, sans-serif;/, '本文の書体の並びが変わった (端末の Noto Sans JP を使わなくなる / system-ui に落ちない)');
+    // ★ link のあと・最初の defer のスクリプトまでに、インラインのスクリプトを置かない (置くと、Google Fonts の応答までページの解析が止まる: Codex 監査 4b3dd5a)
+    const at = html.indexOf(links[0][0]);
     const after = html.slice(at, html.indexOf('<script defer src="https://cdn.jsdelivr.net', at));
     assert.ok(after.length > 0 && !/<script>/.test(after), 'フォントの link の直後にインラインのスクリプトがある');
-    const src = html.slice(html.lastIndexOf('<script>', keyAt) + 8, html.indexOf('</script>', keyAt));
-    // mo = MutationObserver が使えるか / late = link が見張りより後に置かれる (本番の並び) か、はじめから在るか
-    const run = ({ stored = null, search = '', throws = false, mo = true, late = true } = {}) => {
-        const store = new Map(); if (stored) store.set('shirisuko_font_trial_v1', stored);
-        const attrs = {}; const el = { href: link[1], getAttribute(k) { return k === 'href' ? this.href : null; }, setAttribute(k, v) { if (k === 'href') { this.href = v; sets.n++; } } };
-        const sets = { n: 0 }; let present = !late; const seen = { cbs: [], dcl: [], disconnected: 0, observed: 0 };
-        const window = {};
-        const localStorage = { getItem: (k) => { if (throws) throw new Error('x'); return store.has(k) ? store.get(k) : null; }, setItem: (k, v) => { if (throws) throw new Error('x'); store.set(k, String(v)); }, removeItem: (k) => { if (throws) throw new Error('x'); store.delete(k); } };
-        const document = { getElementById: (id) => (id === 'padFontCss' && present ? el : null), documentElement: { setAttribute: (k, v) => { attrs[k] = v; } }, addEventListener: (t, f) => { if (t === 'DOMContentLoaded') seen.dcl.push(f); } };
-        // ★ 見張りを始めて (子孫の出入りを見る指定で)・やめていない間だけ呼ぶ (始めていない見張りを呼ぶと、observe を外す変異がすり抜けた)
-        const MutationObserver = mo ? class { constructor(cb) { const self = this; self.on = false; seen.cbs.push(() => { if (self.on) cb(); }); } observe(t, o) { seen.observed++; this.on = !!(t === document.documentElement && o && o.childList && o.subtree); } disconnect() { seen.disconnected++; this.on = false; } } : undefined;
-        new Function('window', 'localStorage', 'document', 'location', 'MutationObserver', src)(window, localStorage, document, { search }, MutationObserver);
-        seen.cbs.forEach(cb => cb());           // link より前の部品が置かれた (まだ link は無い)
-        const beforeLink = el.href; present = true;
-        seen.cbs.forEach(cb => cb());           // link が置かれた
-        const atInsert = el.href;
-        seen.dcl.forEach(f => f());             // 読み込みの終わり (保険)
-        return { href: el.href, beforeLink, atInsert, attrs, store, pref: window.padFontPref(), window, seen, sets: sets.n };
-    };
-    const base = run();
-    assert.equal(base.href, link[1], '何も無い端末で指定を変えた'); assert.equal(base.pref, 'web'); assert.deepEqual(base.attrs, {});
-    assert.equal(base.seen.observed + base.seen.dcl.length, 0, '何も無い端末で見張り・受け口を足している (今までどおりでない)');
-    const dev = run({ stored: 'device' });
-    assert.equal(dev.pref, 'device'); assert.equal(dev.attrs['data-font'], 'device');
-    assert.ok(!/Noto/.test(dev.href), '試しでも日本語の Web フォントを読んでいる');
-    assert.match(dev.href, /family=Inter[^"]*family=Manrope/, '試しで数字・英字のフォントまで外した');
-    assert.equal(dev.href, dev.window.PAD_FONT_DEVICE_CSS);
-    assert.equal(dev.atInsert, dev.window.PAD_FONT_DEVICE_CSS, 'link が置かれた瞬間に差し替えていない (読み込みの終わりまで待つと日本語のファイルが届く)');
-    assert.equal(dev.seen.disconnected, 1, '差し替えたあとも見張り続けている'); assert.equal(dev.sets, 1, '同じ指定を何度も入れ直している (入れ直すたびに CSS を取りに行く)');
-    const noMo = run({ stored: 'device', mo: false });
-    assert.equal(noMo.href, noMo.window.PAD_FONT_DEVICE_CSS, '見張れない環境で差し替わらない (保険が無い)'); assert.equal(noMo.attrs['data-font'], 'device');
-    const viaUrl = run({ search: '?tab=raid&font=device' });
-    assert.equal(viaUrl.pref, 'device'); assert.equal(viaUrl.store.get('shirisuko_font_trial_v1'), 'device', 'URL で試したことを覚えていない (PWA を開き直すと戻る)');
-    const back = run({ stored: 'device', search: '?font=web' });
-    assert.equal(back.pref, 'web'); assert.equal(back.href, link[1]); assert.ok(!back.store.has('shirisuko_font_trial_v1'), '?font=web で戻らない');
-    assert.equal(run({ stored: 'device', search: '?font=webx' }).pref, 'device', '関係ない値で戻した');
-    assert.equal(run({ stored: 'xx' }).pref, 'web', '知らない値を試しとして扱った');
-    const broken = run({ stored: 'device', search: '?font=device', throws: true });
-    assert.equal(broken.pref, 'web'); assert.equal(broken.href, link[1], '記憶を読めない端末で指定を変えた');
-    // 設定の切り替えは 👑 マスターだけ・押したら覚えて読み込み直す (あとから外しても届いたファイルは捨てられない)
-    const seg = html.match(/<div data-master-only class="th-trial">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/)?.[0] || '';
-    assert.match(seg, /data-font-pick="web"[^>]*onclick="handleFontPick\('web'\)"/); assert.match(seg, /data-font-pick="device"[^>]*onclick="handleFontPick\('device'\)"/);
-    const pickSrc = html.slice(html.indexOf('        function handleFontPick(pref) {'), html.indexOf("        window.addEventListener('DOMContentLoaded', syncFontSeg);"));
-    const pick = (cur, pref, { stick = true } = {}) => {
-        const store = new Map(); if (cur === 'device') store.set('k', 'device');
-        const log = []; const pressed = {};
-        const window = { PAD_FONT_KEY: 'k', padFontPref: () => (store.get('k') === 'device' ? 'device' : 'web') };
-        const localStorage = { setItem: (k, v) => { if (stick) store.set(k, v); }, removeItem: (k) => { if (stick) store.delete(k); } };
-        const document = { querySelectorAll: () => ['web', 'device'].map(v => ({ dataset: { fontPick: v }, setAttribute: (_, x) => { pressed[v] = x; } })) };
-        new Function('window', 'localStorage', 'document', 'showNotification', '_reloadFresh', pickSrc + '\nhandleFontPick(' + JSON.stringify(pref) + ');')(window, localStorage, document, (m) => log.push('note'), () => log.push('reload'));
-        return { log, pressed, now: window.padFontPref() };
-    };
-    assert.deepEqual(pick('web', 'device').log, ['reload']); assert.equal(pick('web', 'device').now, 'device');
-    assert.deepEqual(pick('device', 'web').log, ['reload']); assert.equal(pick('device', 'web').now, 'web');
-    const same = pick('device', 'device'); assert.deepEqual(same.log, [], '同じものを押して読み込み直した'); assert.deepEqual(same.pressed, { web: 'false', device: 'true' });
-    assert.deepEqual(pick('web', 'device', { stick: false }).log, ['note'], '覚えられない端末で読み込み直しを繰り返す');
-    assert.deepEqual(pick('web', 'bogus').log, []);
-    // 読み込み直しが始まったあとに逆を押しても、覚えた値を上書きしない・読み込み直しを重ねない
-    {
-        const store = new Map(); const log = [];
-        const window = { PAD_FONT_KEY: 'k', padFontPref: () => (store.get('k') === 'device' ? 'device' : 'web') };
-        const localStorage = { setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
-        const document = { querySelectorAll: () => [] };
-        const fn = new Function('window', 'localStorage', 'document', 'showNotification', '_reloadFresh', pickSrc + '\nreturn handleFontPick;')(window, localStorage, document, () => log.push('note'), () => log.push('reload'));
-        fn('device'); fn('web'); fn('device');
-        assert.deepEqual(log, ['reload'], '読み込み直しを重ねた'); assert.equal(window.padFontPref(), 'device', '読み込み直しの間に覚えた値を上書きした');
-    }
+    // 試しの仕組み (その端末だけ外す切り替え) は、全員に入れたので外した
+    assert.ok(!/shirisuko_font_trial_v1|padFontPref|handleFontPick|th-trial|data-font-pick/.test(html), '試しの切り替えが残っている');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
@@ -17517,7 +17455,9 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(/\| \*\*再編成時間\*\* \|/.test(rd('docs/用語集.md')), '用語集に無い');
         const notes = JSON.parse(rd('data/release-notes.json')).notes;
         { const n = notes.find(x => x.id === 2026110201); assert.ok(n, '再編成時間の項目が無い'); assert.match(n.title, /再編成時間/); }
-        { const n = notes[0]; assert.equal(n.id, 2026111201, 'いちばん新しい項目 (🧪 テストがメンバーの画面に出ない)'); assert.match(n.title, /テスト/); assert.ok(n.lines.some(l => l.includes('開発中のテスト通知も受け取る')), 'スイッチの名前が画面と違う'); }
+        { const n = notes.find(x => x.id === 2026111201); assert.ok(n, '🧪 テストがメンバーの画面に出ない、の項目が無い'); assert.match(n.title, /テスト/); assert.ok(n.lines.some(l => l.includes('開発中のテスト通知も受け取る')), 'スイッチの名前が画面と違う'); }
+        // 2026-11-16: 日本語を端末のフォントで出す (起動が軽くなる・字の形が変わる) を、メンバーの言葉で知らせている
+        { const n = notes[0]; assert.equal(n.id, 2026111601, 'いちばん新しい項目 (起動が軽くなった・日本語の字の形)'); assert.match(n.title, /軽く/); assert.ok(n.lines.some(l => /端末に入っているフォント/.test(l) && /ヒラギノ/.test(l)), '字の形が変わることを言っていない'); assert.ok(!n.lines.some(l => /Web フォント|Noto|レイアウト/.test(l)), '作る側の言葉で書いている'); }
         assert.ok(/const CLIENT_BUILD = 2026110201;/.test(html), '版を上げていない');
     });
 }
