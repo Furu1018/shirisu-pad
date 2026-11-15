@@ -451,6 +451,14 @@ test('★ 配線: PC のガイドは高さを中身で変えない・画面の�
     assert.match(gw, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1\.3fr\) minmax\(0, 1fr\);/, '3 列に並べていない (高さに収まらない)');
     for (const s of ['.obg-s-drop', '.obg-s-blk', '.obg-s-mates', '.obg-sum']) assert.ok(ruleOf(wide, '.ob-guide > ' + s), s + ' の置き場が無い');
     assert.match(ruleOf(wide, '.ob-guide > .obg-s-mates'), /overflow-y: auto;/, 'ほかの編成が多い人の行が切れる');
+    // 枠の中で動かす区画は、端の部品の縁取り (outline 2px + 1px = 3px) が切れないだけの余白を内側に持ち、同じだけ外へ広げる (並びをずらさない)
+    for (const sel of ['.obg-s-blk', '.obg-s-mates', '.obg-sum']) {
+        const r = ruleOf(wide, '.ob-guide > ' + sel); if (!/overflow/.test(r)) continue;
+        const pad = Number((r.match(/padding-inline: (\d+)px;/) || [])[1] || 0), mar = Number((r.match(/margin-inline: -(\d+)px;/) || [])[1] || 0);
+        assert.ok(pad >= 3, sel + ': 端の縁取りが切れる (余白 ' + pad + 'px)'); assert.equal(mar, pad, sel + ': 余白のぶん並びがずれる');
+    }
+    const tileNow = (html.match(/\.obg-blks span\.now \{ outline: (\d+)px solid var\(--bad\); outline-offset: (\d+)px; \}/) || []).slice(1).map(Number);
+    assert.ok(tileNow.length === 2 && tileNow[0] + tileNow[1] <= 4, 'いまのブロックの縁取りが、区画の余白 (4px) より外に出る');
     // 1 列の幅: ガイドをピース置き場のあとへ (盤の下のままだと、ピース置き場まで下がったとき画面の外に出る)
     const narrow = media.find(b => /max-width: 900px/.test(b.q));
     assert.ok(narrow && /\(hover: hover\) and \(pointer: fine\)/.test(narrow.q));

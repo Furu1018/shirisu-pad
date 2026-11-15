@@ -3756,9 +3756,11 @@
             .ob-guide > .obg-h, .ob-guide > .obg-empty { grid-column: 1 / -1; }
             .ob-guide > .obg-sec { margin-top: 7px; padding-top: 7px; min-height: 0; }
             .ob-guide > .obg-s-drop { grid-column: 1; grid-row: 2; }
-            .ob-guide > .obg-s-blk { grid-column: 1; grid-row: 3; overflow-y: auto; overflow-x: hidden; }
-            .ob-guide > .obg-s-mates { grid-column: 2; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; }
-            .ob-guide > .obg-sum { grid-column: 3; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; }
+            /* ★ 枠の中で動かす区画は、内側に 4px の余白を持つ (外側へ同じだけ広げるので、並びはずれない)。余白が無いと、端の部品の縁取り
+               (いま組んでいるブロックの赤い枠・被るキャラの赤い枠 = outline 2px + 1px) が区画の端で切れる (2026-11-16 ふるり「時間の枠の左端が少しだけ見切れている」) */
+            .ob-guide > .obg-s-blk { grid-column: 1; grid-row: 3; overflow-y: auto; overflow-x: hidden; margin-inline: -4px; padding-inline: 4px; }
+            .ob-guide > .obg-s-mates { grid-column: 2; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; margin-inline: -4px; padding-inline: 4px; }
+            .ob-guide > .obg-sum { grid-column: 3; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; margin-inline: -4px; padding-inline: 4px; }
         }
         .obg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 900; color: var(--t-ink); }
         .obg-h .obg-dmg { font-size: 15px; font-variant-numeric: tabular-nums; } .obg-h .obg-left { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
