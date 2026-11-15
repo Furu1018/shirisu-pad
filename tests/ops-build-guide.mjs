@@ -395,6 +395,37 @@ test('配線: 盤の下にガイド・先頭に知らせの置き場 / 置ける
     assert.ok(/if \(!Array\.isArray\(rows\) \|\| !_obSame\(epoch, sid\) \|\| _ob\.busy \|\| _ob\.pins !== before\) return;/.test(sync), '読み取りの追い越しを見ていない');
     assert.ok(/bb\.pinChanges\(_obFpRows\(before\), _obFpRows\(rows\), blocks,/.test(sync), '✓ で実行済みの駒を実行前に戻さずに比べている');
 });
+test('★ 配線: PC のガイドは高さを中身で変えない・画面の下端に貼り付く (2026-11-16 ふるり「スクロールしないと出ない・消えるのと出るのを繰り返してページが上下する」)', () => {
+    // 高さが中身で変わると: 乗せる → ページが伸びる → 離す → 縮む → いちばん下ではスクロール位置がずれて別のピースに乗る → … の繰り返しになる
+    const css = between('        .ob-guide { border:', '        .obg-h {');
+    const media = [...css.matchAll(/@media ([^{]+) \{\n([\s\S]*?)\n        \}/g)].map(m => ({ q: m[1].trim(), body: m[2] }));
+    const ruleOf = (b, sel) => (b.body.match(new RegExp('(?:^|\\n)\\s*' + sel.replace(/[.>]/g, '\\$&') + ' \\{([^}]*)\\}')) || [])[1] || '';
+    const hover = media.find(b => b.q === '(hover: hover) and (pointer: fine)');
+    assert.ok(hover, 'ポインタのある端末むけの指定が無い');
+    const g = ruleOf(hover, '.ob-guide');
+    assert.match(g, /(?:^|[;\s])height: \d+px;/, '高さを決めていない (中身で伸び縮みする)');
+    assert.ok(!/min-height|max-height/.test(g), '高さに幅を持たせている (中身で伸び縮みする)');
+    assert.match(g, /position: sticky; bottom: \d+px;/, '画面の下端に貼り付けていない (スクロールしないと見えない)');
+    assert.match(g, /overflow-y: auto;/, '長い中身を枠の中で動かせない');
+    const wide = media.find(b => /min-width: 901px/.test(b.q));
+    assert.ok(wide && /\(hover: hover\) and \(pointer: fine\)/.test(wide.q));
+    const gw = ruleOf(wide, '.ob-guide');
+    assert.match(gw, /(?:^|[;\s])height: \d+px;/); assert.ok(!/min-height|max-height|height: auto/.test(gw), '2 列の幅で高さを中身に任せている');
+    assert.ok(!/position:/.test(gw), '2 列の幅で貼り付けを外している');
+    assert.match(gw, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1\.3fr\) minmax\(0, 1fr\);/, '3 列に並べていない (高さに収まらない)');
+    for (const s of ['.obg-s-drop', '.obg-s-blk', '.obg-s-mates', '.obg-sum']) assert.ok(ruleOf(wide, '.ob-guide > ' + s), s + ' の置き場が無い');
+    assert.match(ruleOf(wide, '.ob-guide > .obg-s-mates'), /overflow-y: auto;/, 'ほかの編成が多い人の行が切れる');
+    // 1 列の幅: ガイドをピース置き場のあとへ (盤の下のままだと、ピース置き場まで下がったとき画面の外に出る)
+    const narrow = media.find(b => /max-width: 900px/.test(b.q));
+    assert.ok(narrow && /\(hover: hover\) and \(pointer: fine\)/.test(narrow.q));
+    assert.match(ruleOf(narrow, '.ob-main'), /display: contents;/); assert.match(ruleOf(narrow, '.ob-guide'), /order: 3;/);
+    // タッチの端末は今までどおり (押したピースのぶんだけ出る・貼り付けない): 素の指定に高さ・貼り付けが無く、@media はどれもポインタのある端末だけ
+    const base = (css.match(/^\s*\.ob-guide \{([^}]*)\}/) || [])[1] || '';
+    assert.ok(base && !/height|position/.test(base), 'タッチの端末でも高さ・貼り付けを決めている');
+    assert.ok(media.length === 3 && media.every(b => /\(hover: hover\) and \(pointer: fine\)/.test(b.q)), 'ポインタの無い端末にも効く指定がある');
+    // 区画の名前 (3 列の置き場) が中身に付いている
+    for (const c of ['class="obg-sec obg-s-drop"', 'class="obg-sec obg-s-blk"', 'class="obg-sec obg-s-mates"', 'class="obg-sec obg-sum"']) assert.ok(GUIDE_SRC.includes(c), c + ' が中身に無い');
+});
 
 for (const [name, fn] of queue) {
     try { await fn(); passed++; console.log(`  ✅ ${name}`); }

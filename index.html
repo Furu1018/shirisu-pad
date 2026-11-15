@@ -3736,6 +3736,27 @@
         .ob-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
         .ob-guide { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 9px 10px; background: var(--s1); min-width: 0; }
         .ob-guide .obg-empty { margin: 0; }
+        /* 🧭 ポインタのある端末 (PC): ガイドの**高さを中身で変えない** (2026-11-16 ふるり「スクロールしないと出ない・無理に下まで行くと、消えるのと出るのを繰り返してページがすごい速さで上下する」)。
+           ポインタを乗せると伸びる → ページが伸びる → 離すと縮む → いちばん下ではスクロール位置がずれて別のピースに乗る → … の繰り返しだった。
+           2 列の幅では画面の下端に貼り付ける (スクロールしなくても見える)。中身は 3 列: 置き先と出られるブロック / ほかの編成 / 残りの合計。長いぶんは枠の中で動かす (ピースを押して選べば、ポインタを離しても残る) */
+        @media (hover: hover) and (pointer: fine) {
+            .ob-guide { position: sticky; bottom: 8px; z-index: 5; height: 240px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 -8px 20px rgba(var(--ink-rgb), 0.12); }
+        }
+        /* 1 列の幅 (PC の窓を狭くしたとき): ガイドをピース置き場の**あと**に回す — 盤の下のままだと、ピース置き場まで下がったときに画面の外へ出る (貼り付くのは自分の箱の中だけ) */
+        @media (hover: hover) and (pointer: fine) and (max-width: 900px) {
+            .ob-main { display: contents; }
+            .ob-guide { order: 3; }
+        }
+        @media (hover: hover) and (pointer: fine) and (min-width: 901px) {
+            .ob-guide { height: 226px; overflow: hidden;
+                display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); column-gap: 14px; align-content: start; }
+            .ob-guide > .obg-h, .ob-guide > .obg-empty { grid-column: 1 / -1; }
+            .ob-guide > .obg-sec { margin-top: 7px; padding-top: 7px; min-height: 0; }
+            .ob-guide > .obg-s-drop { grid-column: 1; grid-row: 2; }
+            .ob-guide > .obg-s-blk { grid-column: 1; grid-row: 3; overflow-y: auto; overflow-x: hidden; }
+            .ob-guide > .obg-s-mates { grid-column: 2; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; }
+            .ob-guide > .obg-sum { grid-column: 3; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; }
+        }
         .obg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 900; color: var(--t-ink); }
         .obg-h .obg-dmg { font-size: 15px; font-variant-numeric: tabular-nums; } .obg-h .obg-left { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
         .obg-faces { display: inline-flex; gap: 3px; vertical-align: middle; } .obg-face { display: inline-flex; border-radius: 8px; } .obg-face.hit { outline: 2px solid var(--bad); outline-offset: 1px; }
@@ -24430,9 +24451,10 @@
                 + `この編成を使う: <b>${t.withThis.sumB.toFixed(1)}B</b> <small>(${escapeHtml(picksTxt(t.withThis.picks))})</small><br>`
                 + `いちばん高い組み合わせ: <b>${t.best.sumB.toFixed(1)}B</b> <small>(${escapeHtml(picksTxt(t.best.picks))})</small><br>`
                 + (t.diffB < -0.05 ? `<span class="d">差 ${t.diffB.toFixed(1)}B — この人だけで見ると、別の編成のほうが出ます</span>` : '<span class="z">差なし — この編成はいちばん高い組み合わせに入っています</span>') + '</div>';
-            return `${head}<div class="obg-sec">${dropTxt}</div>`
-                + `<div class="obg-sec"><div class="obg-lb">出られるブロック${kindTxt}</div><div class="obg-blks" style="--obg-n:${blocks.length};">${tiles}</div><div class="obg-noteam" style="margin-top:4px;">${availNote}</div></div>`
-                + `<div class="obg-sec"><div class="obg-lb">${p.placedIdx != null ? 'この編成を置いたので、ほかの編成は' : 'この編成を使うと、ほかの編成は'}</div>${mates}</div>${sum}`;
+            // ★ 区画に名前を付ける (PC では 3 列に並べる: CSS の .obg-s-drop / .obg-s-blk / .obg-s-mates / .obg-sum)
+            return `${head}<div class="obg-sec obg-s-drop">${dropTxt}</div>`
+                + `<div class="obg-sec obg-s-blk"><div class="obg-lb">出られるブロック${kindTxt}</div><div class="obg-blks" style="--obg-n:${blocks.length};">${tiles}</div><div class="obg-noteam" style="margin-top:4px;">${availNote}</div></div>`
+                + `<div class="obg-sec obg-s-mates"><div class="obg-lb">${p.placedIdx != null ? 'この編成を置いたので、ほかの編成は' : 'この編成を使うと、ほかの編成は'}</div>${mates}</div>${sum}`;
         }
         // ガイドだけ描き直す (ポインタを乗せるたびに盤を描き直さない — 掴んだピース・スクロールが飛ぶ)
         function _obGuidePaint() {
