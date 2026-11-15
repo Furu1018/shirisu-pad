@@ -24734,7 +24734,9 @@
             //   外すのは 3 通り: dragend (掴んだピースがまだ在るとき)・drop (落として描き直すと、消えたピースの dragend はここまで届かない)・次に動かしたポインタ (ドラッグの間は mouseover が出ない = 取りこぼしの保険)
             host.addEventListener('dragstart', (e) => { if (!e.defaultPrevented && e.target.closest('[data-ob-piece]')) { host.classList.add('ob-dragging'); _ob.view = null; } });   // 掴んだピースがガイドの相手 (見ているだけのピースは下ろす)
             const _obDragOff = () => host.classList.remove('ob-dragging');
-            host.addEventListener('dragend', _obDragOff); host.addEventListener('drop', _obDragOff); host.addEventListener('mouseover', _obDragOff);
+            // ★ 落とさずに終わったドラッグ (行の外で離した・Esc) は描き直す: 掴んだ時点で相手 (_ob.sel / _ob.view) は替えてあるが、掴んでいる間は描き直せない (掴んだ要素が消える) ので、
+            //   ここで合わせないと前のピースの詳細と点線が次の描き直しまで残る (Codex 監査 0f08f4a)。行に落としたときは _obPlace が描く (処理中 = _ob.busy なら触らない)
+            host.addEventListener('dragend', () => { _obDragOff(); if (!_ob.busy) renderOpsBuild(); }); host.addEventListener('drop', _obDragOff); host.addEventListener('mouseover', _obDragOff);
             host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
             host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
         }

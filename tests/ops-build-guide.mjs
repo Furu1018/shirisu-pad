@@ -468,8 +468,8 @@ test('★ 配線: PC のガイドは高さを中身で変えない・画面の�
         const lines = del.split('\n').filter(l => /ob-dragging|_obDragOff/.test(l)).join('\n');
         const handlers = {}; const cls = new Set();
         const host = { classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c) }, addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); } };
-        const ob = { view: { key: 'x', idx: 0 } };
-        new Function('host', '_ob', lines)(host, ob);
+        const ob = { view: { key: 'x', idx: 0 }, busy: false }; let renders = 0;
+        new Function('host', '_ob', 'renderOpsBuild', lines)(host, ob, () => { renders++; });
         const fire = (t, e) => (handlers[t] || []).forEach(f => f(e));
         const piece = { closest: (s) => (s === '[data-ob-piece]' ? {} : null) }, other = { closest: () => null };
         fire('dragstart', { defaultPrevented: false, target: other }); assert.equal(cls.size, 0, 'ピースでないものを掴んで透かした'); assert.ok(ob.view, 'ピースでないものを掴んで、見ているピースを下ろした');
@@ -479,6 +479,13 @@ test('★ 配線: PC のガイドは高さを中身で変えない・画面の�
             fire('dragstart', { defaultPrevented: false, target: piece }); assert.ok(cls.has('ob-dragging'), 'ピースを掴んでも透かさない');
             fire(end, {}); assert.equal(cls.size, 0, end + ' で戻さない (ガイドが透けたまま押せなくなる)');
         }
+        // 落とさずに終わったドラッグは描き直す (掴んだ時点で相手は替えてあるが、掴んでいる間は描き直せない → 前のピースの詳細と点線が残る: Codex 監査 0f08f4a)。
+        //   掴んだ瞬間・落とした瞬間・ポインタを動かしただけ では描き直さない (掴んだ要素が消える / _obPlace が描く)。処理中も触らない
+        renders = 0;
+        fire('dragstart', { defaultPrevented: false, target: piece }); assert.equal(renders, 0, '掴んだ瞬間に描き直した (掴んだピースが消えてドラッグが切れる)');
+        fire('drop', {}); fire('mouseover', {}); assert.equal(renders, 0, '落とした・動かしただけで描き直した');
+        fire('dragend', {}); assert.equal(renders, 1, 'ドラッグをやめたあとに描き直していない (前のピースの詳細が残る)');
+        ob.busy = true; fire('dragend', {}); assert.equal(renders, 1, '処理中に描き直した'); ob.busy = false;
         // 掴んだときに選ぶ処理 (もとの dragstart) より後ろに置く — 処理中に止めたかどうかを見るため
         assert.ok(del.indexOf("try { e.dataTransfer.setData('text/plain'") < del.indexOf("host.classList.add('ob-dragging')"), '透かす処理が、掴む処理より前にある');
     }
