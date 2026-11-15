@@ -423,6 +423,27 @@ test('★ 配線: PC のガイドは高さを中身で変えない・画面の�
     const base = (css.match(/^\s*\.ob-guide \{([^}]*)\}/) || [])[1] || '';
     assert.ok(base && !/height|position/.test(base), 'タッチの端末でも高さ・貼り付けを決めている');
     assert.ok(media.length === 3 && media.every(b => /\(hover: hover\) and \(pointer: fine\)/.test(b.q)), 'ポインタの無い端末にも効く指定がある');
+    // ドラッグしている間は透かしてポインタを通す (貼り付いたガイドが盤の下の行に重なっていても落とせる: Codex 監査 b7cba66)。高さは変えない
+    const dragRule = ruleOf(hover, '.ob-dragging .ob-guide');
+    assert.match(dragRule, /pointer-events: none;/, 'ドラッグの間もガイドがポインタを取る (下の行に落とせない)');
+    assert.ok(!/height|display|position/.test(dragRule), 'ドラッグの間にガイドの大きさ・場所を変えている (ページが動く)');
+    {
+        const del = between('        function _obDelegate(host) {', '        function _obSelect(key) {');
+        const lines = del.split('\n').filter(l => /ob-dragging|_obDragOff/.test(l)).join('\n');
+        const handlers = {}; const cls = new Set();
+        const host = { classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c) }, addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); } };
+        new Function('host', lines)(host);
+        const fire = (t, e) => (handlers[t] || []).forEach(f => f(e));
+        const piece = { closest: (s) => (s === '[data-ob-piece]' ? {} : null) }, other = { closest: () => null };
+        fire('dragstart', { defaultPrevented: false, target: other }); assert.equal(cls.size, 0, 'ピースでないものを掴んで透かした');
+        fire('dragstart', { defaultPrevented: true, target: piece }); assert.equal(cls.size, 0, '処理中で止めたドラッグで透かした (戻す合図が来ない)');
+        for (const end of ['dragend', 'drop', 'mouseover']) {
+            fire('dragstart', { defaultPrevented: false, target: piece }); assert.ok(cls.has('ob-dragging'), 'ピースを掴んでも透かさない');
+            fire(end, {}); assert.equal(cls.size, 0, end + ' で戻さない (ガイドが透けたまま押せなくなる)');
+        }
+        // 掴んだときに選ぶ処理 (もとの dragstart) より後ろに置く — 処理中に止めたかどうかを見るため
+        assert.ok(del.indexOf("try { e.dataTransfer.setData('text/plain'") < del.indexOf("host.classList.add('ob-dragging')"), '透かす処理が、掴む処理より前にある');
+    }
     // 区画の名前 (3 列の置き場) が中身に付いている
     for (const c of ['class="obg-sec obg-s-drop"', 'class="obg-sec obg-s-blk"', 'class="obg-sec obg-s-mates"', 'class="obg-sec obg-sum"']) assert.ok(GUIDE_SRC.includes(c), c + ' が中身に無い');
 });

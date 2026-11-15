@@ -3741,6 +3741,8 @@
            2 列の幅では画面の下端に貼り付ける (スクロールしなくても見える)。中身は 3 列: 置き先と出られるブロック / ほかの編成 / 残りの合計。長いぶんは枠の中で動かす (ピースを押して選べば、ポインタを離しても残る) */
         @media (hover: hover) and (pointer: fine) {
             .ob-guide { position: sticky; bottom: 8px; z-index: 5; height: 240px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 -8px 20px rgba(var(--ink-rgb), 0.12); }
+            /* ドラッグしている間は透かしてポインタを通す — 貼り付いたガイドが盤の下の行に重なっていても、その行へ落とせる (高さは変えない = ページは動かない) */
+            .ob-dragging .ob-guide { pointer-events: none; opacity: 0.2; }
         }
         /* 1 列の幅 (PC の窓を狭くしたとき): ガイドをピース置き場の**あと**に回す — 盤の下のままだと、ピース置き場まで下がったときに画面の外へ出る (貼り付くのは自分の箱の中だけ) */
         @media (hover: hover) and (pointer: fine) and (max-width: 900px) {
@@ -24730,6 +24732,11 @@
             // 「このブロックのみ / 最後」の段の開け閉めを覚える (30 秒ごとの描き直しで戻さない)。toggle は泡立たないので捕捉で受ける
             host.addEventListener('toggle', (e) => { const d = e.target; if (d && d.matches && d.matches('[data-ob-lock]')) _ob.lockOpen = !!d.open; }, true);
             host.addEventListener('dragstart', (e) => { if (_ob.busy) { e.preventDefault(); return; } const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.selSeq = (_ob.selSeq || 0) + 1; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
+            // 🧭 ドラッグしている間は、下端に貼り付いたガイドを透かしてポインタを通す (CSS の .ob-dragging)。ガイドが盤の下の行に重なっていても、その行へ落とせる (Codex 監査 b7cba66)。
+            //   外すのは 3 通り: dragend (掴んだピースがまだ在るとき)・drop (落として描き直すと、消えたピースの dragend はここまで届かない)・次に動かしたポインタ (ドラッグの間は mouseover が出ない = 取りこぼしの保険)
+            host.addEventListener('dragstart', (e) => { if (!e.defaultPrevented && e.target.closest('[data-ob-piece]')) host.classList.add('ob-dragging'); });
+            const _obDragOff = () => host.classList.remove('ob-dragging');
+            host.addEventListener('dragend', _obDragOff); host.addEventListener('drop', _obDragOff); host.addEventListener('mouseover', _obDragOff);
             // 🧭 PC: ピースにポインタを乗せるとガイドがその人に替わる (押さなくても見られる)。離れたら選んでいるピースに戻す。タッチの端末では押したピース (_ob.sel) だけ
             if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
                 host.addEventListener('mouseover', (e) => { const pc = e.target.closest('[data-ob-piece]'); if (!pc || _ob.hover === pc.dataset.obPiece) return; _ob.hover = pc.dataset.obPiece; _obGuidePaint(); });
