@@ -3726,7 +3726,7 @@
         .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 10.5px; }
         .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
         .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
-        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
+        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.view { outline: 2px dashed var(--ops); outline-offset: 1px; } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
         .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 900; } .obt small { font-size: 9.5px; color: var(--t-muted); }
         .obt .rigid { font-size: 10px; font-weight: 900; color: var(--ops-on); } .obt .flex, .obt .where { font-size: 10px; color: var(--t-muted); }   /* 先に置く人の文字は紫・赤は「置けない」(.ng) だけ (2026-11-02) */
         /* 「このブロックのみ / このブロックで最後」(第46回の反省 ②・2026-11-02): ピースの文字・置けないピースの赤・ボタンの人数・新しい段 */
@@ -3737,8 +3737,9 @@
         .ob-guide { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 9px 10px; background: var(--s1); min-width: 0; }
         .ob-guide .obg-empty { margin: 0; }
         /* 🧭 ポインタのある端末 (PC): ガイドの**高さを中身で変えない** (2026-11-16 ふるり「スクロールしないと出ない・無理に下まで行くと、消えるのと出るのを繰り返してページがすごい速さで上下する」)。
-           ポインタを乗せると伸びる → ページが伸びる → 離すと縮む → いちばん下ではスクロール位置がずれて別のピースに乗る → … の繰り返しだった。
-           2 列の幅では画面の下端に貼り付ける (スクロールしなくても見える)。中身は 3 列: 置き先と出られるブロック / ほかの編成 / 残りの合計。長いぶんは枠の中で動かす (ピースを押して選べば、ポインタを離しても残る) */
+           ポインタを乗せると伸びる → ページが伸びる → 離すと縮む → いちばん下ではスクロール位置がずれて別のピースに乗る → … の繰り返しだった
+           (同じ日に、ポインタを乗せて出すこと自体をやめた = 押したピースの詳細が出る。高さを決めて貼り付けるのは、押したときにページを動かさず・スクロールしなくても見えるように残す)。
+           2 列の幅では画面の下端に貼り付ける (スクロールしなくても見える)。中身は 3 列: 置き先と出られるブロック / ほかの編成 / 残りの合計。長いぶんは枠の中で動かす (押したピースは押し直すまで残る) */
         @media (hover: hover) and (pointer: fine) {
             .ob-guide { position: sticky; bottom: 8px; z-index: 5; height: 240px; overflow-y: auto; overflow-x: hidden; box-shadow: 0 -8px 20px rgba(var(--ink-rgb), 0.12); }
             /* ドラッグしている間は透かしてポインタを通す — 貼り付いたガイドが盤の下の行に重なっていても、その行へ落とせる (高さは変えない = ページは動かない) */
@@ -24260,7 +24261,7 @@
             if (_ob.pinsSeason !== snap.season.id) {
                 _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.skip.clear(); _ob.sel = null; _ob.idx = null;
                 _ob.dec = null; _ob.decErr = null; _ob.seededFrom = null; _ob.notifySame = false;
-                _ob.syncPending = null; _ob.syncNote = null; _ob.flash = null; _ob.hover = null;   // 🔄 前のシーズンの知らせ・🧭 ガイドの相手を持ち越さない
+                _ob.syncPending = null; _ob.syncNote = null; _ob.flash = null; _ob.view = null;   // 🔄 前のシーズンの知らせ・🧭 見ているだけのピースを持ち越さない (選んだピース _ob.sel は上で外している)
                 _obLoadPins(snap.season.id);
                 _obLoadDecided(snap.season.id);
             } else {
@@ -24273,8 +24274,6 @@
             // ⏱ 描いていたブロックが過ぎた (再編成時間に入った) — どの経路で描き直しても、選んでいたピースを外す (再レビュー flow-4)
             if (_ob.sel && Number.isInteger(_ob.idx) && _ob.idx < ctx.first) { _ob.sel = null; showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。選んでいたピースを外しました'); }
             _ob.idx = ctx.idx;
-            _ob.ctxLast = ctx;   // 🧭 ガイドの描き直し (_obGuidePaint) が、描いてある盤と同じ材料を読む
-            if (_ob.hover && !host.querySelector('[data-ob-piece]:hover')) _ob.hover = null;   // 描き直しの間にポインタが離れていた (消えた要素は mouseout を出さない)
             const { blocks, ov, idx, tray, lock } = ctx;
             const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
             // ⏱ 再編成時間 (⑥): 凸の時間が終わったブロック (first の 1 つ前) は「再編成中」— 組むのは次のブロック。帯で手順を言う
@@ -24345,6 +24344,7 @@
             // ③ ピース (このブロックに出られる人の模擬だけ)
             const people = new Set(tray.map(p => String(p.memberId))).size;
             const free = tray.filter(p => p.placedIdx == null && !p.blocked && p.remaining > 0).length;
+            const viewKey = (_ob.view && _ob.view.idx === idx) ? _ob.view.key : null;   // 🧭 見ているだけのピース (選べないピースを押した) に印
             const trayHtml = tray.length ? tray.map(p => {
                 const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
                 const bn = (opsStore.get()?.bosses || []).find(b => b.weakness === p.attr);
@@ -24362,7 +24362,7 @@
                 const bs = (!off && !dropped) ? window.blockBuildDomain.bossState({ ov, idx, first: ctx.first, attr: p.attr }) : null;
                 const ngTxt = bs && !bs.ok ? _obDeadText(bs, blocks, pt, p.attr) : '';
                 const tail = where ? `<span class="where">${where}</span>` : (dropped ? '<span class="where">外した · 🧮 では使わない</span>' : (ngTxt ? `<span class="where ng">⚠ 置けない: ${escapeHtml(ngTxt)}</span>` : flex));
-                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${off ? ' off' : ''}${undo ? ' undo' : ''}${dropped ? ' dropped' : ''}${p.dup ? ' dup' : ''}${ngTxt ? ' ng' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off || ngTxt ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}${ngTxt ? ' — 置けない: ' + escapeHtml(ngTxt) : ''}">`
+                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${p.key === viewKey ? ' view' : ''}${off ? ' off' : ''}${undo ? ' undo' : ''}${dropped ? ' dropped' : ''}${p.dup ? ' dup' : ''}${ngTxt ? ' ng' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off || ngTxt ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}${ngTxt ? ' — 置けない: ' + escapeHtml(ngTxt) : ''}">`
                     + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${lockLbl}${lockLbl && tail ? ' ' : ''}${tail}</button>`;
             }).join('') : '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>';
             const err = _ob.pinsErr ? `<p class="ob-note" style="color:var(--bad);">${escapeHtml(_ob.pinsErr)}</p>` : (_ob.pins == null ? '<p class="ob-note">手で置いた駒を読み込んでいます…</p>' : '');
@@ -24405,15 +24405,19 @@
         }
         // 🧭 ピースのガイド (2026-11-12 ふるり「ピースを握った際・ポイントしたときに、そのメンバーのほかに凸できる時間・編成 (キャラのアイコン)・ダメージ、
         //   この編成を使うことでほかの編成にどう影響するかも見たい」)。中身は blockBuildDomain.pieceGuide が唯一 (見せるだけ・置けるかの判定は増やさない)。
-        //   出すピース = ポインタを乗せているピース (PC) → 無ければ選んでいるピース。材料は描いてある盤と同じ ctx
+        //   ★ 出すピース = **押して選んだピースだけ** (2026-11-16 ふるり「ポイントすると出る情報のところにスクロールがあると、スクロール自体ができない。その人の凸を押すと詳細が出るように」)。
+        //     ポインタを乗せて出すと、中身を読みに・動かしに行くあいだに別のピースの上を通って中身が替わる。押したピースは押し直すまで残るので、枠の中を動かせる (PC もスマホも同じ動き)。
+        //     ポインタを乗せて替える仕組み (乗せたピースを覚える変数・mouseover / mouseout の受け口・ガイドだけの描き直し) は外した — 戻さない
+        //     選べないピース (置けない・使用済み・別のブロックに置いてある) も押せば出す = _ob.view { key, idx } (_obPress)。ブロックを替えたら出さない (idx が違う)
         function _obGuideKey(ctx) {
-            return (_ob.hover && ctx.tray.some(p => p.key === _ob.hover)) ? _ob.hover : _ob.sel;
+            const v = _ob.view;
+            return (v && v.idx === ctx.idx && ctx.tray.some(p => p.key === v.key)) ? v.key : _ob.sel;
         }
         function _obGuideHtml(ctx, key) {
             const bb = window.blockBuildDomain;
             const p = key ? ctx.tray.find(x => x.key === key) : null;
             const g = (p && bb.pieceGuide) ? bb.pieceGuide({ piece: p, tray: ctx.tray, ov: ctx.ov, idx: ctx.idx, first: ctx.first }) : null;
-            if (!g) return '<p class="ob-note obg-empty">🧭 ピースを押す (PC はポインタを乗せる) と、その人の出られるブロック・編成・ダメージと、ほかの編成への影響がここに出ます</p>';
+            if (!g) return '<p class="ob-note obg-empty">🧭 ピースを押すと、その人の出られるブロック・編成・ダメージと、ほかの編成への影響がここに出ます (もう一度押すと閉じます)</p>';
             const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
             const blocks = ctx.blocks;
             const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
@@ -24457,12 +24461,6 @@
             return `${head}<div class="obg-sec obg-s-drop">${dropTxt}</div>`
                 + `<div class="obg-sec obg-s-blk"><div class="obg-lb">出られるブロック${kindTxt}</div><div class="obg-blks" style="--obg-n:${blocks.length};">${tiles}</div><div class="obg-noteam" style="margin-top:4px;">${availNote}</div></div>`
                 + `<div class="obg-sec obg-s-mates"><div class="obg-lb">${p.placedIdx != null ? 'この編成を置いたので、ほかの編成は' : 'この編成を使うと、ほかの編成は'}</div>${mates}</div>${sum}`;
-        }
-        // ガイドだけ描き直す (ポインタを乗せるたびに盤を描き直さない — 掴んだピース・スクロールが飛ぶ)
-        function _obGuidePaint() {
-            const el = document.getElementById('obGuide'), ctx = _ob.ctxLast;
-            if (!el || !ctx) return;
-            el.innerHTML = _obGuideHtml(ctx, _obGuideKey(ctx));
         }
         // 決定できるブロック: 🧮 で組んだ、または駒を手で置いた (2026-10-31 ふるり「全部手動で組みたい。朝と夜に出られる人の凸を朝に温存して夜まで取っておきたい」)。
         //   だれも置いていない空のブロックは飛ばす (後ろのブロックを決められる)。組み直しが要るブロックの先は決めない
@@ -24723,7 +24721,7 @@
                     return;
                 }
                 const pc = e.target.closest('[data-ob-piece]');
-                if (pc) { _obSelect(pc.dataset.obPiece); return; }
+                if (pc) { _obPress(pc.dataset.obPiece); return; }
                 const nt = e.target.closest('[data-ob-note]');
                 if (nt && !_ob.sel) { showNotification(nt.dataset.obNote); return; }   // ピースを選んでいるときは行に置く (下)
                 const row = e.target.closest('[data-ob-boss]');
@@ -24734,16 +24732,26 @@
             host.addEventListener('dragstart', (e) => { if (_ob.busy) { e.preventDefault(); return; } const pc = e.target.closest('[data-ob-piece]'); if (!pc) return; _ob.selSeq = (_ob.selSeq || 0) + 1; _ob.sel = pc.dataset.obPiece; try { e.dataTransfer.setData('text/plain', 'ob:' + pc.dataset.obPiece); } catch (_) { /* 古いブラウザ */ } });
             // 🧭 ドラッグしている間は、下端に貼り付いたガイドを透かしてポインタを通す (CSS の .ob-dragging)。ガイドが盤の下の行に重なっていても、その行へ落とせる (Codex 監査 b7cba66)。
             //   外すのは 3 通り: dragend (掴んだピースがまだ在るとき)・drop (落として描き直すと、消えたピースの dragend はここまで届かない)・次に動かしたポインタ (ドラッグの間は mouseover が出ない = 取りこぼしの保険)
-            host.addEventListener('dragstart', (e) => { if (!e.defaultPrevented && e.target.closest('[data-ob-piece]')) host.classList.add('ob-dragging'); });
+            host.addEventListener('dragstart', (e) => { if (!e.defaultPrevented && e.target.closest('[data-ob-piece]')) { host.classList.add('ob-dragging'); _ob.view = null; } });   // 掴んだピースがガイドの相手 (見ているだけのピースは下ろす)
             const _obDragOff = () => host.classList.remove('ob-dragging');
             host.addEventListener('dragend', _obDragOff); host.addEventListener('drop', _obDragOff); host.addEventListener('mouseover', _obDragOff);
-            // 🧭 PC: ピースにポインタを乗せるとガイドがその人に替わる (押さなくても見られる)。離れたら選んでいるピースに戻す。タッチの端末では押したピース (_ob.sel) だけ
-            if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-                host.addEventListener('mouseover', (e) => { const pc = e.target.closest('[data-ob-piece]'); if (!pc || _ob.hover === pc.dataset.obPiece) return; _ob.hover = pc.dataset.obPiece; _obGuidePaint(); });
-                host.addEventListener('mouseout', (e) => { if (!_ob.hover || !e.target.closest('[data-ob-piece]')) return; const to = e.relatedTarget; if (to && to.closest && to.closest('[data-ob-piece]')) return; _ob.hover = null; _obGuidePaint(); });
-            }
             host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
             host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
+        }
+        // 🧭 ピースを押した (2026-11-16 ふるり「その人の凸を押すと詳細がでる」)。押したときの動き (選ぶ・選ぶのをやめる・置いた駒を外す・選べない理由を言う) は今までどおり _obSelect が決める。
+        //   ここは 🧭 ガイドの相手だけを足す: **選べなかったピース** (置けない・キャラ使用済み・置ける凸が無い・別のブロックに置いてある) も、押せばその詳細を出す (_ob.view)。
+        //   以前はポインタを乗せれば見られたが、乗せて出すのをやめたので、押して見られなければ見る手段が無くなる。同じピースをもう一度押すと閉じる。
+        //   選べたピースは _ob.sel がガイドの相手なので、見ているだけのピースは下ろす (先に下ろしてから動かす — _obSelect の描き直しが古い相手を出さないように)
+        function _obPress(key) {
+            const sel0 = _ob.sel, view0 = _ob.view;
+            _ob.view = null;
+            _obSelect(key);
+            if (_ob.sel !== sel0 || _ob.busy) return;   // 選んだ・選ぶのをやめた (ガイドは選んだピース) / 駒を外している最中 (終わったら描き直る)
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx || !ctx.tray.some(x => x.key === key)) return;
+            if (view0 && view0.key === key && view0.idx === ctx.idx) { renderOpsBuild(); return; }   // 見ていたピースをもう一度押した = 閉じる (上で下ろしてある)
+            _ob.view = { key, idx: ctx.idx };
+            renderOpsBuild();
         }
         function _obSelect(key) {
             _ob.selSeq = (_ob.selSeq || 0) + 1;   // ピースを押した回数 (「反映する」の通信待ちの間に押したかを _obSyncNow が見る — 同じピースを選び直しても分かるように: Codex 監査 3748921)

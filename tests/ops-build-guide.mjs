@@ -168,12 +168,12 @@ const DEAD_SRC = between('        function _obDeadText(st, blocks, pt, attr) {',
 const PT_ATTRS = [{ key: 'fire', name: '灼熱' }, { key: 'wind', name: '風圧' }, { key: 'iron', name: '鉄甲' }, { key: 'electric', name: '電撃' }, { key: 'water', name: '水冷' }];
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const mkGuide = (_ob, el = { innerHTML: '' }) => new Function('window', '_ob', 'PT_ATTRS', 'SLOT_JP', '_bbFill', '_charIconHtml', 'escapeHtml', '_obHours', 'document',
-    `${DEAD_SRC}\n${GUIDE_SRC}\nreturn { _obGuideKey, _obGuideHtml, _obGuidePaint };`)(
+    `${DEAD_SRC}\n${GUIDE_SRC}\nreturn { _obGuideKey, _obGuideHtml };`)(
     { blockBuildDomain: bb }, _ob, PT_ATTRS, { 1: '①', 2: '②', 3: '③' }, () => ['var(--x)', 'var(--y)'], (c, n) => `<i data-c="${esc(c)}" data-n="${n}"></i>`, esc,
     (b) => b.attackRange || b.range, { getElementById: (id) => (id === 'obGuide' ? el : null) });
 test('ガイドの描画: 名前・属性・キャラのアイコン 5 つ・ダメージ / 置くとどうなるか / 出られるブロックのタイル / ほかの編成 (✕ 使えなくなる・○ 残る) / 合計の差', () => {
     const ctx = ctxOf(mkBoard());
-    const G = mkGuide({ sel: '1:fire:1', hover: null });
+    const G = mkGuide({ sel: '1:fire:1', view: null });
     const h = G._obGuideHtml(ctx, G._obGuideKey(ctx));
     assert.ok(h.includes('<span>こむぎ</span>') && h.includes('灼熱PT') && h.includes('24.1B'), '見出しが無い');
     assert.equal((h.match(/<div class="obg-h">[\s\S]*?<\/div>/)[0].match(/data-c=/g) || []).length, 5, '握った編成のキャラが 5 つ出ていない');
@@ -184,22 +184,25 @@ test('ガイドの描画: 名前・属性・キャラのアイコン 5 つ・ダ
     assert.equal((h.match(/class="obg-mk x">✕ 使えなくなる/g) || []).length, 2); assert.equal((h.match(/class="obg-mk o">○ 残る/g) || []).length, 2);
     assert.ok(h.includes('クラウン・ナガ が同じ') && h.includes('<span class="obg-face hit"><i data-c="クラウン"'), '被るキャラを名前と印で出していない');
     assert.ok(h.includes('この編成を使う: <b>71.7B</b>') && h.includes('いちばん高い組み合わせ: <b>78.8B</b>') && h.includes('差 -7.1B'), '合計の差が無い');
-    assert.ok(mkGuide({ sel: '1:iron:1', hover: null })._obGuideHtml(ctx, '1:iron:1').includes('差なし'), 'いちばん高い組み合わせの編成で「差なし」と言っていない');
+    assert.ok(mkGuide({ sel: '1:iron:1', view: null })._obGuideHtml(ctx, '1:iron:1').includes('差なし'), 'いちばん高い組み合わせの編成で「差なし」と言っていない');
 });
-test('ガイドの描画: ポインタを乗せたピースが先・無ければ選んだピース・どちらも無ければ案内 / このブロックのみ / 置けない理由・使用済み・置いてある / 描き直しはガイドだけ', () => {
+test('ガイドの描画: 相手は押して選んだピース・選べないピースは押して見ているピース (同じブロックのときだけ)・どちらも無ければ案内 / このブロックのみ / 置けない理由・使用済み・置いてある (2026-11-16 ふるり「押すと詳細がでる」)', () => {
     const ctx = ctxOf(mkBoard());
-    const el = { innerHTML: '' };
-    const ob = { sel: '1:fire:1', hover: '2:fire:1', ctxLast: ctx };
-    const G = mkGuide(ob, el);
-    assert.equal(G._obGuideKey(ctx), '2:fire:1');
-    G._obGuidePaint();
-    assert.ok(el.innerHTML.includes('<span>おはぎ</span>') && el.innerHTML.includes('出られるブロック — このブロックのみ') && el.innerHTML.includes('ほかのブロックには置けません'), 'ポインタを乗せた人のガイドになっていない');
-    assert.ok(el.innerHTML.includes('class="obg-mk ">キャラ使用済み') && el.innerHTML.includes('キャラの登録なし'), '使用済みの編成・キャラの無い編成の出し方が違う');
-    ob.hover = '消えたピース';
+    const ob = { sel: '1:fire:1', view: null };
+    const G = mkGuide(ob);
+    assert.equal(G._obGuideKey(ctx), '1:fire:1', '選んだピースが相手でない');
+    ob.view = { key: '2:fire:1', idx: ctx.idx };
+    assert.equal(G._obGuideKey(ctx), '2:fire:1', '押して見ているピース (選べないピース) が相手にならない');
+    const hv = G._obGuideHtml(ctx, G._obGuideKey(ctx));
+    assert.ok(hv.includes('<span>おはぎ</span>') && hv.includes('出られるブロック — このブロックのみ') && hv.includes('ほかのブロックには置けません'), '押して見ている人のガイドになっていない');
+    assert.ok(hv.includes('class="obg-mk ">キャラ使用済み') && hv.includes('キャラの登録なし'), '使用済みの編成・キャラの無い編成の出し方が違う');
+    ob.view = { key: '2:fire:1', idx: ctx.idx + 1 };
+    assert.equal(G._obGuideKey(ctx), '1:fire:1', '別のブロックで押したピースを出した');
+    ob.view = { key: '消えたピース', idx: ctx.idx };
     assert.equal(G._obGuideKey(ctx), '1:fire:1', 'もう無いピースを指したまま');
-    ob.hover = null; ob.sel = null;
-    G._obGuidePaint();
-    assert.ok(el.innerHTML.includes('obg-empty') && el.innerHTML.includes('ピースを押す'), '何も選んでいないときの案内が無い');
+    ob.view = null; ob.sel = null;
+    const he = G._obGuideHtml(ctx, G._obGuideKey(ctx));
+    assert.ok(he.includes('obg-empty') && he.includes('ピースを押すと') && !he.includes('ポインタ'), '何も選んでいないときの案内が無い (or ポインタを乗せる、と案内している)');
     assert.ok(G._obGuideHtml(ctx, '1:wind:1').includes('⚠ 置けない: 風圧PT の相手 B2 ボス2 は Lv2 を もう撃破済み'), '置けない理由が盤・ピースと同じ文でない');
     assert.ok(G._obGuideHtml(ctx, '2:iron:1').includes('⚠ 使えない: この編成のキャラは、きょうもう使っています'));
     const placed = ctxOf(mkBoard(), { placed: new Map([['1:iron:1', 3]]) });
@@ -216,9 +219,6 @@ test('ガイドの描画: ポインタを乗せたピースが先・無ければ
     const pinE = pin(1, { block_from: blocks[2].from, block_to: blocks[2].to, boss_number: 4, expected_damage_b: 27, characters_snapshot: ['ブラン'] });
     const h3 = G._obGuideHtml(ctxOf(b3, { pins: [pinE], placed: new Map([['1:electric:1', 2]]) }), '1:wind:1');
     assert.ok(h3.includes('⚠ このブロックで置ける凸がありません') && h3.includes('このブロックであと置ける凸 0'), '置ける凸を使い切ったと言っていない');
-    ob.ctxLast = null; el.innerHTML = 'そのまま';
-    G._obGuidePaint();
-    assert.equal(el.innerHTML, 'そのまま', '盤を描く前に描いた');
 });
 
 // ============================== ③ 🔄 反映 (index.html から切り出して実行) ==============================
@@ -377,20 +377,56 @@ test('反映: ✓ で実行済みになっただけ (駒の出入りなし) は�
     assert.equal(t._ob.pins, before); assert.equal(t._ob.syncPending, null); assert.deepEqual(t.log, ['load']);
 });
 
+// ============================== ①'' ピースを押した (_obPress を index.html から切り出して実行) ==============================
+test('★ 実行: ピースを押す — 選べたら選んだピースが相手 / 選べないピースも詳細を出す・もう一度押すと閉じる / 駒を外している最中・もう無いピースは出さない', () => {
+    const src = between('        function _obPress(key) {', '        function _obSelect(key) {');
+    const mk = ({ sel = null, view = null, idx = 2, tray = ['a', 'b', 'c'], onSelect = () => {} } = {}) => {
+        const ob = { sel, view, busy: false }; const log = { renders: 0, viewAtSelect: 'unset' };
+        const press = new Function('_ob', '_obSelect', 'opsStore', '_obCtx', 'renderOpsBuild', src + '\nreturn _obPress;')(
+            ob, (key) => { log.viewAtSelect = ob.view; onSelect(ob, key, log); }, { get: () => ({}) }, () => ({ idx, tray: tray.map(key => ({ key })) }), () => { log.renders++; log.viewAtRender = ob.view; });
+        return { ob, log, press };
+    };
+    // 選べた: ガイドの相手は選んだピース (見ているだけのピースは、_obSelect が描き直す前に下ろしてある)
+    let t = mk({ view: { key: 'c', idx: 2 }, onSelect: (ob, key, log) => { ob.sel = key; log.renders++; log.viewAtRender = ob.view; } });
+    t.press('a');
+    assert.equal(t.ob.sel, 'a'); assert.equal(t.ob.view, null, '選んだのに、前に見ていたピースがガイドに残る');
+    assert.equal(t.log.viewAtSelect, null, '_obSelect の描き直しより前に下ろしていない (古い相手が 1 回出る)'); assert.equal(t.log.renders, 1, '選んだだけで 2 回描いた');
+    // 選ぶのをやめた (同じピースをもう一度): 何も出さない
+    t = mk({ sel: 'a', onSelect: (ob) => { ob.sel = null; } });
+    t.press('a'); assert.equal(t.ob.view, null, '選ぶのをやめたのに詳細が残る');
+    // 選べなかった (置けない・使用済み・別のブロックに置いてある = _obSelect は理由を言うだけ): 詳細は出す
+    t = mk({ sel: 'b' });
+    t.press('c');
+    assert.deepEqual(t.ob.view, { key: 'c', idx: 2 }, '選べないピースを押しても詳細が出ない'); assert.equal(t.ob.sel, 'b', '選んでいたピースを外した'); assert.equal(t.log.renders, 1);
+    assert.deepEqual(t.log.viewAtRender, { key: 'c', idx: 2 }, '相手を決める前に描いた');
+    // もう一度押すと閉じる
+    t.press('c'); assert.equal(t.ob.view, null, 'もう一度押しても閉じない'); assert.equal(t.log.renders, 2, '閉じたのに描き直していない');
+    // 別の選べないピースを押すと、そちらに替わる
+    t.press('c'); t.press('a'); assert.deepEqual(t.ob.view, { key: 'a', idx: 2 });
+    // 別のブロックで見ていたピースと同じ鍵: 閉じるのでなく、このブロックのぶんとして出す
+    t = mk({ view: { key: 'c', idx: 1 } }); t.press('c'); assert.deepEqual(t.ob.view, { key: 'c', idx: 2 }, '別のブロックの印で閉じた');
+    // 駒を外している最中 (置いたピースを押した = 外す): 出さない・描かない (外す処理が終わったら描き直る)
+    t = mk({ onSelect: (ob) => { ob.busy = true; } }); t.press('a'); assert.equal(t.ob.view, null); assert.equal(t.log.renders, 0, '外している最中に描いた');
+    // もう無いピース・盤面が無い: 何もしない
+    t = mk({ tray: ['a'] }); t.press('zzz'); assert.equal(t.ob.view, null); assert.equal(t.log.renders, 0);
+});
+
 // ============================== 配線 ==============================
-test('配線: 盤の下にガイド・先頭に知らせの置き場 / 置ける行に「置くと」/ 見回りが 10 秒ごとに確かめる / シーズンが変わったら捨てる / ポインタは PC だけ', () => {
+test('配線: 盤の下にガイド・先頭に知らせの置き場 / 置ける行に「置くと」/ 見回りが 10 秒ごとに確かめる / シーズンが変わったら捨てる / ポインタを乗せても替えない', () => {
     const r = between('        function renderOpsBuild() {', '        function _obGuideKey(ctx) {');
     assert.ok(r.includes('<div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>'), 'ガイドが盤の下 (左の列) に無い — ピース置き場の中に置くと、乗せるたびにピースが動く');
     assert.ok(r.includes('<div id="obSync">${_obSyncHtml()}</div>'), '知らせの置き場が無い');
-    assert.ok(/_ob\.ctxLast = ctx;/.test(r) && /if \(_ob\.hover && !host\.querySelector\('\[data-ob-piece\]:hover'\)\) _ob\.hover = null;/.test(r), 'ガイドの材料・離れたポインタの片付けが無い');
+    assert.ok(/const viewKey = \(_ob\.view && _ob\.view\.idx === idx\) \? _ob\.view\.key : null;/.test(r) && r.includes("${p.key === viewKey ? ' view' : ''}"), '押して見ているピースの印が無い');
     assert.ok(/const ifB = \(can === true && !r\.infinite\) \? r\.remB - sel\.dmgB : null;/.test(r) && r.includes('<span class="hp">${hp}</span>${ifTxt}</div>'), '置ける行に「置くと」が無い');
-    assert.ok(/_ob\.syncPending = null; _ob\.syncNote = null; _ob\.flash = null; _ob\.hover = null;/.test(r), 'シーズンが変わっても前の知らせを持ち越す');
+    assert.ok(/_ob\.syncPending = null; _ob\.syncNote = null; _ob\.flash = null; _ob\.view = null;/.test(r), 'シーズンが変わっても前の知らせを持ち越す');
     const poll = between('        function _startCoordPolling() {', '        function _stopCoordPolling() {');
     assert.ok(/if \(_opsMode && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\) && typeof _obSyncPins === 'function'\) _obSyncPins\(\)\.catch\(/.test(poll), '見回りが確かめていない');
     assert.ok(!/_coordPollTick === \d[^\n]*_obSyncPins/.test(poll), '10 秒ごとでなく 30 秒ごとになっている');
     const del = between('        function _obDelegate(host) {', '        function _obSelect(key) {');
-    assert.ok(/if \(window\.matchMedia && window\.matchMedia\('\(hover: hover\) and \(pointer: fine\)'\)\.matches\) \{\s*\n\s*host\.addEventListener\('mouseover'/.test(del), 'タッチの端末でもポインタの処理を付けている');
-    assert.ok(/host\.addEventListener\('mouseover', \(e\) => \{ const pc = e\.target\.closest\('\[data-ob-piece\]'\); if \(!pc \|\| _ob\.hover === pc\.dataset\.obPiece\) return; _ob\.hover = pc\.dataset\.obPiece; _obGuidePaint\(\); \}\);/.test(del), '乗せるたびに盤ごと描き直している');
+    // ★ ポインタを乗せても 🧭 ガイドを替えない (2026-11-16 ふるり「ポイントすると出る情報のところにスクロールがあると、スクロール自体ができない」)。乗せて替える仕組みを戻さない
+    assert.ok(!/_ob\.hover|_obGuidePaint|ctxLast/.test(html), 'ポインタを乗せて替える仕組み (乗せたピースの変数・ガイドだけの描き直し) が残っている');
+    assert.ok(!/addEventListener\('mouseout'/.test(del) && (del.match(/addEventListener\('mouseover'/g) || []).length === 1 && /host\.addEventListener\('mouseover', _obDragOff\);/.test(del), 'ポインタを乗せる受け口がある (ドラッグの片付け以外)');
+    assert.ok(/const pc = e\.target\.closest\('\[data-ob-piece\]'\);\s*\n\s*if \(pc\) \{ _obPress\(pc\.dataset\.obPiece\); return; \}/.test(del), 'ピースを押した入口が _obPress でない (選べないピースの詳細が出ない)');
     const sync = SYNC_SRC;
     assert.ok(/if \(!Array\.isArray\(rows\) \|\| !_obSame\(epoch, sid\) \|\| _ob\.busy \|\| _ob\.pins !== before\) return;/.test(sync), '読み取りの追い越しを見ていない');
     assert.ok(/bb\.pinChanges\(_obFpRows\(before\), _obFpRows\(rows\), blocks,/.test(sync), '✓ で実行済みの駒を実行前に戻さずに比べている');
@@ -432,10 +468,12 @@ test('★ 配線: PC のガイドは高さを中身で変えない・画面の�
         const lines = del.split('\n').filter(l => /ob-dragging|_obDragOff/.test(l)).join('\n');
         const handlers = {}; const cls = new Set();
         const host = { classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c) }, addEventListener: (t, f) => { (handlers[t] = handlers[t] || []).push(f); } };
-        new Function('host', lines)(host);
+        const ob = { view: { key: 'x', idx: 0 } };
+        new Function('host', '_ob', lines)(host, ob);
         const fire = (t, e) => (handlers[t] || []).forEach(f => f(e));
         const piece = { closest: (s) => (s === '[data-ob-piece]' ? {} : null) }, other = { closest: () => null };
-        fire('dragstart', { defaultPrevented: false, target: other }); assert.equal(cls.size, 0, 'ピースでないものを掴んで透かした');
+        fire('dragstart', { defaultPrevented: false, target: other }); assert.equal(cls.size, 0, 'ピースでないものを掴んで透かした'); assert.ok(ob.view, 'ピースでないものを掴んで、見ているピースを下ろした');
+        fire('dragstart', { defaultPrevented: false, target: piece }); assert.equal(ob.view, null, '掴んだのに、見ているだけのピースがガイドに残る'); fire('dragend', {});
         fire('dragstart', { defaultPrevented: true, target: piece }); assert.equal(cls.size, 0, '処理中で止めたドラッグで透かした (戻す合図が来ない)');
         for (const end of ['dragend', 'drop', 'mouseover']) {
             fire('dragstart', { defaultPrevented: false, target: piece }); assert.ok(cls.has('ob-dragging'), 'ピースを掴んでも透かさない');
