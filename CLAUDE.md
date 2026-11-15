@@ -1613,6 +1613,9 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
 
 - リポジトリ: https://github.com/Furu1018/shirisu-pad
 - 公開URL: https://furu1018.github.io/shirisu-pad/ (GitHub Pages, main へ push で反映)
+- ★ **push のあとは live の `app-build` が新しい commit になったかを必ず見る** (2026-11-16: 「Deploy to GitHub Pages」の段だけ GitHub 側の取りこぼしで落ちた —
+  `No artifacts named "github-pages" were found` — push は通っているので、見なければ気づかない)。
+  落ちたら **同じ実行をやり直さない** (`gh run rerun` は成果物が 2 つになって `Multiple artifacts named "github-pages"` でまた落ちる)。新しい実行として起動する: `gh workflow run pages.yml --ref main`
 - ★ **push したら `gh run list --limit 1` で success を確かめる** (2026-10-02 に deploy-pages が「artifact が見つからない」で落ち、公開サイトが前の版のままだった。
   アップロードは成功していたので GitHub 側の一時的な不調。`gh run rerun <id>` で直る)。公開の版は `curl -s <公開URL>/index.html | grep app-build` で分かる
 - ローカルでは Supabase データが無いと大半のタブが空になる → 実機確認はユーザーに依頼する
