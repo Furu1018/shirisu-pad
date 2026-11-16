@@ -2674,12 +2674,6 @@
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
             border: 1px solid rgba(var(--ink-rgb), 0.045)}
         .dc-profile-card { position: relative; }
-        /* ★ ホームの細いボス帯 (2026-09-11)。属性と「戦闘中か」だけを一列で。
-           情報を足したくなったら戦況タブへ行ってもらう — ここは"ぱっと見"の役 */
-        /* 🔒📌 だけ表示 (2026-09-12 ユーザー要望「ロックしたカードや仮組みのカードのみ表示できる？」)。
-           チップの札 data-promise / data-pinned で絞る (描き直さない・CSS だけ)。算出の凸と ✓済み凸は消える。ピース箱には効かない (data-piece) */
-        @media (min-width: 1100px) {
-        }
         /* レイドの振り返り (分析タブ・2026-09-15)。色はトークンなのでテーマ切り替えに自動で追随する (Chart.js を使わない理由) */
         .rr-row { margin-bottom: 11px; }
         .rr-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
