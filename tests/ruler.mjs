@@ -51,8 +51,14 @@ const CHECK = `(() => {
         const r = parseFloat(cs.borderTopLeftRadius); const short = Math.min(b.height, b.width);
         if (r > 0 && r < short / 2 - 0.5) { const t = short < 24 ? 4 : r <= 10.5 ? 8 : r <= 18 ? 14 : 22; if (t !== r) out.push(['角丸', r + '→' + t, where(e), sig(e), Math.round(b.width) + 'x' + Math.round(b.height) + ' ' + txt]); }
         if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && !dense(e) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 24) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
-        // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない: 実際の押せる範囲 (::before) の高さを測る
-        if (e.classList.contains('hit40')) { const hb = parseFloat(getComputedStyle(e, '::before').height); if (!(hb >= 39.5)) out.push(['高さ', 'hit40 の押せる範囲 ' + (Number.isFinite(hb) ? Math.round(hb) : '?') + '→40', where(e), sig(e), txt]); }
+        // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない: **実際に押して当たるか**で確かめる。
+        //   ボタンを画面の真ん中に寄せ、真ん中から上下 19px の点 (= 高さ 38px ぶん) で elementFromPoint がそのボタンを返すか。::before が無い・消えている・押せない・切れている、を全部ここで拾う
+        if (e.classList.contains('hit40')) {
+            e.scrollIntoView({ block: 'center', inline: 'nearest' });
+            const q = e.getBoundingClientRect(); const cx = q.left + q.width / 2, cy = q.top + q.height / 2;
+            const hitAt = (dy) => { const g = document.elementFromPoint(cx, cy + dy); return !!g && (g === e || e.contains(g)); };
+            if (!(hitAt(-19) && hitAt(19) && hitAt(0))) out.push(['高さ', 'hit40 の押せる範囲 ' + (hitAt(0) ? Math.round(q.height) : 0) + '→40 (上 ' + hitAt(-19) + '・下 ' + hitAt(19) + ')', where(e), sig(e), txt]);
+        }
     }
     return out;
 })()`;
@@ -114,8 +120,9 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
             await ev(`(() => { const st = document.createElement('style'); st.textContent = '#pmDock, #pmRing, #tourOverlay { display: none !important; }'; document.head.appendChild(st); return 1; })()`);
             const active = await ev(`(() => { switchTab(${JSON.stringify(tab)}); return document.querySelector('.tab-content.active')?.id || null; })()`);
             // ★ 中身が落ち着くまで待つ (Codex 監査 fc127f8): タブの中の部品の数と文字の量が 3 回続けて同じになるまで (最長 20 秒)。非同期の描画の途中 (読み込み中・空) を検査して通さない
-            //   「同じ」は 部品の数 + 文字の中身 (長さでなく中身 — 同じ長さの別の文に差し替わったのを見逃さない)。早く揃っても 5 秒は見る (遅れて来る描画: 配信・通知・更新履歴)
-            const SHAPE = `(() => { const t = document.querySelector('.tab-content.active'); if (!t) return ''; const s = t.innerText || ''; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return t.id + ':' + t.querySelectorAll('*').length + ':' + h; })()`;
+            //   「同じ」は 部品の数 + 文字の中身 (長さでなく中身 — 同じ長さの別の文に差し替わったのを見逃さない) + タブの高さ + 押せない・隠した・選んだ部品の数。早く揃っても 5 秒は見る (遅れて来る描画: 配信・通知・更新履歴)。
+            //   ★ これは「描き終わったか」の目安で、証明ではない (5 秒より後に来る描画・見た目だけの変化は拾えない)。練習モードは端末の中の偽のサーバで動くので、通信待ちは無い
+            const SHAPE = `(() => { const t = document.querySelector('.tab-content.active'); if (!t) return ''; const s = t.innerText || ''; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return t.id + ':' + t.querySelectorAll('*').length + ':' + h + ':' + t.scrollHeight + ':' + t.querySelectorAll('[disabled], [hidden], [aria-pressed="true"]').length; })()`;
             let same = 0, last = ''; const t0 = Date.now();
             for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
