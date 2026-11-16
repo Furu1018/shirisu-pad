@@ -2334,6 +2334,12 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     assert.match(rule, /top: 50% !important; bottom: auto !important; left: -4px !important; right: -4px !important;/, '④ の指定に負ける (指の端末で 4px しか広がらない)');
     assert.match(rule, /height: 100%; min-height: 40px; transform: translateY\(-50%\);/, '押せる範囲の高さが 40px 以上にならない');
     assert.match(html, /\n\s*\.hit40, \.dc-mb-btn \{ position: relative; \}/, '広げる枠の基準が無い');
+    // 行の中のボタンは 4px の間で横に並ぶので、横には広げない (重なった所が後ろのボタンに吸われる: Codex 監査 c743855)
+    const gap = Number((html.match(/\.dc-mb-acts \{ grid-column:2; grid-row:1; display:flex; gap:(\d+)px; \}/) || [])[1]);
+    const mb = html.match(/\n\s*\.dc-mb-btn::before \{ left: (-?\d+)(?:px)? !important; right: (-?\d+)(?:px)? !important; \}/);
+    assert.ok(mb && Number.isFinite(gap), '行の中のボタンの横の指定・並びの間が読めない');
+    assert.ok(-Number(mb[1]) - Number(mb[2]) <= gap, '行の中のボタンの押せる範囲が、隣のボタンと重なる');
+    assert.ok(html.indexOf('.dc-mb-btn::before { left:') > html.indexOf('.hit40::before, .dc-mb-btn::before {'), '横の指定が、共通の指定より前にある (負ける)');
     assert.ok(html.indexOf('.hit40::before, .dc-mb-btn::before {') > html.indexOf("button:not(.btn-elegant):not(.ma-grad-btn):not(.ar-pick-btn)::before {"), '④ より前に置いている');
     // 付ける相手は、::before を飾りに使わないボタンだけ。ホームの通知のカードの 3 つ + 従来の画面 (member_input=full) の小さいボタン (練習モードに出ないので、物差しの検査 tests/ruler.mjs では見られない: Codex 監査 fc127f8)
     const used = [...new Set([...html.matchAll(/<button (?:type="button" )?class="hit40"[^>]*onclick="([a-zA-Z_]+)\(/g)].map(m => m[1]))].sort();
