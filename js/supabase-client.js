@@ -2043,24 +2043,6 @@ window.supabaseLoadSeasonBlockUsage = async function (seasonId) {
     } catch (_) { return null; }
 };
 
-// 🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すか (③-d・2026-10-18)。seasons.metadata.member_input = 'full' / 鍵なし (既定: 出さない)。
-// 本線は RPC ops_set_season_meta_key (51・DB 側の 1 文)。51 未適用 (PGRST202) だけ「読んで混ぜて書く」にフォールバック。別のエラーは投げる
-window.supabaseUpdateSeasonMemberInput = async function (seasonId, full) {
-    if (!seasonId) throw new Error('seasonId が必要です');
-    const value = full ? 'full' : null;
-    const { error } = await supabase.rpc('ops_set_season_meta_key', { p_season_id: seasonId, p_key: 'member_input', p_value: value });
-    if (!error) return value;
-    if (error.code !== 'PGRST202') throw error;
-    const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
-    if (rErr) throw rErr;
-    if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' && !Array.isArray(cur.metadata) ? cur.metadata : {}) };   // 配列・スカラーは {} から (Codex指摘 b8f9d94)
-    if (value) metadata.member_input = value; else delete metadata.member_input;
-    const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
-    if (uErr) throw uErr;
-    if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-    return value;
-};
 // ⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02)。seasons.metadata.rebuild_minutes = 0〜59 の整数 / null (鍵を消す = 0 分)。
 // 本線は RPC ops_set_season_meta_key (59 で鍵を白リストに足した)。未適用の見分け: 51 も無い = PGRST202 / 51 だけある = 51 の白リストの断り文
 // 「この鍵は書けません: rebuild_minutes」(51 の分かれ道しか出さない文。完全一致で見る — ほかの P0001 は投げる)。そのときだけ「読んで混ぜて書く」
@@ -2912,7 +2894,7 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 // ★ テストシーズン (isTest=true) は **本番の写しでリハーサル** (2026-11-12 ふるり): 模擬・編成・参加可能時間は
 //   いま DB にある本物をそのまま使う (消さない・作り物を入れない)。始めるときに控え (metadata) を取り、🧪 ✕ 終了 で控えへ戻す。
 //   それまでは模擬を全部消して乱数のダメージとキャラ名の順の編成を入れていた → 「よく使う編成」に作り物が出た
-// payload (テストのとき): testMeta = 本番から写す設定 (blocks / rebuild_minutes / member_input)・rehearsal = { start, from } (記録)・
+// payload (テストのとき): testMeta = 本番から写す設定 (blocks / rebuild_minutes)・rehearsal = { start, from } (記録)・
 //   copyConfirmationsFrom = 今期の確認 (37) を写す元のシーズン id
 // 動いているシーズンがあれば止める (作成の前・2026-10-30 の決まり「アクティブは 1 つだけ」)。2 つ以上あっても limit(1) で読む
 async function _assertNoActiveSeason() {
@@ -2999,7 +2981,6 @@ window.supabaseCreateSeason = async function (payload) {
         const tm = (payload.testMeta && typeof payload.testMeta === 'object' && !Array.isArray(payload.testMeta)) ? payload.testMeta : {};
         metadata = {
             ...(Array.isArray(tm.blocks) && tm.blocks.length ? { blocks: tm.blocks } : {}),
-            ...(tm.member_input === 'full' ? { member_input: 'full' } : {}),
             ...(Number.isInteger(tm.rebuild_minutes) && tm.rebuild_minutes > 0 && tm.rebuild_minutes <= 59 ? { rebuild_minutes: tm.rebuild_minutes } : {}),
             is_test: true,
             rehearsal: { start: payload.rehearsal?.start || null, from: payload.rehearsal?.from || null },

@@ -139,7 +139,6 @@
         const pm = (prev && prev.season && prev.season.metadata && typeof prev.season.metadata === 'object' && !Array.isArray(prev.season.metadata)) ? prev.season.metadata : {};
         const meta = {};
         if (Array.isArray(pm.blocks) && pm.blocks.length) meta.blocks = pm.blocks;
-        if (pm.member_input === 'full') meta.member_input = 'full';
         const rb = Number(pm.rebuild_minutes);
         const dr = Number(defaultRebuild);
         if (Number.isInteger(rb) && rb >= 0 && rb <= 59 && pm.rebuild_minutes != null) { if (rb > 0) meta.rebuild_minutes = rb; }

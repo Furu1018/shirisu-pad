@@ -42,7 +42,6 @@ function extract(marker) {
 const els = {};
 const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
     classList: { contains: () => false, add() {}, remove() {}, toggle() {} } });
-globalThis._homeSimple = () => false;   // 従来の画面 (代理凸のボタンが出る側)
 globalThis._finishAskOn = () => true;   // 🏁 段階 2.5: 本番は締め凸の依頼を読まない (練習だけ)。ここは従来の表示 (締め凸 未返答) を見るので true
 globalThis.document = { getElementById: (id) => el(id) };
 globalThis.escapeHtml = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -102,7 +101,7 @@ test('前日・未完のみ: 未完の行だけ描画され、名前はエスケ
     assert.ok(!out.includes('完了さん'), '完了の人が「未完のみ」に出ている');
     // 押せない催促はボタンにしない — 理由の札 (スマホでは title が見えない: 2026-10-29 ボタンの監査)
     assert.ok(!/handleOpsMemberNudge\(1\)/.test(out) && out.includes('🔕 通知なし'), 'Push未購読の人に押せない催促ボタンを出している / 理由の札が無い');
-    assert.ok(!out.includes('handleOpsMemberProxy'), '前日に代理凸ボタンが出ている');
+    assert.ok(!out.includes('handleOpsMemberProxy') && !out.includes('>代理凸<'), '行に代理凸ボタンが出ている (凸の登録は ✓ 凸の記録 / 📥 結果の取り込み)');
     assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
     assert.ok(el('opsMbSummary').innerHTML.includes('模擬 3属性 (被りなし)'), '前日の集計が出ていない');
     assert.ok(el('opsMbSummary').innerHTML.includes('5属性 '), '5属性の加点表示が無い');
@@ -121,7 +120,7 @@ test('前日・全員: 完了の行は ✓ で出る / アバター画像は src
     assert.ok(out.includes('class="dc-mb-blks"'), '時間のタイルが無い');
 });
 
-test('当日: 凸 L1 表示・代理バッジ・締め凸未返答・代理凸ボタン (凸3未満のみ)', () => {
+test('当日: 凸 L1 表示・代理バッジ・締め凸未返答 (行に代理凸のボタンは無い — 2026-11-16 に従来の画面と一緒に撤去)', () => {
     _mb.filter = 'todo';
     _mb.rows = dom.buildRows({ players, extras, phase: 'day' });
     _mbPaint('day');
@@ -129,14 +128,12 @@ test('当日: 凸 L1 表示・代理バッジ・締め凸未返答・代理凸�
     assert.ok(out.includes('<i class="d">L1</i>'), '凸の Lv が出ていない');
     assert.ok(out.includes('代理'), '代理バッジが無い');
     assert.ok(out.includes('締め凸 未返答'));
-    assert.ok(out.includes('handleOpsMemberProxy(3)'), '当日の代理凸ボタンが無い');
-    assert.ok(out.includes('handleOpsMemberProxy(2)'), '当日は凸0/3の人も要対応 (代理凸ボタンあり)');
-    // 3凸完了の人には代理凸ボタンを出さない
+    assert.ok(!out.includes('handleOpsMemberProxy') && !out.includes('>代理凸<'), '当日の行に代理凸ボタンが出ている');
+    // 3凸完了の人
     _mb.rows = dom.buildRows({ players: [P({ id: 9, name: '三凸', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21'], attacks: [{ level: 1 }, { level: 2 }, { level: 3 }] })], extras: { ...extras, pushPlayerIds: [9], slvThisSeasonIds: [9] }, phase: 'day' });
     _mb.filter = 'all';
     _mbPaint('day');
     const out2 = el('opsMbRows').innerHTML;
-    assert.ok(!out2.includes('handleOpsMemberProxy(9)'), '3凸完了の人に代理凸ボタンが出ている');
     assert.ok(out2.includes('<i class="d">L3</i>'));
     _mb.filter = 'todo';
     _mb.rows = dom.buildRows({ players, extras, phase: 'day' });

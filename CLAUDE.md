@@ -40,6 +40,18 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ## 画面の呼び方 (用語集) とシンプルな画面
 
+- **★ 「従来の画面」は 2026-11-16 に撤去した** (ふるりの決定: 11/13「撤去してよい」・11/16「撤去で良い」)。**画面は 1 通りだけ**。消したもの:
+  シーズンの `member_input=full` で戻すスイッチ (✏️ シーズン編集) / 模擬タブ (提出カード・人気編成・3属性まとめ選び・レーダー・ユニオン事前比較 + `js/domain/mockCompare.js`) /
+  ホームの 戦闘カード・ボス状況カード・状態ボタンとタイル・🎯 あなたの3凸・🔒 予約カード・⏰ の「変更する」・配信カードのタブ (わたしの凸 / 全体 / 時間割) /
+  本人のシート (⚔️ 凸報告・BlaBlaLINK 3凸・模擬の提出 (タイルピッカー)・枠を予約する・⚔️ 戦闘予想) / 運営の「＋ 予約を登録」「承認する (承認の影響)」「📣 お願いする」「🔒 確定」・👥 の行の代理凸ボタン / 開く経路の無かった旧メンバー管理シート。
+  残る判定は `_memberLite()` = **運営モードでない** だけ (`body.member-lite`・メンバーにだけ出す案内は `[data-member-input-lite]`)。`_memberInputFull` / `_homeSimple` / `_resvUiHidden` / `_mockTabHidden`・`body.home-simple` / `resv-hidden` / `mock-tab-hidden`・`data-member-input` / `data-member-resv` / `data-member-report` / `data-resv-ui` は**無い — 戻さない** (テスト「従来の画面は撤去した」が見張る)。
+  ★ **この文書の下のほうに残る「従来の画面では…」「member_input=full で戻る」「模擬タブ」「申請シート」「承認 → 組み直す」「あなたの3凸」「提出バー」「タイルピッカー」の説明は当時の記録** (設計の経緯として残してある)。戻す手段は git の履歴 (6163159 より前) だけ。
+  DB の `seasons.metadata.member_input`・RPC の鍵の白リスト (51 / 59)・練習の偽サーバの写しは残る (アプリは読まない・書かない・リハーサルも写さない)。
+  動きは変えていない (本番はずっとシンプルな画面だった): ホームの見回り・ヒーローの描き直し・通知の送り手 (運営タブの裏描き) は撤去の前と同じ。`?tab=mock` の古いリンクはホームのまま (何も起きない)。
+  ★ **まだ残っているもの (次の撤去の候補)**: 運営 › 🧱 組む の「従来の算出・配信」(`#opsPlanLegacy`・CSS で常に隠す = 条件パネル・パズル盤・時間割・🧱 盤・一気に組む・従来の配信) / 🔒 凸の予約カード (前から残った生きた予約があるときだけ出る) /
+  画面から外したカード (`#opsTabHold` = 運営アクション・代理凸のシート・オンライン・残り戦闘可能・直近の動き・消化のペース) / 締め凸の依頼 (`_finishAskOn()` は常に false) と本人の返事 / 状態 (オンライン・模擬中・戦闘中) の読み取り (`_refreshCoordOnce`) /
+  呼ばれなくなった通信の関数 (`supabaseAskPin`・`supabaseGetPublishedPlan`・`supabaseLoadPlayerDamagesResult`・`supabaseReservationBlockColsMissing` ほか) / ホームの 3 枠のドメイン (`reservationsDomain.homeSlots`・`attributes.js` の `homeBossBoard` / `homeStatusCounts`)。
+  撤去の手順と道具は `scripts/cleanup/README.md` (到達できない関数 → 孤立した変数 → CSS → 検算 → テストの仕分け)、記録は `docs/撤去_従来の画面_2026-11-16.md`
 - **画面・通知・ヘルプ・ツアー・練習の文言は `docs/用語集.md` の呼び方で書く** (2026-10-23 ユーザー決定「語句と機能の呼び方を統一」)。
   例: 時間は「ユニオンレイド参加可能時間」(短く「参加可能時間」・× 戦闘可能時間 / 出られる時間)、本人の希望は「予約」(入口「枠を予約する」「＋ 予約を登録」は従来の画面 (member_input=full) だけ・シンプルな画面では Discord → 運営が 🧱 組む で 📌 を置く (S5 で予約の画面は隠した)・× 申請 / 約束)、
   承認済みは「🔒 予約」(× 固定)、運営の下書きは「📌 仮置き」(× 📌 固定)、「締め凸検索」(× 締凸検索)。テストがヘルプとツアーの「使わない言い方」を見張る。
@@ -844,9 +856,7 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ```sh
 node tests/run-tests.mjs      # ソルバー+ドメイン+ストアの単体テスト
-node tests/plan-hp-modal.mjs  # ⚔️戦闘予想モーダルの実行テスト (index.html から切り出して実行)
 node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェック
-node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
 node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
 node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
 node tests/solver-fingerprint.mjs        # ソルバーの出力指紋 (リファクタで挙動が変わっていないか)
@@ -854,10 +864,8 @@ node tests/solver-fingerprint.mjs <file> # 保存した指紋と突き合わせ�
 node tests/bench-stability.mjs           # L1 安定化の効果と代償 (BENCH_N で件数指定・既定150)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今期の確認 の実行テスト
-node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
-node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
+node tests/home-mocks.mjs     # 本人のホーム「📘 登録された模擬」(読み取り専用) の描画の実行テスト
 node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト
-node tests/submit-bar.mjs     # 模擬提出シートの提出バー (_renderTeamEditBar) の実行テスト
 node tests/ops-stage.mjs      # 運営タブの段階ヘッダ・ヒーロー・チェックリストの描画の実行テスト
 node tests/growth-panel.mjs   # 育成データの取り込みパネルの描画 + 取り込み本体 (handleGrowthImport) の実行テスト
 node tests/growth-compare.mjs # 🧬 育成をくらべるシート (_gcRender) の実行テスト
@@ -865,12 +873,11 @@ node tests/theme-switch.mjs   # 見た目 (ライト/ダーク) の切り替え�
 node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) + 複数案の同時打診 の実行テスト
 node tests/finish-accept.mjs  # 締め凸の了承 (枠を取ってから伝える / 枠が無ければ了承しない / 伝えられなければ枠を返す) の実行テスト
 node tests/ops-pace.mjs       # 📈 消化のペース / 🔁 直近の動き (運営ボード 当日) の描画の実行テスト
-node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カード / 状態ボタンの人数とタイル / HP鮮度ピル の実行テスト
+node tests/hp-fresh.mjs       # HP更新の鮮度ピル (_hpFreshHtml) の実行テスト
 node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのスタンプ / 自動で効くもの / きっかけ / 動かせる幅 の実行テスト
 node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) の実行テスト — 本番の 2026-09 のデータで描く
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
 node tests/block-board.mjs    # 🧱 ブロック盤 (段階 6): 盤・候補・手順の帯・メンバーの盤 の実行テスト
-node tests/ops-resv-create.mjs # 🔒 運営発の予約 (🗣 9b): 人 → 編成 → ブロック の描画 / 📌 を置いてすぐ 🔒 確定 / 置けない・二重押し の実行テスト
 node tests/ops-mock-bulk.mjs  # ✏️ まとめて入力 (1 人 5 属性): 開く → プリセット → ダメージ → まとめて保存 → 失敗が残る → 次の人 の実行テスト
 node tests/ops-build-guide.mjs # 🧱 組む: 🧭 ピースのガイド (ほかの編成への影響・残り凸の合計) / 🔄 ほかの運営の駒の反映 (差分・読み取りの追い越し) の実行テスト
 node tests/result-intake.mjs  # 📥 結果の取り込み (段階 4): 下書き → 登録 (代理凸の経路・✓・残 HP・撃破の検知) / 凸していない / 組むの片付け / ブロックの配信の通知 の実行テスト
@@ -888,17 +895,14 @@ node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの�
 - ★ **変異のあとは `git status --short` と `git diff --stat` が空なのを見てから次のコミット**。2026-11-08 に変異 1 行 (`s.ref` → 枠番号検索) が戻り切らず
   次の小さなコミット (2b4a235) に混入した。実行テストは通っていたので気づけず、単体テストの配線検査が拾った — 次のコミットの前に **run-tests を回す**
 
-`plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
+実行テスト (`member-board.mjs` など) は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
 「カードをタップすると ReferenceError」が入った) を拾うためのもの。
 関数のシグネチャや依存を変えたらスタブも直すこと。
-`team-picker.mjs` は編成タイルピッカーを切り出してスタブ実行する。
-**値の保持先は従来どおり `#myTeamEditFields` の5つの input** で、ピッカーはそこへ書くだけ —
-この契約が崩れると保存・OCR・人気編成の適用がまとめて壊れるので、テストで固定してある。
-枠のバースト絞り込み・上位10体の折りたたみ・5人そろったら自動で畳む、の状態遷移も見る。
+(`plan-hp-modal.mjs`・`team-picker.mjs`・`mock-panels.mjs`・`submit-bar.mjs`・`ops-resv-create.mjs` は、見ていた画面ごと 2026-11-16 に消した。)
 
-`mock-panels.mjs` は模擬タブの提出カードを切り出して実行する。
-**2026-09-07 に本番で「5枚のカードが1枚も出ない」障害**を起こしたため追加した —
+模擬タブの提出カードの実行テスト (`mock-panels.mjs`・撤去済み) は、
+**2026-09-07 に本番で「5枚のカードが1枚も出ない」障害**を起こしたため追加したものだった —
 測定ボスレベルを廃止したとき (8a5265f) に `lvTitle` の定義だけ消え、テンプレート内の参照が残った。
 カード生成の map の中で ReferenceError になるので**全滅**するが、単体テスト333件は1つも落ちなかった。
 ★ **テンプレートリテラルの中の未定義参照は実行しないと出ない**。

@@ -95,7 +95,6 @@ function makeEnv(o = {}) {
         _teamGroupsFor: (attr) => ({ total: 0, list: pop[attr] || [] }),
         openIconPicker: (cur, cb, title, opts) => { env.picker = { cur, cb, title, opts }; },
         _opsReloadBoardCards: () => { reloads.push(1); },
-        renderMyDamagePanels: () => { env.myPanels++; },
         document: {
             getElementById: el,
             querySelector: (sel) => {
@@ -117,11 +116,11 @@ function makeEnv(o = {}) {
         },
         console,
         handlers: {}, active: null, fine: !!o.fine, caret: null,
-        saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, myPanels: 0, _confirm: true, _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
+        saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, _confirm: true, _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
         body: () => bodyHtml, isOpen: () => open,
     };
     const names = ['_opsMode', 'PT_ATTRS', 'SLOT_JP', 'MY_TEAM_SLOTS', '_MK_ATTR_CSS', 'escapeHtml', '_charIconHtml', 'resolveNikkeChar', 'fuzzyResolveCharacter', '_mockIntake', 'opsStore',
-        'showNotification', 'confirm', 'getCurrentIdentity', '_loadTeamSubs', '_teamHistCache', '_teamGroupsFor', 'openIconPicker', '_opsReloadBoardCards', 'renderMyDamagePanels', 'document', 'window', 'console'];
+        'showNotification', 'confirm', 'getCurrentIdentity', '_loadTeamSubs', '_teamHistCache', '_teamGroupsFor', 'openIconPicker', '_opsReloadBoardCards', 'document', 'window', 'console'];
     const fns = new Function(...names, SRC + '\nreturn { _mkb, openOpsMockBulk, closeOpsMockBulk, _mkbRender, _mkbPick, _mkbPickChar, _mkbSetDmg, _mkbAddRow, _mkbNext, _mkbNextId, handleOpsMockBulkSave, _mkbFlatRows, _mkbPresetsOf, _mkbEnter, _mkbChooseKey, _mkbFixDmg, _mkbSearch, _mkbGoto, _mkbSaveNext, _mkbSideRender, _mkbFocusFirst };')(...names.map(n => env[n]));
     return { env, ...fns };
 }
@@ -213,7 +212,7 @@ await t('③ まとめて保存: 変えた枠だけ・ダメージのある枠�
     assert.ok(iron.saved && !h._mkbFlatRows().find(r => r.attr === 'iron').dirty, '保存した枠がまだ「変更あり」');
     assert.ok(/electric だめ/.test(ele.err) && h._mkbFlatRows().find(r => r.attr === 'electric').dirty, '失敗した枠が残っていない');
     assert.ok(/✅ ミリン: 鉄甲 26\.1B を登録しました \/ ❌ 電撃 は保存できませんでした/.test(h._mkb.msg), h._mkb.msg);
-    assert.equal(h.env.invalidated, 1); assert.deepEqual(h.env.reloads, [1]); assert.equal(h.env.myPanels, 0, '本人でないのに模擬タブを描いた');
+    assert.equal(h.env.invalidated, 1); assert.deepEqual(h.env.reloads, [1]);
     const b = h.env.body();
     assert.ok(/✓ 保存しました/.test(b) && /❌ electric だめ/.test(b) && /mkbDone-iron"(?! hidden)/.test(b), '保存のあとの見た目');
     // もう一度押すと失敗した枠だけ

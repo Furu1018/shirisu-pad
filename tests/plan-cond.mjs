@@ -48,7 +48,7 @@ const SRC = [
 const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 const mkEl = () => ({ innerHTML: '', textContent: '', style: {} });
 
-function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null, sel = null, promiseNote = false, simple = false } = {}) {
+function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null, sel = null, promiseNote = false } = {}) {
     const els = { opsPlanAutoChips: mkEl(), opsPlanCue: mkEl(), opsPlanCond: mkEl() };
     const env = {
         document: { getElementById: (id) => els[id] || null },
@@ -58,7 +58,6 @@ function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, o
         _opsPublishedPlan: pub,
         _opsLastPlan: lastPlan,
         _opsMode: opsMode,
-        _homeSimple: () => simple,   // 🧱 シンプルな画面 (2026-10-23) では 📣 お願いを出さない
         _opsPlanFocus: focus,
         _opsPlanSel: sel,
         _opsPlanPromiseNote: promiseNote,
@@ -177,7 +176,7 @@ await test('★ 選んだ人: 参加可能時間と動かせる幅 (硬い / 狭
     assert.equal(run({ snap: { season, players }, lastPlan: plan, focus: 999 })._opsPlanFocusBarHtml(plan), '', '盤面にいない人で落ちる/出る');
 });
 
-await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする / 外す、お願い中は期限だけ、駒を選んだら「マスをタップ」、約束は動かさない', async () => {
+await test('★ 盤の上の操作帯 (③): 📌 の固定は 外す だけ (📣 お願い・🔒 確定 は 2026-11-16 に撤去)、お願い中は期限だけ、駒を選んだら「マスをタップ」、約束は動かさない', async () => {
     const plan = {};
     const pinRow = { id: 21, status: 'pinned', asked_at: null, ask_deadline_at: null };
     const askedRow = { id: 22, status: 'pinned', asked_at: '2026-09-11T12:00:00Z', ask_deadline_at: '2026-09-11T12:15:00Z' };
@@ -185,10 +184,8 @@ await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする /
     const oa = a._opsPlanFocusBarHtml(plan);
     noUndef(oa);
     assert.ok(oa.includes('📌 運営の仮置き (本人にはまだ見えていません) · 別のマスをタップで置き直し'), `下書きの説明が無い: ${oa}`);
-    assert.ok(oa.includes('onclick="_opsPlanAsk(21)">📣 お願いする') && oa.includes('onclick="_opsPlanUnpin(21)">仮置きを外す'), 'お願いする / 外す のボタンが無い');
-    // 🧱 シンプルな画面: 📣 お願いは出さず、🔒 確定する / 固定を外す だけ
-    const sa = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], simple: true, sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 21, pinned: true } })._opsPlanFocusBarHtml(plan);
-    assert.ok(!sa.includes('_opsPlanAsk(') && sa.includes('onclick="_opsPlanConfirmPin(21)"') && sa.includes('onclick="_opsPlanUnpin(21)">仮置きを外す'), 'シンプルな画面で 📣 お願いを出した / 確定・外す が無い');
+    assert.ok(oa.includes('onclick="_opsPlanUnpin(21)">仮置きを外す'), '外す のボタンが無い');
+    assert.ok(!oa.includes('_opsPlanAsk(') && !oa.includes('_opsPlanConfirmPin('), '📣 お願い / 🔒 確定 (撤去した) が出ている');
     const b = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 22, pinned: true } });
     const ob = b._opsPlanFocusBarHtml(plan);
     assert.ok(ob.includes('📣 お願い中 〜21:15') && !ob.includes('_opsPlanAsk('), 'お願い中なのに二重にお願いできる / 期限が無い');

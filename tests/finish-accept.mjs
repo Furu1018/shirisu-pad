@@ -37,7 +37,6 @@ const build = (opts = {}) => {
         getCurrentIdentity: () => ({ id: 7, name: 'ふるり' }),
         ensureActiveSeasonLoaded: async () => ({ season: { id: 1, current_level: 2, hard_date: '2026-09-14' }, bosses: [{ boss_number: 3, weakness: 'fire' }] }),
         _myBestLoadoutFor: async () => ({ slot: 1, characters: ['ラピ', 'アニス'], dmgB: 12 }),
-        renderMyReservations: () => { calls.order.push('renderResv'); },
         _refreshFinishRequests: async () => { calls.order.push('refresh'); },
         _notifyOps: () => { calls.order.push('notifyOps'); },
         renderMyFinishRequestBanner: () => {},
@@ -53,7 +52,7 @@ const build = (opts = {}) => {
         },
     };
     const fn = new Function('api', 'console', `
-        const { getCurrentIdentity, ensureActiveSeasonLoaded, _myBestLoadoutFor, renderMyReservations, _refreshFinishRequests, _notifyOps, renderMyFinishRequestBanner, showNotification, window } = api;
+        const { getCurrentIdentity, ensureActiveSeasonLoaded, _myBestLoadoutFor, _refreshFinishRequests, _notifyOps, renderMyFinishRequestBanner, showNotification, window } = api;
         const _finishAskOn = () => true;   // 🏁 段階 2.5: 本番は了承させない (練習だけ)。ここは了承の中身を見るので練習と同じ
         ${SRC}
         return handleMyFinishRequestRespond;`)(api, { warn() {}, log() {} });
@@ -76,7 +75,6 @@ await test('了承: 予約を読む → 作る → 伝える の順 (伝えて�
     assert.equal(calls.create[0].sourceFinishRequestId, 55, '依頼の id を予約に残していない');
     assert.equal(calls.create[0].bossNumber, 3);
     assert.deepEqual(calls.respond[0].slice(0, 4), [1, 3, 7, 'accepted']);
-    assert.ok(calls.order.includes('renderResv'), '作ったのに本人の予約を描き直していない');
     assert.equal(calls.setStatus.length, 0, '成功したのに枠を返している');
 });
 await test('★ 📌 が 3 件ある人は了承できない: 作らない・伝えない・accepted を残さない (監査 #2)', async () => {

@@ -371,7 +371,6 @@ const SRC_REAL = [
     cut('        async function _availDoSaveInner('),
     cut('        async function renderMyAvailabilitySettings('),
     cut('        function openOpsAvailModal('),
-    cut('        function openMyAvailModal('),
     cut('        function closeMyAvailModal('),
     cut('        function _renderAvailForWho('),
     cut('        async function _loadMyAvailConfirm('),
@@ -393,7 +392,7 @@ function makeEnvReal() {
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: (id) => { if (id) timers[id - 1] = null; },
         showNotification() { }, _invalidateSetupNeeds() { }, renderMyNextAction() { }, renderMyAvailStrip() { stripCalls.push(1); }, renderOpsMemberStatus() { mbCalls.push(1); }, renderOpsMockIntake() { }, _renderAvailUI() { },
-        opsStore: { get: () => ({ players: [{ id: 9, name: 'B' }, { id: 10, name: 'C' }] }), invalidate() { } },
+        opsStore: { get: () => ({ players: [{ id: 7, name: 'A' }, { id: 9, name: 'B' }, { id: 10, name: 'C' }] }), invalidate() { } },   // 7 = 名乗っている本人 (自分のシートも 👥 の ⏰ から開く)
         ensureActiveSeasonLoaded: async () => { await wait('season'); return { season: { id: 44 } }; },
         window: {
             supabaseLoadAvailability: async (pid) => { await wait('load' + pid); return (env._avail[pid] || []).slice(); },
@@ -411,7 +410,7 @@ function makeEnvReal() {
         fire: async () => { const fns = timers.splice(0).filter(Boolean); for (const f of fns) await f(); },
     };
     const keys = Object.keys(env);
-    const fn = new Function(...keys, SRC_REAL + '\nreturn { _availScheduleSave, _availDoSave, openOpsAvailModal, openMyAvailModal, closeMyAvailModal, handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };');
+    const fn = new Function(...keys, SRC_REAL + '\nreturn { _availScheduleSave, _availDoSave, openOpsAvailModal, closeMyAvailModal, handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };');
     return Object.assign(env, fn(...keys.map(k => env[k])));
 }
 const onIdx = (env) => env._availUI.slots.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
@@ -498,7 +497,7 @@ await test('★ 確認の待ち (シーズンの読み込み) の間に閉じて
 
 await test('★ 本人が確認を押してすぐ閉じても、確認が載ったあとにホームの帯を取り直す (未確認のまま残らない)', async () => {
     const env = makeEnvReal();
-    env.openMyAvailModal(); await settle();              // 本人 (7) のシート
+    env.openOpsAvailModal(7); await settle();            // 本人 (7) のシート (👥 の自分の行の ⏰ = forPlayer なし)
     env._availUI.slots[21] = true;
     env.gates.save7 = defer();
     const p = env.handleConfirmAvailability(false); await settle();
@@ -524,7 +523,7 @@ await test('★ 閉じたあと名乗り直していたら、閉じたときの�
 await test('★ 古い確認状態の読み込みが失敗しても、いま開いている別の人のシートを「取得失敗」で上書きしない', async () => {
     const env = makeEnvReal();
     env.gates.conf7 = defer(); env._confFail[7] = true;   // 本人 (7) の確認状態の読み込みを止めて、あとで失敗させる
-    env.openMyAvailModal(); await settle();
+    env.openOpsAvailModal(7); await settle();
     env.openOpsAvailModal(10); await settle();            // C を開く → C の確認状態 (who 10)
     assert.equal(env._myAvailConfirmRef()?.who, 10);
     env.gates.conf7.resolve(); await settle();            // 古い 7 の読み込みが失敗
