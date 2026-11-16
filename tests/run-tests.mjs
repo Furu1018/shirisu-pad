@@ -15428,6 +15428,8 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/if \(await _seasonHasDecision\(seasonId\)\) \{ alert\(_DECIDED_LEGACY_MSG\); return; \}/.test(fn('async function handleOpsChainPlan() {', 'async function _notifyChainPublish(')), '一気に組むが決定と混ざる');
         const nd2 = fn('async function _obNotifyDecide(', '// ブロックの時間の言い方');
         assert.ok(/if \(!prev && window\.publishedPlansDomain && window\.planChainDomain\) \{/.test(nd2) && /title: '🔄 あなたの凸が外れました', body: '組み直しで、あなたの割当は無くなりました。レイド予定表で確認してください' \}\);/.test(nd2), '最初の決定で従来の配信から外れた人に知らせない');
+        // ✓ だけの行 (数字が無い) には、運営の凸履歴の「編集」を出さない
+        assert.ok(html.includes("${tapOnly ? '' : `<button onclick=\"handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})\""), '✓ の行に編集が出る');
     });
     test('★ 凸報告の確認: 数字の無い ✓ の行は「予定より低い」にしない', () => {
         const ac = globalThis.attackCheckDomain;
@@ -15668,6 +15670,8 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const client = _fsS5.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
         const loader = client.match(/window\.supabaseLoadOpsDashboardData = async function \(opts = \{\}\) \{[\s\S]*?\n\};\n/)?.[0] || '';
         assert.ok(/const lite = !!\(opts && opts\.lite\);/.test(loader) && /if \(!lite\) \{\s*\n\s*const \{ data: avSlots \} = await supabase/.test(loader) && /const \{ data: slvSeasons \} = lite \? \{ data: \[\] \} : await supabase/.test(loader), '軽い読み込みが参加可能時間・SLv を読む');
+        // GP-1: 配信を読むたびに、いま読んだ自分の凸でヒーローの「残り N 凸」を数え直す (凸の記録は運営の ✓ = ほかの端末でしか増えない)
+        assert.ok(/if \(Array\.isArray\(myAttackRows\) && String\(getCurrentIdentity\(\)\?\.id \?\? ''\) === String\(identity\.id\)\) _myTodayAttacksCache = myAttackRows;[\s\S]{0,900}?\n\s*renderMyNextAction\(identity\);\n        \}\n/.test(html), 'ヒーローの残り凸が運営の ✓ で減らない (GP-1)');
     });
     await testAsync('★ 実行 (S5 レビュー TP-2 / TP-3 / TP-8 / TP-9・Codex 1 回目 F): _opsTapMark — 押した時点の決定で確かめる / 運営 OFF で書かない / 取り直しの最中も控えから押せる / 役割の読み込み前は待ってもらう', async () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
@@ -16580,6 +16584,9 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
             && /const msg = used \? `[^`]*凸が済んでいます \(📥 で登録\)/.test(s1) && /: \(rbNow && rbNow\.idx === p\.placedIdx\) \? `[^`]*まだ ✓ が付いていません/.test(s1) && !/凸されなかった仮置き/.test(s1), '過ぎた 📌 の確認が凸したかを言い切る');
         // 保存した値を手元の写しに (data-2)
         assert.ok(/if \(n\) md\.rebuild_minutes = n; else delete md\.rebuild_minutes; _obk\.season = \{ \.\.\._obk\.season, metadata: md \};/.test(html), '保存したあと欄が前の分数を選んだまま (data-2)');
+        // data-1: 見回り (30 秒) と、前面に戻ったとき (盤面を読んでいない端末は見回りで取り直さないので) に、シーズンの写しを確かめる
+        assert.ok(/if \(typeof _syncSeasonMeta === 'function'\) _syncSeasonMeta\(r\?\.season\);/.test(html)
+            && /if \(!document\.hidden && seasonStore\.get\(\)\?\.season && typeof _syncSeasonMeta === 'function'\) \{\s*\n\s*window\.supabaseLoadActiveSeasonWithBosses\?\.\(\)\.then\(r => _syncSeasonMeta\(r\?\.season\)\)/.test(html), '端末の写しを取り直さない (data-1)');
     });
     test('★ ⑥ 再レビュー decide-1: キャラが重なるだけの別の編成は「回した」とみなさない (過ぎたブロックに残す・✓ 待ちの札を消さない) / 編成枠 + 弱点・キャラの集合が全部同じなら回した', () => {
         const pcd = globalThis.planChainDomain;

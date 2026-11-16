@@ -116,7 +116,7 @@ for (const [scenario, W, H] of [['member', 390, 844], ['ops-eve', 390, 844], ['o
         const f = `${scenario}_${W}_${name}.jpg`; fs.writeFileSync(path.join(OUT, f), Buffer.from(data, 'base64'));
         report.push({ f, ...st }); console.log(f, JSON.stringify(st));
     };
-    const tabs = ['mypage', 'raid', 'mock', 'ops', 'ranking', 'slv-ranking', 'settings', 'help', 'member-admin'];
+    const tabs = ['mypage', 'raid', 'ops', 'ranking', 'slv-ranking', 'settings', 'help', 'member-admin'];
     for (const t of tabs) {
         const t0 = Date.now();
         const ok = await ev(`(() => { try { switchTab('${t}'); return document.querySelector('.tab-content.active')?.id || null; } catch (e) { return 'ERR ' + e.message; } })()`);
