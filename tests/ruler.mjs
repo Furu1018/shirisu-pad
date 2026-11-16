@@ -21,6 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // 揃え終わったタブ (ここに足す)。開く場面は、そのタブの中身が変わる所を選ぶ (練習の編・途中の課題・幅)
 const DONE = {
     mypage: ['member:390', 'member&start=schedule:390', 'member&start=report:390', 'ops-eve:390', 'ops-day:390', 'member&start=report:1366', 'ops-day:1366'],
+    'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366'],   // 運営タブの小タブ (段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面)
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 const PLAN = ONLY.length ? Object.fromEntries(ONLY.map(t => [t, DONE[t] || ['member:390', 'ops-eve:390', 'ops-day:390', 'ops-day:1366']])) : DONE;
@@ -36,8 +37,8 @@ if (typeof WebSocket !== 'function') { console.log('スキップ: この Node �
 const CHECK = `(() => {
     const roots = [document.querySelector('.tab-content.active'), document.querySelector('.header'), document.getElementById('bottomNav')].filter(Boolean);
     const els = []; for (const r of roots) { els.push(r); for (const e of r.querySelectorAll('*')) els.push(e); }
-    // 縦に伸ばさない所 (表・1 人 1 行の一覧・盤の駒と名前の札): 小さい文字 9 / 10px と、行の中の小さいボタンを認める
-    const dense = (e) => !!e.closest('table, .mb-row, .mb-list, [class*="table"], .obr, .obpc, .db-tag');
+    // 縦に伸ばさない所 (表・1 人 1 行の一覧 = 👥 メンバー状況の行 .dc-mb-row・盤の駒と名前の札): 小さい文字 9 / 10px と、行の中の小さいボタンを認める
+    const dense = (e) => !!e.closest('table, .dc-mb-row, [class*="table"], .obr, .obpc, .db-tag');
     const ownText = (e) => [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim());
     const snapF = (px) => px < 11.3 ? 11 : px < 12.8 ? 12 : px < 15 ? 14 : px < 17.5 ? 16 : px < 24 ? 20 : px;
     const where = (e) => { let n = e; while (n && n !== document.body) { if (n.id) return '#' + n.id; n = n.parentElement; } return ''; };

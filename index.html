@@ -797,31 +797,31 @@
         .obk-c10 { fill: var(--blk-10); } .obk-bg10 { background: var(--blk-10); }
         .obk-c11 { fill: var(--blk-11); } .obk-bg11 { background: var(--blk-11); }
         .ops-stage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 2px 2px 4px; }
-        .ops-stage-name { font-size: 13px; font-weight: 900; color: var(--t-ink)}
-        .ops-stage-seg button { padding: 4px 9px; font-size: 11px; }
-        .ops-stage-sub { font-size: 10.5px; font-weight: 800; color: var(--t-muted); margin: 0 2px 8px}
-        .ops-stage-auto { font: inherit; font-size: 10.5px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer}
+        .ops-stage-name { font-size: 14px; font-weight: 900; color: var(--t-ink)}
+        .ops-stage-seg button { padding: 4px 9px; font-size: 11px; min-height: 40px; }
+        .ops-stage-sub { font-size: 11px; font-weight: 800; color: var(--t-muted); margin: 0 2px 8px}
+        .ops-stage-auto { font: inherit; font-size: 11px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer}
         .ops-stage-auto.muted { color: var(--t-muted); background: transparent; padding: 0}
         .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b)); color: var(--on-fill); margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22)}
         .ops-stage-hero.day { background: linear-gradient(135deg,var(--grad-dark-a),var(--grad-dark-b)); box-shadow: 0 8px 22px rgba(0,0,0,0.22)}
         .ops-stage-hero.end { background: linear-gradient(135deg,var(--grad-ok-a),var(--grad-ok-b)); box-shadow: 0 8px 22px rgba(14,148,85,0.22)}
-        .ops-stage-hero .k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; opacity: .8; margin-bottom: 4px; }
-        .ops-stage-hero .h { font-size: 15px; font-weight: 900; line-height: 1.4; }
-        .ops-stage-hero .s { font-size: 11.5px; opacity: .85; margin-top: 4px; line-height: 1.6; font-weight: 700; }
-        .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 13px; font-weight: 900; color: var(--ops-deep); background: var(--card); cursor: pointer}
+        .ops-stage-hero .k { font-size: 11px; font-weight: 900; letter-spacing: .06em; opacity: .8; margin-bottom: 4px; }
+        .ops-stage-hero .h { font-size: 16px; font-weight: 900; line-height: 1.4; }
+        .ops-stage-hero .s { font-size: 12px; opacity: .85; margin-top: 4px; line-height: 1.6; font-weight: 700; }
+        .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 14px; font-weight: 900; color: var(--ops-deep); background: var(--card); cursor: pointer}
         .ops-stage-hero.day .b { color: var(--t-ink)}
         .ops-stage-hero.end .b { color: var(--ok-deep)}
-        .ops-stage-list { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 13px; padding: 9px 12px; background: var(--card); margin-bottom: 10px}
-        .ops-stage-list .tt { font-size: 10px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); margin-bottom: 4px}
+        .ops-stage-list { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 14px; padding: 9px 12px; background: var(--card); margin-bottom: 10px}
+        .ops-stage-list .tt { font-size: 11px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); margin-bottom: 4px}
         .ops-stage-list .row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
         .ops-stage-list .row + .row { border-top: 1px solid rgba(var(--ink-rgb), 0.05); }
         .ops-stage-list .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 900; border: 2px solid var(--track); color: var(--t-muted)}
         .ops-stage-list .row.done .dot { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--ok-ink)}
         .ops-stage-list .row.todo .dot { border-color: var(--warn-solid); background: rgba(245,158,11,0.16); color: var(--warn-deep)}
-        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--t-ink); background: none; border: none; padding: 0; cursor: pointer}
+        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12px; font-weight: 800; color: var(--t-ink); background: none; border: none; padding: 0; cursor: pointer}
         .ops-stage-list .row.done .lbl { color: var(--t-muted)}
         .ops-stage-list .cnt { font-size: 12px; font-weight: 900; color: var(--t-body); font-variant-numeric: tabular-nums; white-space: nowrap}
-        .ops-stage-list .act { flex: none; font: inherit; font-size: 10.5px; font-weight: 900; color: var(--ops-deep); background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer}
+        .ops-stage-list .act { flex: none; font: inherit; font-size: 11px; font-weight: 900; color: var(--ops-deep); background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer}
         .ops-etc { margin-top: 16px; }
         .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: var(--t-body); background: var(--s2); border: none; border-radius: 12px; padding: 11px; cursor: pointer}
         .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
@@ -1053,25 +1053,25 @@
         .dc-mb-seg { display:inline-flex; background:var(--s2); border-radius:999px; padding:3px}
         .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--t-body); cursor:pointer}
         .dc-mb-seg button[aria-pressed="true"] { background:var(--t-ink); color:var(--card)}
-        .dc-mb-pill { font:inherit; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; border:1.5px solid transparent; background:var(--s2); color:var(--t-body); cursor:pointer}
+        .dc-mb-pill { font:inherit; font-size:11px; font-weight:900; min-height:40px; padding:4px 12px; border-radius:999px; border:1.5px solid transparent; background:var(--s2); color:var(--t-body); cursor:pointer}
         .dc-mb-pill[aria-pressed="true"] { background:var(--t-ink); color:var(--card)}
         .dc-mb-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; }
         @media (min-width:560px) { .dc-mb-summary { grid-template-columns:repeat(4,1fr); } }
-        .dc-mb-sum { background:var(--s1); border-radius:10px; padding:7px 10px}
-        .dc-mb-sum .k { font-size:10px; font-weight:800; color:var(--t-muted); letter-spacing:.04em}
+        .dc-mb-sum { background:var(--s1); border-radius:8px; padding:7px 10px}
+        .dc-mb-sum .k { font-size:11px; font-weight:800; color:var(--t-muted); letter-spacing:.04em}
         .dc-mb-sum .v { font-size:16px; font-weight:900; color:var(--t-ink); font-variant-numeric:tabular-nums}
         .dc-mb-sum .v small { font-size:11px; color:var(--t-body); font-weight:700}
         .dc-mb-sum.bad .v { color:var(--attr-fire)}
         .dc-mb-rows { display:flex; flex-direction:column; gap:6px; }
-        .dc-mb-row { border:1px solid rgba(var(--ink-rgb), 0.06); border-radius:12px; padding:8px 10px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
+        .dc-mb-row { border:1px solid rgba(var(--ink-rgb), 0.06); border-radius:14px; padding:8px 10px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
         .dc-mb-row.todo { border-color:rgba(245,158,11,0.45); background:rgba(245,158,11,0.04); }
         .dc-mb-row.done { opacity:.72; }
         .dc-mb-who { display:flex; align-items:center; gap:8px; min-width:0; }
         .dc-mb-av { width:28px; height:28px; border-radius:50%; background:var(--s2); display:grid; place-items:center; font-weight:900; font-size:12px; color:var(--t-body); flex:none; overflow:hidden}
         .dc-mb-av img { width:100%; height:100%; object-fit:cover; display:block; }
-        .dc-mb-nm { font-weight:900; font-size:13px; color:var(--t-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+        .dc-mb-nm { font-weight:900; font-size:14px; color:var(--t-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
         .dc-mb-cols { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; min-width:0; }
-        .dc-mb-why { grid-column:1/-1; font-size:11.5px; color:var(--t-body); line-height:1.4}
+        .dc-mb-why { grid-column:1/-1; font-size:12px; color:var(--t-body); line-height:1.4}
         .dc-mb-why b { color:var(--t-ink)}
         .dc-mb-acts { grid-column:2; grid-row:1; display:flex; gap:4px; }
         @media (min-width:760px) {
@@ -1095,7 +1095,7 @@
         .dc-mb-blks i.now { outline:1.5px solid var(--attr-fire-solid); outline-offset:-1px; }
         .dc-mb-tz { margin-top:2px; font-size:10px; font-weight:700; color:var(--t-muted); overflow-wrap:anywhere; }
         .dc-mb-atk { display:inline-flex; gap:3px; }
-        .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:900; background:var(--s2); color:var(--t-muted)}
+        .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:4px; font-style:normal; font-size:10px; font-weight:900; background:var(--s2); color:var(--t-muted)}
         .dc-mb-atk i.d { background:var(--t-ink); color:var(--card)}
         .dc-mb-btn { font:inherit; font-size:11px; font-weight:900; padding:6px 10px; border-radius:8px; border:none; background:var(--t-ink); color:var(--card); cursor:pointer; white-space:nowrap}
         .dc-mb-btn.sub { background:var(--s2); color:var(--t-ink)}
@@ -1113,7 +1113,7 @@
         /* 運営タブのサブタブ (👥 メンバー / 🧱 組む / ⚔️ 戦況 / 👑 マスター)。段階のチェックリスト・コックピット・グループ見出しは出さない */
         body.ops-mode #opsStageList, body.ops-mode #opsCockpit, body.ops-mode #opsOverviewChips, body.ops-mode #tab-ops .ops-group-label { display: none !important; }
         .ops-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 6px; }
-        .ops-subtabs button { font: inherit; font-size: 13px; font-weight: 800; border: 1.5px solid var(--line); background: var(--card); color: var(--t-strong);
+        .ops-subtabs button { font: inherit; min-height: 40px; font-size: 14px; font-weight: 800; border: 1.5px solid var(--line); background: var(--card); color: var(--t-strong);
             border-radius: 999px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .ops-subtabs button[aria-selected="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
         .ops-subtabs .n { font-size: 11px; font-weight: 900; min-width: 18px; text-align: center; border-radius: 999px; padding: 1px 6px; background: var(--s2); color: var(--t-muted); }
@@ -1289,9 +1289,9 @@
         /* 段階 2 の物差し (2026-11-16): 押すものは高さ 40px 以上。一覧の行の中の小さいボタン・文字だけのリンクは**見た目を変えず**、押せる範囲だけ広げる (.hit40)。
            押せる範囲 (::before) は、ボタンの真ん中に合わせて**高さ 40px 以上** (ボタンのほうが高ければその高さ)。「上下に何 px 足す」と書かない — 文字の小さいボタン (高さ 21〜23px) では 40px に届かなかった (Codex 再監査 c27b7ef)。
            上の ④ (指の端末だけ・4px) より後ろに置いて、どの端末でも効かせる。::before を飾りに使うボタンには付けない */
-        .hit40 { position: relative; }
+        .hit40, .dc-mb-btn { position: relative; }   /* .dc-mb-btn = 👥 メンバー状況の行の中のボタン (⏰・催促 など) */
         /* ★ !important: 上の ④ は button:not(…):not(…):not(…)::before で、クラス 1 つのこの指定より強い — 付けないと、指の端末 (いちばん要る所) で 4px しか広がらない */
-        .hit40::before { content: ''; position: absolute; top: 50% !important; bottom: auto !important; left: -4px !important; right: -4px !important; height: 100%; min-height: 40px; transform: translateY(-50%); }
+        .hit40::before, .dc-mb-btn::before { content: ''; position: absolute; top: 50% !important; bottom: auto !important; left: -4px !important; right: -4px !important; height: 100%; min-height: 40px; transform: translateY(-50%); }
         @keyframes tab-fade-in {
             from { opacity: 0; transform: translateX(8px); }
             to   { opacity: 1; transform: translateX(0); }
@@ -2924,10 +2924,10 @@
         .btn-nikke-blue .btn-nikke-inner {
             background: linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));
             padding: 7px 12px;
-            border-radius: 6px;
+            border-radius: 8px;
             display: flex; align-items: center; gap: 5px}
         .btn-nikke-blue .btn-nikke-title {
-            font-size: 11.5px; letter-spacing: 0.3px;
+            font-size: 12px; letter-spacing: 0.3px;
             text-shadow: 0 1px 2px rgba(0,40,90,0.4);
         }
         /* 青ボタンは shimmer も撤去 (戦闘に入るだけ光らせる) */
@@ -3014,10 +3014,10 @@
         /* === Ops: アクションボタン === */
         .dc-ops-action {
             display: flex; align-items: center; justify-content: center; gap: 6px;
-            padding: 12px 10px; border-radius: 10px;
+            padding: 12px 10px; border-radius: 8px;
             border: none;
             background: var(--s2); color: var(--t-ink);
-            font-size: 13px; font-weight: 800;
+            font-size: 14px; font-weight: 800;
             cursor: pointer;
             transition: transform 0.1s ease, box-shadow 0.15s ease}
         .dc-ops-action:hover {
@@ -3838,21 +3838,21 @@
         #raidMocksBody .mk-tbl th:first-child, #raidMocksBody .mk-tbl td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
         #raidMocksBody .mk-row-me td:first-child { background: var(--ops-bg); }
         .mk-team { display: flex; gap: 2px; flex-wrap: nowrap; margin-top: 2px; }
-        .mk-none { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
-        .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 11.5px; }
+        .mk-none { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
         .mk-tbl th, .mk-tbl td { padding: 4px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
-        .mk-tbl th { font-size: 10.5px; font-weight: 800; color: var(--t-muted); line-height: 1.3; }
+        .mk-tbl th { font-size: 10px; font-weight: 800; color: var(--t-muted); line-height: 1.3; }
         .mk-tbl td { font-variant-numeric: tabular-nums; }
-        .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-weight: 900; padding: 2px 0; }
-        .mk-dl { font-size: 10.5px; font-weight: 800; color: var(--t-muted); } .mk-dl.warn { color: var(--warn-deep); }
-        .mk-chip { display: inline-block; margin: 1px 2px 1px 0; padding: 2px 7px; border-radius: 8px; border: 2px solid transparent; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; cursor: pointer; }
-        .mk-chip small { font-size: 9.5px; font-weight: 700; color: var(--t-muted); margin-left: 1px; }
+        .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; padding: 2px 0; }
+        .mk-dl { font-size: 10px; font-weight: 800; color: var(--t-muted); } .mk-dl.warn { color: var(--warn-deep); }
+        .mk-chip { display: inline-block; margin: 1px 2px 1px 0; padding: 2px 7px; border-radius: 8px; border: 2px solid transparent; background: var(--card); color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; cursor: pointer; }
+        .mk-chip small { font-size: 10px; font-weight: 700; color: var(--t-muted); margin-left: 1px; }
         .mk-chip.dup, .mk-dup-sample { border-color: var(--bad); }
-        .mk-dup-sample { padding: 0 4px; border: 2px solid var(--bad); border-radius: 6px; }
-        .mk-plus { display: inline-block; margin: 1px 0; width: 26px; height: 24px; border-radius: 8px; border: 1px dashed var(--line); background: transparent; color: var(--t-muted); font: inherit; font-weight: 900; cursor: pointer; }
-        .mk-b5 { display: inline-block; margin: 1px 2px; font-size: 9.5px; font-weight: 800; color: var(--warn-deep); }
+        .mk-dup-sample { padding: 0 4px; border: 2px solid var(--bad); border-radius: 4px; }
+        .mk-plus { display: inline-block; margin: 1px 0; width: 26px; height: 24px; border-radius: 8px; border: 1px dashed var(--line); background: transparent; color: var(--t-muted); font: inherit; font-size: 14px; font-weight: 900; cursor: pointer; }
+        .mk-b5 { display: inline-block; margin: 1px 2px; font-size: 10px; font-weight: 800; color: var(--warn-deep); }
         .mk-name.btn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-        .mk-only { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 900; color: var(--ops-deep); background: var(--ops-bg); vertical-align: middle; white-space: nowrap; }
+        .mk-only { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 900; color: var(--ops-deep); background: var(--ops-bg); vertical-align: middle; white-space: nowrap; }
         /* ✏️ まとめて入力 (1 人 5 属性・第46期メモ §3・2026-11-08) */
         /* ⌨ 続けて入力 (2026-11-12): PC (ポインタあり・900px〜) は 人の一覧 + 5 属性 の 2 列。それ以外は今までどおり 1 列 */
         #opsMockBulkModal .mkb-sheet { max-width: 560px; }
@@ -4867,7 +4867,7 @@
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ボス状況</div>
                     <span style="display:flex;align-items:baseline;gap:8px;">
-                        <span id="opsBossSummaryLevel" style="font-size:10.5px;color:var(--t-muted);"></span>
+                        <span id="opsBossSummaryLevel" style="font-size:11px;color:var(--t-muted);"></span>
                         <!-- 🎯 BlaBlaLINK のスクショで 5 体の HP を合わせる (S5: ✓ はダメージを入れないので HP を動かすのはこれだけ。以前は HP が 30 分古くなるまで入口が無かった: S5 レビュー DX-7) -->
                         <button type="button" data-ops-only onclick="openOpsBossHpModal()" title="BlaBlaLINK のボス一覧のスクショで 5 体の残り HP を合わせる" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">🎯 ボス HP を更新する</button>
                     </span>
@@ -4891,7 +4891,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📈 消化のペース</div>
-                    <span id="opsPaceMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
+                    <span id="opsPaceMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
                 </div>
                 <div id="opsPaceBody">
                     <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
@@ -4902,7 +4902,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔁 直近の動き</div>
-                    <span id="opsRecentMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
+                    <span id="opsRecentMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
                 </div>
                 <div id="opsRecentBody">
                     <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
@@ -4913,7 +4913,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">オンライン / 調整中 メンバー</div>
-                    <span id="opsCoordRefresh" style="font-size:10px;color:var(--t-muted);">10秒毎更新</span>
+                    <span id="opsCoordRefresh" style="font-size:11px;color:var(--t-muted);">10秒毎更新</span>
                 </div>
                 <p style="margin:0 0 8px 0;font-size:11px;color:var(--t-muted);">🎮 オンライン = ゲーム起動中で協力可能。📣 調整中 = 締め凸をまとめている人。</p>
                 <div id="opsCoordActiveList">
@@ -4925,14 +4925,14 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">残り戦闘可能メンバー</div>
-                    <button id="opsRemSortBtn" data-ops-only onclick="handleOpsRemainingSortToggle()" title="各セクション内の並びを 火力順 ⇄ 参加可能時間の早い順 で切り替え (運営モード限定)" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">⏰ 時間順</button>
-                    <button id="opsRemModeBtn" onclick="handleOpsRemainingModeToggle()" title="各属性の数値表示を ダメージ(B) ⇄ ふるり値 (SLv補正・基準者比) で切り替え" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">⚖️ ふるり値で見る</button>
+                    <button id="opsRemSortBtn" data-ops-only onclick="handleOpsRemainingSortToggle()" title="各セクション内の並びを 火力順 ⇄ 参加可能時間の早い順 で切り替え (運営モード限定)" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">⏰ 時間順</button>
+                    <button id="opsRemModeBtn" onclick="handleOpsRemainingModeToggle()" title="各属性の数値表示を ダメージ(B) ⇄ ふるり値 (SLv補正・基準者比) で切り替え" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">⚖️ ふるり値で見る</button>
                 </div>
                 <!-- ベースフィルタ (3ピル, 排他選択) -->
                 <div style="display:flex;gap:6px;">
                     <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span data-sp-icon="users" data-sp-size="13"></span> 全員</button>
                     <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span data-sp-icon="gamepad" data-sp-size="13"></span> オンライン</button>
-                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 参加可能時間</button>
+                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:14px;">⏰</span> 参加可能時間</button>
                 </div>
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
                 <div style="display:flex;gap:5px;margin-top:8px;">
@@ -4948,7 +4948,7 @@
                     <div id="opsRemainingSummaryLeft" style="font-size:14px;font-weight:900;color:var(--t-ink);letter-spacing:0.2px;font-variant-numeric:tabular-nums;">—</div>
                     <div style="display:flex;align-items:center;gap:8px;min-width:0;">
                         <div id="opsRemainingSummary" style="font-size:11px;font-weight:700;color:var(--t-muted);">読み込み中...</div>
-                        <button id="opsRemTidyBtn" data-ops-only onclick="handleOpsRemainingTidyToggle()" title="模擬の整理 (運営): ON にすると各セルに ✕ (除外) / ↩ (解除) が出る。除外した提出はプラン・締め凸候補・事前比較・提出状況から外れ、本人には「運営除外」と理由が表示される (本人が保存し直すと自動で戻る)" style="flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">🧹 整理</button>
+                        <button id="opsRemTidyBtn" data-ops-only onclick="handleOpsRemainingTidyToggle()" title="模擬の整理 (運営): ON にすると各セルに ✕ (除外) / ↩ (解除) が出る。除外した提出はプラン・締め凸候補・事前比較・提出状況から外れ、本人には「運営除外」と理由が表示される (本人が保存し直すと自動で戻る)" style="flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">🧹 整理</button>
                     </div>
                 </div>
                 <div id="opsRemainingList" style="margin-top:12px;">
@@ -4967,7 +4967,7 @@
             <div class="dc-card" data-ops-only id="opsSecAttackTap">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">✓ 凸の記録</div>
-                    <span id="opsAtkTapCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <span id="opsAtkTapCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと「未完了」が「✓ 完了」になります。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し。
@@ -4978,14 +4978,14 @@
             <div class="dc-card" data-ops-only id="opsSecAttackCheck">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📥 結果の取り込み</div>
-                    <span id="opsAtkCheckCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <span id="opsAtkCheckCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord に貼られた<strong>凸の結果のスクショ</strong>を取り込んで、本人の代わりに凸を登録します。使った編成はその人の模擬から選びます (PC はこのカードに落とすだけ)。取り込んだ凸は ✓ 確認済みになります。下の一覧の右端の「確認する」は、運営がその凸を確かめた印です (本人が自分で付けた ✓ や報告に出ます)。✓ 凸の記録で付けた凸は、もう確認済みです。
                 </p>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の凸か
-                        <select id="opsResultPlayer" onchange="_opsResultPick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
+                        <select id="opsResultPlayer" onchange="_opsResultPick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--t-ink);font-size:14px;font-weight:700;"></select>
                     </label>
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="opsResultInput" accept="image/*" multiple onchange="handleOpsResultUpload(event)" style="display:none;">
@@ -4994,14 +4994,14 @@
                             <span class="btn-nikke-title">📷 結果のスクショを選ぶ</span>
                         </div>
                     </label>
-                    <button type="button" onclick="_opsResultManual()" style="flex:none;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--t-body);font-size:11.5px;font-weight:800;cursor:pointer;">✏️ 手で入力</button>
+                    <button type="button" onclick="_opsResultManual()" style="flex:none;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--t-body);font-size:12px;font-weight:800;cursor:pointer;">✏️ 手で入力</button>
                 </div>
                 <div id="opsResultAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:12px;padding:11px 13px;margin-top:10px;">
                     <div style="width:16px;height:16px;border:2.5px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
                     <div id="opsResultAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
                 </div>
                 <div id="opsResultDraft" style="display:none;"></div>
-                <p id="opsResultStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
+                <p id="opsResultStatus" style="margin:8px 0 0 0;font-size:12px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
                 <div id="opsAtkCheckMissing"></div>
                 <p class="ops-recent-h" style="margin-top:10px;">登録された凸 <button type="button" class="dc-mb-btn sub" style="margin:0 6px 0 2px;vertical-align:middle;" onclick="openOpsAttacksEditModal()" title="誤って登録した凸を直す・消す">✏️ 編集・削除</button><span style="font-weight:700;color:var(--t-muted);">(配信と突き合わせて食い違いに印。本人が報告した凸は見て ✓)</span></p>
                 <div id="opsAtkCheckFilters" class="ops-atk-f">
@@ -5018,14 +5018,14 @@
             <div class="dc-card" data-ops-only id="opsSecMockIntake">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📸 模擬の取り込み</div>
-                    <span id="opsMockIntakeCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <span id="opsMockIntakeCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     Discord に貼られた<strong>模擬戦のスクショ</strong>を、本人の代わりに登録します。読み取った属性・ダメージ・5 キャラは保存前に直せます (PC はこのカードに落とすだけ)。
                 </p>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の模擬か
-                        <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
+                        <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;min-height:40px;padding:7px 10px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:14px;font-weight:700;"></select>
                     </label>
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onclick="if (_mockIntake.picked == null) { event.preventDefault(); showNotification('先に「誰の模擬か」を選んでください'); }" onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
@@ -5039,7 +5039,7 @@
                     <div style="width:16px;height:16px;border:2.5px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
                     <div id="opsMockIntakeAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
                 </div>
-                <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
+                <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:12px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
                 <!-- ▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26): 人 × 属性 (ボス 1〜5 の順)。マスの ＋ で手入力、編成を押すと直す。赤い枠 = 同じ人の別の編成とキャラが被る -->
                 <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。<strong>名前を押すと 5 属性をまとめて入力</strong> (プリセットから編成を選んでダメージだけ)。空のマスの ＋ で 1 属性ずつ手入力・編成を押すと直す。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
                 <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
@@ -5049,7 +5049,7 @@
             <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 メンバー状況</div>
-                    <span id="opsMbUpdated" style="font-size:10.5px;color:var(--t-muted);"></span>
+                    <span id="opsMbUpdated" style="font-size:11px;color:var(--t-muted);"></span>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
                     <button class="dc-mb-pill" id="opsMbFilterTodo" aria-pressed="true" onclick="handleOpsMemberFilter('todo')">未完のみ</button>
@@ -5067,10 +5067,10 @@
             <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 凸の予約</div>
-                    <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <span id="opsResvCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                     <button type="button" data-resv-ui onclick="openOpsResvCreate()" title="Discord で伝えられた凸先の希望を、本人の代わりに予約として登録する (🗣 9b)" style="flex:none;padding:5px 11px;border-radius:999px;border:none;background:var(--ops-bg);color:var(--ops-deep);font-family:inherit;font-size:11px;font-weight:900;cursor:pointer;">＋ 予約を登録</button>
                 </div>
-                <p data-resv-hidden-only style="margin:0 0 10px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.12);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⚠ いまは予約の画面を隠しています (希望は Discord → 🧱 組む で 📌)。前から残っている予約が下にあります — 自動で組むときの拘束になるので、要らなければ「取り下げる」で片付けてください。新しい予約は作れません。</p>
+                <p data-resv-hidden-only style="margin:0 0 10px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.12);font-size:12px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⚠ いまは予約の画面を隠しています (希望は Discord → 🧱 組む で 📌)。前から残っている予約が下にあります — 自動で組むときの拘束になるので、要らなければ「取り下げる」で片付けてください。新しい予約は作れません。</p>
                 <p data-resv-ui style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">承認すると予約が決まり、プランに入ります。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。 🗣 Discord で伝えられた希望は <strong>＋ 予約を登録</strong> で運営が本人の代わりに登録できます (登録した時点で予約・本人に通知)。</p>
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
@@ -5121,8 +5121,8 @@
                 <div id="opsPlanNext" class="plan-next" style="display:none;">
                     <span class="k">次にやること</span>
                     <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:9px 14px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;">📤 このプランを配信</button>
-                    <button id="opsPlanChainBtn" onclick="handleOpsChainPlan()" title="いまのブロックから最後のブロックまで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信する (予想。ずれたら組み直す)" style="padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer;">🧱 残りのブロックを一気に組む</button>
-                    <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:8px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11.5px;font-weight:800;cursor:pointer;">📸 共有画像</button>
+                    <button id="opsPlanChainBtn" onclick="handleOpsChainPlan()" title="いまのブロックから最後のブロックまで、前のブロックが模擬どおり削れたと仮定して順に組み、ブロックごとに配信する (予想。ずれたら組み直す)" style="padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;">🧱 残りのブロックを一気に組む</button>
+                    <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:8px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:12px;font-weight:800;cursor:pointer;">📸 共有画像</button>
                 </div>
                 </details>
             </div>
@@ -5143,14 +5143,14 @@
             <!-- Push通知 一斉送信 -->
             <div class="dc-card">
                 <div style="display:flex;align-items:center;gap:11px;">
-                    <div style="width:40px;height:40px;flex:none;border-radius:11px;background:var(--s2);display:flex;align-items:center;justify-content:center;" data-sp-icon="megaphone" data-sp-size="19"></div>
+                    <div style="width:40px;height:40px;flex:none;border-radius:14px;background:var(--s2);display:flex;align-items:center;justify-content:center;" data-sp-icon="megaphone" data-sp-size="19"></div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);">一斉通知</div>
                         <div style="font-size:11px;color:var(--t-muted);margin-top:2px;">メンバー全員へPushを送信</div>
                     </div>
                 </div>
-                <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:13px;background:linear-gradient(180deg,var(--t-ink),var(--t-ink));color:var(--card);font-size:15px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
-                <button type="button" onclick="openOpsPushCheckModal()" title="確認の通知を全員に送り、届いた人がタップすると記録されます (レイドの 2 日前から)" style="margin-top:8px;width:100%;height:40px;border-radius:12px;border:none;background:var(--s2);color:var(--t-ink);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">🔔 通知の疎通確認 (届くか確かめる)</button>
+                <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:14px;background:linear-gradient(180deg,var(--t-ink),var(--t-ink));color:var(--card);font-size:16px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
+                <button type="button" onclick="openOpsPushCheckModal()" title="確認の通知を全員に送り、届いた人がタップすると記録されます (レイドの 2 日前から)" style="margin-top:8px;width:100%;height:40px;border-radius:14px;border:none;background:var(--s2);color:var(--t-ink);font-family:inherit;font-size:12px;font-weight:900;cursor:pointer;">🔔 通知の疎通確認 (届くか確かめる)</button>
             </div>
 
             <!-- シーズン制御 -->
@@ -5166,7 +5166,7 @@
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" data-prod-only style="background:rgba(245,158,11,0.10);color:var(--warn-deep);"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:var(--bad-deep);"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:var(--t-muted);">🧪 リハーサルは<b>本番の写し</b>で動かします。模擬・編成・参加可能時間は いま登録されている本物のまま、ボス・ブロックの区切り・再編成時間は直前の本番シーズンから写します (作り物のデータは入れません)。テストのシーズンは<b>運営担当の端末にだけ</b>出て、メンバーの画面には出ません。「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前の状態に戻ります。<b>前日として</b> = ハード日があした / <b>当日として</b> = ハード日がきょう (凸ゼロ・全ボス満タン)。</p>
+                <p data-stage="prep" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);">🧪 リハーサルは<b>本番の写し</b>で動かします。模擬・編成・参加可能時間は いま登録されている本物のまま、ボス・ブロックの区切り・再編成時間は直前の本番シーズンから写します (作り物のデータは入れません)。テストのシーズンは<b>運営担当の端末にだけ</b>出て、メンバーの画面には出ません。「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前の状態に戻ります。<b>前日として</b> = ハード日があした / <b>当日として</b> = ハード日がきょう (凸ゼロ・全ボス満タン)。</p>
             </div>
 
             <!-- 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり「A,B,C…とブロックを作って 5～9 時と設定・時計で分かりやすく」)。描くのは renderOpsBlocks / 判定は raidBlocksDomain -->
@@ -5184,7 +5184,7 @@
             <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🧬 育成データの取り込み</div>
-                    <span id="opsGrowthCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <span id="opsGrowthCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
                     今回のレイドで<strong>実際に使われたキャラ</strong>だけ、BlaBlaLINK から育成状況を取り込みます。
@@ -28378,9 +28378,9 @@
                 return;
             }
             const days = window.opsStageDomain?.daysToRaid?.(opsStore.get()?.season || null, Date.now());
-            const tile = (k, v, cls) => `<div style="flex:1;min-width:0;border-radius:12px;padding:9px 10px;background:var(--s1);"><div style="font-size:10px;font-weight:800;color:var(--t-muted);">${k}</div><div style="font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${v}</div></div>`;
+            const tile = (k, v, cls) => `<div style="flex:1;min-width:0;border-radius:12px;padding:9px 10px;background:var(--s1);"><div style="font-size:11px;font-weight:800;color:var(--t-muted);">${k}</div><div style="font-size:20px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${v}</div></div>`;
             const names = (list, cls) => list.map(r => `<span class="dc-mb-c ${cls}">${esc(r.name)}</span>`).join('');
-            const sec = (title, sub, list, cls) => !list.length ? '' : `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${title} <span style="font-weight:800;color:var(--t-muted);">${list.length}人</span></div>`
+            const sec = (title, sub, list, cls) => !list.length ? '' : `<div style="margin-top:12px;"><div style="font-size:12px;font-weight:900;color:var(--t-ink);">${title} <span style="font-weight:800;color:var(--t-muted);">${list.length}人</span></div>`
                 + (sub ? `<div style="font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;margin:2px 0 6px;">${sub}</div>` : '<div style="height:6px;"></div>')
                 + `<div style="display:flex;flex-wrap:wrap;gap:5px;">${names(list, cls)}</div></div>`;
             const lead = g.sent ? '' : `<p style="margin:0 0 10px;font-size:12px;font-weight:800;color:var(--t-body);line-height:1.7;">まだ送っていません。${days != null && days > 2 ? `レイドは ${days} 日後です (2 日前からがおすすめですが、早めに送っても構いません)。` : ''}</p>`;
@@ -28392,8 +28392,8 @@
                 + sec('🔕 通知が有効でない', 'この人たちには何も届きません。ホームの「通知を設定する」から有効にしてもらいます (iPhone は先に「ホーム画面に追加」)。', g.off, 'err')
                 + sec('✅ 届いた', '', g.ok, 'ok')
                 + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-                    <button type="button" id="opsPushCheckSendBtn" onclick="handleOpsPushCheckSend()" ${g.wait.length ? '' : 'disabled'} style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12.5px;font-weight:900;cursor:${g.wait.length ? 'pointer' : 'default'};color:${g.wait.length ? 'var(--card)' : 'var(--t-muted)'};background:${g.wait.length ? 'var(--t-ink)' : 'var(--s2)'};">${g.wait.length ? sendLabel : (g.sent ? '通知が有効な人には全員届きました' : '送れる相手がいません')}</button>
-                    ${missing ? `<button type="button" onclick="handleOpsPushCheckCopy()" style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;color:var(--t-ink);background:var(--s2);">📋 届いていない ${missing} 人を Discord 用にコピー</button>` : ''}
+                    <button type="button" id="opsPushCheckSendBtn" onclick="handleOpsPushCheckSend()" ${g.wait.length ? '' : 'disabled'} style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12px;font-weight:900;cursor:${g.wait.length ? 'pointer' : 'default'};color:${g.wait.length ? 'var(--card)' : 'var(--t-muted)'};background:${g.wait.length ? 'var(--t-ink)' : 'var(--s2)'};">${g.wait.length ? sendLabel : (g.sent ? '通知が有効な人には全員届きました' : '送れる相手がいません')}</button>
+                    ${missing ? `<button type="button" onclick="handleOpsPushCheckCopy()" style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12px;font-weight:900;cursor:pointer;color:var(--t-ink);background:var(--s2);">📋 届いていない ${missing} 人を Discord 用にコピー</button>` : ''}
                 </div>`;
         }
         async function handleOpsPushCheckSend() {
