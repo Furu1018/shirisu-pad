@@ -1286,11 +1286,12 @@
                 top: -4px; left: -4px; right: -4px; bottom: -4px;
             }
         }
-        /* 段階 2 の物差し (2026-11-16): 押すものは高さ 40px 以上。一覧の行の中の小さいボタン・文字だけのリンクは**見た目を変えず**、押せる範囲だけ上下 8px 広げる (.hit40)。
-           24px のボタンで 40px になる。上の ④ (指の端末だけ・4px) より後ろに置いて、どの端末でも効かせる。::before を飾りに使うボタンには付けない */
+        /* 段階 2 の物差し (2026-11-16): 押すものは高さ 40px 以上。一覧の行の中の小さいボタン・文字だけのリンクは**見た目を変えず**、押せる範囲だけ広げる (.hit40)。
+           押せる範囲 (::before) は、ボタンの真ん中に合わせて**高さ 40px 以上** (ボタンのほうが高ければその高さ)。「上下に何 px 足す」と書かない — 文字の小さいボタン (高さ 21〜23px) では 40px に届かなかった (Codex 再監査 c27b7ef)。
+           上の ④ (指の端末だけ・4px) より後ろに置いて、どの端末でも効かせる。::before を飾りに使うボタンには付けない */
         .hit40 { position: relative; }
         /* ★ !important: 上の ④ は button:not(…):not(…):not(…)::before で、クラス 1 つのこの指定より強い — 付けないと、指の端末 (いちばん要る所) で 4px しか広がらない */
-        .hit40::before { content: ''; position: absolute; top: -8px !important; bottom: -8px !important; left: -4px !important; right: -4px !important; }
+        .hit40::before { content: ''; position: absolute; top: 50% !important; bottom: auto !important; left: -4px !important; right: -4px !important; height: 100%; min-height: 40px; transform: translateY(-50%); }
         @keyframes tab-fade-in {
             from { opacity: 0; transform: translateX(8px); }
             to   { opacity: 1; transform: translateX(0); }

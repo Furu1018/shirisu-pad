@@ -2329,7 +2329,9 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     // 指の端末むけの ④ (button:not(…)×3::before = 上下左右 4px) のほうが強いので、!important が無いと 24px のボタンが 32px にしかならない (物差しは 40px 以上)
     const rule = html.match(/\n\s*\.hit40::before \{([^}]*)\}/)?.[1] || '';
     assert.match(rule, /content: '';/); assert.match(rule, /position: absolute;/);
-    for (const side of ['top', 'bottom']) assert.match(rule, new RegExp(side + ': -8px !important;'), side + ' が 8px 広がらない (指の端末で ④ に負ける)');
+    // 押せる範囲は真ん中合わせで高さ 40px 以上 (「上下に何 px 足す」だと、文字の小さいボタンで届かない: Codex 再監査 c27b7ef)。④ の top / bottom / left / right に勝つよう !important
+    assert.match(rule, /top: 50% !important; bottom: auto !important; left: -4px !important; right: -4px !important;/, '④ の指定に負ける (指の端末で 4px しか広がらない)');
+    assert.match(rule, /height: 100%; min-height: 40px; transform: translateY\(-50%\);/, '押せる範囲の高さが 40px 以上にならない');
     assert.match(html, /\n\s*\.hit40 \{ position: relative; \}/, '広げる枠の基準が無い');
     assert.ok(html.indexOf('.hit40::before {') > html.indexOf("button:not(.btn-elegant):not(.ma-grad-btn):not(.ar-pick-btn)::before {"), '④ より前に置いている');
     // 付ける相手は、::before を飾りに使わないボタンだけ。ホームの通知のカードの 3 つ + 従来の画面 (member_input=full) の小さいボタン (練習モードに出ないので、物差しの検査 tests/ruler.mjs では見られない: Codex 監査 fc127f8)
