@@ -2324,6 +2324,18 @@ test('★ 日本語の Web フォントは読まない (数字と英字の 2 書
     // 試しの仕組み (その端末だけ外す切り替え) は、全員に入れたので外した
     assert.ok(!/shirisuko_font_trial_v1|padFontPref|handleFontPick|th-trial|data-font-pick/.test(html), '試しの切り替えが残っている');
 });
+test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲を広げる) は、指の端末でも上下 8px 広がる (2026-11-16)', () => {
+    const html = _perfHtml;
+    // 指の端末むけの ④ (button:not(…)×3::before = 上下左右 4px) のほうが強いので、!important が無いと 24px のボタンが 32px にしかならない (物差しは 40px 以上)
+    const rule = html.match(/\n\s*\.hit40::before \{([^}]*)\}/)?.[1] || '';
+    assert.match(rule, /content: '';/); assert.match(rule, /position: absolute;/);
+    for (const side of ['top', 'bottom']) assert.match(rule, new RegExp(side + ': -8px !important;'), side + ' が 8px 広がらない (指の端末で ④ に負ける)');
+    assert.match(html, /\n\s*\.hit40 \{ position: relative; \}/, '広げる枠の基準が無い');
+    assert.ok(html.indexOf('.hit40::before {') > html.indexOf("button:not(.btn-elegant):not(.ma-grad-btn):not(.ar-pick-btn)::before {"), '④ より前に置いている');
+    // 付ける相手は、::before を飾りに使わないボタンだけ (いま付けているのはホームの通知のカードの 3 つ)
+    const used = [...html.matchAll(/<button class="hit40"[^>]*onclick="([a-zA-Z_]+)\(/g)].map(m => m[1]).sort();
+    assert.deepEqual(used, ['markAllMyNotificationsRead', 'markMyNotificationRead', 'toggleMyNotifShowRead']);
+});
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
