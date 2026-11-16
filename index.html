@@ -10093,10 +10093,6 @@
             return p;
         }
 
-        // 大文字PT属性 ⇄ 表示 (PT_ATTRS は小文字キー)
-        function _gbAttrDef(upper) {
-            return PT_ATTRS.find(a => a.key === String(upper).toLowerCase()) || null;
-        }
         // 属性セレクタはアイコンのみ (文字なしでスペース節約 — 実機FB)。title で名前は補完
         function _gbAttrChipsHtml(activeUpper, onclickName) {
             return PT_ATTRS.map(a => {
@@ -12081,14 +12077,6 @@
         }
 
         // ========== ホーム: MY設定 ==========
-        // ⚙ アイコンタップ: ページ末尾の「MY設定」ボタン群にスムーススクロール
-        function openMySettingsModal() {
-            const buttons = document.querySelectorAll('#tab-mypage .my-setting-btn');
-            if (buttons.length > 0) {
-                buttons[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                buttons[0].focus({ preventScroll: true });
-            }
-        }
         function openMyAvailModal() {
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
@@ -13969,7 +13957,6 @@
         }
         // ==== 名前正規化・類似度・ファジィ解決の本体は js/domain/ocr.js に抽出済み (リアーキ ステップ2) ====
         // 以下は薄いアダプタ。実行は必ずランタイム (ocrDomain は defer 読込のためトップレベルでは未定義)
-        function _normNameForMatch(s) { return ocrDomain.normNameForMatch(s); }
         function _simBetween(a, b) { return ocrDomain.simBetween(a, b); }
 
         // OCRが返した名前を 50% 以上の類似度でマスタの canonical_name に解決。
@@ -14525,18 +14512,6 @@
                     plugins: { legend: { display: false } },
                 },
             });
-        }
-
-        function formatDmgUpdatedAt(ts) {
-            try {
-                const d = new Date(ts);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                const h = String(d.getHours()).padStart(2, '0');
-                const mi = String(d.getMinutes()).padStart(2, '0');
-                return `更新: ${y}-${m}-${dd} ${h}:${mi}`;
-            } catch { return ''; }
         }
 
         // 画像から属性別ダメージを自動登録
@@ -15352,28 +15327,6 @@
         // window 公開 (HTML onclick 用)
         window._availApplyPreset = _availApplyPreset;
         window._availRemoveRange = _availRemoveRange;
-
-        async function handleMyAvailToggle() {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            const checks = document.querySelectorAll('#mypageAvailGroup input[type=checkbox]');
-            const slots = Array.from(checks).filter(c => c.checked).map(c => c.dataset.slot);
-            const msgEl = document.getElementById('mypageAvailMessage');
-            try {
-                await window.supabaseSaveAvailability(id.id, slots);
-                const cur = getCurrentSlotJST();
-                const ok = slots.includes(cur);
-                msgEl.textContent = slots.length === 0
-                    ? '⚠️ 全時間帯OFF: 通知は一切来ません'
-                    : `✅ 保存しました (現在は ${ok ? '受信ON' : '受信OFF'})`;
-                msgEl.style.color = slots.length === 0 ? 'var(--warn)' : 'var(--ok)';
-                // ステータス行を再描画
-                await renderMyAvailabilitySettings(id);
-            } catch (e) {
-                msgEl.textContent = `❌ ${e?.message || e}`;
-                msgEl.style.color = 'var(--bad)';
-            }
-        }
 
         // ========== ホーム: Push通知設定 (Phase 6a) ==========
         // 受け取った通知履歴 (Push通知の本文をあとから確認できる)
@@ -16454,21 +16407,6 @@
                     }
                 } catch { /* noop */ }
             }, 120);
-        }
-        // ボスタップ起点: 「⏪ 解除」 = 自分の戦闘準備を消す
-        async function handleMyNextAttackRelease() {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            if (!confirm('戦闘準備を解除しますか？')) return;
-            try {
-                await window.supabaseClearMyFinishCoordination(id.id);
-                showNotification('⏪ 戦闘準備を解除しました');
-                _coordSelfCache = null;
-                _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
-                await _refreshCoordOnce(id);
-            } catch (e) {
-                showNotification(`❌ ${e?.message || e}`);
-            }
         }
 
         async function renderMyAttacks(identity) {
@@ -17961,15 +17899,6 @@
             }
         }
 
-        function renderSettingsLocalInfo() {
-            const el = document.getElementById('settingsLocalInfo');
-            if (!el) return;
-            const me = getCurrentIdentity();
-            el.innerHTML = `
-                <div>選択中のプレイヤー: <strong>${me ? escapeHtml(me.name) : '(未選択)'}</strong></div>
-                <div style="font-size:11px;color:var(--t-body);">この情報は localStorage に保存されています。端末/ブラウザを変えると未選択に戻ります。</div>
-            `;
-        }
         function handleSettingsClearIdentity() {
             if (!confirm('プレイヤー選択をリセットしますか？ (この端末のみ。データは消えません)')) return;
             try { localStorage.removeItem(IDENTITY_KEY); } catch { /* noop */ }
@@ -21681,11 +21610,6 @@
             }
         }
 
-        async function reloadOpsDashboard() {
-            opsStore.invalidate();
-            await renderOpsDashboard();
-        }
-
         let _opsRemainingFilter = 'all';  // 'all' | 'online' | 'available-now'
         let _opsRemainingAttr = '';        // '' | 'fire' | 'water' | 'electric' | 'iron' | 'wind'
         let _opsRemainingOpenSections = { '3': true, '2': true, '1': true, 'done': false };   // done=3凸完了 (既定は折りたたみ)
@@ -25236,11 +25160,6 @@
         }
         // ② 時間割で選んだチップ (運営だけ)。その人の戦闘可能時間を光らせ、動かせる幅を出す
         let _opsPlanFocus = null;
-        function _opsPlanToggleFocus(memberId) {
-            _opsPlanFocus = (_opsPlanFocus != null && String(_opsPlanFocus) === String(memberId)) ? null : memberId;
-            if (_opsPlanFocus == null) _opsPlanSel = null;
-            renderOpsPlanView();
-        }
         // ===== ③ 盤の上で手を打つ (パズル盤・2026-09-11) =====
         // 選んでいる駒: チップ (盤の上) か 🧩模擬ピース (盤の外)。置く先のマスをタップ / PC はドロップ → _opsPlanPlace。
         // 📌 = 運営の下書きの予約 (status pinned・レベル無し)。本人には届かない。「📣 お願い」で届き、引き受けると 🔒。
@@ -29360,10 +29279,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         let memberManageFilter = 'active'; // 'active' | 'archived'
         let memberManageCache = null;
 
-        async function openMemberManageModal() {
-            document.getElementById('memberManageModal').classList.add('open');
-            await reloadMemberManageList();
-        }
         function closeMemberManageModal() {
             document.getElementById('memberManageModal').classList.remove('open');
             document.getElementById('memberManageMessage').textContent = '';

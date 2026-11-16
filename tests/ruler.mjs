@@ -1,7 +1,7 @@
 // ============================================================================
 // 📏 物差しの検査 (全体の見直し 段階 2・2026-11-16〜) — 本物のブラウザで、揃え終わったタブに「物差しから外れた部品」が 0 個なのを確かめる
 //   node tests/ruler.mjs            揃え終わったタブ (下の DONE) を全部
-//   TABS=raid node tests/ruler.mjs  まだ揃えていないタブの外れを一覧で見る (落ちない・下調べ用)
+//   TABS=raid node tests/ruler.mjs  まだ揃えていないタブの外れを一覧で見る (落ちない・下調べ用)。運営タブの中の小タブは TABS=ops/メンバー,ops/組む,ops/戦況
 // ----------------------------------------------------------------------------
 // ★ Chrome が要る (無ければ「スキップ」と出して終わる)。CHROME=<実行ファイル> で場所を指定できる。練習モードで開くので、本番へは書かない。
 // 物差し (ふるりの決定 2026-11-14「顔つきは今のまま、物差しだけ揃える」・正本は docs/段階2_物差し_2026-11-14.md):
@@ -118,11 +118,18 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
         let ready = false;
         for (let i = 0; i < 80 && !ready; i++) { await wait(500); try { ready = await ev(`!!(window.PAD_PRACTICE && document.getElementById('pmDock') && document.readyState === 'complete' && typeof switchTab === 'function')`); } catch (_) { /* 読み込み直しの最中 */ } }
         await wait(2500);
+        const [tabId, sub] = tab.split('/');   // 'ops/組む' = 運営タブの中の小タブ (名前の一部で指す)
         let v = null, label = `${tab} — ${scenario} ${W}px`;
         try {
             // 練習の案内 (上の帯・枠) と使い方ツアーは検査の対象でない (本番の画面に無い / 別の画面)
             await ev(`(() => { const st = document.createElement('style'); st.textContent = '#pmDock, #pmRing, #tourOverlay { display: none !important; }'; document.head.appendChild(st); return 1; })()`);
-            const active = await ev(`(() => { switchTab(${JSON.stringify(tab)}); return document.querySelector('.tab-content.active')?.id || null; })()`);
+            let active = await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`);
+            if (sub && active === 'tab-' + tabId) {
+                // 小タブは、タブの中身が出てから押す (運営タブは盤面を読んでから小タブを描く)
+                let hit = false;
+                for (let i = 0; i < 20 && !hit; i++) { await wait(500); hit = await ev(`(() => { const b = [...document.querySelectorAll('#opsSubTabs button')].find(x => x.textContent.includes(${JSON.stringify(sub)})); if (!b) return false; b.click(); return true; })()`); }
+                if (!hit) active = '小タブ「' + sub + '」が無い';
+            }
             // ★ 中身が落ち着くまで待つ (Codex 監査 fc127f8): タブの中の部品の数と文字の量が 3 回続けて同じになるまで (最長 20 秒)。非同期の描画の途中 (読み込み中・空) を検査して通さない
             //   「同じ」は 部品の数 + 文字の中身 (長さでなく中身 — 同じ長さの別の文に差し替わったのを見逃さない) + タブの高さ + 押せない・隠した・選んだ部品の数。早く揃っても 5 秒は見る (遅れて来る描画: 配信・通知・更新履歴)。
             //   ★ これは「描き終わったか」の目安で、証明ではない (5 秒より後に来る描画・見た目だけの変化は拾えない)。練習モードは端末の中の偽のサーバで動くので、通信待ちは無い
@@ -130,7 +137,7 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
             let same = 0, last = ''; const t0 = Date.now();
             for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
-            if (active !== 'tab-' + tab || !last.startsWith('tab-' + tab + ':')) label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`;
+            if (active !== 'tab-' + tabId || !last.startsWith('tab-' + tabId + ':')) label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`;
             else if (same < 3) label += ' (20 秒待っても中身が落ち着かない)';
             else if (body.n < 20 || body.loading) label += ` (中身が出ていない: 文字のある部品 ${body.n} 個・読み込み中 ${body.loading} 個)`;
             else v = await ev(CHECK);
