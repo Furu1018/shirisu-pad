@@ -10236,7 +10236,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/dom\.readonlyRows\(rows, \{ damageOf: mockDamageOf \}\)/.test(rm), '属性ごとの行をドメインで組んでいない / 代表値 (mockDamageOf) を渡していない');
         assert.equal((html.match(/renderMyTodayBlocks\(identity\); renderMyMocksReadonly\(identity\);/g) || []).length, 2, 'きょうの凸と同じ場所で描いていない');
         assert.equal((html.match(/renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\);/g) || []).length, 2, '隠す経路で隠していない');
-        assert.ok(html.includes('<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。'), 'きょうの凸にスクショの案内が無い');
+        assert.ok(html.includes('<p data-member-input-lite style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。'), 'きょうの凸にスクショの案内が無い');
         assert.ok(html.includes('<script defer src="./js/domain/mockIntake.js"></script>'), 'mockIntake.js を読んでいない');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
         // 🧱 段階 3 (2026-10-22): 申請の導線は lite でも出す (data-member-resv・模擬の入力とは別)
@@ -16167,7 +16167,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         // S4 レビュー [26]: ✓ / 取り消しのあとヒーローの残り凸を数え直す
         assert.ok(/_myTodayAttacksCache = null;/.test(mk) && /_myTodayAttacksCache = null;/.test(ud), 'ヒーローの残り凸のキャッシュを捨てていない');
         // S4 レビュー [28] ダークで白い文字を明るい緑に乗せない / [29] 決定のときのヒーローの文 / [30] レイド当日はレイド日で
-        assert.ok(html.includes('.mt-done { padding: 8px 12px; border-radius: 10px; border: 0; background: var(--ok-solid); color: var(--ok-ink);'), '✓ ボタンの塗りと文字');
+        assert.ok(html.includes('.mt-done { padding: 8px 12px; border-radius: 8px; border: 0; background: var(--ok-solid); color: var(--ok-ink);'), '✓ ボタンの塗りと文字');
         // S5: ヒーローの決定の文 = メンバーは レイド予定表 と Discord (✓ は押さない)・運営は ✓ 凸の記録
         assert.ok(html.includes("'あなたの凸は「📅 きょうの凸」、ブロックごとの全員の凸は「📅 レイド予定表」に出ています。凸したら結果の画面のスクショを Discord へ (✓ は運営が付けます)。'")
             && html.includes("'あなたの凸は「📅 きょうの凸」に出ています。メンバーの凸は Discord の報告を見て、⚔️ 戦況 › ✓ 凸の記録 で ✓ を付けます。'") && !html.includes('その行の「✓ 凸しました」を押してください'), 'ヒーローの決定の文が S5 の流れでない');
@@ -17457,7 +17457,9 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         { const n = notes.find(x => x.id === 2026110201); assert.ok(n, '再編成時間の項目が無い'); assert.match(n.title, /再編成時間/); }
         { const n = notes.find(x => x.id === 2026111201); assert.ok(n, '🧪 テストがメンバーの画面に出ない、の項目が無い'); assert.match(n.title, /テスト/); assert.ok(n.lines.some(l => l.includes('開発中のテスト通知も受け取る')), 'スイッチの名前が画面と違う'); }
         // 2026-11-16: 日本語を端末のフォントで出す (起動が軽くなる・字の形が変わる) を、メンバーの言葉で知らせている
-        { const n = notes[0]; assert.equal(n.id, 2026111601, 'いちばん新しい項目 (起動が軽くなった・日本語の字の形)'); assert.match(n.title, /軽く/); assert.ok(n.lines.some(l => /端末に入っているフォント/.test(l) && /ヒラギノ/.test(l)), '字の形が変わることを言っていない'); assert.ok(!n.lines.some(l => /Web フォント|Noto|レイアウト/.test(l)), '作る側の言葉で書いている'); }
+        { const n = notes.find(x => x.id === 2026111601); assert.ok(n, '起動が軽くなった・日本語の字の形、の項目が無い'); assert.match(n.title, /軽く/); assert.ok(n.lines.some(l => /端末に入っているフォント/.test(l) && /ヒラギノ/.test(l)), '字の形が変わることを言っていない'); assert.ok(!n.lines.some(l => /Web フォント|Noto|レイアウト/.test(l)), '作る側の言葉で書いている'); }
+        // 2026-11-16: 段階 2 (物差し) のホーム。メンバーの言葉で (px・物差し・角丸 と言わない)
+        { const n = notes.find(x => x.id === 2026111602); assert.ok(n, 'ホームの文字を読みやすくした、の項目が無い'); assert.match(n.title, /ホーム/); assert.ok(!n.lines.some(l => /px|物差し|角丸|font/.test(l)), '作る側の言葉で書いている'); }
         assert.ok(/const CLIENT_BUILD = 2026110201;/.test(html), '版を上げていない');
     });
 }

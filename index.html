@@ -571,7 +571,7 @@
             z-index: 90;
             /* ★ 地と反対の色。上の帯と揃える (2026-09-10 ユーザー要望) */
             background: var(--nav-surface);
-            border-radius: 26px;
+            border-radius: 22px;   /* カードと同じ (段階 2 の物差し: 4 / 8 / 14 / 22 と丸) */
             align-items: flex-end;
             justify-content: space-around;
             padding: 9px 6px 8px;
@@ -617,7 +617,7 @@
             padding: 0;
             cursor: pointer;
             font: inherit;
-            font-size: 9.5px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.02em;
             color: var(--nav-dim);
@@ -1286,6 +1286,10 @@
                 top: -4px; left: -4px; right: -4px; bottom: -4px;
             }
         }
+        /* 段階 2 の物差し (2026-11-16): 押すものは高さ 40px 以上。一覧の行の中の小さいボタン・文字だけのリンクは**見た目を変えず**、押せる範囲だけ上下 8px 広げる (.hit40)。
+           24px のボタンで 40px になる。上の ④ (指の端末だけ・4px) より後ろに置いて、どの端末でも効かせる。::before を飾りに使うボタンには付けない */
+        .hit40 { position: relative; }
+        .hit40::before { content: ''; position: absolute; top: -8px; bottom: -8px; left: -4px; right: -4px; }
         @keyframes tab-fade-in {
             from { opacity: 0; transform: translateX(8px); }
             to   { opacity: 1; transform: translateX(0); }
@@ -3770,35 +3774,35 @@
         .ob-lk-m .st { font-size: 11px; font-weight: 800; overflow-wrap: anywhere; } .ob-lk-m .st.ok { color: var(--ok-deep); } .ob-lk-m .st.ng { color: var(--bad-deep); } .ob-lk-m .st.mute { color: var(--t-muted); }
         .ob-lk-go { padding: 3px 9px; border: 0; border-radius: 8px; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 900; cursor: pointer; }
         .ob-warn { color: var(--warn-deep); } .ob-skip { display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px 2px 0; font-weight: 800; }
-        .mt-blk { padding: 8px 10px; border-radius: 10px; border-bottom: 1px solid rgba(var(--ink-rgb), 0.06); }
+        .mt-blk { padding: 8px 10px; border-radius: 8px; border-bottom: 1px solid rgba(var(--ink-rgb), 0.06); }
         .mt-blk.now { outline: 2px solid var(--ops-solid); outline-offset: -2px; background: var(--ops-bg); }
         .mt-blk.past .mt-h, .mt-blk.past .mt-me-b { opacity: .72; }   /* 薄くするのは本文だけ — 完了 / 未完了 の文字 (.mt-act) まで薄くすると 3:1 を割った (2026-10-28 見落とし点検 DL-3) */
-        .mt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13px; color: var(--t-ink); }
-        .mt-hr { font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
-        .mt-lv { font-size: 10.5px; font-weight: 900; color: var(--ops-deep); }
-        .mt-chip { font-size: 9.5px; font-weight: 900; padding: 1px 7px; border-radius: 999px; }
+        .mt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; color: var(--t-ink); }
+        .mt-hr { font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .mt-lv { font-size: 11px; font-weight: 900; color: var(--ops-deep); }
+        .mt-chip { font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; }
         .mt-chip.now { background: var(--ops-solid); color: var(--ops-ink); } .mt-chip.past { color: var(--t-muted); }
-        .mt-none { margin: 4px 0 0; font-size: 11.5px; font-weight: 700; color: var(--t-muted); }
-        .mt-me { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+        .mt-none { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--t-muted); }
+        .mt-me { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }
         .mt-me.ok .mt-me-b { opacity: .8; }
         .mt-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 5px; }
-        .mt-me-b { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 800; color: var(--t-ink); line-height: 1.5; overflow-wrap: anywhere; }
-        .mt-sub { font-size: 11.5px; color: var(--t-body); }
+        .mt-me-b { flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--t-ink); line-height: 1.5; overflow-wrap: anywhere; }
+        .mt-sub { font-size: 12px; color: var(--t-body); }
         .mt-team { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 4px; }
         .mt-act { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-        .mt-done { padding: 8px 12px; border-radius: 10px; border: 0; background: var(--ok-solid); color: var(--ok-ink); font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; white-space: nowrap; }
+        .mt-done { padding: 8px 12px; border-radius: 8px; border: 0; background: var(--ok-solid); color: var(--ok-ink); font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; white-space: nowrap; }
         .mt-done:disabled, .mt-undo:disabled { opacity: .5; cursor: default; }
         .mt-ok { font-size: 12px; font-weight: 900; color: var(--ok-deep); white-space: nowrap; }
         .mt-pend { font-size: 11px; font-weight: 800; color: var(--t-muted); white-space: nowrap; padding: 1px 7px; border-radius: 999px; background: var(--s2); }
-        .mt-undo { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-muted); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+        .mt-undo { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-muted); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .mt-all { margin-top: 6px; } .mt-all summary { font-size: 11px; font-weight: 800; color: var(--t-muted); cursor: pointer; }
         .mt-boss { display: flex; align-items: flex-start; gap: 6px; margin-top: 5px; }
-        .mt-pt { flex: none; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 6px; }
+        .mt-pt { flex: none; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 4px; }
         .mt-list { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
         .mt-e { font: inherit; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--s2); color: var(--t-ink); border: 1px solid transparent; overflow-wrap: anywhere; }
         button.mt-e { cursor: pointer; border-color: var(--line); }
         .mt-e.me { background: var(--ops-solid); color: var(--ops-ink); } .mt-e.ok { opacity: .6; }
-        .mt-foot { margin: 8px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.55; }
+        .mt-foot { margin: 8px 0 0; font-size: 11px; font-weight: 700; color: var(--t-muted); line-height: 1.55; }
         .ob-decide { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
         .ob-decide-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
         .ob-decide-btn { padding: 10px 16px; border-radius: 10px; border: 0; background: var(--ops-solid, var(--ops)); color: var(--on-fill); font: inherit; font-weight: 900; cursor: pointer; max-width: 100%; }
@@ -3936,7 +3940,7 @@
             transition: background .12s ease}
         .dc-setting-row:hover { background: var(--card)}
         .dc-setting-icon {
-            width: 34px; height: 34px; border-radius: 9px;
+            width: 34px; height: 34px; border-radius: 8px;
             background: var(--s2); display: flex; align-items: center; justify-content: center; font-size: 16px;
             flex: none}
 
@@ -4483,7 +4487,7 @@
                 <button id="homeNotifBell" onclick="_gotoNotifications()" aria-label="通知" title="通知"
                     style="position:relative;flex:none;width:40px;height:40px;border-radius:50%;border:none;background:var(--card);box-shadow:0 2px 8px rgba(20,22,26,0.10);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t-strong);">
                     <span data-sp-icon="bell" data-sp-size="18"></span>
-                    <span id="homeNotifBadge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;border-radius:999px;background:var(--attr-fire-solid);color:var(--on-fill);font-size:9.5px;font-weight:900;line-height:17px;padding:0 4px;text-align:center;box-shadow:0 1px 4px rgba(255,61,68,0.4);">0</span>
+                    <span id="homeNotifBadge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;border-radius:999px;background:var(--attr-fire-solid);color:var(--on-fill);font-size:11px;font-weight:900;line-height:17px;padding:0 4px;text-align:center;box-shadow:0 1px 4px rgba(255,61,68,0.4);">0</span>
                 </button>
             </div>
 
@@ -4498,12 +4502,12 @@
                                 <img loading="lazy" decoding="async" id="mypageAvatarImg" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
                             </div>
                         </div>
-                        <span style="position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:var(--t-ink);color:var(--card);font-size:10px;font-weight:800;letter-spacing:0.4px;padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 7px rgba(0,0,0,0.28);">変更</span>
+                        <span style="position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;letter-spacing:0.4px;padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 7px rgba(0,0,0,0.28);">変更</span>
                     </div>
                     <!-- info -->
                     <div style="flex:1;min-width:0;padding-top:1px;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div id="mypageName" style="font-size:19px;font-weight:900;letter-spacing:0.2px;color:var(--t-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択</div>
+                            <div id="mypageName" style="font-size:20px;font-weight:900;letter-spacing:0.2px;color:var(--t-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択</div>
                             <div id="mypageSlvChip" onclick="openMySlvModal()" title="SLvを変更" style="display:none;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;">
                                 <span id="mypageSlvValue">SLv —</span>
                                 <span style="opacity:0.65;" data-sp-icon="pencil" data-sp-size="10"></span>
@@ -4513,7 +4517,7 @@
                         <button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode()" style="margin-top:8px;border:none;border-radius:999px;padding:6px 11px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;"></button>
                         <div style="margin-top:12px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                                <div style="font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);">得意属性</div>
+                                <div style="font-size:11px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);">得意属性</div>
                                 <button onclick="openMyStrongAttrsModal()" style="border:none;background:transparent;font-size:11px;font-weight:700;color:var(--t-muted);cursor:pointer;padding:0;">編集</button>
                             </div>
                             <div id="mypageStrongAttrsDisplay" style="display:flex;gap:7px;"></div>
@@ -4548,7 +4552,7 @@
             <div class="dc-card" data-span="6" id="myBattleCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">戦闘</div>
-                    <div id="mypageBattleLive" style="display:none;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--attr-fire);">
+                    <div id="mypageBattleLive" style="display:none;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:0.8px;color:var(--attr-fire);">
                         <span style="width:7px;height:7px;border-radius:50%;background:var(--attr-fire-solid);animation:dcLivePulse 1s ease-in-out infinite;"></span>LIVE
                     </div>
                 </div>
@@ -4572,7 +4576,7 @@
                     <div id="mypageNextAttackBosses" style="display:flex;gap:8px;flex-wrap:wrap;">
                         <p style="flex:1;color:var(--t-muted);font-size:12px;text-align:center;">プレイヤーを選択するとボス一覧が表示されます。</p>
                     </div>
-                    <div id="mypageBattleInProgressBar" style="display:none;margin-top:14px;align-items:center;gap:9px;background:rgba(255,61,68,0.06);border:1px solid rgba(255,61,68,0.22);color:var(--bad-deep);border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;">
+                    <div id="mypageBattleInProgressBar" style="display:none;margin-top:14px;align-items:center;gap:9px;background:rgba(255,61,68,0.06);border:1px solid rgba(255,61,68,0.22);color:var(--bad-deep);border-radius:12px;padding:11px 14px;font-size:14px;font-weight:800;">
                         <span data-sp-icon="flame" data-sp-size="15"></span><span id="mypageBattleTargetLabel">B? と交戦中</span>
                     </div>
                     <div id="mypageBattleActions" style="display:none;gap:8px;margin-top:12px;">
@@ -4620,8 +4624,8 @@
             <!-- ⏰ あなたの戦闘可能時間 (2026-09-08 ユーザー要望: 自分の設定を認識していないメンバーがいた) -->
             <div class="dc-card" data-span="12" id="myAvailStripCard" style="display:none;padding:12px 14px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ ユニオンレイド参加可能時間</div>
-                    <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
+                    <div style="font-size:14px;font-weight:900;color:var(--t-ink);">⏰ ユニオンレイド参加可能時間</div>
+                    <span id="myAvailStripBadge" style="display:none;font-size:11px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
                     <button type="button" data-member-input data-avail-edit onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:var(--s2);color:var(--t-strong);cursor:pointer;">変更する ›</button>
                 </div>
                 <div id="myAvailStripBody"></div>
@@ -4630,7 +4634,7 @@
             <div class="dc-card" data-span="6" id="myPublishedPlanCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
-                    <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                    <span id="myPublishedPlanMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <div id="myPublishedPlanBody"></div>
             </div>
@@ -4640,7 +4644,7 @@
             <div class="dc-card" data-span="6" id="myTodayBlocksCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📅 きょうの凸</div>
-                    <span id="myTodayBlocksMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                    <span id="myTodayBlocksMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <div id="myTodayBlocksBody"></div>
             </div>
@@ -4650,10 +4654,10 @@
             <div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">登録された模擬</div>
-                    <span id="myMocksMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                    <span id="myMocksMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <div id="myMocksBody"></div>
-                <p style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">運営が Discord の模擬のスクショから登録したものです。直したいときは Discord に模擬のスクショを出し直してください。</p>
+                <p style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">運営が Discord の模擬のスクショから登録したものです。直したいときは Discord に模擬のスクショを出し直してください。</p>
             </div>
 
             <!-- 🔔 通知の疎通確認 (2026-10-07)。運営が確認の通知を送ったあと、まだ「届いた」と伝えていない人にだけ出る。
@@ -4668,14 +4672,14 @@
             <div class="dc-card" data-span="6" id="myGrowthNoticeCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🧬 育成データが未公開です</div>
-                    <span id="myGrowthNoticeMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                    <span id="myGrowthNoticeMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
-                <p style="margin:0 0 10px;font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;">
+                <p style="margin:0 0 10px;font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.7;">
                     BlaBlaLINK で<b>ゲームカードを公開</b>にすると、あなたの育成が分析タブの「🧬 育成くらべ」に並びます。
                     非公開のままだと、運営からも他のメンバーからも見えません (同じユニオンでも見えない仕様です)。
                 </p>
                 <button type="button" onclick="_gotoSlvView('growth')"
-                        style="width:100%;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12.5px;font-weight:900;color:var(--t-ink);background:var(--s2);cursor:pointer;">
+                        style="width:100%;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12px;font-weight:900;color:var(--t-ink);background:var(--s2);cursor:pointer;">
                     🧬 育成くらべを見る
                 </button>
             </div>
@@ -4684,7 +4688,7 @@
             <div class="dc-card" data-span="6" id="myReservationsCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 予約</div>
-                    <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                    <span id="myReservationsMeta" style="font-size:11px;font-weight:700;color:var(--t-muted);"></span>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">
                     <span data-member-input>運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。</span><span data-member-input-lite>Discord で伝えた希望を運営が登録すると、ここに <b>🔒 予約</b> として出ます (通知も届きます)。プランを組み直しても動きません。</span>
@@ -8794,9 +8798,9 @@
                   + '当日ユニオン全体の最適な3凸を割り出す精度が上がります。';
             // ---- 状態マシン (承認済みプラン 2026-07-24 の状態表 A/B/C/D + S) ----
             // 黒 (hero) = 行動要求は常に1件だけ。CTA部品:
-            const heroBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 5px 16px rgba(108,66,240,0.4);">${label}</button>`;
-            const softBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:var(--t-ink);cursor:pointer;background:var(--s2);">${label}</button>`;
-            const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--hero-text-ops);cursor:pointer;background:rgba(var(--paper-rgb), 0.08);">${label}</button>`;
+            const heroBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:14px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 5px 16px rgba(108,66,240,0.4);">${label}</button>`;
+            const softBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12px;font-weight:900;color:var(--t-ink);cursor:pointer;background:var(--s2);">${label}</button>`;
+            const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:12px;font-weight:800;color:var(--hero-text-ops);cursor:pointer;background:rgba(var(--paper-rgb), 0.08);">${label}</button>`;
 
             // 🧱 ③-d: メンバーの入力を最低限にしているとき、模擬タブへの導線は出さない。
             //   代わりに「Discord にスクショを貼る」を添え、押せる先は 出られる時間 (こちらは PAD で聞く)
@@ -8976,8 +8980,8 @@
             const label = hero ? 'var(--hero-text-ops)' : 'var(--ops)';
             card.innerHTML = `
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:${label};margin-bottom:6px;">📌 次にやること</div>
-                <div style="font-size:${hero ? '15px' : '14px'};font-weight:900;color:${ink};line-height:1.5;margin-bottom:4px;">${lead}</div>
-                <div style="font-size:11.5px;color:${sub};line-height:1.65;margin-bottom:11px;">${why}</div>
+                <div style="font-size:${hero ? '16px' : '14px'};font-weight:900;color:${ink};line-height:1.5;margin-bottom:4px;">${lead}</div>
+                <div style="font-size:12px;color:${sub};line-height:1.65;margin-bottom:11px;">${why}</div>
                 ${_heroPlanStripHtml(identity, hero)}
                 ${cta}${subLink}`;
         }
@@ -9149,7 +9153,7 @@
             return `
                 <div id="heroPlanStrip" style="margin:2px 0 4px;">
                     ${_homeStaleBannerHtml(h, hero)}
-                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:2px;">🎯 あなたの3凸 — 🔒予約 / 配信の割当 / 空き枠 (タップで詳細)</div>
+                    <div style="font-size:11px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:2px;">🎯 あなたの3凸 — 🔒予約 / 配信の割当 / 空き枠 (タップで詳細)</div>
                     <div class="dc-plan-strip" data-no-swipe>${cards}</div>
                 </div>`;
         }
@@ -10386,14 +10390,14 @@
                 const k = _hourKey(h);
                 const on = set.has(k);
                 const cur = k === curSlot;
-                return `<div title="${h}時${on ? ' 戦闘可能' : ''}" style="flex:1;height:14px;border-radius:3px;background:${on ? 'var(--ops-solid)' : 'var(--line)'};${cur ? 'outline:2px solid var(--attr-fire-solid);outline-offset:1px;' : ''}${h === 0 ? 'margin-left:4px;' : ''}"></div>`;
+                return `<div title="${h}時${on ? ' 戦闘可能' : ''}" style="flex:1;height:14px;border-radius:4px;background:${on ? 'var(--ops-solid)' : 'var(--line)'};${cur ? 'outline:2px solid var(--attr-fire-solid);outline-offset:1px;' : ''}${h === 0 ? 'margin-left:4px;' : ''}"></div>`;
             }).join('');
             // 🧱 下のラベルはブロック名 (区切りはシーズンのもの)。ドメインが無ければ時刻 (従来)
             const rbd = window.raidBlocksDomain;
             const blocks = rbd ? rbd.blocksOfSeason((typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || null) : null;
             const labels = (blocks && blocks.length)
-                ? blocks.map(b => `<span title="${escapeHtml(b.label)}" style="flex:${b.slots.length};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:9px;font-weight:800;color:var(--t-muted);">${escapeHtml(b.short)}</span>`).join('')
-                : [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:9px;font-weight:800;color:var(--t-muted);">${h === 0 ? '翌0' : h}時</span>`).join('');
+                ? blocks.map(b => `<span title="${escapeHtml(b.label)}" style="flex:${b.slots.length};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:11px;font-weight:800;color:var(--t-muted);">${escapeHtml(b.short)}</span>`).join('')
+                : [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:11px;font-weight:800;color:var(--t-muted);">${h === 0 ? '翌0' : h}時</span>`).join('');
             const nowOn = set.has(curSlot);
             const summary = dom.labelOf(slots, {});
             const w = dom.windowAt(slots, curHour);
@@ -10403,12 +10407,12 @@
                         ? `いま (${curHour}時) は時間外です。赤い枠がいまの時刻、紫が登録した時間帯です`
                         : ((typeof _memberLite === 'function' && _memberLite()) ? '参加可能時間はまだ登録されていません。Discord で運営に伝えてください (運営が登録します)' : '時間帯が未登録です。登録すると通知とプランの割当に使われます'));
             body.innerHTML = `
-                <div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${escapeHtml(summary)}</div>
+                <div style="font-size:12px;font-weight:900;color:var(--t-ink);">${escapeHtml(summary)}</div>
                 <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>
-                ${set.size > 0 ? '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>' : ''}
-                <p data-avail-ops-note style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">${set.size > 0 ? '登録されている時間です。' : ''}運営の自分の時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録・変更します。</p>`;
+                ${set.size > 0 ? '<p data-member-input-lite style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。</p>' : ''}
+                <p data-avail-ops-note style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">${set.size > 0 ? '登録されている時間です。' : ''}運営の自分の時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録・変更します。</p>`;
             card.style.display = '';
             // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
@@ -10419,7 +10423,7 @@
             // 🧱 ブロックごとの凸数 (確認の行から)。入れていなければ出さない
             const cLabel = (rbd && blocks && _myAvailConfirm && !_myAvailConfirm.unavailable) ? rbd.countsLabel(_myAvailConfirm.block_counts, blocks) : '';
             body.querySelectorAll?.('[data-avail-counts]').forEach(el => el.remove());
-            if (cLabel) body.insertAdjacentHTML?.('beforeend', `<div data-avail-counts style="margin-top:6px;font-size:11.5px;font-weight:900;color:var(--ops-deep);">凸数: ${escapeHtml(cLabel)}</div>`);
+            if (cLabel) body.insertAdjacentHTML?.('beforeend', `<div data-avail-counts style="margin-top:6px;font-size:12px;font-weight:900;color:var(--ops-deep);">凸数: ${escapeHtml(cLabel)}</div>`);
             const src = document.getElementById('myAvailConfirmBadge');
             if (badge && src) {
                 badge.textContent = src.textContent;
@@ -10457,10 +10461,10 @@
             const esc = escapeHtml;
             body.innerHTML = list.map(r => {
                 const c = DC_ATTR_COLORS[r.key] || 'var(--dim)';
-                const head = `<span style="flex:none;min-width:52px;font-size:10.5px;font-weight:900;border-radius:999px;padding:3px 8px;text-align:center;color:var(--on-fill);background:${c};${r.missing ? 'opacity:0.45;' : ''}">${esc(r.name)}PT</span>`;
+                const head = `<span style="flex:none;min-width:52px;font-size:11px;font-weight:900;border-radius:999px;padding:3px 8px;text-align:center;color:var(--on-fill);background:${c};${r.missing ? 'opacity:0.45;' : ''}">${esc(r.name)}PT</span>`;
                 const teams = r.missing
-                    ? '<span style="font-size:11.5px;font-weight:700;color:var(--t-muted);">未登録</span>'
-                    : r.teams.map(t => `<div style="display:flex;align-items:center;gap:6px;min-width:0;">${t.team.length ? renderTeamSnippet(t.team, { size: 22 }) : '<span style="font-size:11px;font-weight:700;color:var(--t-muted);">編成なし</span>'}<span style="margin-left:auto;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${t.dmgB.toFixed(1)}<span style="font-size:9px;color:var(--t-muted);">B</span></span><span style="font-size:10px;font-weight:800;color:var(--t-muted);">編成${SLOT_JP[t.slot] || '①'}</span></div>`).join('');
+                    ? '<span style="font-size:12px;font-weight:700;color:var(--t-muted);">未登録</span>'
+                    : r.teams.map(t => `<div style="display:flex;align-items:center;gap:6px;min-width:0;">${t.team.length ? renderTeamSnippet(t.team, { size: 22 }) : '<span style="font-size:11px;font-weight:700;color:var(--t-muted);">編成なし</span>'}<span style="margin-left:auto;font-size:14px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${t.dmgB.toFixed(1)}<span style="font-size:11px;color:var(--t-muted);">B</span></span><span style="font-size:11px;font-weight:800;color:var(--t-muted);">編成${SLOT_JP[t.slot] || '①'}</span></div>`).join('');
                 return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-top:1px solid var(--line);">${head}<div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px;">${teams}</div></div>`;
             }).join('');
             if (meta) meta.textContent = `${list.filter(r => !r.missing).length} / 5 属性`;
@@ -10503,11 +10507,11 @@
                 const bossName = (bn) => { const b = (ctx?.bosses || []).find(x => Number(x.boss_number) === Number(bn)); return b ? `B${bn} ${b.name || ''}`.trim() : `B${bn}`; };
                 const rbNow = _raidRebuildNow(season, blocks);   // ⏱ 再編成時間 (Codex ⑥ 監査: 従来の配信の経路にも)
                 const rbNext = (r) => !!(rbNow && r.idx === rbNow.next);   // 再編成時間の次のブロック (凸しない時間 — 「いま」でなく「9:00 から」: 再レビュー ui-5)
-                const stateChip = (r) => (rbNow && r.idx === rbNow.idx) ? '<span style="font-size:9.5px;font-weight:900;color:var(--warn-deep);">⏱ 再編成中</span>'
-                    : rbNext(r) ? `<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">${esc(rbNow.to)} から</span>`
-                    : r.state === 'now' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
-                    : r.state === 'next' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">次</span>'
-                    : r.state === 'past' ? '<span style="font-size:9.5px;font-weight:900;color:var(--t-muted);">済</span>' : '';
+                const stateChip = (r) => (rbNow && r.idx === rbNow.idx) ? '<span style="font-size:11px;font-weight:900;color:var(--warn-deep);">⏱ 再編成中</span>'
+                    : rbNext(r) ? `<span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">${esc(rbNow.to)} から</span>`
+                    : r.state === 'now' ? '<span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
+                    : r.state === 'next' ? '<span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">次</span>'
+                    : r.state === 'past' ? '<span style="font-size:11px;font-weight:900;color:var(--t-muted);">済</span>' : '';
                 const html = t.rows.map(r => {
                     const doneHtml = r.done.map(d => `<div style="font-size:12px;font-weight:800;color:var(--ok-deep);">✓ ${esc(bossName(d.bossNumber))}${d.level ? ` Lv${d.level}` : ''}${d.damageB ? ` · ${d.damageB.toFixed(1)}B` : ''}</div>`).join('');
                     const planHtml = r.planned.map(pz => {
@@ -10517,26 +10521,26 @@
                         if (_homeSimple()) {
                             const when = pz.flex ? '<span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? esc(pz.hourLabel) : '');
                             const team = Array.isArray(pz.team) && pz.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(pz.team, { size: 22 }) : '';
-                            return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:6px;"></span><span style="flex:1;min-width:0;">${when ? `<b>${when}</b> ` : ''}${esc(bossName(pz.bossNumber))}${pz.level ? ` <span style="color:var(--t-muted);">Lv${Number(pz.level)}</span>` : ''}<br><span style="font-size:11.5px;color:var(--t-body);">${pt ? `${esc(pt)}PT ` : ''}編成${SLOT_JP[Number(pz.loadoutSlot)] || '①'} · ${pz.dmgB.toFixed(1)}B</span>${team ? `<span style="display:flex;gap:2px;flex-wrap:wrap;margin-top:4px;">${team}</span>` : ''}</span></div>`;
+                            return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:6px;"></span><span style="flex:1;min-width:0;">${when ? `<b>${when}</b> ` : ''}${esc(bossName(pz.bossNumber))}${pz.level ? ` <span style="color:var(--t-muted);">Lv${Number(pz.level)}</span>` : ''}<br><span style="font-size:12px;color:var(--t-body);">${pt ? `${esc(pt)}PT ` : ''}編成${SLOT_JP[Number(pz.loadoutSlot)] || '①'} · ${pz.dmgB.toFixed(1)}B</span>${team ? `<span style="display:flex;gap:2px;flex-wrap:wrap;margin-top:4px;">${team}</span>` : ''}</span></div>`;
                         }
                         // ★ 本文は 1 つの span に (flex の子にテキストを直に並べると横に散って折り返す)
                         return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:5px;"></span><span style="flex:1;min-width:0;">${esc(bossName(pz.bossNumber))}${pt ? ` <span style="color:var(--t-muted);">${esc(pt)}PT</span>` : ''} · ${pz.dmgB.toFixed(1)}B${pz.flex ? ' <span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? ` <span style="color:var(--t-muted);">${esc(pz.hourLabel)}</span>` : '')}</span></div>`;
                     }).join('');
                     let bodyHtml = doneHtml + planHtml;
                     if (!bodyHtml) {
-                        bodyHtml = r.state === 'past' ? '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">凸なし</div>'
-                            : r.covered ? '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>'
-                            : '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">まだ決まっていません (運営がこのブロックの前に配信します)</div>';
+                        bodyHtml = r.state === 'past' ? '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">凸なし</div>'
+                            : r.covered ? '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>'
+                            : '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">まだ決まっていません (運営がこのブロックの前に配信します)</div>';
                     }
                     const frame = (r.state === 'now' && !rbNext(r)) ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
-                    return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:10px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
-                        <div><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${esc(r.short || r.name)}</div><div style="font-size:9.5px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.attackRange || r.range || '')}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
+                    return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:8px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
+                        <div><div style="font-size:12px;font-weight:900;color:var(--t-ink);">${esc(r.short || r.name)}</div><div style="font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.attackRange || r.range || '')}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
                         <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">${bodyHtml}</div>
                     </div>`;
                 }).join('');
                 body.innerHTML = (rbNow ? `<p class="mt-rebuild">⏱ いまは再編成時間 (${esc(rbNow.label)}・凸しない時間)。${esc(blocks[rbNow.idx].short)} の凸の時間は ${esc(rbNow.from)} で終わりました。この時間に凸した分は ${esc(blocks[rbNow.next].short)} の凸になります</p>` : '')
-                    + html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
-                body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
+                    + html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:11px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
+                body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
                 if (meta) meta.textContent = `${t.total} / 3 凸 済み${Array.isArray(st?.pubs) && st.pubs.length ? ` · 配信あり: ${st.pubs.map(x => (x.block.short || x.block.name)).join('・')}` : (st?.plan?.blockScope ? ` · 配信は ${(st.plan.blockScope.short || st.plan.blockScope.name)} のぶん` : '')}`;
                 card.style.display = '';
             } catch (e) {
@@ -10652,8 +10656,8 @@
                 if (metaEl) metaEl.textContent = '';
                 if (body) {
                     body.innerHTML = '<div style="background:rgba(255,61,68,0.08);border:1px solid rgba(255,61,68,0.28);border-radius:13px;padding:14px;">'
-                        + '<div style="font-size:12.5px;font-weight:900;color:var(--bad-deep);">凸プランを表示できません</div>'
-                        + '<div style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:4px;color:var(--t-body);">'
+                        + '<div style="font-size:12px;font-weight:900;color:var(--bad-deep);">凸プランを表示できません</div>'
+                        + '<div style="font-size:12px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:4px;color:var(--t-body);">'
                         + 'アプリが古いため、いまの配信を正しく表示できません。ページを再読み込みしてください。</div>'
                         + _gateReloadHtml('<button onclick="_reloadFresh()" style="margin-top:10px;border:none;border-radius:999px;padding:10px 16px;font-family:inherit;font-size:12px;font-weight:900;color:var(--card);background:var(--t-ink);cursor:pointer;">更新する</button>') + '</div>';
                 }
@@ -10856,7 +10860,7 @@
             // 🧱 シンプルな画面 (2026-10-23 ユーザー決定): タブは出さず 🧱 盤 + 「確認しました」だけ。自分の凸は 📅 きょうの凸 に
             const simple = _homeSimple();
             const view = simple ? (plan?.blockScope ? 'board' : 'today') : _myPlanViewMode;
-            const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:var(--card);color:var(--t-ink);box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:var(--t-muted);'}">${icon} ${label}</button>`;
+            const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:var(--card);color:var(--t-ink);box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:var(--t-muted);'}">${icon} ${label}</button>`;
             const tabs = simple ? '' : `<div style="display:flex;gap:3px;background:var(--line);border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}${plan?.blockScope ? tab('board', '🧱', '盤') : ''}</div>`;
             let inner;
             try {
@@ -10875,7 +10879,7 @@
             // 🧱 段階 7: 配信のあるブロックが 2 つ以上ならチップで切り替える。後ろのブロックに配信があれば「まだ決まっていません」とは言わない
             const pubsNow = Array.isArray(_myPubState.pubs) ? _myPubState.pubs : [];
             const chips = pubsNow.length > 1
-                ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" aria-label="配信のあるブロック">${pubsNow.map(x => { const on = x.key === _myPubState.pubKey; return `<button type="button" onclick="setMyPubBlock('${escapeHtml(x.key)}')" aria-pressed="${on}" style="font:inherit;font-size:11.5px;font-weight:${on ? 900 : 800};padding:6px 11px;border-radius:999px;border:1.5px solid ${on ? 'var(--t-ink)' : 'var(--line)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};cursor:pointer;">🧱 ${escapeHtml(x.block.short || x.block.name)}</button>`; }).join('')}</div>`
+                ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" aria-label="配信のあるブロック">${pubsNow.map(x => { const on = x.key === _myPubState.pubKey; return `<button type="button" onclick="setMyPubBlock('${escapeHtml(x.key)}')" aria-pressed="${on}" style="font:inherit;font-size:12px;font-weight:${on ? 900 : 800};padding:6px 11px;border-radius:999px;border:1.5px solid ${on ? 'var(--t-ink)' : 'var(--line)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};cursor:pointer;">🧱 ${escapeHtml(x.block.short || x.block.name)}</button>`; }).join('')}</div>`
                 : '';
             // ★ 範囲の終わりは選んでいるブロック (無ければ blockScope.to を時刻の並びで)。blockScope に toIdx は無いので、以前は常に -1 → いつも「ほかのブロックも見られます」+「まだ決まっていません」の両方が出ていた (Codex 再監査 B)
             const selBlk = pubsNow.find(x => x.key === _myPubState.pubKey)?.block || null;
@@ -10886,32 +10890,32 @@
                 ? `<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:var(--warn-bg);font-size:11px;font-weight:800;color:var(--warn-deep);line-height:1.55;">🔭 前のブロックが模擬どおり削れたと仮定して組んだ予想です。実際の結果でずれたら運営が組み直し、変わった人には通知が届きます</p>`
                 : '';
             const scopeLine = plan?.blockScope
-                ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。${laterPublished ? '上のチップでほかのブロックの配信も見られます。' : '次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)'}</p>`
+                ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:12px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。${laterPublished ? '上のチップでほかのブロックの配信も見られます。' : '次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)'}</p>`
                 : '';
             const condLine = (!simple && plan?.conditions && window.planBoardDomain)
-                ? `<p style="margin:0 0 8px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
+                ? `<p style="margin:0 0 8px 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
                 : '';
             const updatedBanner = ack?.updated
                 ? `<p style="margin:0 0 8px 0;padding:9px 12px;border-radius:10px;background:rgba(108,66,240,0.12);font-size:12px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🔄 <b>プランが更新されました</b><br><span style="font-weight:700;font-size:11px;">前に確認したときから割当が変わっているかもしれません。下の内容をもう一度ご確認ください。</span></p>`
                 : '';
             // ✅ 確認ボタン: 運営が「見た人 / まだの人」を知るため (2026-10-24 Q2)。🗣 9h: 押していなくても、割当が変わったら通知が届く
             const ackBtn = ack?.acked
-                ? `<div style="margin-top:12px;padding:9px;border-radius:999px;background:rgba(24,194,107,0.12);text-align:center;font-size:11.5px;font-weight:900;color:var(--ok-deep);">✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます</div>`
-                : `<button onclick="handleAckPlan(this)" style="width:100%;margin-top:12px;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">✅ 確認しました</button>
-                   <p style="margin:7px 4px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">運営が「見た人 / まだの人」を知るためのボタンです。押していなくても、あなたの割当が変わったときは通知が届きます。</p>`;
+                ? `<div style="margin-top:12px;padding:9px;border-radius:999px;background:rgba(24,194,107,0.12);text-align:center;font-size:12px;font-weight:900;color:var(--ok-deep);">✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます</div>`
+                : `<button onclick="handleAckPlan(this)" style="width:100%;margin-top:12px;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">✅ 確認しました</button>
+                   <p style="margin:7px 4px 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;">運営が「見た人 / まだの人」を知るためのボタンです。押していなくても、あなたの割当が変わったときは通知が届きます。</p>`;
             // ⏳ 組み直し中 (L3): プランは残したまま「いま運営が組み直しています」と伝える。
             //   消してしまうと「ほっとかれている」と感じさせる (ユーザー判断 2026-09-07)
             // 🔒 予約が承認されたのに配信し直していない間 (配信が予約を知らない)
             let resvStaleBanner = '';
             try { resvStaleBanner = _homeStaleBannerHtml(_homeSlotsNow({ id: viewerId }), false); } catch { resvStaleBanner = ''; }
             const frozenBanner = frozen
-                ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.14);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⏳ 運営がプランを組み直し中です${frozenBy ? ` (${escapeHtml(String(frozenBy))})` : ''}<br>下の割当はひとつ前のものです。新しいプランが出るまで少しお待ちください。</p>`
+                ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.14);font-size:12px;font-weight:800;color:var(--warn-deep);line-height:1.55;">⏳ 運営がプランを組み直し中です${frozenBy ? ` (${escapeHtml(String(frozenBy))})` : ''}<br>下の割当はひとつ前のものです。新しいプランが出るまで少しお待ちください。</p>`
                 : '';
             // 前回の配信から自分の割当が変わったか (L3)。変わっていないと分かること自体が安心につながる
             const changeBanner = !myChange ? ''
                 : myChange.changed
-                    ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(108,66,240,0.10);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🔄 前回の配信から<strong>あなたの割当が変わりました</strong> (${escapeHtml(String(myChange.label))})<br><span style="font-weight:700;color:var(--t-body);">前: ${escapeHtml(String(myChange.before))}<br>今: ${escapeHtml(String(myChange.after))}</span></p>`
-                    : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:11.5px;font-weight:800;color:var(--ok-deep);">✅ 前回の配信から、あなたの割当は変わっていません</p>';
+                    ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(108,66,240,0.10);font-size:12px;font-weight:800;color:var(--ops-deep);line-height:1.55;">🔄 前回の配信から<strong>あなたの割当が変わりました</strong> (${escapeHtml(String(myChange.label))})<br><span style="font-weight:700;color:var(--t-body);">前: ${escapeHtml(String(myChange.before))}<br>今: ${escapeHtml(String(myChange.after))}</span></p>`
+                    : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:12px;font-weight:800;color:var(--ok-deep);">✅ 前回の配信から、あなたの割当は変わっていません</p>';
             body.innerHTML = `
                 ${resvStaleBanner}${frozenBanner}${changeBanner}
                 ${chips}${chainLine}${scopeLine}${condLine}
@@ -11079,13 +11083,13 @@
                     ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 // 取り消しは**希望を出すだけ** — 解除には運営の承認が要る (ユーザー決定)
                 const cancel = (r.status === 'requested' || r.status === 'approved')
-                    ? `<button data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})" style="flex:none;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:6px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消したい</button>`
+                    ? `<button data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})" style="flex:none;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:6px 11px;font-family:inherit;font-size:11px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消したい</button>`
                     : '';
                 return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${rv.isActive(r) ? '' : 'opacity:0.55;'}">
-                    <span style="flex:none;font-size:10px;font-weight:900;color:${col};background:${bg};padding:4px 9px;border-radius:999px;">${escapeHtml(jp)}</span>
+                    <span style="flex:none;font-size:11px;font-weight:900;color:${col};background:${bg};padding:4px 9px;border-radius:999px;">${escapeHtml(jp)}</span>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:12.5px;font-weight:800;color:var(--t-ink);">${r.raid_level != null ? `Lv${Number(r.raid_level)} · ` : ''}${escapeHtml(String(bossName.get(Number(r.boss_number)) || ('B' + r.boss_number)))} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}</div>
-                        ${who || why ? `<div style="font-size:10px;font-weight:700;color:var(--t-muted);margin-top:2px;">${escapeHtml(who || why)}</div>` : ''}
+                        <div style="font-size:12px;font-weight:800;color:var(--t-ink);">${r.raid_level != null ? `Lv${Number(r.raid_level)} · ` : ''}${escapeHtml(String(bossName.get(Number(r.boss_number)) || ('B' + r.boss_number)))} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}</div>
+                        ${who || why ? `<div style="font-size:11px;font-weight:700;color:var(--t-muted);margin-top:2px;">${escapeHtml(who || why)}</div>` : ''}
                         ${team ? `<div style="margin-top:5px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
                     </div>
                     ${cancel}
@@ -11093,10 +11097,10 @@
             };
             // 🧱 段階 3 (2026-10-22 ユーザー決定「予約したい人だけ申請」): 申請の導線は lite (模擬タブなし) でも出す (data-member-resv。模擬の入力 data-member-input とは別)
             // 🗣 9c (2026-10-24 Q1): lite では「枠を予約する」を出さない (CSS)。希望は Discord → 運営が登録 (9b) → ここに 🔒 予約として出る
-            const cta = `<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください。運営が登録すると、ここに 🔒 予約として出て通知が届きます。やめたい・変えたいときも Discord で運営へ (運営が解除・登録し直します)。</p>
+            const cta = `<p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">予約の希望 (「夕方に 風圧PT で行きたい」) は Discord で運営に伝えてください。運営が登録すると、ここに 🔒 予約として出て通知が届きます。やめたい・変えたいときも Discord で運営へ (運営が解除・登録し直します)。</p>
                 <div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
-                    <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">枠を予約する</button>
-                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
+                    <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">枠を予約する</button>
+                    <p style="margin:8px 2px 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約が決まります (時刻は運営がブロックの中で決めます)。予約しなくても、運営が参加可能時間と凸数から割り当てます。</p>
                 </div>`;
             // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
             // 🧱 シンプルな画面では運営が 📣 お願いを出せない (ボタンが無い) ので、ここに出るのは切り替え前に出したお願いだけ —
@@ -11107,13 +11111,13 @@
                 const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
                 return `<div style="padding:11px 12px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--warn-solid);margin-bottom:8px;">
                     <div style="font-size:12px;font-weight:900;color:var(--warn-deep);">📣 運営からのお願い${r.pinned_by ? ` (${escapeHtml(String(r.pinned_by))})` : ''}${dl}</div>
-                    <div style="margin-top:6px;font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
+                    <div style="margin-top:6px;font-size:14px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
                     ${team ? `<div style="margin-top:6px;display:flex;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
                     <div data-member-input style="display:flex;gap:8px;margin-top:10px;">
-                        <button type="button" onclick="handleAcceptPin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">引き受ける</button>
-                        <button type="button" onclick="handleDeclinePin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;">難しい</button>
+                        <button type="button" onclick="handleAcceptPin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:12px;font-weight:900;cursor:pointer;">引き受ける</button>
+                        <button type="button" onclick="handleDeclinePin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;">難しい</button>
                     </div>
-                    <p style="margin:8px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;line-height:1.5;"><span data-member-input>引き受けると予約 (🔒) になり、運営が組み直しても動きません。難しければ遠慮なく。</span><span data-member-input-lite>返事は Discord で運営へ。引き受けるなら運営が 🔒 予約にし、難しければ外します (PAD で答える操作はありません)。</span></p>   <!-- 🗣 9c (Codex 再監査 A): lite では PAD で答えない -->
+                    <p style="margin:8px 0 0;font-size:11px;color:var(--t-muted);font-weight:700;line-height:1.5;"><span data-member-input>引き受けると予約 (🔒) になり、運営が組み直しても動きません。難しければ遠慮なく。</span><span data-member-input-lite>返事は Discord で運営へ。引き受けるなら運営が 🔒 予約にし、難しければ外します (PAD で答える操作はありません)。</span></p>   <!-- 🗣 9c (Codex 再監査 A): lite では PAD で答えない -->
                 </div>`;
             }).join('');
             body.innerHTML = askRows + ((live.length + done.length)
@@ -11514,9 +11518,9 @@
                 if (done) doneCount++;
                 const bn = Number(a.bossNumber);
                 const loSlot = Number(a.loadoutSlot) || 1;
-                const loBadge = `<span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:var(--ops-deep);background:rgba(108,66,240,0.13);">編成${SLOT_JP[loSlot] || '①'}</span>`;
+                const loBadge = `<span style="flex:none;font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;color:var(--ops-deep);background:rgba(108,66,240,0.13);">編成${SLOT_JP[loSlot] || '①'}</span>`;
                 const team = a.team && a.team.length ? renderTeamSnippet(a.team, { size: 26 }) : '';
-                const dmgHtml = `<span style="font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:9px;color:var(--t-muted);">B</span></span>`;
+                const dmgHtml = `<span style="font-size:14px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:11px;color:var(--t-muted);">B</span></span>`;
                 const hourJp = (i) => (typeof HOUR_ORDER !== 'undefined' && HOUR_ORDER[i] != null) ? `${HOUR_ORDER[i] <= 4 ? '翌' : ''}${HOUR_ORDER[i]}時` : null;
                 const timeStr = a.kind === 'fixed'
                     ? (a.flex ? null : a.blockLabel ? (a.placedHourIdx != null ? hourJp(a.placedHourIdx) : `${a.blockLabel}のどこか`)   // 🧱 段階 3 (Codex指摘 f19bba2)
@@ -11524,24 +11528,24 @@
                     : (a.flex ? null : (a.hourLabel ? String(a.hourLabel) : null));
                 const timeHtml = (a.kind === 'fixed' || a.kind === 'plan') && a.flex
                     ? '<span style="font-size:12px;font-weight:900;color:var(--warn-deep);">⏳隙間</span>'
-                    : `<span style="font-size:15px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${timeStr ? esc(timeStr) : '—'}</span>`;
-                const lvHtml = a.level != null ? `<div style="font-size:9px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}</div>` : '';
-                const mark = (fill) => `<span style="flex:none;width:24px;height:24px;border-radius:8px;${fill};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--on-fill);">${done ? '✓' : ''}</span>`;
+                    : `<span style="font-size:16px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${timeStr ? esc(timeStr) : '—'}</span>`;
+                const lvHtml = a.level != null ? `<div style="font-size:11px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}</div>` : '';
+                const mark = (fill) => `<span style="flex:none;width:24px;height:24px;border-radius:8px;${fill};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--on-fill);">${done ? '✓' : ''}</span>`;
                 if (a.kind === 'empty') {
                     const canAsk = Array.isArray(_myResvRows) && !(typeof _memberLite === 'function' && _memberLite());   // 🗣 9c: lite では予約の入口を出さない (希望は Discord → 運営が登録)
                     return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(var(--ink-rgb), 0.05);">
                         ${mark('border:2px dashed var(--track);')}
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:12px;font-weight:900;color:var(--t-body);">空き枠 ${i + 1}</div>
-                            <div style="margin-top:3px;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">${esc(a.text || '')}</div>
+                            <div style="margin-top:3px;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;">${esc(a.text || '')}</div>
                         </div>
-                        ${canAsk ? '<span style="flex:none;font-size:10px;font-weight:800;color:var(--t-muted);">予約は 🔒 予約 から</span>' : ''}
+                        ${canAsk ? '<span style="flex:none;font-size:11px;font-weight:800;color:var(--t-muted);">予約は 🔒 予約 から</span>' : ''}
                     </div>`;
                 }
                 if (a.kind === 'done') {
                     return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(var(--ink-rgb), 0.05);opacity:0.55;">
                         ${mark('background:var(--ok-solid);')}
-                        <div style="flex:1;min-width:0;font-size:12px;font-weight:800;color:var(--t-ink);">報告済み <span style="font-size:10px;font-weight:700;color:var(--t-muted);">(プランにない凸)</span></div>
+                        <div style="flex:1;min-width:0;font-size:12px;font-weight:800;color:var(--t-ink);">報告済み <span style="font-size:11px;font-weight:700;color:var(--t-muted);">(プランにない凸)</span></div>
                     </div>`;
                 }
                 // 報告は現在開いているLvの割当だけ。
@@ -11552,8 +11556,8 @@
                 const reportable = !done && (lvFree || (a.level != null && Number(a.level) === curLevel));
                 let right;
                 if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;
-                else if (reportable) right = `<button data-member-report onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:var(--on-fill);background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));border:none;border-radius:999px;padding:8px 12px;font-family:inherit;cursor:pointer;">報告する ▶</button>`;
-                else right = `<div style="flex:none;text-align:right;">${dmgHtml}${a.level != null ? `<div style="font-size:8.5px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}になったら</div>` : ''}</div>`;
+                else if (reportable) right = `<button data-member-report onclick="_planReportBoss(${bn})" style="flex:none;font-size:11px;font-weight:900;color:var(--on-fill);background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));border:none;border-radius:999px;padding:8px 12px;font-family:inherit;cursor:pointer;">報告する ▶</button>`;
+                else right = `<div style="flex:none;text-align:right;">${dmgHtml}${a.level != null ? `<div style="font-size:11px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}になったら</div>` : ''}</div>`;
                 let status = '';
                 if (a.kind === 'fixed') {
                     const jp = a.status === 'pinned' ? `📣 運営からのお願い${a.pinnedBy ? ` (${esc(String(a.pinnedBy))})` : ''} — ホームの「🔒 予約」から返事してください`
@@ -11564,9 +11568,9 @@
                     const col = (a.unmet || a.status === 'cancel_requested' || a.status === 'pinned') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
-                        ? `<button type="button" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
+                        ? `<button type="button" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
                         : '';
-                    status = `<div style="margin-top:6px;font-size:10.5px;font-weight:900;color:${col};">${jp}${who}${cancel}</div>`;
+                    status = `<div style="margin-top:6px;font-size:11px;font-weight:900;color:${col};">${jp}${who}${cancel}</div>`;
                 } else if (!done) {
                     status = _planRowResvHtml(a, viewerId, doneCount);   // ⑧ 申請UI: この行を「引き受ける」
                 }
@@ -11574,18 +11578,18 @@
                     ${mark(done ? 'background:var(--ok-solid);' : (a.kind === 'fixed' ? 'background:var(--ops-solid);' : 'border:2px dashed var(--dim);'))}
                     <div style="width:48px;flex:none;text-align:center;">${timeHtml}${lvHtml}</div>
                     <div style="flex:1;min-width:0;">
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12.5px;font-weight:800;color:var(--t-ink);">${esc(String(bossName))}</span><span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PT</span>${loBadge}</div>
-                        ${team ? `<div style="margin-top:6px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : '<div style="margin-top:5px;font-size:10px;font-weight:700;color:var(--t-muted);">編成は未登録</div>'}
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12px;font-weight:800;color:var(--t-ink);">${esc(String(bossName))}</span><span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PT</span>${loBadge}</div>
+                        ${team ? `<div style="margin-top:6px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : '<div style="margin-top:5px;font-size:11px;font-weight:700;color:var(--t-muted);">編成は未登録</div>'}
                         ${status}
                     </div>
                     ${right}
                 </div>`;
             }).join('');
             return `${_homeStaleBannerHtml(h, false)}<div style="display:flex;align-items:center;gap:8px;padding:2px 4px 4px;">
-                    <span style="font-size:13px;font-weight:900;color:var(--t-ink);">あなたの3凸</span>
+                    <span style="font-size:14px;font-weight:900;color:var(--t-ink);">あなたの3凸</span>
                     <span style="margin-left:auto;font-size:11px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);padding:3px 10px;border-radius:999px;">${doneCount}/3 報告済み</span>
                 </div>${rows}
-                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🔒 は運営が承認した予約で、プランを組み直しても動きません。✓ は <b>ホーム → 戦闘報告</b> を完了した凸です。空き枠には、選ばれなかった理由が出ます。</p>`;
+                <p style="margin:10px 4px 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;">🔒 は運営が承認した予約で、プランを組み直しても動きません。✓ は <b>ホーム → 戦闘報告</b> を完了した凸です。空き枠には、選ばれなかった理由が出ます。</p>`;
         }
 
         // 🗺 全体の流れ: 総括ヒーロー + Lvステッパー + ボス1行概観 (攻撃メンバーのアバター重ね)
@@ -11669,8 +11673,8 @@
                 return `
                 <div style="margin-bottom:12px;padding:12px 13px;border-radius:13px;background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.35);animation:dcFadeIn .2s ease;">
                     <div style="display:flex;align-items:center;gap:7px;">
-                        <span style="font-size:15px;">📣</span>
-                        <span style="flex:1;font-size:12.5px;font-weight:900;color:var(--warn-deep);">${escapeHtml(label)} の締め凸依頼が届いています</span>
+                        <span style="font-size:16px;">📣</span>
+                        <span style="flex:1;font-size:12px;font-weight:900;color:var(--warn-deep);">${escapeHtml(label)} の締め凸依頼が届いています</span>
                     </div>
                     ${notes.length ? `<div style="margin-top:6px;font-size:11px;font-weight:800;color:var(--t-body);line-height:1.55;">${notes.map(n => `<div>${n}</div>`).join('')}</div>` : ''}
                     <div style="display:flex;gap:7px;margin-top:9px;">
@@ -15402,13 +15406,13 @@
             if (!identity) {
                 _myNotificationsCache = null;
                 _myNotificationsExpanded = false;
-                el.innerHTML = '<p style="color:var(--t-body);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
+                el.innerHTML = '<p style="color:var(--t-body);font-size:14px;">プレイヤーを選択すると履歴が表示されます。</p>';
                 _updateNotifBadge(0);
                 return;
             }
             // 初回 or 明示的に再取得指定された時のみ fetch。展開トグル時はキャッシュ使用。
             if (!useCache || _myNotificationsCache == null) {
-                el.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中…</p>';
+                el.innerHTML = '<p style="color:var(--t-body);font-size:14px;">読み込み中…</p>';
                 _updateNotifBadge(0);   // 前プレイヤーの未読数を残さない (取得成功時に正しい値で再設定)
                 try {
                     const fetched = await window.supabaseLoadRecentNotifications(20, identity.id);
@@ -15425,7 +15429,7 @@
             if (seq !== _notifRenderSeq) return;
             const rows = _myNotificationsCache || [];
             if (rows.length === 0) {
-                el.innerHTML = '<p style="color:var(--t-body);font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
+                el.innerHTML = '<p style="color:var(--t-body);font-size:14px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
                 _updateNotifBadge(0);
                 return;
             }
@@ -15439,30 +15443,30 @@
             const controlsHtml = `
                 <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap;">
                     <span style="font-size:11px;font-weight:900;color:${unreadRows.length > 0 ? 'var(--ops)' : 'var(--t-muted)'};">${unreadRows.length > 0 ? `🔵 未読 ${unreadRows.length}件` : '未読なし'}</span>
-                    ${unreadRows.length > 0 ? '<button onclick="markAllMyNotificationsRead()" style="padding:5px 11px;border-radius:999px;border:none;background:var(--t-ink);color:var(--card);font-size:10.5px;font-weight:800;cursor:pointer;">✔ すべて既読にする</button>' : ''}
-                    <button onclick="toggleMyNotifShowRead()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">${_myNotifShowRead ? '既読を隠す' : `既読も表示 (${readRows.length})`}</button>
+                    ${unreadRows.length > 0 ? '<button class="hit40" onclick="markAllMyNotificationsRead()" style="padding:5px 11px;border-radius:999px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;">✔ すべて既読にする</button>' : ''}
+                    <button class="hit40" onclick="toggleMyNotifShowRead()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">${_myNotifShowRead ? '既読を隠す' : `既読も表示 (${readRows.length})`}</button>
                 </div>`;
 
             const listRows = _myNotifShowRead ? rows : unreadRows;
             if (listRows.length === 0) {
-                el.innerHTML = controlsHtml + '<p style="color:var(--t-body);font-size:12.5px;padding:6px 0;">✅ すべて確認済みです。新しい通知が届くとここに表示されます。</p>';
+                el.innerHTML = controlsHtml + '<p style="color:var(--t-body);font-size:12px;padding:6px 0;">✅ すべて確認済みです。新しい通知が届くとここに表示されます。</p>';
                 return;
             }
             const visible = _myNotificationsExpanded ? listRows : listRows.slice(0, _NOTIF_INBOX_LIMIT);
             const cardsHtml = visible.map(n => {
                 const read = isRead(n);
                 const tag = n.target_kind === 'all'
-                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--s1);color:var(--t-body);">全員宛</span>'
-                    : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:var(--attr-water-deep);">あなた宛</span>';
+                    ? '<span style="font-size:11px;padding:1px 7px;border-radius:999px;background:var(--s1);color:var(--t-body);">全員宛</span>'
+                    : '<span style="font-size:11px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:var(--attr-water-deep);">あなた宛</span>';
                 const readBtn = (!read && n.id != null)
-                    ? `<button onclick="markMyNotificationRead(${n.id})" title="既読にして非表示" style="flex:none;padding:4px 9px;border-radius:999px;border:none;background:rgba(108,66,240,0.10);color:var(--ops);font-size:10px;font-weight:800;cursor:pointer;">✔ 既読</button>`
+                    ? `<button class="hit40" onclick="markMyNotificationRead(${n.id})" title="既読にして非表示" style="flex:none;padding:4px 9px;border-radius:999px;border:none;background:rgba(108,66,240,0.10);color:var(--ops);font-size:11px;font-weight:800;cursor:pointer;">✔ 既読</button>`
                     : '';
                 return `
                     <div style="padding:10px 12px;border-radius:8px;border:1px solid ${read ? 'rgba(var(--ink-rgb), 0.08)' : 'rgba(108,66,240,0.30)'};margin-bottom:8px;${read ? 'opacity:0.6;' : 'box-shadow:inset 3px 0 0 var(--ops-solid);'}">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
                             ${tag}
-                            <strong style="font-size:13px;flex:1;min-width:0;">${escapeHtml(n.title || '(無題)')}</strong>
-                            <span style="font-size:10px;color:var(--t-body);white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
+                            <strong style="font-size:14px;flex:1;min-width:0;">${escapeHtml(n.title || '(無題)')}</strong>
+                            <span style="font-size:11px;color:var(--t-body);white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
                             ${readBtn}
                         </div>
                         <div style="font-size:12px;line-height:1.55;color:var(--t-ink);white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
@@ -15522,8 +15526,8 @@
             const listEl = document.getElementById('mypageCoordActiveList');
             if (!selfEl || !listEl) return;
             if (!identity?.id) {
-                selfEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>';
-                listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>';
+                selfEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">プレイヤーを選択してください。</p>';
+                listEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">プレイヤーを選択してください。</p>';
                 return;
             }
             await _refreshCoordOnce(identity);
@@ -15952,23 +15956,23 @@
                 // 運営担当 (master / ops) にはテスト通知が常に届く (js/domain/notifyPolicy.js)。効かないスイッチを出さず、そう言う
                 const alwaysTest = String(_opsRole?.playerId) === String(identity?.id) && (_opsRole.role === 'master' || _opsRole.role === 'ops');
                 const testRow = testOn === undefined ? '' : alwaysTest
-                    ? '<p style="width:100%;margin:0;padding:10px 13px;border-radius:12px;background:var(--s1);font-size:11.5px;font-weight:700;color:var(--t-body);line-height:1.6;">🧪 運営担当には、開発中のテスト通知も届きます。</p>'
+                    ? '<p style="width:100%;margin:0;padding:10px 13px;border-radius:12px;background:var(--s1);font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;">🧪 運営担当には、開発中のテスト通知も届きます。</p>'
                     : `
                     <label style="display:flex;align-items:flex-start;gap:10px;width:100%;padding:11px 13px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
                         <input type="checkbox" id="myNotifyTest" ${testOn ? 'checked' : ''} onchange="handleMyNotifyTestToggle(this)" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
                         <span style="flex:1;">
-                            <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);">🧪 開発中のテスト通知も受け取る</span>
+                            <span style="display:block;font-size:14px;font-weight:800;color:var(--t-ink);">🧪 開発中のテスト通知も受け取る</span>
                             <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">テスト回の通知や、運営の動作確認の通知です。ON の間は、運営がテストしているシーズンもこの端末に出ます。OFF でも、あなた宛の連絡とレイド当日のチームの状況は届きます。</span>
                         </span>
                     </label>`;
                 actionsEl.innerHTML = `${testRow}
-                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">🔔 この端末で鳴るか試す</button>
-                    <p style="width:100%;margin:2px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.6;">この端末で通知を止めるときは、端末 (ブラウザ) の通知設定から行ってください。</p>
+                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">🔔 この端末で鳴るか試す</button>
+                    <p style="width:100%;margin:2px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">この端末で通知を止めるときは、端末 (ブラウザ) の通知設定から行ってください。</p>
                 `;
             } else {
                 statusEl.innerHTML = '<span style="color:var(--t-body);">未購読</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;">🔔 通知を有効にする</button>
+                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">🔔 通知を有効にする</button>
                 `;
             }
         }
@@ -16108,13 +16112,13 @@
             const show = dom.unseen(notes, _releaseSeenId(), Date.now());
             if (!show.length) { hide(); return; }
             const esc = escapeHtml;
-            const item = (n) => `<div style="margin-top:9px;"><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);line-height:1.4;">${esc(n.title)} <span style="font-weight:700;color:var(--t-muted);font-size:10.5px;white-space:nowrap;">${esc(n.date)}</span></div>`
-                + `<ul style="margin:4px 0 0;padding-left:18px;font-size:11.5px;font-weight:700;color:var(--t-body);line-height:1.65;">${n.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+            const item = (n) => `<div style="margin-top:9px;"><div style="font-size:12px;font-weight:900;color:var(--t-ink);line-height:1.4;">${esc(n.title)} <span style="font-weight:700;color:var(--t-muted);font-size:11px;white-space:nowrap;">${esc(n.date)}</span></div>`
+                + `<ul style="margin:4px 0 0;padding-left:18px;font-size:12px;font-weight:700;color:var(--t-body);line-height:1.65;">${n.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
             card.innerHTML = `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🆕 新しくなったこと</div>
                     <button type="button" onclick="handleReleaseNotesDismiss()" style="border:none;border-radius:999px;padding:6px 12px;font:inherit;font-size:11px;font-weight:800;background:var(--s2);color:var(--t-ink);cursor:pointer;">読んだ</button>
                 </div>${show.map(item).join('')}
-                <p style="margin:10px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);">これまでの更新は <a href="#help-updates" onclick="switchTab('help'); setTimeout(() => document.getElementById('help-updates')?.scrollIntoView({ behavior: 'smooth' }), 80); return false;" style="color:var(--ops);font-weight:800;">ヘルプ › 更新履歴</a> に。</p>`;
+                <p style="margin:10px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);">これまでの更新は <a href="#help-updates" onclick="switchTab('help'); setTimeout(() => document.getElementById('help-updates')?.scrollIntoView({ behavior: 'smooth' }), 80); return false;" style="color:var(--ops);font-weight:800;">ヘルプ › 更新履歴</a> に。</p>`;
             card.style.display = '';
         }
         function handleReleaseNotesDismiss() {
@@ -16160,8 +16164,8 @@
             // 分からない (取れなかった)・まだ送っていない・もう伝えた → 出さない
             if (!check || !check.sentAt || check.confirmed.some(c => String(c.player_id) === String(identity.id))) { hide(); return; }
             const head = (t) => `<div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:4px;">${t}</div>`;
-            const note = (t) => `<p style="margin:0 0 10px;font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;">${t}</p>`;
-            const btn = (onclick, label, main) => `<button type="button" onclick="${onclick}" style="flex:1;min-width:130px;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;color:${main ? 'var(--card)' : 'var(--t-ink)'};background:${main ? 'var(--t-ink)' : 'var(--s2)'};">${label}</button>`;
+            const note = (t) => `<p style="margin:0 0 10px;font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.7;">${t}</p>`;
+            const btn = (onclick, label, main) => `<button type="button" onclick="${onclick}" style="flex:1;min-width:130px;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12px;font-weight:900;cursor:pointer;color:${main ? 'var(--card)' : 'var(--t-ink)'};background:${main ? 'var(--t-ink)' : 'var(--s2)'};">${label}</button>`;
             if (sub && sub.supported && sub.subscribed) {
                 card.innerHTML = head('🔔 確認の通知は届きましたか？')
                     + note('レイドの前に、通知がちゃんと届くかを運営が確かめています。「通知の確認」という通知が届いていたら、下のボタンで伝えてください。')
@@ -16269,7 +16273,7 @@
             if (!ctx?.season || !rows.length) { if (card) card.style.display = 'none'; return; }
             if (card) card.style.display = '';   // 出す/隠すの本決めは CSS (700px 未満は隠す)
             const esc = escapeHtml;
-            if (meta) meta.innerHTML = `<span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">Lv${Number(ctx.season.current_level) || 1}</span>${_hpFreshHtml(ctx.bosses)}`;
+            if (meta) meta.innerHTML = `<span style="font-size:11px;font-weight:800;color:var(--t-muted);">Lv${Number(ctx.season.current_level) || 1}</span>${_hpFreshHtml(ctx.bosses)}`;
             el.innerHTML = rows.map(r => {
                 const v = ATTR_VISUAL[r.attr] || null;
                 const tk = r.attr ? `--attr-${r.attr}` : '--ops';
@@ -16297,13 +16301,13 @@
             //   未処理 Promise にしない。待っている間の名乗り直しは各 await の直後で見る (Codex指摘 2026-09-11)
             try {
                 if (!identity?.id) {
-                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>';
+                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:14px;">プレイヤーを選択してください。</p>';
                     return;
                 }
                 const ctx = await ensureActiveSeasonLoaded();
                 if (getCurrentIdentity()?.id !== identity.id) return;   // 待っている間に切り替わっていたら描かない
                 if (!ctx?.season) {
-                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">アクティブシーズン無し</p>';
+                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:14px;">アクティブシーズン無し</p>';
                     return;
                 }
                 const bosses = [...(ctx.bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
@@ -16353,8 +16357,8 @@
                              ${lv4B5 ? 'title="Lv4: HP無限のスコアレース — ここに全員で凸"' : ''}
                              style="${dead ? 'opacity:0.4;' : ''}${lv4B5 ? 'border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,var(--attr-electric-solid),var(--ops-solid)) border-box;' : ''}">
                             ${iconBox}
-                            <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
-                            ${lv4B5 ? '<div style="font-size:10px;font-weight:900;color:var(--ops);position:relative;z-index:2;">♾️</div>' : (dead ? '<div style="font-size:10px;color:var(--t-muted);position:relative;z-index:2;">💀</div>' : '')}
+                            <div style="font-size:20px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
+                            ${lv4B5 ? '<div style="font-size:11px;font-weight:900;color:var(--ops);position:relative;z-index:2;">♾️</div>' : (dead ? '<div style="font-size:11px;color:var(--t-muted);position:relative;z-index:2;">💀</div>' : '')}
                         </div>`;
                 }).join('');
 
@@ -16469,11 +16473,11 @@
             const listEl = document.getElementById('myAttackList');
             const btn = document.getElementById('myAttackAddBtn');
             if (!listEl || !identity) return;
-            listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
+            listEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">読み込み中...</p>';
 
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) {
-                listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">現在アクティブなシーズンがありません。運営にシーズン作成を依頼してください。</p>';
+                listEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">現在アクティブなシーズンがありません。運営にシーズン作成を依頼してください。</p>';
                 if (btn) btn.disabled = true;
                 return;
             }
@@ -16482,7 +16486,7 @@
                 attacks = await window.supabaseLoadMyAttacks(identity.id, ctx.season.id, ctx.season.hard_date);
                 _myTodayAttacksCache = attacks;
             } catch (e) {
-                listEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                listEl.innerHTML = `<p style="color:var(--bad);font-size:14px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
 
@@ -16493,11 +16497,11 @@
                 if (remaining === 0) {
                     btn.disabled = true;
                     btn.textContent = '✅ 3凸 報告済み';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--ok-solid);background:transparent;color:var(--ok);font-size:13px;font-weight:700;cursor:not-allowed;opacity:0.85;';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--ok-solid);background:transparent;color:var(--ok);font-size:14px;font-weight:700;cursor:not-allowed;opacity:0.85;';
                 } else {
                     btn.disabled = false;
                     btn.textContent = '＋ 凸を報告';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;';
                 }
             }
 
@@ -16516,10 +16520,10 @@
                         <div style="font-weight:700;color:var(--t-ink);font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
                         ${ptInfo ? `<img loading="lazy" decoding="async" src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:700;color:var(--t-ink);">${escapeHtml(bossName)}</div>
+                            <div style="font-size:14px;font-weight:700;color:var(--t-ink);">${escapeHtml(bossName)}</div>
                             <div style="font-size:11px;color:var(--t-body);">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
                         </div>
-                        <div style="font-size:15px;font-weight:700;color:var(--t-ink);white-space:nowrap;">${tapOnly ? '<span style="font-size:12px;color:var(--ok-deep);">✓ 数字なし</span>' : `${damageB} B`}</div>
+                        <div style="font-size:16px;font-weight:700;color:var(--t-ink);white-space:nowrap;">${tapOnly ? '<span style="font-size:12px;color:var(--ok-deep);">✓ 数字なし</span>' : `${damageB} B`}</div>
                         ${tapOnly ? '' : `<button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:none;background:var(--s2);color:var(--t-ink);font-size:11px;cursor:pointer;">編集</button>`}
                         <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
@@ -16527,21 +16531,21 @@
 
             const summary = `
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-                    <span style="font-size:13px;color:var(--t-body);">シーズン:</span>
-                    <strong style="font-size:13px;">${ctx.season.month_key}</strong>
-                    <span style="font-size:13px;color:var(--t-body);margin-left:8px;">凸数:</span>
-                    <strong style="font-size:13px;color:${remaining === 0 ? 'var(--ok)' : 'var(--t-ink)'};">${count}/3</strong>
+                    <span style="font-size:14px;color:var(--t-body);">シーズン:</span>
+                    <strong style="font-size:14px;">${ctx.season.month_key}</strong>
+                    <span style="font-size:14px;color:var(--t-body);margin-left:8px;">凸数:</span>
+                    <strong style="font-size:14px;color:${remaining === 0 ? 'var(--ok)' : 'var(--t-ink)'};">${count}/3</strong>
                     ${remaining === 0 ? '<span style="font-size:12px;color:var(--ok);margin-left:6px;">🎉 完凸 お疲れさまでした！</span>' : ''}
                 </div>`;
             const doneBanner = remaining === 0 ? `
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin:6px 0 12px 0;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:var(--ok-deep);font-size:13px;">
-                    <span style="font-size:18px;">✅</span>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin:6px 0 12px 0;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:var(--ok-deep);font-size:14px;">
+                    <span style="font-size:20px;">✅</span>
                     <div>
                         <div style="font-weight:700;">本日の戦闘結果報告は完了しています</div>
                         <div style="font-size:11px;opacity:0.8;">追加で報告したい場合はまず該当する凸を「削除」してから再登録してください。</div>
                     </div>
                 </div>` : '';
-            listEl.innerHTML = summary + doneBanner + (rows || '<p style="color:var(--t-body);font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
+            listEl.innerHTML = summary + doneBanner + (rows || '<p style="color:var(--t-body);font-size:14px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
         }
 
         // ===== 凸報告モーダル: ステート機械 (fresh/analyzing/imported/partial) =====
