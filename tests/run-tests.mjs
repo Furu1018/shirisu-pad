@@ -2332,9 +2332,10 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     for (const side of ['top', 'bottom']) assert.match(rule, new RegExp(side + ': -8px !important;'), side + ' が 8px 広がらない (指の端末で ④ に負ける)');
     assert.match(html, /\n\s*\.hit40 \{ position: relative; \}/, '広げる枠の基準が無い');
     assert.ok(html.indexOf('.hit40::before {') > html.indexOf("button:not(.btn-elegant):not(.ma-grad-btn):not(.ar-pick-btn)::before {"), '④ より前に置いている');
-    // 付ける相手は、::before を飾りに使わないボタンだけ (いま付けているのはホームの通知のカードの 3 つ)
-    const used = [...html.matchAll(/<button class="hit40"[^>]*onclick="([a-zA-Z_]+)\(/g)].map(m => m[1]).sort();
-    assert.deepEqual(used, ['markAllMyNotificationsRead', 'markMyNotificationRead', 'toggleMyNotifShowRead']);
+    // 付ける相手は、::before を飾りに使わないボタンだけ。ホームの通知のカードの 3 つ + 従来の画面 (member_input=full) の小さいボタン (練習モードに出ないので、物差しの検査 tests/ruler.mjs では見られない: Codex 監査 fc127f8)
+    const used = [...new Set([...html.matchAll(/<button (?:type="button" )?class="hit40"[^>]*onclick="([a-zA-Z_]+)\(/g)].map(m => m[1]))].sort();
+    assert.deepEqual(used, ['_planReportBoss', 'handleMyAttackDelete', 'handleMyAttackEdit', 'handleRequestCancelReservation', 'markAllMyNotificationsRead', 'markMyNotificationRead', 'toggleMyNotifShowRead']);
+    assert.equal((html.match(/class="hit40"[^>]*onclick="handleRequestCancelReservation\(/g) || []).length, 2, '取り消しの入口は 2 つ (わたしの凸の行・予約のカード) とも');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
@@ -10233,7 +10234,7 @@ console.log('\ngrowthDomain:');
         }
         const dom = html.slice(html.lastIndexOf('</style>'));
         assert.equal((dom.match(/\bid="(mypageBossStrip|myBossBoardCard|mypageStatusSwitcher|mypageStatusTiles|mypageBattleGate|mypageBattleActions|mypageBattleExpanded|mypageBattleLive|myAttackAddBtn)"/g) || []).length, 9, '隠す要素の id が DOM から消えている (CSS で隠す約束 = 運営モードと full では出る)');
-        assert.ok(/else if \(reportable\) right = `<button data-member-report onclick="_planReportBoss\(\$\{bn\}\)"/.test(html), '「報告する ▶」に印が無い');
+        assert.ok(/else if \(reportable\) right = `<button class="hit40" data-member-report onclick="_planReportBoss\(\$\{bn\}\)"/.test(html), '「報告する ▶」に印が無い');
         assert.ok(/<div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">/.test(html), '登録された模擬のカードが無い (幅 6 できょうの凸と対)');
         assert.ok(/body:not\(\.member-lite\) #myMocksCard \{ display: none !important; \}/.test(css), 'lite でなくなったときにカードが残る (CSS で消していない — Codex指摘)');
         // 了承後の案内: status === 'accepted' → _memberLite() で lite の文言 / そうでなければ従来 (構造で固定・文言だけの存在確認にしない — Codex指摘)
@@ -10262,8 +10263,8 @@ console.log('\ngrowthDomain:');
         assert.ok(html.includes('<span data-member-input>運営が承認すると<b>予約が決まり</b>、プランを組み直しても動きません。</span><span data-member-input-lite>Discord で伝えた希望を運営が登録すると、ここに <b>🔒 予約</b> として出ます'), '🔒 予約カードの頭の一文が lite で承認の話をしている (9c)');
         assert.ok(html.includes('登録されている時間です。直したいときは Discord で運営へ (PAD で直す操作はありません)。') && !html.includes('運営が登録した時間です'), '⏰ 帯の一文が「運営が登録した」と言い切っている (full で本人が登録した時間にも出る・Codex B)');
         // 既にある予約への PAD 入力 (取り消しの希望・📣 お願いの返事) も lite では出さない (Codex 9c 再監査 A 2026-10-24)。Discord で運営へ → 運営が解除 / 🔒 / 外す
-        assert.ok(html.includes('? `<button data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})"'), '🔒 予約カードの「取り消し」が lite でも出る (9c)');
-        assert.ok(html.includes('? `<button type="button" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})"'), '📅 きょうの凸の「取り消し」が lite でも出る (9c)');
+        assert.ok(html.includes('? `<button class="hit40" data-member-input onclick="handleRequestCancelReservation(${Number(r.id)})"'), '🔒 予約カードの「取り消し」が lite でも出る (9c)');
+        assert.ok(html.includes('? `<button type="button" class="hit40" data-member-input onclick="handleRequestCancelReservation(${Number(a.reservationId)})"'), '📅 きょうの凸の「取り消し」が lite でも出る (9c)');
         assert.ok(/<div data-member-input style="display:flex;gap:8px;margin-top:10px;">\s*\n\s*<button type="button" onclick="handleAcceptPin\(\$\{Number\(r\.id\)\}\)"/.test(html), '📣 お願いの返事 (引き受ける / 難しい) が lite でも出る (9c)');
         assert.ok(html.includes('<span data-member-input-lite>返事は Discord で運営へ。引き受けるなら運営が 🔒 予約にし、難しければ外します'), '📣 お願いの lite の案内が無い');
         assert.ok(html.includes('やめたい・変えたいときも Discord で運営へ (運営が解除・登録し直します)。</p>'), '🔒 予約カードの lite の案内に、やめたいときの行き先が無い');
@@ -16193,7 +16194,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         const caps = fn('function _playersWithBlockCaps(players, season) {');
         assert.ok(/const m = \/\^\(\\d\+\)-\\d\+\\\|\/\.exec\(typeof a\?\.plan_key === 'string' \? a\.plan_key : ''\);\s*\n\s*if \(m\) return Number\(m\[1\]\) % 24;/.test(caps), '凸数の上限で ✓ の行を押した時刻で数えている');
         // S4 レビュー [18] ✓ の行のダメージを編集させない
-        assert.ok(html.includes("${tapOnly ? '' : `<button onclick=\"handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})\"") && html.includes("${tapOnly ? '' : `<button onclick=\"handleMyAttackEdit(${a.id}, ${a.damage_raw})\""), '✓ の行に編集が出る');
+        assert.ok(html.includes("${tapOnly ? '' : `<button onclick=\"handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})\"") && html.includes("${tapOnly ? '' : `<button class=\"hit40\" onclick=\"handleMyAttackEdit(${a.id}, ${a.damage_raw})\""), '✓ の行に編集が出る');
         // S4 レビュー [22] 決定のあるシーズンでは従来の配信を出さない・最初の決定で従来の配信から外れた人にも
         assert.ok(/if \(await _seasonHasDecision\(seasonId\)\) \{ alert\(_DECIDED_LEGACY_MSG\); return; \}/.test(fn('async function handleOpsPublishPlan() {', 'async function handleOpsUnpublishPlan(')), '従来の配信が決定と混ざる');
         assert.ok(/if \(await _seasonHasDecision\(seasonId\)\) \{ alert\(_DECIDED_LEGACY_MSG\); return; \}/.test(fn('async function handleOpsChainPlan() {', 'async function _notifyChainPublish(')), '一気に組むが決定と混ざる');

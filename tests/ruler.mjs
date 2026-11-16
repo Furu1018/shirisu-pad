@@ -50,7 +50,7 @@ const CHECK = `(() => {
         if (ownText(e)) { const px = parseFloat(cs.fontSize); let t = snapF(px); if (dense(e) && px < 11) t = px < 9.75 ? 9 : 10; if (Math.abs(t - px) > 0.01) out.push(['文字', px + '→' + t, where(e), sig(e), txt]); }
         const r = parseFloat(cs.borderTopLeftRadius); const short = Math.min(b.height, b.width);
         if (r > 0 && r < short / 2 - 0.5) { const t = short < 24 ? 4 : r <= 10.5 ? 8 : r <= 18 ? 14 : 22; if (t !== r) out.push(['角丸', r + '→' + t, where(e), sig(e), Math.round(b.width) + 'x' + Math.round(b.height) + ' ' + txt]); }
-        if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && !dense(e) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 44) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
+        if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && !dense(e) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 24) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
     }
     return out;
 })()`;
@@ -111,8 +111,14 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
             // 練習の案内 (上の帯・枠) と使い方ツアーは検査の対象でない (本番の画面に無い / 別の画面)
             await ev(`(() => { const st = document.createElement('style'); st.textContent = '#pmDock, #pmRing, #tourOverlay { display: none !important; }'; document.head.appendChild(st); return 1; })()`);
             const active = await ev(`(() => { switchTab(${JSON.stringify(tab)}); return document.querySelector('.tab-content.active')?.id || null; })()`);
-            await wait(2500);
+            // ★ 中身が落ち着くまで待つ (Codex 監査 fc127f8): タブの中の部品の数と文字の量が 3 回続けて同じになるまで (最長 20 秒)。非同期の描画の途中 (読み込み中・空) を検査して通さない
+            const SHAPE = `(() => { const t = document.querySelector('.tab-content.active'); return t ? t.querySelectorAll('*').length + ':' + (t.innerText || '').length : ''; })()`;
+            let same = 0, last = '';
+            for (let i = 0; i < 28 && same < 3; i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; }
+            const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
             if (active !== 'tab-' + tab) label += ` (開けない → ${active})`;
+            else if (same < 3) label += ' (20 秒待っても中身が落ち着かない)';
+            else if (body.n < 20 || body.loading) label += ` (中身が出ていない: 文字のある部品 ${body.n} 個・読み込み中 ${body.loading} 個)`;
             else v = await ev(CHECK);
         } catch (e) { label += ' (検査が動かない: ' + String(e.message || e).slice(0, 120) + ')'; }
         await send('Target.closeTarget', { targetId });
