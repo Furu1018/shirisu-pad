@@ -552,12 +552,6 @@ window.supabaseLoadOpsRole = async function (playerId) {
     if (error) { if (_isMissingOpsRoleCol(error)) return undefined; throw error; }
     return data ? (data.ops_role || null) : null;
 };
-// 運営あての通知の宛先 (master + ops)。46 未適用なら [] (誰にも送らない = 従来どおり)
-window.supabaseLoadOpsPlayerIds = async function () {
-    const { data, error } = await supabase.from('players').select('id, ops_role, archived').in('ops_role', ['master', 'ops']);
-    if (error) { if (_isMissingOpsRoleCol(error)) return []; throw error; }
-    return (data || []).filter(p => !p.archived).map(p => p.id);
-};
 // 任命 / 解任。★ master はクライアントから付けない・外さない (46 が1回だけ付ける・1人だけ)
 window.supabaseSetOpsRole = async function (playerId, role, { by } = {}) {
     if (!playerId) throw new Error('playerId 必須');
@@ -785,33 +779,6 @@ function _exclusionClear() {
     const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
     return ex ? ex.clearPatch() : { excluded_at: null, excluded_by: null, excluded_reason: null };
 }
-
-// 運営による模擬提出の除外 / 解除 (35_player_damages_exclusion.sql)。
-// 行は消さず印だけ付ける — 本人が確認・修正できるよう残し、読み取り側 (盤面ローダ・集計ヘルパ) が外す。
-// 本人がその行を保存し直すと _exclusionClear() で自動解除される
-window.supabaseSetMockExclusion = async function (playerId, attribute, slot = 1, { excluded, reason = '', by = '' } = {}) {
-    const valid = ['fire','water','iron','electric','wind'];
-    if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
-    if (!isUsableSlot(slot)) throw new Error(`模擬の編成スロットは 1〜${MOCK_SLOT_MAX} です (指定: ${slot})`);
-    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
-    if (!ex) throw new Error('mockExclusionDomain が読み込まれていません (再読み込みしてください)');
-    const patch = ex.exclusionPatch({ excluded: !!excluded, reason, by });
-    const { data, error } = await supabase
-        .from('player_damages')
-        .update(patch)
-        .eq('player_id', playerId)
-        .eq('attribute', attribute)
-        .eq('slot', Number(slot) || 1)
-        .select('player_id');
-    if (error) {
-        if (['excluded_at', 'excluded_by', 'excluded_reason'].some(c => _isMissingColumnErr(error, c))) {
-            throw new Error('模擬の除外には supabase/35_player_damages_exclusion.sql を SQL Editor で適用してください (数秒で終わります)');
-        }
-        throw error;
-    }
-    if (!data || data.length === 0) throw new Error('対象の提出が見つかりません (本人が削除した可能性があります。再読み込みしてください)');
-    return patch;
-};
 
 // プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
 // boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
@@ -1350,91 +1317,6 @@ window.supabaseLoadActiveSeasonWithBosses = async function () {
     return { season, bosses: bosses || [] };
 };
 
-// ============================================================================
-// 締め凸調整中アピール (#7) + リアルタイム協力可能ステータス (#8)
-// ============================================================================
-// 30分で自動失効。setMyFinishCoordination 呼び出し毎に expires_at が延長される。
-const _FINISH_COORD_TTL_MIN = 30;
-
-// 現在アクティブなステータスを全件取得 (有効期限内のみ)
-// status='available' (今オンライン) / 'coordinating' (締め凸調整中)
-// 戻り値: [{ player_id, name, status, boss_number, attribute, note, started_at, expires_at }]
-window.supabaseGetActiveFinishCoordinations = async function () {
-    const nowIso = new Date().toISOString();
-    // status 列がまだ存在しない環境にも備える: 失敗時は select を縮退
-    let data, error;
-    try {
-        const r = await supabase
-            .from('finish_coordinations')
-            .select('player_id, status, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
-            .gt('expires_at', nowIso)
-            .order('updated_at', { ascending: false });
-        data = r.data; error = r.error;
-    } catch (e) { error = e; }
-    if (error) {
-        const r2 = await supabase
-            .from('finish_coordinations')
-            .select('player_id, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
-            .gt('expires_at', nowIso)
-            .order('updated_at', { ascending: false });
-        if (r2.error) throw r2.error;
-        data = r2.data;
-    }
-    return (data || []).map(r => ({
-        player_id: r.player_id,
-        name: r.players?.name || `id${r.player_id}`,
-        status: r.status || 'coordinating',
-        boss_number: r.boss_number,
-        attribute: r.attribute,
-        note: r.note,
-        started_at: r.started_at,
-        expires_at: r.expires_at,
-        updated_at: r.updated_at,
-    }));
-};
-
-// 自分のステータスを ON / 更新 (upsert)。30分後に expires。
-// opts: { status: 'available'|'coordinating', bossNumber?, attribute?, note? }
-window.supabaseSetMyFinishCoordination = async function (playerId, opts = {}) {
-    if (!playerId) throw new Error('playerId 必須');
-    const expires = new Date(Date.now() + _FINISH_COORD_TTL_MIN * 60_000).toISOString();
-    const valid = new Set(['available', 'practicing', 'coordinating']);
-    const status = valid.has(opts.status) ? opts.status : 'coordinating';
-    const row = {
-        player_id: playerId,
-        status,
-        boss_number: status === 'coordinating' ? (opts.bossNumber || null) : null,
-        attribute: status === 'coordinating' ? (opts.attribute || null) : null,
-        note: (opts.note || '').slice(0, 120),
-        expires_at: expires,
-        updated_at: new Date().toISOString(),
-    };
-    // 既存があれば started_at は維持。ない場合は DEFAULT NOW() が入る。
-    const { error } = await supabase
-        .from('finish_coordinations')
-        .upsert(row, { onConflict: 'player_id' });
-    if (error) {
-        // status 列が DB に未追加の環境では status を外して再試行
-        if (/column.*status/i.test(String(error?.message))) {
-            const { status: _drop, ...legacy } = row;
-            const r2 = await supabase.from('finish_coordinations').upsert(legacy, { onConflict: 'player_id' });
-            if (r2.error) throw r2.error;
-            return;
-        }
-        throw error;
-    }
-};
-
-// 自分の調整中宣言を解除 (即座に削除)
-window.supabaseClearMyFinishCoordination = async function (playerId) {
-    if (!playerId) return;
-    const { error } = await supabase
-        .from('finish_coordinations')
-        .delete()
-        .eq('player_id', playerId);
-    if (error) throw error;
-};
-
 // プレイヤーの本日の凸記録を取得
 window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
     // ✓ 凸しました (56) の列も読む。56 未適用なら列なしで読み直す
@@ -1730,246 +1612,6 @@ const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
     return null;
 };
 
-// ボスHPを更新（remaining / total を raw 値で）
-// 副作用: total_hp_raw が標準LVに合致した場合、season.current_level を最大値へ昇格 (レベルアップ自動化)
-// ===== 締め凸依頼のステータス管理 (22_finish_requests.sql / 36_finish_requests_level.sql) =====
-// ★ 依頼は「そのレベルのそのボスへの依頼」(2026-09-06)。
-//   撃破・レベル進行で有効な依頼から外す — シーズン中ずっと残ると
-//   次のレベルの依頼と見分けがつかなくなる (第44回の実害)。
-//   raid_level が NULL の行は 36 適用前の旧データ = レベル不明として現在レベルの依頼に含めない
-window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerIds, raidLevel = null) {
-    if (!seasonId || !bossNumber || !Array.isArray(playerIds) || playerIds.length === 0) return;
-    const lv = Number(raidLevel);
-    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
-    // 入れ替えるのは**同じレベルの同じボス**の依頼だけ。レベルを跨いで消すと、
-    // Lv2 の依頼を出した瞬間に Lv1 の返答履歴が消える
-    let del = supabase.from('finish_requests').delete()
-        .eq('season_id', seasonId).eq('boss_number', bossNumber);
-    del = hasLv ? del.eq('raid_level', lv) : del.is('raid_level', null);
-    const delRes = await del;
-    // 36 未適用環境は raid_level 列が無い → レベル指定なしで従来どおり入れ替える
-    const noCol = delRes.error && _isMissingColumnErr(delRes.error, 'raid_level');
-    if (noCol) {
-        await supabase.from('finish_requests').delete()
-            .eq('season_id', seasonId).eq('boss_number', bossNumber);
-    } else if (delRes.error) {
-        throw delRes.error;
-    }
-    const row = (pid) => (hasLv && !noCol)
-        ? { season_id: seasonId, boss_number: bossNumber, player_id: pid, raid_level: lv }
-        : { season_id: seasonId, boss_number: bossNumber, player_id: pid };
-    const { error } = await supabase.from('finish_requests').insert(playerIds.map(row));
-    if (error) {
-        if (/finish_requests/.test(String(error.message))) {
-            throw new Error('supabase/22_finish_requests.sql を SQL Editor で適用してください');
-        }
-        throw error;
-    }
-};
-// ===== 締め凸の複数案の同時打診 (44_finish_offers.sql) =====
-// ★ 1案ずつ順に聞くと返事待ちが直列に積み上がる (2026-09-10 の聞き取り)。
-//   A案と B+C案を**同時に、期限つきで**出し、先に揃った案で確定する。
-// ★ 既存の依頼と同じ行に入れる (行の意味は変えない)。入れ替えの範囲も従来と同じ
-//   = 同じレベルの同じボスの依頼をまとめて差し替える。
-window.supabaseSetFinishOffer = async function (seasonId, bossNumber, plans, opts = {}) {
-    if (!seasonId || !bossNumber || !Array.isArray(plans) || plans.length === 0) return null;
-    const lv = Number(opts.raidLevel);
-    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
-    const offerId = String(opts.offerId || `o${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    const deadlineAt = opts.deadlineAt ? new Date(opts.deadlineAt).toISOString() : null;
-    const rows = [];
-    for (const p of plans) {
-        const key = String(p && p.key || '');
-        for (const pid of (p && Array.isArray(p.playerIds) ? p.playerIds : [])) {
-            const r = { season_id: seasonId, boss_number: bossNumber, player_id: pid,
-                offer_id: offerId, plan_key: key };
-            if (hasLv) r.raid_level = lv;
-            if (deadlineAt) r.deadline_at = deadlineAt;
-            rows.push(r);
-        }
-    }
-    if (rows.length === 0) return null;
-    // ★ **消す前に**打診の列があるか確かめる (Codex指摘 2026-09-10)。
-    //   44 未適用だと insert が必ず失敗するが、delete は戻らないので
-    //   「同時打診を試したら既存の締め凸依頼が消えた」という壊し方をしていた
-    {
-        const probe = await supabase.from('finish_requests').select('offer_id, plan_key, deadline_at').limit(1);
-        if (probe.error) {
-            if (_isMissingColumnErr(probe.error, 'offer_id') || _isMissingColumnErr(probe.error, 'plan_key')
-                || _isMissingColumnErr(probe.error, 'deadline_at')) {
-                throw new Error('supabase/44_finish_offers.sql を SQL Editor で適用してください (1案ずつの依頼は今までどおり使えます)');
-            }
-            throw probe.error;
-        }
-    }
-    // 同じレベルの同じボスの依頼を入れ替える (従来と同じ範囲)
-    let del = supabase.from('finish_requests').delete()
-        .eq('season_id', seasonId).eq('boss_number', bossNumber);
-    del = hasLv ? del.eq('raid_level', lv) : del.is('raid_level', null);
-    const delRes = await del;
-    if (delRes.error && !_isMissingColumnErr(delRes.error, 'raid_level')) throw delRes.error;
-    if (delRes.error) {
-        await supabase.from('finish_requests').delete()
-            .eq('season_id', seasonId).eq('boss_number', bossNumber);
-        for (const r of rows) delete r.raid_level;
-    }
-    const { error } = await supabase.from('finish_requests').insert(rows);
-    if (error) {
-        // ★ 44 未適用なら「同時打診だけ」が使えない。1案の依頼は従来どおり動くので、そう伝える
-        if (_isMissingColumnErr(error, 'offer_id') || _isMissingColumnErr(error, 'plan_key')
-            || _isMissingColumnErr(error, 'deadline_at')) {
-            throw new Error('supabase/44_finish_offers.sql を SQL Editor で適用してください (1案ずつの依頼は今までどおり使えます)');
-        }
-        throw error;
-    }
-    return offerId;
-};
-
-// 落ちた案の行だけを「見送り」にする。★ 行 id を名指しする —
-//   人+ボスで更新すると、勝った案にも居る人の行まで落としてしまう
-window.supabaseDeclineFinishRows = async function (rowIds) {
-    const ids = (Array.isArray(rowIds) ? rowIds : []).filter(x => x != null);
-    if (ids.length === 0) return 0;
-    const { data, error } = await supabase.from('finish_requests')
-        .update({ status: 'declined', responded_at: new Date().toISOString() })
-        .in('id', ids).select('id');
-    if (error) throw error;
-    return (data || []).length;
-};
-
-// 打診1回ぶんの行を引く (進み具合の表示用)。44 未適用なら null を返す
-//   ★ [] ではなく null — 「44 適用済みで打診が無い」と区別がつかなくなる
-window.supabaseLoadFinishOffer = async function (offerId) {
-    if (!offerId) return null;
-    const { data, error } = await supabase.from('finish_requests')
-        .select('id, boss_number, player_id, status, plan_key, offer_id, deadline_at, responded_at, players(name)')
-        .eq('offer_id', offerId);
-    if (error) {
-        if (_isMissingColumnErr(error, 'offer_id')) return null;
-        throw error;
-    }
-    return (data || []).map(r => ({ ...r, name: r.players?.name || null }));
-};
-
-// シーズンの依頼一覧 (プレイヤー名つき)。
-// currentLevel を渡すと「そのレベルの依頼」だけを返す (旧データ = raid_level NULL は除く)
-window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = null) {
-    if (!seasonId) return [];
-    const cols = 'id, boss_number, player_id, status, requested_at, responded_at, players(name)';
-    // ★ 同時打診の列 (44) も読む。読まないと進捗・確定の画面が**必ず空**になる
-    //   (offer_id が undefined のまま絞り込まれるため。Codex指摘 2026-09-10)
-    const OFFER = 'offer_id, plan_key, deadline_at';
-    const run = async (withLevel, withOffer) => {
-        const sel = [cols, withLevel ? 'raid_level' : null, withOffer ? OFFER : null].filter(Boolean).join(', ');
-        return await supabase.from('finish_requests').select(sel)
-            .eq('season_id', seasonId)
-            .order('requested_at', { ascending: true });
-    };
-    try {
-        let { data, error } = await run(true, true);
-        // 44 未適用環境は打診の列が無い → 打診なしで読む (1案ずつの依頼は従来どおり動く)
-        if (error && (_isMissingColumnErr(error, 'offer_id') || _isMissingColumnErr(error, 'plan_key')
-            || _isMissingColumnErr(error, 'deadline_at'))) ({ data, error } = await run(true, false));
-        // 36 未適用環境はレベルの列が無い → レベルなしで読む (従来どおり全件が「有効」に見える)
-        if (error && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await run(false, true));
-        if (error && _isMissingColumnErr(error, 'offer_id')) ({ data, error } = await run(false, false));
-        if (error) throw error;
-        const rows = (data || []).map(r => ({ ...r, name: r.players?.name || '?' }));
-        const lv = Number(currentLevel);
-        if (!(Number.isInteger(lv) && lv >= 1 && lv <= 4)) return rows;
-        // ★ raid_level を持つ行だけを対象にレベルで絞る。列自体が無い環境では絞らない
-        //   (絞ると「依頼が1件も無い」ように見えて、締め凸の追跡が丸ごと消える)
-        if (!rows.some(r => 'raid_level' in r)) return rows;
-        return rows.filter(r => Number(r.raid_level) === lv);
-    } catch (e) {
-        // ★ [] は「本当に 0 件」のときだけ。テーブル未適用 (22 未適用) だけ空扱いにし、
-        //   通信・DB の失敗は null (= 分からない) を返す。[] に潰すと 10 秒ポーリングがキャッシュを空で上書きし、
-        //   未回答の締め凸依頼が本人のバナーからも運営の 🔁 からも消える (全体監査 2026-09-14 #3)
-        if (_isMissingTableErr(e, 'finish_requests')) return [];
-        console.warn('[finish requests] 取得に失敗 (前の内容を保ちます):', e?.message || e);
-        return null;
-    }
-};
-// 依頼への返答 (メンバー本人)。レベルを渡せばそのレベルの依頼だけに答える
-window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status, raidLevel = null, rowId = null) {
-    // ★ 行 id が分かるならそれだけを更新する (Codex指摘 2026-09-10)。
-    //   人+ボスで更新すると、同じ人が2案に居るとき**片方に答えただけで両案が動く**
-    if (rowId != null) {
-        // ★ pending の行だけ更新する (CAS)。無条件だと 2 タブで「了承」→「難しい」が通り、
-        //   画面は辞退なのに approved の予約だけ残る (全体監査 2026-09-14 #5)
-        const { data, error } = await supabase.from('finish_requests')
-            .update({ status, responded_at: new Date().toISOString() })
-            .eq('id', rowId).eq('player_id', playerId).eq('status', 'pending').select('id');
-        if (error) throw error;
-        if (!data || data.length === 0) {
-            throw new Error('この締め凸依頼はすでに返答済みか、解除されています (別の画面で答えたか、ボスが倒れたか、レベルが上がりました)');
-        }
-        return data.length;
-    }
-    const lv = Number(raidLevel);
-    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
-    const build = (withLevel) => {
-        let q = supabase.from('finish_requests')
-            .update({ status, responded_at: new Date().toISOString() })
-            .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId)
-            .eq('status', 'pending');   // ★ CAS (上と同じ理由)
-        return withLevel ? q.eq('raid_level', lv) : q;
-    };
-    // ★ .select() で更新できた行を見る。0件 = その依頼はもう無い (撃破で解除された等)。
-    //   見ないと「了承しました」と出るのに実際は何も更新されていない (Codex指摘)
-    let { data, error } = await build(hasLv).select('id');
-    if (error && hasLv && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await build(false).select('id'));
-    if (error) throw error;
-    if (!data || data.length === 0) throw new Error('この締め凸依頼はすでに返答済みか、解除されています (別の画面で答えたか、ボスが倒れたか、レベルが上がりました)');
-};
-// 撃破・レベル進行で不要になった依頼を消す。
-// ★ 履歴は残さない (ユーザー決定 2026-09-06) — 次のレベルの依頼と混同するため。
-//   消す前に activity_log へ記録するのは呼び出し側の責務
-//   (「誰の依頼を消したか」を通知に使うので、削除と通知対象の確定を先に済ませる)
-// ★ 「対象の確定」と「削除」を**分けて**公開する。1関数にまとめると、
-//   削除が先に完了してしまい、その後の活動ログを書く前に落ちると履歴が完全に消える
-//   (履歴テーブルを持たない方針なので、ログが唯一の記録 — Codex指摘 2026-09-06)
-// @param {{bossNumber?: number, raidLevel?: number, belowLevel?: number}} scope
-//   bossNumber + raidLevel = そのレベルのそのボスの依頼 / belowLevel = そのレベル未満の依頼すべて
-// @returns {{rows: {id, player_id, boss_number, raid_level, status, name}[], skipped: boolean}}
-//   skipped=true は 36 未適用環境 (レベルが無いので消せない)
-window.supabaseFindFinishRequestsToClear = async function (seasonId, scope = {}) {
-    if (!seasonId) return { rows: [], skipped: false };
-    const { bossNumber = null, raidLevel = null, belowLevel = null } = scope;
-    let q = supabase.from('finish_requests')
-        .select('id, boss_number, player_id, status, raid_level, players(name)')
-        .eq('season_id', seasonId);
-    if (bossNumber != null) q = q.eq('boss_number', bossNumber);
-    if (raidLevel != null) q = q.eq('raid_level', raidLevel);
-    if (belowLevel != null) q = q.lt('raid_level', belowLevel);
-    const { data, error } = await q;
-    // 36 未適用: raid_level で絞れない = 消すと別レベルの依頼まで巻き込む → 何もしない
-    if (error) {
-        if (_isMissingColumnErr(error, 'raid_level')) return { rows: [], skipped: true };
-        throw error;
-    }
-    return {
-        rows: (data || []).map(r => ({
-            id: r.id, player_id: r.player_id, boss_number: r.boss_number,
-            raid_level: r.raid_level, status: r.status, name: r.players?.name || '?',
-        })),
-        skipped: false,
-    };
-};
-// 確定済みの id だけを消し、**実際に消えた行**を返す。
-// ★ 条件で消し直さない — 間に入った新しい依頼を巻き込むため。
-// ★ 結果は .select() で DB から取る。入力をそのまま返すと (a) 複数端末の同時検知で
-//   2台目も「消した」ことになり解除通知が二重に飛ぶ (b) 確定〜削除の間に本人が了承しても
-//   古い status のまま通知・記録してしまう (Codex指摘 2026-09-06)
-window.supabaseDeleteFinishRequests = async function (ids) {
-    const list = (Array.isArray(ids) ? ids : []).map(Number).filter(Number.isFinite);
-    if (list.length === 0) return [];
-    const { data, error } = await supabase.from('finish_requests').delete().in('id', list)
-        .select('id, player_id, boss_number, raid_level, status');
-    if (error) throw error;
-    return data || [];
-};
-
 // ボスコード → ボス属性 / ボス属性 → 弱点PT属性。
 // supabaseCreateSeason と シーズン確認・編集 (supabaseSaveSeasonEdits) が共有する唯一の定義
 // (js/domain/attributes.js の WEAKNESS_BY_BOSS_ATTR と同一写像 — 画面側で再定義しないこと)
@@ -2192,41 +1834,17 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
 };
 
 // ===== 👥 メンバー状況ボード (運営改修 #1) =====
-// 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今期の SLv 登録 / 締め凸依頼 / 代理凸ログ。
+// 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今期の SLv 登録 / 代理凸ログ (締め凸の依頼は 2026-11-16 に撤去した = 読まない)。
 // 各クエリはテーブル未適用・失敗時に空配列へ静かに劣化 (ボード全体は落とさない)。
 // 判定ロジックは js/domain/memberStatus.js
-// メンバー状況ボード用の締め凸依頼。36未適用環境ではレベルなしで読み直す
-async function _loadFinishRequestsForStatus(seasonId, currentLevel) {
-    const lv = Number(currentLevel);
-    const useLevel = Number.isInteger(lv) && lv >= 1 && lv <= 4;
-    try {
-        if (useLevel) {
-            const r = await supabase.from('finish_requests')
-                .select('player_id, status, requested_at, raid_level')
-                .eq('season_id', seasonId).eq('raid_level', lv);
-            if (!r.error) return r.data || [];
-            if (!_isMissingColumnErr(r.error, 'raid_level')) return _isMissingTableErr(r.error, 'finish_requests') ? [] : null;
-        }
-        const r2 = await supabase.from('finish_requests')
-            .select('player_id, status, requested_at').eq('season_id', seasonId);
-        if (r2.error) return _isMissingTableErr(r2.error, 'finish_requests') ? [] : null;
-        return r2.data || [];
-    } catch { return null; }   // ★ 失敗は「分からない」(null)。[] は本当に 0 件のときだけ (全体監査 2026-09-14 #4)
-}
 
 window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, currentLevel = null) {
     // ★ 失敗は null (= 分からない)。[] に潰すと「全員 Push 未登録」「全員 SLv 未登録」「未返答 0」を捏造する
     //   (全体監査 2026-09-14 #4)。availConfirmations が先に採っていた契約 (null = 分からない) に揃える
     const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : null; } catch { return null; } };
-    const [subs, slv, fin, proxy, availConf] = await Promise.all([
+    const [subs, slv, proxy, availConf] = await Promise.all([
         safe(supabase.from('push_subscriptions').select('player_id')),
         seasonId ? safe(supabase.from('player_sync_levels').select('player_id').eq('season_id', seasonId)) : [],
-        // ★ 締め凸依頼は「いまのレベルのもの」だけ数える。
-        //   raid_level が NULL の旧データ (36適用前) や、撃破済みレベルの依頼を含めると、
-        //   本人には返答UIが出ないのに運営側では「未返答」として残り続ける (Codex指摘)。
-        //   36未適用環境は列が無いので旧形式で読み直す — 握り潰すと依頼が丸ごと消えて
-        //   本人側 (旧形式へフォールバックする) と食い違う (Codex再指摘)
-        seasonId ? _loadFinishRequestsForStatus(seasonId, currentLevel) : [],
         // 代理凸は attacks に印が無いので activity_log (proxy_attack) から。ハード日前日以降だけ数える
         safe(supabase.from('activity_log').select('player_id, created_at')
             .eq('event_type', 'proxy_attack')
@@ -2245,7 +1863,7 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         memberDevices: Array.isArray(devices) ? devices : null,
         pushPlayerIds: Array.isArray(subs) ? subs.map(s => s.player_id) : null,
         slvThisSeasonIds: Array.isArray(slv) ? slv.map(s => s.player_id) : null,
-        finishRequests: Array.isArray(fin) ? fin : null,
+        finishRequests: [],   // 締め凸の依頼は無い (2026-11-16 撤去)。memberStatus に渡す形だけ残す
         proxyEvents: Array.isArray(proxy) ? proxy : null,
         // 今期の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
@@ -2867,17 +2485,6 @@ window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
     return data || [];
 };
 
-// 前回の算出のあとに更新された模擬提出の数 (パズル盤 ① きっかけ・2026-09-11)。
-// player_damages はシーズンを持たない現在の提出なので、updated_at だけで数える。head:true で行は運ばない
-window.supabaseCountMockUpdatesSince = async function (sinceIso) {
-    if (typeof sinceIso !== 'string' || !sinceIso) return null;
-    const { count, error } = await supabase.from('player_damages')
-        .select('id', { count: 'exact', head: true })
-        .gt('updated_at', sinceIso);
-    if (error) throw error;
-    return Number.isFinite(count) ? count : 0;
-};
-
 // 凸のボスを変更
 window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode) {
     const { error } = await supabase
@@ -3258,24 +2865,6 @@ window.supabaseDeleteAllPublishedPlans = async function (seasonId, actorName = n
     return (data || []).length;
 };
 
-// シーズンの凸をプレイヤー別に集計 (提出漏れチェック用)
-// 戻り値: { [playerId]: { count, damageRaw } }
-window.supabaseLoadSeasonAttackStats = async function (seasonId) {
-    const { data, error } = await supabase
-        .from('attacks')
-        .select('player_id, damage_raw')
-        .eq('season_id', seasonId);
-    if (error) throw error;
-    const stats = {};
-    (data || []).forEach(a => {
-        const s = stats[a.player_id] || { count: 0, damageRaw: 0 };
-        s.count++;
-        s.damageRaw += Number(a.damage_raw) || 0;
-        stats[a.player_id] = s;
-    });
-    return stats;
-};
-
 // 模擬戦の提出状況 (前日運用): プレイヤーごとの提出属性数と最終更新
 // シーズン作成時に player_damages はクリアされるため、存在する行 = 今シーズンの提出
 window.supabaseLoadMockSubmissionStatus = async function () {
@@ -3503,21 +3092,15 @@ window.supabaseReleaseRaidNotice = async function (seasonId, kind, ref) {
     if (error) console.warn('[raid notice] 確保の取り消しに失敗:', error.message);
 };
 
-// ボス撃破の通知先: そのボスで凸を無駄にしそうな人。
-//   ① そのボスに交戦宣言中の人 (いま撃ちに行こうとしている = 最も無駄になる)
-//   ② 配信プランでそのボスを割り当てられていて、まだ報告していない人
+// ボス撃破の通知先: そのボスで凸を無駄にしそうな人 = 配信プランでそのボスを割り当てられていて、まだ報告していない人。
+//   (「交戦宣言中の人」は 2026-11-16 に外した — 状態ボタンは撤去済みで finish_coordinations はいつも空。読まない)
 // 本人 (撃破した人) は除く。
 window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, excludePlayerId, level) {
     // ★ 取得に失敗したら throw する。握り潰して「宛先ゼロ」にすると、
     //   送っていないのに完了扱いになり、その撃破は誰にも通知されない (Codex指摘)。
     //   throw すれば呼び出し側が確保を戻し、次の検知でやり直せる
     const targets = new Set();
-    // ① 交戦宣言中
-    const coords = await window.supabaseGetActiveFinishCoordinations();
-    (coords || []).forEach(c => {
-        if (Number(c.boss_number) === Number(bossNumber)) targets.add(c.player_id);
-    });
-    // ② 配信プランの割当 (未報告のみ)
+    // 配信プランの割当 (未報告のみ)
     //   🧱 段階 7 (Codex 再監査 F): 配信はブロックごとに行が残るので、**ブロックごとに効いている配信をその範囲に絞って全部**見る。
     //   全体の最新 1 行だけだと、1 日ぶんの配信 (朝の担当) のあとに夜のぶんを配信した時点で、朝の担当者が宛先から落ちる
     {

@@ -42,7 +42,6 @@ function extract(marker) {
 const els = {};
 const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
     classList: { contains: () => false, add() {}, remove() {}, toggle() {} } });
-globalThis._finishAskOn = () => true;   // 🏁 段階 2.5: 本番は締め凸の依頼を読まない (練習だけ)。ここは従来の表示 (締め凸 未返答) を見るので true
 globalThis.document = { getElementById: (id) => el(id) };
 globalThis.escapeHtml = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 globalThis.DC_ATTR_COLORS = { fire: '#FF3D44', water: '#2E8BFF', electric: '#9B4DFF', iron: '#FF8A2B', wind: '#18C26B' };
@@ -61,7 +60,7 @@ const players = [
     P({ id: 4, name: '三属性', damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: ['a'], water: ['b'], wind: ['c'] }, syncLevel: 590, syncLevelEstimated: false, availableSlots: ['h20'], attacks: [{ level: 1 }, { level: 2 }, { level: 3 }] }),
 ];
 // availConfirmations = 今期の戦闘可能時間を確認済み (37)。無いと全員「今期未確認」で要対応になる
-const extras = { pushPlayerIds: [2, 3, 4], slvThisSeasonIds: [2, 3, 4], finishRequests: [{ player_id: 3, status: 'pending' }], proxyEvents: [{ player_id: 3 }],
+const extras = { pushPlayerIds: [2, 3, 4], slvThisSeasonIds: [2, 3, 4], finishRequests: [], proxyEvents: [{ player_id: 3 }],
     availConfirmations: [1, 2, 3, 4, 9].map(id => ({ player_id: id, confirmed_at: '2026-09-06T00:00:00Z', unavailable: false, slot_count: null })) };
 
 let passed = 0, failed = 0;
@@ -120,14 +119,14 @@ test('前日・全員: 完了の行は ✓ で出る / アバター画像は src
     assert.ok(out.includes('class="dc-mb-blks"'), '時間のタイルが無い');
 });
 
-test('当日: 凸 L1 表示・代理バッジ・締め凸未返答 (行に代理凸のボタンは無い — 2026-11-16 に従来の画面と一緒に撤去)', () => {
+test('当日: 凸 L1 表示・代理バッジ (行に代理凸のボタン・締め凸の返事の列は無い — 2026-11-16 に撤去)', () => {
     _mb.filter = 'todo';
     _mb.rows = dom.buildRows({ players, extras, phase: 'day' });
     _mbPaint('day');
     const out = el('opsMbRows').innerHTML;
     assert.ok(out.includes('<i class="d">L1</i>'), '凸の Lv が出ていない');
     assert.ok(out.includes('代理'), '代理バッジが無い');
-    assert.ok(out.includes('締め凸 未返答'));
+    assert.ok(!out.includes('締め凸'), '締め凸の返事の列が出ている (依頼は撤去した)');
     assert.ok(!out.includes('handleOpsMemberProxy') && !out.includes('>代理凸<'), '当日の行に代理凸ボタンが出ている');
     // 3凸完了の人
     _mb.rows = dom.buildRows({ players: [P({ id: 9, name: '三凸', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21'], attacks: [{ level: 1 }, { level: 2 }, { level: 3 }] })], extras: { ...extras, pushPlayerIds: [9], slvThisSeasonIds: [9] }, phase: 'day' });
@@ -348,7 +347,7 @@ await testAsync('extras の一部が null (取得失敗) でも描画は壊れ�
     const snap = { season: { id: 30, hard_date: '2026-09-05', current_level: 1 }, players };
     storeData = snap;
     const origExtras = globalThis.supabaseLoadMemberStatusExtras;
-    globalThis.supabaseLoadMemberStatusExtras = async () => ({ pushPlayerIds: null, slvThisSeasonIds: null, finishRequests: null, proxyEvents: [], availConfirmations: [] });
+    globalThis.supabaseLoadMemberStatusExtras = async () => ({ pushPlayerIds: null, slvThisSeasonIds: null, finishRequests: [], proxyEvents: [], availConfirmations: [] });
     await renderOpsMemberStatus(snap, true);
     globalThis.supabaseLoadMemberStatusExtras = origExtras;
     const rows = el('opsMbRows').innerHTML;
@@ -358,11 +357,11 @@ await testAsync('extras の一部が null (取得失敗) でも描画は壊れ�
     assert.ok(!rows.includes('SLv —'), '「SLv —」(未登録) が出ている');
     assert.ok(!rows.includes('undefined') && !rows.includes('NaN'));
     assert.ok(el('opsMbUpdated').textContent.includes('取得できませんでした'), '見出しに警告が無い');
-    assert.ok(/Push・SLv・締め凸/.test(el('opsMbUpdated').textContent), '失敗した項目名が並んでいない');
+    assert.ok(/Push・SLv を取得できませんでした/.test(el('opsMbUpdated').textContent), '失敗した項目名が並んでいない');
     assert.ok(el('opsMbSummary').innerHTML.includes('取得失敗'), '集計に「取得失敗」が無い (0/4 と出ると全員未登録に見える)');
-    // 当日も同じ (締め凸 ?)
+    // 当日: 締め凸の返事の欄は無い
     _mb.phase = 'day'; _mbRebuild();
-    assert.ok(el('opsMbRows').innerHTML.includes('締め凸 ?'), '当日の締め凸の欄が「?」でない');
+    assert.ok(!el('opsMbRows').innerHTML.includes('締め凸'), '当日の行に締め凸の欄が出ている');
 });
 await testAsync('extras が全部そろっていれば従来どおり (未購読は 🔕・見出しに警告なし)', async () => {
     Object.assign(_mb, { phase: 'pre', filter: 'all', sort: 'name', rows: [], players: null, extras: null, season: null, gen: 0 });

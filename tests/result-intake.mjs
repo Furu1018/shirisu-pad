@@ -3,7 +3,7 @@
 //   node tests/result-intake.mjs
 // ----------------------------------------------------------------------------
 // index.html から 結果の取り込みのカード (renderOpsAttackCheck)・下書き・登録 (handleOpsResultSave)・
-// 「凸していない」(handleOpsAtkSkip)・組むの片付け (_renderOpsPlanTidy)・ブロックの配信の通知 (_notifyBlockPublish) を切り出し、
+// 「凸していない」(handleOpsAtkSkip) を切り出し、(組むの片付け・従来のブロックの配信の通知は 2026-11-16 に撤去した)
 // 依存をスタブして**実際に走らせる**。判定は js/domain/resultIntake.js / attackCheck.js / raidBlocks.js の本物を使う。
 //
 // 守っていること:
@@ -55,7 +55,6 @@ const SRC = [
         '        async function renderOpsAttackCheck(force = false) {',
         '        async function handleOpsAtkSkip(i, on) {',
         '        async function _opsAtkAsk(i) {',
-        '        function _renderOpsPlanTidy() {',
         '        function _opsResultPick(v) {',
         '        function _renderOpsResultPlayers(snap) {',
         '        function _opsResultFromMissing(i) {',
@@ -76,7 +75,6 @@ const SRC = [
         '        function _opsResultSetHp(on) {',
         '        function _opsResultCancel() {',
         '        async function handleOpsResultSave() {',
-        '        async function _notifyBlockPublish({ pub, plan, seasonId, me, changedIds, ackedIds, goneIds }) {',   // 🗣 9h
     ].map(cutFn),
 ].join('\n');
 
@@ -167,15 +165,14 @@ function makeEnv({ snap = board(), pub = PUB, nowJst = 21, freshAttacks = null, 
         _opsReloadBoardCards: () => { calls.push(['reload']); },
         renderOpsMemberStatus: () => { },
         _renderOpsCockpitSoon: () => { },
-        _renderOpsBlockSteps: () => { },
         _opsJump: () => { },
         _skipsDb: new Set(), _claim: 'claimed', _pushFail: false, _beforeOcrReturn: null, _skipsGate: null, _skipsGates: [], _attacksGate: null, _confirmFail: false, _ocrQueue: [],
         el, calls, setStore: (s) => { store = s; gen++; },
     };
-    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore'].includes(k) && !k.startsWith('_') || ['_opsMode', '_opsPublishedPlan', '_opsDecidedPub', '_opsHm', '_reservationIdForAttack', '_ocrAttackMultiAndMerge', '_checkRaidEvents', '_opsReloadBoardCards', '_renderOpsCockpitSoon', '_renderOpsBlockSteps', '_opsJump'].includes(k));
-    const names = ['renderOpsAttackCheck', 'handleOpsAtkSkip', '_opsAtkAsk', '_renderOpsPlanTidy', '_opsResultPick', '_renderOpsResultPlayers', '_opsResultFromMissing',
+    const keys = Object.keys(env).filter(k => !['el', 'calls', 'setStore'].includes(k) && !k.startsWith('_') || ['_opsMode', '_opsPublishedPlan', '_opsDecidedPub', '_opsHm', '_reservationIdForAttack', '_ocrAttackMultiAndMerge', '_checkRaidEvents', '_opsReloadBoardCards', '_renderOpsCockpitSoon', '_opsJump'].includes(k));
+    const names = ['renderOpsAttackCheck', 'handleOpsAtkSkip', '_opsAtkAsk', '_opsResultPick', '_renderOpsResultPlayers', '_opsResultFromMissing',
         '_opsResultManual', 'handleOpsResultUpload', '_renderOpsResultDraft', '_opsResultSetBoss', '_opsResultSetSlot', '_opsResultSetDamage', '_opsResultSetLevel',
-        '_opsResultSetHp', '_opsResultCancel', 'handleOpsResultSave', '_notifyBlockPublish', '_opsResultWarnings'];
+        '_opsResultSetHp', '_opsResultCancel', 'handleOpsResultSave', '_opsResultWarnings'];
     // window / document などはスコープの引数で渡す (本体と同じ名前で見える)
     const fns = new Function(...keys, 'env', `${SRC}\nreturn { ${names.join(', ')}, state: () => ({ atk: _atkCheck, ri: _resultIntake }) };`)(...keys.map(k => env[k]), env);
     return Object.assign(env, fns);
@@ -201,7 +198,6 @@ await test('★ 配信は そのブロック (夕方) に絞り、算出 (18 時
     assert.ok(!/あお さん|きい さん/.test(miss.replace(/<[^>]+>/g, '')) || true);
     assert.ok(!/onclick="[^"]*あお/.test(miss), '名前を onclick に埋めている');
     assert.equal(st.counts.missing, 2);
-    assert.ok(/結果がまだの凸が <b>2 凸<\/b>/.test(t.el('opsPlanTidy').innerHTML) && t.el('opsPlanTidy').style.display === '', '組むの片付けが出ていない');
     // 誰の凸か: 書庫の人を出さない・名前順
     const sel = t.el('opsResultPlayer').innerHTML;
     assert.ok(/あお/.test(sel) && /きい/.test(sel) && !/書庫の人/.test(sel), '誰の凸かの選択肢が違う');
@@ -308,7 +304,7 @@ await test('★ 報告の無い凸の「📥 取り込む」: その人・その
     assert.deepEqual([ud.playerId, ud.bossNumber, ud.slot, ud.damageB, ud.fromOcr], [7, 3, 2, '26.000', true], 'スクショを読んだら当たりが消えた');
 });
 
-await test('★ 「凸していない」: 印を付けると未報告と片付けの数から外れ、戻すと戻る (盤面には触れない)', async () => {
+await test('★ 「凸していない」: 印を付けると未報告の数から外れ、戻すと戻る (盤面には触れない)', async () => {
     const t = makeEnv();
     await t.renderOpsAttackCheck(); await flush();
     await t.handleOpsAtkSkip(1, true);   // きい 19時 B3
@@ -316,76 +312,17 @@ await test('★ 「凸していない」: 印を付けると未報告と片付�
     let st = t.state().atk;
     assert.deepEqual(st.missing.map(m => m.memberId), [7]); assert.deepEqual(st.skipped.map(m => m.memberId), [8]);
     assert.ok(/凸していない 1/.test(t.el('opsAtkCheckMissing').innerHTML) && /handleOpsAtkSkip\(0, false\)/.test(t.el('opsAtkCheckMissing').innerHTML));
-    assert.ok(/<b>1 凸<\/b>/.test(t.el('opsPlanTidy').innerHTML));
     assert.ok(!t.calls.some(c => ['addAttack', 'invalidate'].includes(c[0])), '盤面に触れた');
     await t.handleOpsAtkSkip(0, false);
     st = t.state().atk;
     assert.deepEqual(st.missing.map(m => m.memberId), [7, 8]); assert.equal(st.skipped.length, 0);
-    // 片付けが 0 になったら案内を消す
+    // 結果がそろえば、結果がまだの凸は 0
     const t2 = makeEnv({ snap: board({ attacksA: [{ id: 5, player_id: 7, boss_number: 3, damage_raw: 28e9, reported_at: at(18, 40), level: 1 }], attacksB: [{ id: 6, player_id: 8, boss_number: 3, damage_raw: 30e9, reported_at: at(19, 40), level: 1 }] }) });
     await t2.renderOpsAttackCheck(); await flush();
-    assert.equal(t2.state().atk.missing.length, 0); assert.equal(t2.el('opsPlanTidy').style.display, 'none', '片付けることが無いのに案内が出ている');
+    assert.equal(t2.state().atk.missing.length, 0);
     // Discord で聞く文
     await t._opsAtkAsk(0);
     assert.ok(t.calls.some(c => c[0] === 'copy' && /あお さん、18時の B3 \(灼熱PT\)/.test(c[1])), '聞く文が違う');
-});
-
-await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 度 / 自分の凸 (夕方のぶんだけ) / 同じ中身は送り直さない / 送れなかった人は確保を戻して次の配信で送る', async () => {
-    const t = makeEnv();
-    const r = await t._notifyBlockPublish({ pub: { id: 501 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
-    assert.deepEqual([[...r.covered], r.sent, r.failed], [[7, 8], 2, 0]);
-    assert.deepEqual(t.calls.filter(c => c[0] === 'claim').map(c => c.slice(1)), [
-        [45, 'block_publish', '18-20|7|18時 B3 灼熱PT 編成②', 1], [45, 'block_publish', '18-20|8|p501|19時 B3 灼熱PT 編成①', 1],
-        [45, 'block_publish', '18-20|8|19時 B3 灼熱PT 編成①', 1]], '確保の鍵が人ごと・中身ごとでない / 変わった人の鍵に配信の id が無い (🗣 9h Codex C: 文の行が同じでも中身が変わった人に届かせる) / 変わった人に送れたら中身の鍵も確保していない (Codex 再監査 A)');
-    const pushes = t.calls.filter(c => c[0] === 'push').map(c => c[1]);
-    assert.deepEqual(pushes.map(p => [p.playerIds, p.title, p.body]), [
-        [[7], '🧱 夕方 18〜20時 のあなたの凸が決まりました', '18時 B3 灼熱PT 編成② — ホームで確認してください'],
-        [[8], '🔄 夕方 18〜20時 のあなたの凸が変わりました', '19時 B3 灼熱PT 編成① — ホームで確認してください'],
-    ], '夜の割当まで書いている / 文が違う');
-    assert.deepEqual(t.calls.filter(c => c[0] === 'markSent').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p501|19時 B3 灼熱PT 編成①', '18-20|8|19時 B3 灼熱PT 編成①'], '変わった人に送れたのに中身の鍵を送信済みにしていない');
-    // 中身の鍵が「誰かが送信中」(held) なら送信済みにしない (他の運営の送信を上書きしない)
-    const heldC = makeEnv(); heldC._claim = (ref) => (ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'held' : 'claimed');
-    await heldC._notifyBlockPublish({ pub: { id: 508 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
-    assert.deepEqual(heldC.calls.filter(c => c[0] === 'markSent').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p508|19時 B3 灼熱PT 編成①'], '誰かが送信中の中身の鍵を送信済みにした');
-    // 中身の鍵の送信済み化が失敗しても、本体の通知は送れている → 失敗扱いにしない (covered・sent に入れ、id 付きの鍵は戻さない)
-    const markBad = makeEnv();
-    markBad.window.supabaseMarkRaidNoticeSent = async (...a) => { if (a[2] === '18-20|8|19時 B3 灼熱PT 編成①') throw new Error('mark failed'); markBad.calls.push(['markSent', ...a]); };
-    const r6 = await markBad._notifyBlockPublish({ pub: { id: 509 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
-    assert.deepEqual([[...r6.covered], r6.sent, r6.failed], [[7, 8], 2, 0], '中身の鍵の送信済み化の失敗を本体の失敗にした');
-    assert.ok(!markBad.calls.some(c => c[0] === 'release'), '送れているのに id 付きの鍵を戻した');
-    // 配信し直し (変わった人なし): 同じ中身をもう送ってある人 (done) には送らないが、L4 の重ね送りからは外す (covered)。
-    //   前の配信で「変わった」として送れた人 (8) は中身の鍵も done なので送り直さない (Codex 9h 再監査 A)
-    const again = makeEnv(); again._claim = (ref) => (ref.startsWith('18-20|7|') || ref === '18-20|8|19時 B3 灼熱PT 編成①' ? 'done' : 'claimed');
-    const r2 = await again._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set() });
-    assert.deepEqual([[...r2.covered], r2.sent], [[7, 8], 0], '変わった人に送れたあとの、同じ中身の配信し直しで送り直した'); assert.ok(!again.calls.some(c => c[0] === 'push'));
-    // 前の配信で送れなかった人 (中身の鍵は確保されていない) には、同じ中身の配信し直しで送る
-    const retry = makeEnv(); retry._claim = (ref) => (ref.startsWith('18-20|7|') ? 'done' : 'claimed');
-    const r2b = await retry._notifyBlockPublish({ pub: { id: 502 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set() });
-    assert.deepEqual([[...r2b.covered], r2b.sent], [[7, 8], 1]); assert.deepEqual(retry.calls.filter(c => c[0] === 'push').map(c => c[1].playerIds[0]), [8], '前の配信で送れなかった人に送っていない');
-    // 誰かが送信中 (held) → 送らない・covered にも入れない
-    const held = makeEnv(); held._claim = 'held';
-    const r3 = await held._notifyBlockPublish({ pub: { id: 503 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
-    assert.equal(r3.covered.size, 0); assert.ok(!held.calls.some(c => c[0] === 'push'), '確保できないのに送った');
-    // 送れなかった → その人の確保を戻す (次の配信で送り直せる)・送信済みにしない
-    const bad = makeEnv(); bad._pushFail = true;
-    const r4 = await bad._notifyBlockPublish({ pub: { id: 504 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
-    assert.deepEqual([r4.covered.size, r4.sent, r4.failed], [0, 0, 2]);
-    assert.deepEqual(bad.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|19時 B3 灼熱PT 編成①'], '送れなかった人の確保を戻していない');
-    assert.ok(!bad.calls.some(c => c[0] === 'markSent'), '送れなかったのに送信済みにした');
-    // 変わった人に送れなかった → 配信の id 付きの鍵だけ戻す。中身の鍵は触らない (確保も送信済みも無し) → 次の配信し直しで届く
-    const bad2 = makeEnv(); bad2._pushFail = true;
-    await bad2._notifyBlockPublish({ pub: { id: 507 }, plan: PUB.plan, seasonId: 45, me: { id: 1 }, changedIds: new Set([8]) });
-    assert.deepEqual(bad2.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|p507|19時 B3 灼熱PT 編成①'], '変わった人の確保を戻していない');
-    assert.ok(!bad2.calls.some(c => c[0] === 'markSent') && !bad2.calls.some(c => c[0] === 'claim' && c[3] === '18-20|8|19時 B3 灼熱PT 編成①'), '送れなかったのに中身の鍵を確保・送信済みにした');
-    // 相手が 0 人 (方針で外れた = skipped) は「送れた」に数えない (確保は送信済み)
-    const skip = makeEnv(); skip.window.sendPushNotification = async (payload) => { skip.calls.push(['push', payload]); return { sent: 0, skipped: true }; };
-    const r5 = await skip._notifyBlockPublish({ pub: { id: 506 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
-    assert.deepEqual([r5.sent, r5.failed, r5.covered.size], [0, 0, 2], '相手 0 人を送れたに数えた');
-    assert.equal(skip.calls.filter(c => c[0] === 'markSent').length, 2);
-    // ブロックで組んでいない配信は通知しない
-    const whole = makeEnv();
-    assert.equal((await whole._notifyBlockPublish({ pub: { id: 505 }, plan: { ...PUB.plan, blockScope: null }, seasonId: 45, me: { id: 1 } })).covered.size, 0);
-    assert.ok(!whole.calls.some(c => c[0] === 'claim'));
 });
 
 await test('★ 登録中は下書きを動かさない: やめる・Lv の変更・別の下書きを受け付けず、押した時点の写しで登録する (Codex指摘 1901a8a)', async () => {

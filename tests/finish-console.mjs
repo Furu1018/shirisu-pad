@@ -29,41 +29,15 @@ function cut(marker) {
     }
     console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
 }
-const SRC = cut('        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB, commitments)');
-const OFFER_SRC = cut('        function _opsFinishOfferHtml(boss)');
-const CLOSE_SRC = cut('        function handleOpsFinishOfferClose()');
-
-// 打診の進み具合 (_opsFinishOfferHtml) を、本物のドメインで走らせる。boss を渡すと「行からの拾い直し」も動く
-function runOffer({ rows = [], offerId = 'o1', boss = null, closed = new Set(), env: envOut = null } = {}) {
-    const env = {
-        window: { finishDomain: globalThis.finishDomain },
-        _finishReqCache: rows,
-        _opsFinish: { offerId, closed },
-        _opsFinishOffer: null,
-        escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-    };
-    if (envOut) Object.assign(envOut, env);
-    const keys = Object.keys(env);
-    const fn = new Function(...keys, `${OFFER_SRC}\nreturn _opsFinishOfferHtml;`)(...keys.map(k => env[k]));
-    return fn(boss);
-}
-const OR = (plan, id, name, status, extra = {}) => ({
-    id: id * 10 + (plan === 'A' ? 1 : 2), offer_id: 'o1', plan_key: plan,
-    player_id: id, name, status, ...extra,
-});
-
+const SRC = cut('        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB)');
 const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
 const P = (id, name, dmg, slots, attackCount = 0) => ({ id, name, dmg, availableSlots: slots, attackCount });
 
-function run({ candidates = [], remHp = 60, curHour = 21, hours = null, shots = null, reqs = [],
-    boss = { boss_number: 3 }, pick = [], deadlineMin = 15, offerHtml = '', askOn = true } = {}) {
+function run({ candidates = [], remHp = 60, curHour = 21, hours = null, shots = null, boss = { boss_number: 3 } } = {}) {
     const env = {
         window: { finishDomain: globalThis.finishDomain },
-        _finishAskOn: () => askOn,   // 段階 2.5: 本番は同時打診を外した (練習だけ残す)。下の古いテストは打診ありの見た目を見る
-        _finishReqCache: reqs,
         _finishCurHour: () => curHour,
-        _opsFinish: { shots, hours, pick: new Set(pick), deadlineMin, offerId: null },
-        _opsFinishOfferHtml: () => offerHtml,
+        _opsFinish: { shots, hours },
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
     };
     const keys = Object.keys(env);
@@ -136,25 +110,6 @@ test('★ いま選んでいる窓が分かる (押した行が光る)', () => {
     assert.ok(on.includes('background:var(--s1)'), '選んだ行に印が付いていない');
 });
 
-test('★ 別のボスで「確認中」の人がいたら言う (二重に頼まない)', () => {
-    const out = run({
-        candidates: [P(1, 'A', 60, H(21))],
-        reqs: [{ player_id: 1, boss_number: 4, status: 'pending' }],
-    });
-    assert.ok(out.includes('別のボスで確認中'), '確認中を出していない');
-    assert.ok(out.includes('A は別のボスで確認中'), '誰なのかを出していない');
-});
-
-test('★ 別のボスで「了承済み」で凸が埋まった人は、そもそも案に出さない', () => {
-    // A は 2凸済み + 別のボスで1件了承 = 残り0
-    const out = run({
-        candidates: [P(1, 'A', 90, H(21), 2), P(2, 'B', 60, H(21), 0)],
-        reqs: [{ player_id: 1, boss_number: 4, status: 'accepted' }],
-    });
-    assert.ok(out.includes('B'), 'B が出ていない');
-    assert.ok(!/>A ＋|＋ A</.test(out), '凸が埋まっている A を案に出している');
-});
-
 test('★ 名前を onclick に埋めない (引用符で属性が壊れる / 注入できる)', () => {
     const out = run({ candidates: [P(1, `"><img src=x onerror=alert(1)>`, 60, H(21))] });
     // ★ 見るのは「タグとして成立する形で出ていないか」。escapeHtml は = や空白は変えないので、
@@ -171,220 +126,31 @@ test('★ 色を直値で焼き込んでいない (テーマを切り替えて�
     assert.deepEqual(lits, [], `色の直値がある: ${lits.join(', ')}`);
 });
 
-test('🏁 段階 2.5 (2026-10-22 ユーザー決定「探す機能だけ残す」): 本番では「同時打診に選ぶ」と「📣 同時に打診」を出さない (いま vs 待つ の比べは残す)', () => {
+test('★ 締め凸は探すだけ: 同時打診・依頼・候補への Push・別のボスの確認中 は 2026-11-16 に撤去した (戻すと落ちる)', () => {
     const cands = [P(1, 'A', 30, H(21)), P(2, 'B', 32, H(21)), P(3, 'C', 31, H(22))];
-    const off = run({ candidates: cands, remHp: 60, askOn: false, pick: ['now'] });
-    assert.ok(off.includes('いま打つか、待つか'), '比べが消えた');
-    assert.ok(!off.includes('同時打診に選ぶ') && !off.includes('📣 同時に打診'), '同時打診が残っている');
-    const on = run({ candidates: cands, remHp: 60, askOn: true });
-    assert.ok(on.includes('同時打診に選ぶ'), '練習では残す');
-});
-test('🏁 段階 2.5: プランのカードは「📋 名前と文面をコピー」— 同時打診・依頼は本番も練習も使わない (2026-10-22 の練習の作り直しから) (配線)', () => {
-    const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-    assert.ok(/function _finishAskOn\(\) \{ return false; \}/.test(html), '同時打診・依頼が使えるようになっている (締め凸は探すだけ)');
-    // Codex指摘 (b34536c): 本番は依頼を読まない・候補の Push・HP 更新後の Push・同時打診の送信を止める
-    assert.ok(/if \(!_finishAskOn\(\)\) \{ _finishReqCache = \[\]; _finishReqStaleSince = null; return; \}/.test(html), 'DB に残った依頼を本番で読んでいる');
-    for (const fn of [html.match(/async function handleMyFinishRequestRespond\([^)]*\) \{/)[0], 'async function handleOpsFinishPushSend() {', 'async function offerFinishPushAfterHpUpdate() {', 'async function handleOpsFinishOfferSend() {', 'async function handleOpsFinishPlanPush(kind) {']) {
-        const i = html.indexOf(fn); assert.ok(i > 0, fn);
-        assert.ok(/^\s*if \(!_finishAskOn\(\)\) return;/.test(html.slice(i + fn.length, i + fn.length + 120)), `${fn} を本番で止めていない`);
+    const out = run({ candidates: cands, remHp: 60 });
+    assert.ok(out.includes('いま打つか、待つか'), '比べが消えた');
+    assert.ok(!/同時打診|同時に打診|別のボスで確認中/.test(out), '同時打診・確認中の文が残っている');
+    for (const gone of ['_finishAskOn', '_finishReqCache', '_opsFinishOfferHtml', 'handleOpsFinishPick', 'handleOpsFinishOfferSend', 'handleOpsFinishOfferConfirm', 'handleOpsFinishOfferClose',
+        'handleOpsFinishPlanPush', 'handleOpsFinishPushSend', 'offerFinishPushAfterHpUpdate', 'handleMyFinishRequestRespond', 'renderMyFinishRequestBanner', '_refreshFinishRequests', '_clearFinishRequestsFor', 'commitmentsElsewhere']) {
+        assert.ok(!new RegExp('(?<![\\w$])' + gone + '(?![\\w$])').test(html), `${gone} が index.html に残っている`);
     }
-    assert.ok(/const pushBtn = !_finishAskOn\(\) \? '' : `/.test(html), '候補一覧の Push ボタンが本番に出る');
-    assert.ok(/if \(extras && !_finishAskOn\(\)\) extras\.finishRequests = \[\];/.test(html), 'メンバー表に締め凸の返事が出る');
-    assert.ok(/\$\{_finishAskOn\(\) \? '' : `<button onclick="handleOpsFinishPlanCopy\('\$\{kind\}'\)"/.test(html) && /<button \$\{_finishAskOn\(\) \? '' : 'hidden '\}onclick="handleOpsFinishPlanPush/.test(html), 'プランのカードの切り替えが無い');
-    assert.ok(/async function handleOpsFinishPlanCopy\(kind\)/.test(html) && /navigator\.clipboard\.writeText\(text\)/.test(html));
+    const st = html.match(/const _opsFinish = \{([^}]*)\};/);
+    assert.ok(st && !/pick|deadlineMin|offerId|closed/.test(st[1]), '締め凸検索の状態に同時打診の欄が残っている');
+    // 声かけは Discord: プランのカードは「📋 名前と文面をコピー」だけ
+    assert.ok(/<button onclick="handleOpsFinishPlanCopy\('\$\{kind\}'\)"/.test(html), 'コピーのボタンが無い');
+    assert.ok(/async function handleOpsFinishPlanCopy\(kind\)/.test(html) && /navigator\.clipboard\.writeText\(text\)/.test(html), 'コピーの関数が無い');
+    const client = fs.readFileSync(path.join(ROOT, 'js/supabase-client.js'), 'utf8');
+    assert.ok(!/window\.supabase\w*Finish(?:Request|Offer|Rows|Coordination)\w*\s*=/.test(client), '締め凸の依頼・状態の通信の関数が残っている');
+    // 撃破の通知の宛先も「交戦宣言中の人」(finish_coordinations) を読まない
+    assert.ok(!/from\('finish_coordinations'\)\s*\.select/.test(client), '状態 (オンライン / 調整中) をまだ読んでいる');
 });
 test('★ 候補が0人でも落ちない / ドメインが読めていなくても落ちない', () => {
     assert.doesNotThrow(() => run({ candidates: [] }));
-    const env = { window: {}, _finishAskOn: () => false, _finishReqCache: [], _finishCurHour: () => 21,
-        _opsFinish: { pick: new Set(), deadlineMin: 15 }, _opsFinishOfferHtml: () => '', escapeHtml: String };
+    const env = { window: {}, _finishCurHour: () => 21, _opsFinish: { shots: null, hours: null }, escapeHtml: String };
     const keys = Object.keys(env);
     const fn = new Function(...keys, `${SRC}\nreturn _opsFinishConsoleHtml;`)(...keys.map(k => env[k]));
     assert.equal(fn({ boss_number: 3 }, [], 60), '', 'ドメイン未読込のときは静かに空を返すこと');
-});
-
-test('★ 案を選ぶと、期限と「同時に打診」が出る (2案そろうまでは押せない)', () => {
-    const cands = [P(1, 'A', 95, H(21)), P(3, 'C', 62, H(22))];
-    const none = run({ candidates: cands });
-    assert.ok(!none.includes('同時に打診'), '何も選んでいないのにバーが出ている');
-    const one = run({ candidates: cands, pick: ['now'] });
-    assert.ok(one.includes('1案を選択中'), '選択中と出ていない');
-    assert.ok(one.includes('disabled'), '1案なのに押せてしまう');
-    assert.ok(one.includes('もう1案選ぶと'), '何をすればいいか書いていない');
-    const two = run({ candidates: cands, pick: ['now', 'h2'] });
-    assert.ok(two.includes('2案を選択中'), '2案と出ていない');
-    assert.ok(!/handleOpsFinishOfferSend\(\)" disabled/.test(two), '2案そろっても押せない');
-});
-
-test('★ 期限は運営が都度選べる。既定は15分 (ユーザー決定 2026-09-10)', () => {
-    const out = run({ candidates: [P(1, 'A', 95, H(21)), P(3, 'C', 62, H(22))], pick: ['now'] });
-    for (const m of [5, 10, 15, 30]) assert.ok(out.includes(`>${m}分</button>`), `${m}分 が選べない`);
-    // 既定 (15) だけが押された見た目になっている
-    const on = (out.match(/handleOpsFinishDeadline\((\d+)\)"[^>]*background:var\(--t-ink\)/g) || []);
-    assert.equal(on.length, 1, '選ばれている期限が1つでない');
-    assert.ok(on[0].includes('(15)'), `既定が15分でない: ${on[0]}`);
-    const other = run({ candidates: [P(1, 'A', 95, H(21)), P(3, 'C', 62, H(22))], pick: ['now'], deadlineMin: 30 });
-    assert.ok(/handleOpsFinishDeadline\(30\)"[^>]*background:var\(--t-ink\)/.test(other), '選び直せない');
-});
-
-test('★ 進み具合: 待っている人と、揃った案が読める', () => {
-    const out = runOffer({ rows: [
-        OR('A', 1, 'あ', 'accepted', { responded_at: '2026-09-10T12:05:00Z', deadline_at: '2026-09-10T12:30:00Z' }),
-        OR('B', 2, 'い', 'accepted', { responded_at: '2026-09-10T12:03:00Z' }),
-        OR('B', 3, 'う', 'pending'),
-    ] });
-    assert.ok(out.includes('打診中'), '打診中の見出しが無い');
-    assert.ok(out.includes('全員そろいました'), '揃った案を言っていない');
-    assert.ok(out.includes('う 待ち'), '誰を待っているか出ていない');
-    assert.ok(out.includes('この案で確定'), '確定ボタンが無い');
-    assert.equal((out.match(/この案で確定/g) || []).length, 1, '確定ボタンが1つでない');
-    assert.ok(!/undefined|NaN|\[object Object\]/.test(out), `未定義が混ざっている: ${out.slice(0, 300)}`);
-});
-
-test('★ 進み具合: 断られた案は「見送り」と出て、確定できない', () => {
-    const out = runOffer({ rows: [
-        OR('A', 1, 'あ', 'declined'),
-        OR('B', 2, 'い', 'pending'),
-    ] });
-    assert.ok(out.includes('見送り (あ が不可)'), '断られた理由が出ていない');
-    assert.ok(!out.includes('この案で確定'), '死んだ案を確定できてしまう');
-});
-
-test('★ 進み具合: どちらも見送りなら、次の手を促す', () => {
-    const out = runOffer({ rows: [OR('A', 1, 'あ', 'declined'), OR('B', 2, 'い', 'declined')] });
-    assert.ok(out.includes('どちらの案も見送り'), '全滅と言っていない');
-    assert.ok(out.includes('別の組み合わせ'), '次にどうするかを言っていない');
-});
-
-test('★ 進み具合: 打診していなければ何も出さない', () => {
-    assert.equal(runOffer({ rows: [], offerId: null }), '', '打診が無いのに出している');
-    assert.equal(runOffer({ rows: [OR('A', 1, 'あ', 'pending')], offerId: 'ほかの回' }), '',
-        '別の回の行を拾っている');
-});
-
-// ★ 打診の id は端末のメモリにしか無い → 読み込み直した端末・2 人目の運営の端末でも、行から拾い直して「この案で確定」を出す (2026-10-03)
-test('★ 進み具合: id を失っていても (読み込み直し・別の端末)、そのボスの決着していない打診を行から拾い直す', () => {
-    const rows = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'pending')].map(r => ({ ...r, boss_number: 3 }));
-    const env = {};
-    const out = runOffer({ rows, offerId: null, boss: { boss_number: 3 }, env });
-    assert.ok(out.includes('📣 打診中') && out.includes('い 待ち'), `拾い直していない: ${out.slice(0, 120)}`);
-    assert.equal(env._opsFinish.offerId, 'o1', '拾った id を状態に戻していない (確定のときに使う)');
-    assert.equal(runOffer({ rows, offerId: null, boss: { boss_number: 2 } }), '', '別のボスの打診を出している');
-    assert.equal(runOffer({ rows, offerId: null, boss: null }), '', 'ボスが分からないのに拾っている');
-    assert.equal(runOffer({ rows, offerId: null, boss: { boss_number: 3 }, closed: new Set(['o1']) }), '', 'この端末で閉じた打診をまた出している');
-    // 確定のあと (落ちた案が全部 declined) は拾わない = 「この案で確定」が並び続けない
-    const after = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'declined')].map(r => ({ ...r, boss_number: 3 }));
-    assert.equal(runOffer({ rows: after, offerId: null, boss: { boss_number: 3 } }), '', '確定したあとも出している');
-});
-test('★ 進み具合: 別の端末が確定したら (落ちた案が全部 declined)、持っていた id を捨てて箱を畳む。全員が断った打診は出したまま', () => {
-    const boss = { boss_number: 3 };
-    const confirmedRows = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'declined'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
-    const env = {};
-    assert.equal(runOffer({ rows: confirmedRows, offerId: 'o1', boss, env }), '', '別の端末が確定したのに「この案で確定」を出し続ける');
-    assert.equal(env._opsFinish.offerId, null, '確定済みの id を持ち続ける (次の描き直しでまた出る)');
-    const deadRows = [OR('A', 1, 'あ', 'declined'), OR('B', 2, 'い', 'declined')].map(r => ({ ...r, boss_number: 3 }));
-    assert.ok(runOffer({ rows: deadRows, offerId: 'o1', boss }).includes('どちらの案も見送り'), '送った端末で「全滅」が読めない');
-    assert.equal(runOffer({ rows: deadRows, offerId: null, boss }), '', '全滅した打診を読み込み直しで復活させている');
-    // 成立不能な案に pending が残っていても (A = declined + pending / B = declined) 復活させない
-    const deadPending = [OR('A', 1, 'あ', 'declined'), OR('A', 2, 'い', 'pending'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
-    assert.equal(runOffer({ rows: deadPending, offerId: null, boss }), '', '成立不能な打診を復活させている');
-    // そろった案があり、ほかの案に accepted が残る = まだ確定していない → 出す
-    const notYet = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'accepted'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
-    assert.ok(runOffer({ rows: notYet, offerId: 'o1', boss }).includes('この案で確定'), '確定できるべきなのに畳んでいる');
-});
-test('★ 進み具合: 「閉じる」はその打診を覚えて、行から拾い直さない', () => {
-    const env = { _opsFinish: { offerId: 'o1', closed: new Set() }, _opsCurrentAttr: null, renderOpsFinishList: () => { } };
-    const keys = Object.keys(env);
-    const fn = new Function(...keys, `${CLOSE_SRC}\nreturn handleOpsFinishOfferClose;`)(...keys.map(k => env[k]));
-    fn();
-    assert.equal(env._opsFinish.offerId, null);
-    assert.ok(env._opsFinish.closed.has('o1'), '閉じた打診を覚えていない (次の描き直しで行から拾い直して、また出る)');
-    // 本物の状態にも closed がある
-    assert.match(html, /const _opsFinish = \{ shots: null, hours: null, pick: new Set\(\), deadlineMin: 15, offerId: null, closed: new Set\(\) \};/, '閉じた打診を覚える置き場が無い');
-    assert.match(html, /\$\{_opsFinishOfferHtml\(boss\)\}/, 'コンソールがボスを渡していない (拾い直せない)');
-    assert.match(html, /if \(_opsCurrentAttr !== attrKey\) _opsFinish\.offerId = null;/, '別のボスへ切り替えても前のボスの打診を出し続ける');
-});
-
-test('★ 進み具合: 名前をエスケープする', () => {
-    const out = runOffer({ rows: [OR('A', 1, '"><img src=x>', 'pending')] });
-    assert.ok(!out.includes('<img src=x'), 'タグとして出ている');
-});
-
-test('★ 状態の既定: 期限は15分 (ユーザー決定 2026-09-10)', () => {
-    // ★ 画面に渡す値ではなく**状態の初期値**を見る。既定が変わると、
-    //   運営が期限を選ばずに送ったときの長さが黙って変わる
-    const m = html.match(/const _opsFinish = \{([^}]*)\};/);
-    assert.ok(m, '_opsFinish が見つからない');
-    assert.ok(/deadlineMin:\s*15\b/.test(m[1]), `期限の既定が15分でない: ${m[1]}`);
-    assert.ok(/pick:\s*new Set\(\)/.test(m[1]), '選んだ案を持っていない');
-});
-
-test('★ 同時に出せるのは2案まで (3つめは足せない)', () => {
-    // ★ 3案以上を同時に出すと、誰に何を頼んだか運営が追えなくなる
-    const SRC2 = cut('        function handleOpsFinishPick(key)');
-    const state = { pick: new Set(), deadlineMin: 15 };
-    const warned = [];
-    const env = {
-        _opsFinish: state,
-        showNotification: (t) => warned.push(t),
-        _opsCurrentAttr: null,
-        renderOpsFinishList: () => { },
-    };
-    const keys = Object.keys(env);
-    const pick = new Function(...keys, `${SRC2}\nreturn handleOpsFinishPick;`)(...keys.map(k => env[k]));
-    pick('now'); pick('h2');
-    assert.deepEqual([...state.pick], ['now', 'h2']);
-    pick('h4');
-    assert.deepEqual([...state.pick], ['now', 'h2'], '3案めが入ってしまう');
-    assert.equal(warned.length, 1, '2案までだと伝えていない');
-    pick('now');                       // もう一度押すと外れる
-    assert.deepEqual([...state.pick], ['h2'], '押し直しで外れない');
-    pick('h4');
-    assert.deepEqual([...state.pick], ['h2', 'h4'], '外したあとに足せない');
-});
-
-test('★ 確定: 見送りを**記録してから**知らせる / 落ちた行だけを落とす', () => {
-    // ★ 送ってから記録に失敗すると、「見送り」と伝えたのに画面では確認中のまま残る。
-    //   逆に人+ボスで更新すると、勝った案にも居る人の行まで落としてしまう
-    const SRC3 = cut('        async function handleOpsFinishOfferConfirm(winnerKey)');
-    const order = [];
-    let declinedIds = null, pushedTo = null;
-    const pr = globalThis.finishDomain.offerProgress([
-        { id: 11, plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted' },
-        { id: 21, plan_key: 'A', player_id: 2, name: 'い', status: 'accepted' },
-        { id: 22, plan_key: 'B', player_id: 2, name: 'い', status: 'accepted' },
-        { id: 32, plan_key: 'B', player_id: 3, name: 'う', status: 'pending' },
-        { id: 42, plan_key: 'B', player_id: 4, name: 'え', status: 'declined' },
-    ]);
-    const env = {
-        window: {
-            finishDomain: globalThis.finishDomain,
-            supabaseDeclineFinishRows: async (ids) => { order.push('記録'); declinedIds = ids; return ids.length; },
-            sendPushNotification: async (o) => { order.push('送信'); pushedTo = o.playerIds; return { sent: 1, target: 1 }; },
-        },
-        _opsFinishOffer: pr,
-        _opsFinishPushContext: { boss: { name: 'ボス3', boss_number: 3 }, ptInfo: { name: '水冷' } },
-        _opsFinish: { offerId: 'o1' },
-        confirm: () => true,
-        alert: (m) => { throw new Error('alert が出た: ' + m); },
-        showPushPreview: async () => true,
-        showNotification: () => { },
-        _refreshFinishRequests: async () => { },
-        _opsCurrentAttr: null,
-        renderOpsFinishList: () => { },
-        renderOpsBossSummary: () => { },
-    };
-    const keys = Object.keys(env);
-    const fn = new Function(...keys, `${SRC3}\nreturn handleOpsFinishOfferConfirm;`)(...keys.map(k => env[k]));
-    return fn('A').then(() => {
-        assert.deepEqual(order, ['記録', '送信'], '記録より先に送っている');
-        // ★ 落とすのは**落ちた案 (B) の全行**。勝った案にも居る「い」の B 行 (22) を残すと、
-        //   B 案が accepted のまま生き続けて確定が記録に出ない (Codex指摘 2026-09-10)
-        assert.deepEqual(declinedIds.slice().sort((a, b) => a - b), [22, 32, 42],
-            `落とす行が違う: ${JSON.stringify(declinedIds)}`);
-        // ★ 知らせるのは「う」だけ — 勝った案にも居る「い」と、自分で断った「え」には言わない
-        assert.deepEqual(pushedTo, [3], `知らせる相手が違う: ${JSON.stringify(pushedTo)}`);
-        assert.equal(env._opsFinish.offerId, null, '確定したのに打診中のまま');
-    });
 });
 
 await Promise.all(_pending);

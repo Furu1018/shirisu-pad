@@ -1,11 +1,12 @@
 // ============================================================================
-// ドメイン: 戦況タブのカード構成 (折りたたみ + コックピット) — 運営改修 2026-09-01
+// ドメイン: 運営タブのカード構成 (タブ分け + 折りたたみ) — 運営改修 2026-09-01
 // ----------------------------------------------------------------------------
 // 戦況タブが縦に長く「管理が大変」になったため、カード単位で折りたたみ、前日/当日で既定の
-// 開閉を変え、手動の開閉は前日/当日ごとに記憶する (Codex と議論した B 案 + 2×2 コックピット)。
-// 畳んだカードの見出しには1行サマリー、最上部には「HP更新 / 残凸 / 未完 / 締め凸未返答」を出す。
+// 開閉を変え、手動の開閉は前日/当日ごとに記憶する。畳んだカードの見出しには1行サマリー。
+// ★ 2×2 コックピットと、画面から外していたカード (運営アクション・消化のペース・直近の動き・オンライン・残り戦闘可能)・
+//   凸の予約カードは 2026-11-16 に撤去した (CARDS に戻さない)。
 //
-// ここは純ロジックだけ: カード定義・開閉の解決・サマリー文字列・コックピット値。DOM は index.html。
+// ここは純ロジックだけ: カード定義・開閉の解決・サマリー文字列。DOM は index.html。
 // 「どのカードを既定で開くか」を変えるときはここの CARDS だけを直す。
 //
 // optimal-plan.js と同じ規約: IIFE + root 直付け。DOM 非依存で node からテスト可能:
@@ -25,25 +26,13 @@
      * ★ 配列の順 = 画面の並び (HTML の順は使わない。index.html の _initOpsTabStructure が並べ直す)。
      *   2列/12カラムでは隣り合うカードの幅の組で行が決まるので、順番そのものが見た目を決める
      *   (7 の次に 12 が来ると改行して 7 は独りになる — 2026-09-11 まで実際そうなっていて全段階が1列だった)。
-     *   1本の順で 準備/前日/当日/終了/メンバー のどれを取り出しても各行が 12 に揃うように並べてある:
-     *     当日     = 運営アクション12 / ボス7 + 締め凸5 / ペース7 + 直近5 / 残り12 / プラン12
-     *     前日     = メンバー状況12 / 予約7 + Discord5 / プラン12
-     *     準備     = シーズン制御7 + 一斉通知5
-     *     終了     = Discord5 + シーズン制御7 / 育成12
-     *     メンバー = ボス7 + オンライン5 / 残り12
+     *   いまはタブ (tab) ごとに出すので、同じタブの中で各行が 12 に揃うように並べてある (12 でないのは ⚔️ 戦況 の ボス7 + 締め凸5 だけ)。
      *   崩すとテスト (各行の span 合計 = 12) が落ちる。カードを足すときは相方も決めること。
      */
     const CARDS = [
-        // 当日の最上部: コックピットの直下に帯として置く (幅12・常時開)
-        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 12, tab: null },
         { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12, tab: 'members' },
         { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7, tab: 'battle' },
         { id: 'opsSecFinish',    title: '締め凸検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5, tab: 'battle' },
-        // 段階4 (2026-09-11): 交代して入った運営が 10 秒で状況を読むための2枚。純ロジックは js/domain/pace.js
-        { id: 'opsSecPace',      title: '消化のペース',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 7, tab: null },
-        { id: 'opsSecRecent',    title: '直近の動き',            group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 5, tab: null },
-        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 5, tab: null },
-        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12, tab: null },
         // 📥 結果の取り込み (🧱 段階 4・2026-10-23 / 旧 ✅ 凸報告の確認 ③-f): Discord の結果を運営が取り込んで登録・配信と突き合わせて ✓。当日は開く (当日の運営の主作業)、
         //   終了にも出す (BlaBlaLINK との突き合わせ・報告漏れの確認)。幅 12 で単独の行 (当日 = 残り12 の次、終了 = 先頭)
         // ✓ 凸の記録 (シンプル化 S5・2026-10-27 ふるり): Discord の報告を見て運営が決定の時間割の行に ✓ を付ける (数字は入れない)。当日の運営の主作業 → ⚔️ 戦況で 結果の取り込み の前
@@ -53,9 +42,6 @@
         // 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18): Discord に貼られたスクショを運営が本人の代わりに登録。準備〜当日 (当日は畳む)。
         //   幅 12 で単独の行 — 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭 (各行 12 のまま)
         { id: 'opsSecMockIntake', title: '模擬の取り込み',        group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre', 'day'], span: 12, tab: 'members' },
-        // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
-        // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
-        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 12, tab: 'build' },
         // 前日 (告知) と終了 (結果報告) の両方で使う
         { id: 'opsSecDiscord',   title: 'Discord 用の文面',      group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 12, tab: 'members' },   // 2026-10-23: 新しい流れの案内とプランの説明 (画面に戻した)
         { id: 'opsSecPlan',      title: '凸プランを組む',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12, tab: 'build' },
@@ -73,7 +59,7 @@
     /**
      * 🧱 段階 2.5 (2026-10-22 ユーザー決定): 運営タブを 3 つ (+ マスター) に分ける。**カードはいつも同じタブ** (日付で動かさない)。
      *   tab = 'members' (👥 人の準備) / 'build' (🧱 次のブロックを組んで配信) / 'battle' (⚔️ 当日ずっと) / 'master' (👑 ふるりだけ・準備と管理) /
-     *   null = 画面から外す (コードは残す: 運営アクション・オンライン・残り戦闘可能・直近の動き・Discord 告知・消化のペース — 戦況の見出しの 1 行に畳む)。
+     *   (画面から外していたカード = tab: null は 2026-11-16 に撤去した。使った凸の数は戦況の見出しの 1 行に出す = summarize の usedText)
      *   日によって変わるのは「開いたときのタブ」(defaultTab) と「いちばん急ぐこと」だけ。モック docs/運営タブ整理モック_2026-10-22.html
      */
     const TABS = [
@@ -97,12 +83,12 @@
     }
     /**
      * 各タブの名前の横に出す「手を打つべき数」(交代で入った運営がどこから手を付けるかを数字で決める)。未ロードは null (0 と混同させない)
-     * @param {{mbRows?: Object[]|null, reservations?: {pending:number, expired?:number}|null, attackCounts?: {total:number, confirmed:number, missing:number}|null}} a
+     * @param {{mbRows?: Object[]|null, attackCounts?: {total:number, confirmed:number, missing:number}|null}} a
      */
-    function tabCounts({ mbRows, reservations, attackCounts } = {}) {
+    function tabCounts({ mbRows, attackCounts } = {}) {
         return {
             members: Array.isArray(mbRows) ? mbRows.filter(r => r && r.todo).length : null,
-            build: (reservations && !reservations.hidden) ? (Number(reservations.pending) || 0) + (Number(reservations.expired) || 0) : null,   // S5: 予約を隠したシーズンは数えない
+            build: null,   // 予約の画面は無い (2026-11-16 撤去) = 🧱 組む に件数は出さない
             battle: attackCounts ? Math.max(0, (Number(attackCounts.total) || 0) - (Number(attackCounts.confirmed) || 0)) + (Number(attackCounts.missing) || 0) : null,
             master: null,
         };
@@ -154,72 +140,42 @@
     const fmtAgo = (min) => min == null ? '—' : min < 1 ? 'たった今' : min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`;
 
     /**
-     * 畳んだカードの見出しに出す1行サマリーと、コックピットの値。
+     * 畳んだカードの見出しに出す1行サマリー (summaries) と、戦況の見出しの 1 行に出す「使った凸」(usedText)。
      * @param {Object} args
      * @param {Object|null=} args.season  opsStore の season
      * @param {Object[]=} args.bosses
      * @param {Object[]=} args.players   opsStore の players (attackCount)
      * @param {Object[]|null=} args.mbRows  memberStatusDomain.buildRows の結果 (未ロードなら null)
-     * @param {Object[]=} args.coordList  {status:'available'|'coordinating'|'off'}[]
      * @param {boolean|null=} args.published  配信中プランがあるか (null = 未取得)
-     * @param {boolean=} args.planComputed  算出済みプランがあるか
      * @param {string|null=} args.finishAttr  締め凸検索中の属性キー
-     * @param {{pending:number, approved:number}|null=} args.reservations  予約の件数 (未ロード/未適用なら null)
-     * @param {Object[]|null=} args.finishRequests  締め凸依頼の行 (現在レベル。未ロードなら null = 何も出さない)
      * @param {number=} args.now
-     * @returns {{summaries: Record<string,{text:string,bad:boolean}>, cockpit: {id:string,key:string,label:string,value:string|number,bad:boolean}[]}}
+     * @returns {{summaries: Record<string,{text:string,bad:boolean}>, usedText: string}}
      */
-    function summarize({ season, bosses, players, mbRows, coordList, published, planComputed, finishAttr, reservations, finishRequests, now } = {}) {
+    function summarize({ season, bosses, players, mbRows, published, finishAttr, now } = {}) {
         const bs = Array.isArray(bosses) ? bosses : [];
         const ps = Array.isArray(players) ? players : [];
         const lvl = season ? Number(season.current_level) || 1 : null;
         const alive = bs.filter(b => (Number(b.remaining_hp_raw) || 0) > 0).length;
         const freshMin = hpFreshnessMin(bs, now);
         const freshWarn = freshMin != null && freshMin >= 30;
-        const remainingPlayers = ps.filter(p => (Number(p.attackCount) || 0) < MAX_ATTACKS);
-        const remainingTotal = remainingPlayers.reduce((s, p) => s + (MAX_ATTACKS - (Number(p.attackCount) || 0)), 0);
-        const online = (Array.isArray(coordList) ? coordList : []).filter(c => c && (c.status === 'available' || c.status === 'coordinating')).length;
-        const coordinating = (Array.isArray(coordList) ? coordList : []).filter(c => c && c.status === 'coordinating').length;
         const todo = Array.isArray(mbRows) ? mbRows.filter(r => r.todo).length : null;
-        // 📈 消化: 定員 = 今回参加できる人 × 3。凸が定員を超えていたら定員を合わせる (pace.js と同じ決め)
+        // 使った凸: 定員 = 今回参加できる人 × 3。凸が定員を超えていたら定員を合わせる (34/33 にしない)
         const doneAttacks = ps.reduce((s, p) => s + (Number(p.attackCount) || 0), 0);
         const capacity = Math.max(doneAttacks, ps.filter(p => !p.unavailableThisSeason).length * MAX_ATTACKS);
-        // 🔁 返事待ち = 締め凸依頼で status が pending の行 (未ロードなら null)
-        const askWaiting = Array.isArray(finishRequests) ? finishRequests.filter(r => r && r.status === 'pending').length : null;
-        // ★ 締め凸依頼を取得できなかったときは「未返答 0」ではなく「—」(全体監査 2026-09-14 #4)
-        const finPending = !Array.isArray(mbRows) ? null
-            : mbRows.some(r => r && r.finishUnknown) ? null
-            : mbRows.filter(r => r.finish === 'pending').length;
 
         const summaries = {
             opsSecBoss: season
                 ? { text: `Lv${lvl} · 残${alive}体${freshMin != null ? ` · HP更新 ${fmtAgo(freshMin)}${freshWarn ? ' ⚠️' : ''}` : ''}`, bad: freshWarn }
                 : { text: '', bad: false },
-            opsSecCoord: { text: coordList ? `オンライン ${online}${coordinating ? ` · 調整中 ${coordinating}` : ''}` : '', bad: false },
-            opsSecRemaining: { text: season ? `${remainingPlayers.length}名 / ${remainingTotal}凸残` : '', bad: remainingTotal > 0 },
-            opsSecMembers: { text: todo == null ? '' : `未完 ${todo}${finPending ? ` · 締め凸未返答 ${finPending}` : ''}`, bad: (todo || 0) > 0 || (finPending || 0) > 0 },
-            // 承認待ちは「運営が見ていないと予約が成立しない」状態なので bad 扱いにする
-            opsSecReserve: reservations
-                ? { text: `承認待ち ${reservations.pending} · 予約 ${reservations.approved}${(reservations.expired || 0) > 0 ? ` · ⏰ 期限切れ ${reservations.expired}` : ''}`, bad: (reservations.pending || 0) > 0 || (reservations.expired || 0) > 0 }   // ⏰ = 返事の無い 📣 (全体監査 #7)
-                : { text: '', bad: false },
+            opsSecMembers: { text: todo == null ? '' : `未完 ${todo}`, bad: (todo || 0) > 0 },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
-            opsSecPace: { text: season ? `${doneAttacks} / ${capacity}凸` : '', bad: false },
-            // 返事待ちは「誰かが待っている」状態なので目立たせる
-            opsSecRecent: { text: askWaiting == null ? '' : (askWaiting ? `返事待ち ${askWaiting}` : '返事待ちなし'), bad: (askWaiting || 0) > 0 },
             // published: true=配信中 / false=未配信 / null=まだ取得できていない (未配信と混同させない。Codex再監査 2026-09-08)
-            opsSecPlan: { text: published === null ? '配信を確認中' : published ? '配信中' : planComputed ? '算出済み (未配信)' : '未算出', bad: false },
-            opsSecActions: { text: '', bad: false },
+            opsSecPlan: { text: published === null ? '配信を確認中' : published ? '配信中' : '未配信', bad: false },
             opsSecPush: { text: '', bad: false },
             opsSecSeason: { text: season ? `${season.month_key || ''}${season.is_test ? ' 🧪' : ''} · Lv${lvl}` : 'シーズン無し', bad: !season },
             opsSecDiscord: { text: '', bad: false },
         };
-        const cockpit = [
-            { id: 'opsSecBoss',      key: 'hp',     label: 'HP更新',      value: season ? fmtAgo(freshMin) : '—', bad: freshWarn },
-            { id: 'opsSecRemaining', key: 'remain', label: '残凸 合計',   value: season ? remainingTotal : '—', bad: remainingTotal > 0 },
-            { id: 'opsSecMembers',   key: 'todo',   label: '未完メンバー', value: todo == null ? '—' : todo, bad: (todo || 0) > 0 },
-            { id: 'opsSecMembers',   key: 'finish', label: '締め凸 未返答', value: finPending == null ? '—' : finPending, bad: (finPending || 0) > 0 },
-        ];
-        return { summaries, cockpit };
+        return { summaries, usedText: season ? `${doneAttacks} / ${capacity}凸` : '' };
     }
 
     root.opsLayoutDomain = { CARDS, STORAGE_KEY, cardById, resolveOpen, withStored, parseStored, summarize, hpFreshnessMin, TABS, TAB_KEYS, tabOf, defaultTab, resolveTab, tabCounts };

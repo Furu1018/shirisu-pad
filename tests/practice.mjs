@@ -622,7 +622,7 @@ test('本物のクライアント: 132 の関数がそろい、本物のクラ�
     assert.equal(board.bosses.length, 5);
     assert.equal(board.season.id, IDS.season);
 });
-test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承認 → 配信 → 凸報告 → 締め凸 が偽のサーバで最後まで動く', async () => {
+test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承認 → 配信 → 凸報告 が偽のサーバで最後まで動く', async () => {
     const S = IDS.season, ME = IDS.me;
     // ① 今期の時間の確認
     await W.supabaseConfirmAvailability(S, ME, { slotCount: 5, slots: ['h19', 'h20', 'h21', 'h22', 'h23'] });
@@ -656,13 +656,8 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
     assert.equal(DB().bosses.find(b => b.boss_number === 3).remaining_hp_raw, before - 34.2e9);
     assert.equal((await W.supabaseLoadMyReservations(S, ME))[0]?.status ?? 'fulfilled', 'fulfilled');
     assert.equal((await W.supabaseLoadMyAttacks(ME, S, '2026-10-03')).length, 1);
-    // ⑦ 締め凸のお願い → 返事
-    await W.supabaseSetFinishRequests(S, 1, [ME], 1);
-    let fr = await W.supabaseLoadFinishRequests(S, 1);
-    assert.equal(fr.filter(r => r.player_id === ME && r.status === 'pending').length, 1);
-    await W.supabaseRespondFinishRequest(S, 1, ME, 'accepted', 1, fr.find(r => r.player_id === ME).id);
-    fr = await W.supabaseLoadFinishRequests(S, 1);
-    assert.equal(fr.find(r => r.player_id === ME).status, 'accepted');
+    // ⑦ 締め凸のお願い → 返事 は 2026-11-16 に撤去した (通信の関数ごと無い。表の写しは偽のサーバに残る)
+    assert.ok(!W.supabaseSetFinishRequests && !W.supabaseLoadFinishRequests && !W.supabaseRespondFinishRequest, '締め凸の依頼の通信の関数が残っている');
     // ⑧ 通知は送ったことにして控える (本物の Edge Function は呼ばない)
     const n0 = W.PAD_PRACTICE.db.outbox.length;
     const sent = await W.sendPushNotification({ title: 'テスト', body: '本文', playerIds: [ME] });

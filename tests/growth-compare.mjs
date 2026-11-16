@@ -33,7 +33,7 @@ const SRC = html.slice(a, b);
 const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
     'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
     'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
-    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps', 'handleGrowthAnaDpsOnly', '_gvBurstInk', '_gvBurstColor'];
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'handleGrowthAnaAttr', 'handleGrowthAnaDps', 'handleGrowthAnaDpsOnly', '_gvBurstInk', '_gvBurstColor'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
@@ -675,12 +675,8 @@ test('★ いま選んでいる相手は、その回に育成が無くても相�
     assert.ok(!/handleGrowthAnaWho\(2\)/.test(other), 'くらべられない人まで並べている');
 });
 
-test('運営タブの名前から開くと、その人を相手にして分析タブへ送る', () => {
-    const t = build({ ...BASE });
-    t.openGrowthCompare(2);
-    assert.equal(t.state.them, 2, '相手が選ばれていない');
-    assert.equal(t.calls.goto, 'growth', '育成ビューに送っていない');
-    assert.equal(t.state.base, 'them', 'その人が使った編成を出していない');
+test('入口は分析タブの「育成」だけ (運営タブ「残り戦闘可能メンバー」の名前からの入口 openGrowthCompare は、カードごと 2026-11-16 に撤去した)', () => {
+    assert.ok(!/openGrowthCompare/.test(html), 'openGrowthCompare が index.html に残っている (呼ぶ画面が無い)');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
