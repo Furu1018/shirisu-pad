@@ -51,13 +51,17 @@ const CHECK = `(() => {
         const r = parseFloat(cs.borderTopLeftRadius); const short = Math.min(b.height, b.width);
         if (r > 0 && r < short / 2 - 0.5) { const t = short < 24 ? 4 : r <= 10.5 ? 8 : r <= 18 ? 14 : 22; if (t !== r) out.push(['角丸', r + '→' + t, where(e), sig(e), Math.round(b.width) + 'x' + Math.round(b.height) + ' ' + txt]); }
         if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && !dense(e) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 24) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
-        // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない: **実際に押して当たるか**で確かめる。
-        //   ボタンを画面の真ん中に寄せ、真ん中から上下 19px の点 (= 高さ 38px ぶん) で elementFromPoint がそのボタンを返すか。::before が無い・消えている・押せない・切れている、を全部ここで拾う
+        // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない。2 つとも満たすこと:
+        //   ① 押せる範囲 (::before) の高さが 40px 以上 (数字)  ② その範囲の点が、実際にこのボタンに当たる (::before が無い・消えている・pointer-events が無い・親で切れている・別の部品に覆われている、を拾う)。
+        //   ② はボタンを画面の真ん中に寄せ (すぐ動かす — なめらかなスクロールの途中を測らない)、左・中・右 × 上 19.5px・真ん中・下 19.5px の 9 点で elementFromPoint を見る。押したあとの動き (disabled など) までは見ない
         if (e.classList.contains('hit40')) {
-            e.scrollIntoView({ block: 'center', inline: 'nearest' });
-            const q = e.getBoundingClientRect(); const cx = q.left + q.width / 2, cy = q.top + q.height / 2;
-            const hitAt = (dy) => { const g = document.elementFromPoint(cx, cy + dy); return !!g && (g === e || e.contains(g)); };
-            if (!(hitAt(-19) && hitAt(19) && hitAt(0))) out.push(['高さ', 'hit40 の押せる範囲 ' + (hitAt(0) ? Math.round(q.height) : 0) + '→40 (上 ' + hitAt(-19) + '・下 ' + hitAt(19) + ')', where(e), sig(e), txt]);
+            const hb = parseFloat(getComputedStyle(e, '::before').height);
+            e.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+            const q = e.getBoundingClientRect(); const cy = q.top + q.height / 2;
+            const hitAt = (x, dy) => { const g = document.elementFromPoint(x, cy + dy); return !!g && (g === e || e.contains(g)); };
+            const xs = [q.left + 2, q.left + q.width / 2, q.right - 2]; const miss = [];
+            for (const x of xs) for (const dy of [-19.5, 0, 19.5]) if (!hitAt(x, dy)) miss.push(Math.round(x - q.left) + ',' + dy);
+            if (!(hb >= 39.5) || miss.length) out.push(['高さ', 'hit40 の押せる範囲 ' + (Number.isFinite(hb) ? Math.round(hb * 10) / 10 : '?') + 'px→40 (当たらない点 ' + (miss.join(' ') || 'なし') + ')', where(e), sig(e), txt]);
         }
     }
     return out;
