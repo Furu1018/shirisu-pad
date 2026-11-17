@@ -2,7 +2,8 @@
 // 📏 物差しの検査 (全体の見直し 段階 2・2026-11-16〜) — 本物のブラウザで、揃え終わったタブに「物差しから外れた部品」が 0 個なのを確かめる
 //   node tests/ruler.mjs            揃え終わったタブ (下の DONE) を全部
 //   TABS=raid node tests/ruler.mjs  まだ揃えていないタブの外れを一覧で見る (落ちない・下調べ用)。運営タブの中の小タブは TABS=ops/メンバー,ops/組む,ops/戦況
-// 場面は「練習の編:幅」。3 つ目に動作を足せる: ':piece' = 🧱 組む のピース置き場の札 (置けるもの) を 1 つ押してから見る (押したときだけ出る 🧭 ガイド・置ける行の印を検査に入れる)
+// 場面は「練習の編:幅」。3 つ目に動作を足せる (+ でつなぐ): ':piece' = 🧱 組む のピース置き場の札 (置けるもの) を 1 つ押してから見る (押したときだけ出る 🧭 ガイド・置ける行の印を検査に入れる)
+//   ':open' = 畳まれているカードを全部開く / ':finish' = ⚔️ ボス状況の「締め凸検索」を押す / ':intake' = 📥 結果の取り込みで人を選んで「✏️ 手で入力」(下書きを出す)
 // ----------------------------------------------------------------------------
 // ★ Chrome が要る (無ければ「スキップ」と出して終わる)。CHROME=<実行ファイル> で場所を指定できる。練習モードで開くので、本番へは書かない。
 // 物差し (ふるりの決定 2026-11-14「顔つきは今のまま、物差しだけ揃える」・正本は docs/段階2_物差し_2026-11-14.md):
@@ -25,10 +26,15 @@ const DONE = {
     // 🧱 組む (2026-11-17): 前日は「このブロックのみ」の段が開いている (PC 幅の見出しは 1 行 = hit40 が効く) / 当日は盤に駒・置いた札・やり直す。:piece = ピースを押して 🧭 ガイドを出した所
     'ops/組む': ['ops-eve:390', 'ops-eve:1366', 'ops-day:390', 'ops-day:1366', 'ops-eve:390:piece', 'ops-day:390:piece', 'ops-day:1366:piece'],
     'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366'],   // 運営タブの小タブ (段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面)
+    // ⚔️ 戦況 (2026-11-17): 当日は 締め凸検索・結果の取り込み が畳まれて出る → 開かない場面 1 つ (畳んだ見出し) + :open (全部開く)。前日は空の文。
+    //   :finish = ボスの「締め凸検索」を押した所 (候補・🏁・プラン・📋 コピー) / :intake = 取り込みの下書き (ボス・ダメージ・Lv・やめる / 登録する)
+    'ops/戦況': ['ops-eve:390:open', 'ops-day:390', 'ops-day:390:open', 'ops-day:1366:open', 'ops-day:390:open+finish', 'ops-day:1366:open+finish', 'ops-day:390:open+intake', 'ops-day:1366:open+intake'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
-const PLAN = ONLY.length ? Object.fromEntries(ONLY.map(t => [t, DONE[t] || ['member:390', 'ops-eve:390', 'ops-day:390', 'ops-day:1366']])) : DONE;
-const STRICT = !ONLY.length || ONLY.every(t => DONE[t]);
+// SCENES=ops-day:390:open,ops-day:1366 で場面を差し替えて下調べできる (落ちない・一覧だけ)
+const SCENES = (process.env.SCENES || '').split(',').filter(Boolean);
+const PLAN = ONLY.length ? Object.fromEntries(ONLY.map(t => [t, SCENES.length ? SCENES : DONE[t] || ['member:390', 'ops-eve:390', 'ops-day:390', 'ops-day:1366']])) : DONE;
+const STRICT = (!ONLY.length || ONLY.every(t => DONE[t])) && !SCENES.length;
 
 const CHROME = [process.env.CHROME, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Chromium.app/Contents/MacOS/Chromium',
     'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
@@ -41,6 +47,7 @@ const CHECK = `(() => {
     const roots = [document.querySelector('.tab-content.active'), document.querySelector('.header'), document.getElementById('bottomNav')].filter(Boolean);
     const els = []; for (const r of roots) { els.push(r); for (const e of r.querySelectorAll('*')) els.push(e); }
     // 縦に伸ばさない所 (表・1 人 1 行の一覧 = 👥 メンバー状況の行 .dc-mb-row・盤の駒と名前の札): 小さい文字 9 / 10px と、行の中の小さいボタンを認める
+    //   ★ ただし ⚔️ ✓ 凸の記録の押す札 (button.db-tag) は高さだけ例外にしない = 40px (2026-11-17・当日いちばん押す・押し間違えると別の人に ✓)。札の中の文字は dense のまま (📅 の札は読むだけの span)
     const dense = (e) => !!e.closest('table, .dc-mb-row, [class*="table"], .obr, .obpc, .db-tag');
     const ownText = (e) => [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim());
     const snapF = (px) => px < 11.3 ? 11 : px < 12.8 ? 12 : px < 15 ? 14 : px < 17.5 ? 16 : px < 24 ? 20 : px;
@@ -54,7 +61,7 @@ const CHECK = `(() => {
         if (ownText(e)) { const px = parseFloat(cs.fontSize); let t = snapF(px); if (dense(e) && px < 11) t = px < 9.75 ? 9 : 10; if (Math.abs(t - px) > 0.01) out.push(['文字', px + '→' + t, where(e), sig(e), txt]); }
         const r = parseFloat(cs.borderTopLeftRadius); const short = Math.min(b.height, b.width);
         if (r > 0 && r < short / 2 - 0.5) { const t = short < 24 ? 4 : r <= 10.5 ? 8 : r <= 18 ? 14 : 22; if (t !== r) out.push(['角丸', r + '→' + t, where(e), sig(e), Math.round(b.width) + 'x' + Math.round(b.height) + ' ' + txt]); }
-        if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && !dense(e) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 24) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
+        if (e.matches('button, [role="button"], a.btn, select, input[type="text"], input[type="number"]') && (!dense(e) || e.matches('button.db-tag')) && !e.classList.contains('hit40') && b.height >= 24 && b.height < 40 && b.width >= 24) out.push(['高さ', Math.round(b.height) + '→40', where(e), sig(e), txt]);
         // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない。2 つとも満たすこと:
         //   ① 押せる範囲 (::before) の高さが 40px 以上 (数字)  ② その範囲の点が、実際にこのボタンに当たる (::before が無い・消えている・pointer-events が無い・親で切れている・別の部品に覆われている、を拾う)。
         //   ② はボタンを画面の真ん中に寄せ (すぐ動かす — なめらかなスクロールの途中を測らない)、左・中・右 × 上 19.5px・真ん中・下 19.5px の 9 点で elementFromPoint を見る。押したあとの動き (disabled など) までは見ない
@@ -155,11 +162,29 @@ const runScene = async (tab, scene) => {
             await settle();
             // 動作: ピースを押す (置けるピース = 赤くない・使っていない札)。押せなければ「押せない」と出して検査しない (黙って押す前の画面を見ない)。
             //   タブを開けていないときは押さない (開けなかった本当の理由を「ピースが無い」で上書きしない)。押したあとはピースとガイドが「見えている」か (DOM にあるだけでは通さない — 隠れたガイドは CHECK が飛ばすので、測らずに外れ 0 になる)
-            if (act && act !== 'piece') active = '知らない動作: ' + act;
-            else if (act === 'piece' && active === 'tab-' + tabId) {
-                const pressed = await ev(`(() => { const b = document.querySelector('#opsBuild .obt:not(.off):not(.ng)'); if (!b) return false; b.click(); return true; })()`);
-                if (!pressed) { active = 'ピースが無い (押せない)'; }
-                else { await settle(); if (!(await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return vis(document.querySelector('#opsBuild .obt.sel')) && vis(document.querySelector('#obGuide .obg-h')); })()`))) active = '押したのにピースが選ばれない / ガイドが見えない'; }
+            //   動作は + でつなげる (例 open+finish)。前から順に行い、1 つでも失敗したら残りはしない
+            for (const a of (act || '').split('+').filter(Boolean)) {
+                if (active !== 'tab-' + tabId) break;
+                if (a === 'piece') {
+                    const pressed = await ev(`(() => { const b = document.querySelector('#opsBuild .obt:not(.off):not(.ng)'); if (!b) return false; b.click(); return true; })()`);
+                    if (!pressed) { active = 'ピースが無い (押せない)'; }
+                    else { await settle(); if (!(await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return vis(document.querySelector('#opsBuild .obt.sel')) && vis(document.querySelector('#obGuide .obg-h')); })()`))) active = '押したのにピースが選ばれない / ガイドが見えない'; }
+                } else if (a === 'open') {
+                    // 畳まれているカードを全部開く (見出しを押す = 運営が開くのと同じ)。開いたあとに畳まれたカードが残っていれば失敗
+                    const n = await ev(`(() => { const hs = [...document.querySelectorAll('.tab-content.active .ops-card.ops-closed > .ops-card-head')].filter(h => h.getClientRects().length); hs.forEach(h => h.click()); return hs.length; })()`);
+                    await settle();
+                    if (await ev(`[...document.querySelectorAll('.tab-content.active .ops-card.ops-closed')].some(c => c.getClientRects().length)`)) active = 'カードが開かない (' + n + ' 枚押した)';
+                } else if (a === 'finish') {
+                    // ⚔️ ボス状況カードの「締め凸検索」を押す → 締め凸検索のカードに候補・🏁 いま打つか待つか・📋 コピー が出る (締め凸検索のカードは open で先に開いておく)
+                    const pressed = await ev(`(() => { const b = document.querySelector('#opsBossSummary .js-finish:not([disabled])'); if (!b) return false; b.click(); return true; })()`);
+                    if (!pressed) active = '締め凸検索を押せない';
+                    else { await settle(); if (!(await ev(`(() => { const l = document.getElementById('opsFinishList'); return !!l && l.getClientRects().length > 0 && !/^\\s*ボス状況カードから/.test(l.textContent) && l.querySelectorAll('button').length > 0; })()`))) active = '押したのに締め凸検索の結果が出ない'; }
+                } else if (a === 'intake') {
+                    // 📥 結果の取り込み: 誰の凸か (いちばん上の人) を選んで「✏️ 手で入力」→ 下書き (ボス・ダメージ・Lv・編成・残 HP・登録する) が出る
+                    const ok = await ev(`(() => { const s = document.getElementById('opsResultPlayer'); const o = s && [...s.options].find(x => x.value); if (!o) return false; s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); const b = document.querySelector('#opsSecAttackCheck button[onclick="_opsResultManual()"]'); if (!b) return false; b.click(); return true; })()`);
+                    if (!ok) active = '取り込みの人・手で入力を押せない';
+                    else { await settle(); if (!(await ev(`(() => { const d = document.getElementById('opsResultDraft'); return !!d && d.getClientRects().length > 0 && d.querySelectorAll('button, input, select').length > 0; })()`))) active = '押したのに取り込みの下書きが出ない'; }
+                } else { active = '知らない動作: ' + a; break; }
             }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
             if (active !== 'tab-' + tabId || !last.startsWith('tab-' + tabId + ':')) { label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`; openFail = active === null || /^tab-/.test(active); }

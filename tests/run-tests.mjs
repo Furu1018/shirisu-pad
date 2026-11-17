@@ -2340,7 +2340,10 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
         const a = m[2]; const on = a.match(/onclick="([a-zA-Z_]+)\(/); const d = a.match(/\b(data-ob-[a-z]+)=/); const c = a.match(/class=["']([^"']*)["']/);
         return m[1] + ':' + (on ? on[1] : d ? d[1] : c[1].replace(/\s+/g, '.'));
     }).sort();
-    assert.deepEqual(sites, ['button:data-ob-drop', 'button:data-ob-unpin', 'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'summary:hit40'], 'hit40 の付け先が変わった');
+    //   ⚔️ 戦況 (2026-11-17): 📥 の行のボタン (✓ 凸の記録へ・確認する・📥 取り込む・📋 聞く・凸していない・戻す)・残 HP のチェック 2 つ (どちらか 1 つが出る)・凸していない / 🕐 の開閉。summary・label は 2 つ目の class で見分ける
+    assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
+        'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
+        'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');
     // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
     assert.equal((html.match(/classList\.(?:add|toggle)\(\s*['"]hit40['"]|className\s*\+?=\s*[^;\n]*\bhit40\b/g) || []).length, 0, 'hit40 を JS で付けている (付け先の一覧に出ない)');
 });
@@ -2382,6 +2385,43 @@ test('★ 段階 2 の物差し (🧱 組む・2026-11-17): 練習の場面に�
     assert.match(html, /\n\s*\.ob-sync-auto \{ display: inline-flex; align-items: center; gap: 5px; font-size: 11px;/, '「自動で反映する」の文字が物差しから外れた');   // .ob-sync.idle .ob-sync-auto もあるので直接見る
     // キャラのアイコン (共有の _charIconHtml): 24px 未満は 4・それ以上は 8
     assert.equal((html.match(/border-radius:\$\{size < 24 \? 4 : 8\}px;/g) || []).length, 2, 'キャラのアイコンの角丸が大きさで分かれていない');
+});
+test('★ 段階 2 の物差し (⚔️ 戦況・2026-11-17): 練習の場面に出ない部品も物差しどおり — ✏️ の編集パネル・Lv4 のバナー・候補 0 人・同属性 2 凸目・確認する / 凸していない の行・解析中の帯', () => {
+    const html = _perfHtml;
+    const rule = (sel) => { const k = ' ' + sel + ' {'; const i = html.indexOf(k); assert.ok(i > 0 && html.indexOf(k, i + 1) < 0, sel + ' の規則が無い / 2 つある'); return html.slice(i, html.indexOf('}', i)); };
+    const has = (s, msg) => assert.ok(html.includes(s), msg);
+    // ⚔️ ボス状況: カードの 2 つのボタンは 40px (当日いちばん押す締め凸検索・✏️ は正方形)。✏️ を押した編集パネル (欄 3 つ・取消・保存は 40px / 角丸 8・ラベル 11px)。Lv3 を踏破したときだけ出る Lv4 のバナー
+    has('title="HP編集" style="flex:none;width:40px;height:40px;border-radius:8px;', '✏️ (HP 編集) が 40×40 でない');
+    assert.match(html, /class="js-finish" [^>]*style="flex:1;padding:7px 10px;min-height:40px;border-radius:8px;/, '締め凸検索 のボタンが 40px 未満');
+    for (const id of ['opsBossEditRem', 'opsBossEditTotal']) assert.match(html, new RegExp('id="' + id + '-\\$\\{b\\.boss_number\\}"[^>]*style="width:100%;padding:4px 6px;min-height:40px;border-radius:8px;'), id + ' の欄が 40px でない');
+    has('placeholder="例: モダニア" style="width:100%;padding:4px 6px;min-height:40px;border-radius:8px;', 'ボス名の欄が 40px でない');
+    has('<button data-action="boss-edit-cancel" style="padding:5px 10px;min-height:40px;border-radius:8px;', '編集パネルの 取消 が 40px でない');
+    has('<button data-action="boss-edit-save" data-boss="${b.boss_number}" style="padding:5px 12px;min-height:40px;border-radius:8px;', '編集パネルの 保存 が 40px でない');
+    for (const t of ['残HP (B)', '総HP (B)', 'ボス名']) assert.match(html, new RegExp('<label style="(?:grid-column:1/-1;)?font-size:11px;color:var\\(--t-muted\\);">' + t.replace(/[()]/g, '\\$&')), '編集パネルのラベル「' + t + '」が 11px でない');
+    has('border-radius:14px;padding:10px 13px;margin:0 0 10px;font-size:12px;', 'Lv4 のバナーが物差しから外れた');
+    // 締め凸検索: ボスが見つからない・候補 0 人・時間の窓を選んだときの人数・同属性 2 凸目の「＋」
+    has('font-size:14px;">対象ボスが見つかりません。', '「対象ボスが見つかりません」が 14px でない');
+    has('font-size:14px;">この時間に出られるメンバーがいません。', '候補 0 人の文が 14px でない');
+    has('<div style="font-size:11px;font-weight:700;color:var(--t-muted);">${windowNote}', '時間の窓の人数が 11px でない');
+    has('style="font-size:11px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);padding:1px 6px;border-radius:999px;">＋</span>', '同属性 2 凸目の「＋」が 11px でない');
+    // 写真の無い人の 👤 (共有の _renderAvatarCircle): 円の大きさ × 0.55 を物差しに寄せる (24 / 28 / 32 / 36 / 40px の円 = 14 / 16 / 16 / 20 / 20px)
+    has('const emojiFs = emojiRaw < 11.3 ? 11 : emojiRaw < 12.8 ? 12 : emojiRaw < 15 ? 14 : emojiRaw < 17.5 ? 16 : emojiRaw < 24 ? 20 : emojiRaw;', '👤 の文字が物差しに寄っていない');
+    // ✓ 凸の記録: 押す札 (button) だけ 40px (📅 の札は読むだけの span = 30px のまま)。盤に載らない凸の箱は 14
+    assert.match(rule('button.db-tag'), /min-height: 40px;/, '⚔️ の押す札が 40px 未満に戻った');
+    assert.equal(Number((rule('.db-others').match(/border-radius: (\d+)px;/) || [])[1]), 14, '盤に載らない凸の箱の角丸が物差しから外れた');
+    // 結果の取り込み: 行のボタンに hit40 → 行の中心の間隔を 41.4px 以上に (行の余白 7px・.src の余白 6px。40.4px だと当たり判定の丸めで上下の行と取り合う)・横には広げない (6px の間で並ぶ)
+    assert.match(rule('.ops-atk-row'), /padding: 7px 0;/, '取り込みの行の余白が狭い (hit40 が上下の行のボタンを取る)');
+    assert.match(rule('.ops-atk-row .src'), /padding: 6px 2px;/, '「✓ 凸の記録で付けた ›」の余白が狭い');
+    assert.match(html, /\n\s*\.ops-atk-row \.hit40::before \{ left: 0 !important; right: 0 !important; \}/, '行のボタンの押せる範囲が横に重なる');
+    assert.match(rule('.ops-atk-row .fl'), /font-size: 11px;/, '食い違いの印が 11px でない');
+    assert.match(rule('.ops-atk-skip'), /margin-top: 12px;/, '「凸していない」の開閉が ⏰ の行のボタンに近い');
+    assert.match(rule('.ops-atk-skip summary'), /margin-bottom: 12px;/, '「凸していない」の開閉が 1 行目の「戻す」に近い');
+    assert.match(rule('.ops-result-draft .row.hit40'), /margin-top: 3px;/, '残 HP のチェックが編成のピルに近い');
+    for (const sel of ['.ops-atk-f button', '.ops-result-draft .pick']) assert.match(rule(sel), /min-height: 40px;/, sel + ' が 40px 未満に戻った');
+    has('.ops-result-draft input[type="number"], .ops-result-draft select { padding: 6px 9px; min-height: 40px; border-radius: 8px;', '下書きの欄が 40px でない');
+    has('.ops-result-draft .go, .ops-result-draft .cancel { padding: 8px 15px; min-height: 40px; border-radius: 999px;', '「やめる」「登録する」が 40px でない');
+    has('id="opsResultAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:14px;', '解析中の帯の角丸が物差しから外れた');
+    has('<small style="color:var(--t-muted);font-weight:700;font-size:11px;">(${why})</small>', '編成の理由が 11px でない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
@@ -14694,7 +14734,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/planKey: dp\.planKey\(\{ \.\.\.a, level: lv\.infinite \? 4 : Number\(lv\.level\), bossNumber: Number\(b\.bossNumber\), block: String\(a\.block\) \}\)/.test(dec), '決定の割当に鍵を持たせていない');
         assert.ok(/_opsDecidedPub\(snap\.season\.id\) \|\| \(\(_opsPublishedPlan/.test(html), '結果の取り込みが最新の決定を見ていない (TP-1)');
         // 運営の ✓ の行: 外せない確認のトグルを出さない (TP-11)。代わりに ✓ 凸の記録へのリンク (丸い札だとボタンに見えて押しても何も起きなかった: 2026-10-28 ふるり)
-        assert.ok(/\$\{r\.tapOnly \? '—' : /.test(html) && /r\.source === 'ops_tap' && r\.tapOnly\s*\n(?:[^\n]*\n){1,3}?\s*\? '<button type="button" class="src" onclick="_opsJump\(\\'opsSecAttackTap\\'\)"[^']*>✓ 凸の記録で付けた ›<\/button>'/.test(html), '運営の ✓ の行に外せない確認のトグルを出している / ✓ 凸の記録へ飛べない (TP-11)');
+        assert.ok(/\$\{r\.tapOnly \? '—' : /.test(html) && /r\.source === 'ops_tap' && r\.tapOnly\s*\n(?:[^\n]*\n){1,3}?\s*\? '<button type="button" class="src hit40" onclick="_opsJump\(\\'opsSecAttackTap\\'\)"[^']*>✓ 凸の記録で付けた ›<\/button>'/.test(html), '運営の ✓ の行に外せない確認のトグルを出している / ✓ 凸の記録へ飛べない (TP-11)');
         assert.ok(/\.ops-atk-row \.src \{[^}]*border: none; background: none;[^}]*text-decoration: underline;/.test(html), '✓ 凸の記録へのリンクがボタンの見た目のまま');
         // 確認のボタン: 押す前は「確認する」、押したあとは「✓ 確認済み (確かめた人)」— 名前だけだと凸した人と取り違えた (2026-10-28 ふるり)
         assert.ok(html.includes("${r.confirmedAt != null ? `✓ 確認済み${r.confirmedBy && r.confirmedBy !== '✓ 凸の記録' ? ` (${escapeHtml(r.confirmedBy)})` : ''}` : '確認する'}</button>"), '確認のボタンの言い方 (確認する / ✓ 確認済み (名前))');

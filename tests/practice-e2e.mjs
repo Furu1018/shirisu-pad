@@ -95,7 +95,8 @@ const STATE = `(() => {
     if (el) { under = String(el.innerText || el.value || el.placeholder || '').trim().replace(/\\s+/g, ' ').slice(0, 24); tag = el.tagName; } }
   return { cnt: d.querySelector('.pm-cnt')?.innerText || (d.querySelector('.pm-done') ? 'DONE' : '-'), title: d.querySelector('.pm-top b')?.innerText || '',
     text: d.querySelector('.pm-in p')?.innerText || '', assume: d.querySelector('[data-pm=assume]')?.innerText || null, where: !!d.querySelector('[data-pm=where]'), ring: shown, under, tag,
-    toast: (() => { const n = document.getElementById('notification'); if (!n) return null; const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })() };
+    // 知らせの位置は「滑り下りてくる途中」(transform: translateY の 0.3 秒) を差し引いて測る — 出た瞬間を測ると 180% 上に居て、案内の裏と誤って判定した (2026-11-17)
+    toast: (() => { const n = document.getElementById('notification'); if (!n) return null; const r = n.getBoundingClientRect(); const tf = getComputedStyle(n).transform; const dy = tf && tf !== 'none' ? new DOMMatrixReadOnly(tf).m42 : 0; return { text: n.textContent, shown: n.classList.contains('show'), top: r.top - dy, dockBottom: d.getBoundingClientRect().bottom }; })() };
 })()`;
 // 案内の枠の真ん中にあるものを押す (入力欄なら、案内の文が言う数字を入れる / 選択肢なら、案内の文に出ている名前を選ぶ)。枠は pointer-events:none なので、拾うのは本物の画面の要素
 const PRESS = (value, text = '') => `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -160,7 +161,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
     try {   // ★ 終わったあとの確認で画面が読み込み直し中だと eval が落ちる — 例外も problems に入れて、手順と読み込み直しの記録を出す
     // アプリの知らせ (トースト) は案内の裏に隠れない: 最後の返事のあとに出る「了承を運営に伝えました」が、案内の下に見えている
     const toastNow = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
-        const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
+        const r = n.getBoundingClientRect(); const tf = getComputedStyle(n).transform; const dy = tf && tf !== 'none' ? new DOMMatrixReadOnly(tf).m42 : 0; return { text: n.textContent, shown: n.classList.contains('show'), top: r.top - dy, dockBottom: d.getBoundingClientRect().bottom }; })())`));
     const toast = toastNow.shown ? toastNow : (lastToast || toastNow);   // いま消えていても、手順の途中で見えていればそれで判定 (負荷で 3 秒を過ぎることがある)
     if (done && scenario !== 'ops-day' && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
     // ↩ 1つ前に戻る: おしまいから戻ると、1 つ前の課題の最初 (その時点の盤面・時計・課題の印) に戻る。そこからまた最後まで行ける
