@@ -2840,28 +2840,29 @@
         .ob-note { margin: 0; font-size: 11px; color: var(--t-muted); line-height: 1.6; }
         .ob-stale { color: var(--warn-deep); }
         /* ⏱ 再編成時間 (第46回の反省 ⑥): 🧱 組む・📅 レイド予定表・ホームのきょうの凸 の帯。凸の時間が終わったブロックの札 */
-        .ob-rebuild, .rt-rebuild, .mt-rebuild { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-deep); font-size: 12px; font-weight: 700; line-height: 1.6; }
+        .ob-rebuild, .rt-rebuild, .mt-rebuild { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-deep); font-size: 12px; font-weight: 700; line-height: 1.6; }
         .obb.past.rebuild .lv { color: var(--warn-deep); }
         .obb-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
         @media (max-width: 760px) { .obb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         .obb { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 9px 10px 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+        @media (max-width: 359px) { .obb { padding-left: 6px; padding-right: 6px; } }   /* 幅 320〜350px: 3 列のボタンの 11px の時刻・凸数 (翌1〜翌5時・完了 12 / 15) を 1 行に保つ */
         .obb.on { border-color: var(--ops); box-shadow: 0 0 0 3px var(--ops-bg); }
         .obb.past { opacity: .5; cursor: default; }
         .obb.nodec { cursor: default; }   /* 決まっていないブロック (📅 / ✓ 凸の記録): 押せない札 (2026-10-29 ボタンの監査) */
-        .obb .nm { font-size: 14px; font-weight: 900; } .obb .hr { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .obb .nm { font-size: 14px; font-weight: 900; } .obb .hr { font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .obb .lv { font-size: 11px; font-weight: 900; color: var(--ops); } .obb .lv.done { color: var(--ok); } .obb .lv.idle { color: var(--t-muted); }
-        .obb .ct { font-size: 10.5px; font-weight: 800; color: var(--t-body); }
+        .obb .ct { font-size: 11px; font-weight: 800; color: var(--t-body); }
         .obb .minis { display: flex; gap: 3px; margin-top: auto; } .obb .minis i { flex: 1; height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; display: block; } .obb .minis i b { display: block; height: 100%; }
         .ob-panel { display: flex; flex-direction: column; gap: 8px; }
-        .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13.5px; color: var(--t-ink); }
+        .ob-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--t-ink); }
         .ob-acts { display: flex; gap: 6px; flex-wrap: wrap; }
-        .ob-auto { padding: 8px 13px; border-radius: 10px; border: none; background: linear-gradient(var(--grad-ops-a), var(--grad-ops-b)); color: var(--on-fill); font: inherit; font-size: 12.5px; font-weight: 900; cursor: pointer; }
-        .ob-reset { padding: 8px 12px; border-radius: 10px; border: none; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+        .ob-auto { padding: 8px 13px; min-height: 40px; border-radius: 8px; border: none; background: linear-gradient(var(--grad-ops-a), var(--grad-ops-b)); color: var(--on-fill); font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; }
+        .ob-reset { padding: 8px 12px; min-height: 40px; border-radius: 8px; border: none; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
         .ob-auto:disabled, .ob-reset:disabled { opacity: .5; cursor: progress; }
         .ob-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 10px; align-items: start; }
         @media (max-width: 900px) { .ob-wrap { grid-template-columns: minmax(0, 1fr); } }
         .ob-board { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-        .obr { border: 1.5px dashed var(--line); border-radius: 12px; padding: 7px 9px; cursor: pointer; min-width: 0; }
+        .obr { border: 1.5px dashed var(--line); border-radius: 14px; padding: 7px 9px; cursor: pointer; min-width: 0; }
         .obr.can { border-color: var(--ops); background: var(--ops-bg); } .obr.no { opacity: .45; } .obr.done { border-style: solid; border-color: var(--ok); }
         .obr-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--t-ink); }
         .obr-h .hp { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; } .obr.done .hp { color: var(--ok); }
@@ -2903,19 +2904,19 @@
         button.db-tag:disabled { cursor: progress; opacity: .55; }
         .db-others { margin-top: 8px; padding: 7px 9px; border-radius: 12px; border: 1.5px dashed var(--line); }
         .db-mine { margin: 0 0 8px; padding: 7px 10px; border-radius: 10px; background: var(--ops-bg); font-size: 12px; font-weight: 800; color: var(--ops-deep); line-height: 1.6; }
-        .ob-tray { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-        .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 10.5px; }
+        .ob-tray { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 11px; }
         .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
-        .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
+        .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; min-height: 40px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
         .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.view { outline: 2px dashed var(--ops); outline-offset: 1px; } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
-        .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 900; } .obt small { font-size: 9.5px; color: var(--t-muted); }
-        .obt .rigid { font-size: 10px; font-weight: 900; color: var(--ops-on); } .obt .flex, .obt .where { font-size: 10px; color: var(--t-muted); }   /* 先に置く人の文字は紫・赤は「置けない」(.ng) だけ (2026-11-02) */
+        .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 900; } .obt small { font-size: 11px; color: var(--t-muted); }
+        .obt .rigid { font-size: 11px; font-weight: 900; color: var(--ops-on); } .obt .flex, .obt .where { font-size: 11px; color: var(--t-muted); }   /* 先に置く人の文字は紫・赤は「置けない」(.ng) だけ (2026-11-02) */
         /* 「このブロックのみ / このブロックで最後」(第46回の反省 ②・2026-11-02): ピースの文字・置けないピースの赤・ボタンの人数・新しい段 */
         .obt .rigid.last { color: var(--warn-deep); }
         .obt.ng { border-color: var(--bad); background: var(--bad-bg); } .obt .where.ng { color: var(--bad-deep); font-weight: 800; }
         /* 🧭 ピースのガイド (2026-11-12): 盤の下 (左の列) に置く — ピース置き場の中に置くと、ポインタを乗せるたびに高さが変わって下のピースが動く */
         .ob-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-        .ob-guide { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 12px; padding: 9px 10px; background: var(--s1); min-width: 0; }
+        .ob-guide { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 14px; padding: 9px 10px; background: var(--s1); min-width: 0; }
         .ob-guide .obg-empty { margin: 0; }
         /* 🧭 ポインタのある端末 (PC): ガイドの**高さを中身で変えない** (2026-11-16 ふるり「スクロールしないと出ない・無理に下まで行くと、消えるのと出るのを繰り返してページがすごい速さで上下する」)。
            ポインタを乗せると伸びる → ページが伸びる → 離すと縮む → いちばん下ではスクロール位置がずれて別のピースに乗る → … の繰り返しだった
@@ -2943,51 +2944,52 @@
             .ob-guide > .obg-s-mates { grid-column: 2; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; margin-inline: -4px; padding-inline: 4px; }
             .ob-guide > .obg-sum { grid-column: 3; grid-row: 2 / 4; overflow-y: auto; overflow-x: hidden; margin-inline: -4px; padding-inline: 4px; }
         }
-        .obg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 900; color: var(--t-ink); }
-        .obg-h .obg-dmg { font-size: 15px; font-variant-numeric: tabular-nums; } .obg-h .obg-left { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .obg-h { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 900; color: var(--t-ink); }
+        .obg-h .obg-dmg { font-size: 16px; font-variant-numeric: tabular-nums; } .obg-h .obg-left { font-size: 11px; font-weight: 800; color: var(--t-muted); }
         .obg-faces { display: inline-flex; gap: 3px; vertical-align: middle; } .obg-face { display: inline-flex; border-radius: 8px; } .obg-face.hit { outline: 2px solid var(--bad); outline-offset: 1px; }
-        .obg-noteam { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
-        .obg-sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(var(--ink-rgb), 0.08); font-size: 11.5px; color: var(--t-body); }
-        .obg-lb { font-size: 10.5px; font-weight: 900; color: var(--t-muted); margin-bottom: 4px; }
+        .obg-noteam { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .obg-sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(var(--ink-rgb), 0.08); font-size: 12px; color: var(--t-body); }
+        .obg-lb { font-size: 11px; font-weight: 900; color: var(--t-muted); margin-bottom: 4px; }
         .obg-blks { display: grid; grid-template-columns: repeat(var(--obg-n, 6), minmax(0, 1fr)); gap: 3px; max-width: 320px; }
-        .obg-blks span { text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 3px 0; background: var(--s2); color: var(--t-muted); }
+        .obg-blks span { text-align: center; font-size: 11px; font-weight: 900; border-radius: 4px; padding: 3px 0; background: var(--s2); color: var(--t-muted); }
         .obg-blks span.on { background: var(--ops-solid); color: var(--on-fill); } .obg-blks span.past { opacity: .45; } .obg-blks span.now { outline: 2px solid var(--bad); outline-offset: 1px; }
         .obg-drop { font-weight: 800; color: var(--t-ink); } .obg-drop.ok { color: var(--ok-on); } .obg-drop.ng { color: var(--bad-deep); }
         .obg-mate { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 3px 0; }
-        .obg-mk { font-size: 10.5px; font-weight: 900; border-radius: 6px; padding: 1px 7px; white-space: nowrap; background: var(--s2); color: var(--t-muted); }
+        .obg-mk { font-size: 11px; font-weight: 900; border-radius: 4px; padding: 1px 7px; white-space: nowrap; background: var(--s2); color: var(--t-muted); }
         .obg-mk.x { background: var(--bad-bg); color: var(--bad-on); } .obg-mk.o { background: var(--ok-bg); color: var(--ok-on); }
-        .obg-mate .why { flex-basis: 100%; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
-        .obg-sum b { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--t-ink); } .obg-sum .d { color: var(--bad-deep); font-weight: 800; } .obg-sum .z { color: var(--ok-on); font-weight: 800; } .obg-sum small { color: var(--t-muted); font-weight: 700; }
+        .obg-mate .why { flex-basis: 100%; font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .obg-sum b { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--t-ink); } .obg-sum .d { color: var(--bad-deep); font-weight: 800; } .obg-sum .z { color: var(--ok-on); font-weight: 800; } .obg-sum small { font-size: 11px; color: var(--t-muted); font-weight: 700; }
         /* 🔄 ほかの運営の変更 (2026-11-12) */
-        .ob-sync { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 8px; font-size: 12px; color: var(--t-body); }
-        .ob-sync.pend { padding: 8px 10px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-deep); } .ob-sync.done { padding: 8px 10px; border-radius: 10px; background: var(--ok-bg); color: var(--ok-on); }
+        .ob-sync { display: flex; align-items: flex-start; gap: 14px 12px; flex-wrap: wrap; margin: 0 0 8px; font-size: 12px; color: var(--t-body); }
+        .ob-sync.pend { padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-deep); } .ob-sync.done { padding: 8px 10px; border-radius: 8px; background: var(--ok-bg); color: var(--ok-on); }
+        .ob-sync.idle { padding-top: 8px; }   /* 「自動で反映する」(hit40 = 上下に約 12px 広がる) がカードの見出し (押すと畳む) の下を取らないように: 見出しの下 6px + 8px */
         .ob-sync-b { flex: 1 1 220px; min-width: 0; } .ob-sync ul { margin: 3px 0 0; padding-left: 18px; font-weight: 700; } .ob-sync-n { display: block; margin-top: 4px; font-size: 11px; font-weight: 800; }
-        .ob-sync-btn { font: inherit; font-size: 12px; font-weight: 900; border: 0; border-radius: 9px; padding: 7px 14px; background: var(--t-ink); color: var(--card); cursor: pointer; } .ob-sync-btn:disabled { opacity: .5; cursor: default; }
-        .ob-sync-x { font: inherit; font-weight: 900; border: 0; background: none; color: inherit; cursor: pointer; padding: 2px 6px; }
-        .ob-sync-auto { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); cursor: pointer; flex-basis: 100%; } .ob-sync.idle .ob-sync-auto { flex-basis: auto; }
+        .ob-sync-btn { font: inherit; font-size: 12px; font-weight: 900; border: 0; border-radius: 8px; padding: 7px 14px; min-height: 40px; background: var(--t-ink); color: var(--card); cursor: pointer; } .ob-sync-btn:disabled { opacity: .5; cursor: default; }
+        .ob-sync-x { font: inherit; font-weight: 900; border: 0; background: none; color: inherit; cursor: pointer; padding: 2px 6px; min-height: 40px; min-width: 40px; }
+        .ob-sync-auto { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--t-muted); cursor: pointer; flex-basis: 100%; } .ob-sync.idle .ob-sync-auto { flex-basis: auto; }
         .obpc.flash { animation: obFlash 1.2s ease-out 3; }
         @keyframes obFlash { 0% { box-shadow: 0 0 0 0 var(--warn); } 100% { box-shadow: 0 0 0 9px transparent; } }
         @media (prefers-reduced-motion: reduce) { .obpc.flash { animation: none; outline: 2px solid var(--warn); } }
         .obr-if { flex-basis: 100%; text-align: right; font-size: 11px; font-weight: 900; color: var(--ops-on); font-variant-numeric: tabular-nums; }
-        .obb .lk { font-size: 10px; font-weight: 900; color: var(--ops-on); } .obb .lk.ng { color: var(--bad-deep); }
+        .obb .lk { font-size: 11px; font-weight: 900; color: var(--ops-on); } .obb .lk.ng { color: var(--bad-deep); }
         .obb.lk-ng { border-color: var(--bad); }
-        .ob-lock { margin: 10px 0 4px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
-        .ob-lock > summary { cursor: pointer; font-size: 13px; font-weight: 900; color: var(--t-ink); }
+        .ob-lock { margin: 10px 0 4px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+        .ob-lock > summary { cursor: pointer; font-size: 14px; font-weight: 900; color: var(--t-ink); }
         .ob-lk-sum { margin-left: 4px; font-size: 11px; font-weight: 800; color: var(--t-muted); } .ob-lk-sum.ng { color: var(--bad-deep); }
         .ob-lk-list { display: grid; gap: 6px; margin-top: 6px; }
-        .ob-lk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; padding: 8px 10px; border-radius: 10px; background: var(--s1); }
+        .ob-lk-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; align-items: start; padding: 8px 10px; border-radius: 8px; background: var(--s1); }
         .ob-lk-row.on { box-shadow: inset 0 0 0 2px var(--ops); } .ob-lk-row.ng { background: var(--bad-bg); }
         .ob-lk-b { font-size: 12px; font-weight: 900; color: var(--t-ink); min-width: 0; }
-        .ob-lk-b small { display: block; font-size: 10px; font-weight: 700; color: var(--t-muted); }
+        .ob-lk-b small { display: block; font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .ob-lk-ppl { display: grid; gap: 4px; min-width: 0; }
         .ob-lk-m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; min-width: 0; } .ob-lk-m > b { font-weight: 900; }
-        .ob-lk-k, .ob-lk-a { padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; }
+        .ob-lk-k, .ob-lk-a { padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 900; }
         .ob-lk-k { background: var(--ops-bg); color: var(--ops-on); } .ob-lk-a { background: var(--s2); color: var(--t-strong); }
         .ob-lk-a.a-fire { background: var(--attr-fire-bg); color: var(--attr-fire-deep); } .ob-lk-a.a-water { background: var(--attr-water-bg); color: var(--attr-water-deep); }
         .ob-lk-a.a-electric { background: var(--attr-electric-bg); color: var(--attr-electric-deep); } .ob-lk-a.a-iron { background: var(--attr-iron-bg); color: var(--attr-iron-deep); }
         .ob-lk-a.a-wind { background: var(--attr-wind-bg); color: var(--attr-wind-deep); }
         .ob-lk-m .st { font-size: 11px; font-weight: 800; overflow-wrap: anywhere; } .ob-lk-m .st.ok { color: var(--ok-deep); } .ob-lk-m .st.ng { color: var(--bad-deep); } .ob-lk-m .st.mute { color: var(--t-muted); }
-        .ob-lk-go { padding: 3px 9px; border: 0; border-radius: 8px; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 900; cursor: pointer; }
+        .ob-lk-go { padding: 3px 9px; min-height: 40px; border: 0; border-radius: 8px; background: var(--s2); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 900; cursor: pointer; }
         .ob-warn { color: var(--warn-deep); } .ob-skip { display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px 2px 0; font-weight: 800; }
         .mt-blk { padding: 8px 10px; border-radius: 8px; border-bottom: 1px solid rgba(var(--ink-rgb), 0.06); }
         .mt-blk.now { outline: 2px solid var(--ops-solid); outline-offset: -2px; background: var(--ops-bg); }
@@ -3018,14 +3020,15 @@
         button.mt-e { cursor: pointer; border-color: var(--line); }
         .mt-e.me { background: var(--ops-solid); color: var(--ops-ink); } .mt-e.ok { opacity: .6; }
         .mt-foot { margin: 8px 0 0; font-size: 11px; font-weight: 700; color: var(--t-muted); line-height: 1.55; }
-        .ob-decide { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+        .ob-decide { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
         .ob-decide-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-        .ob-decide-btn { padding: 10px 16px; border-radius: 10px; border: 0; background: var(--ops-solid, var(--ops)); color: var(--on-fill); font: inherit; font-weight: 900; cursor: pointer; max-width: 100%; }
+        .ob-decide-btn { padding: 10px 16px; border-radius: 8px; border: 0; background: var(--ops-solid, var(--ops)); color: var(--on-fill); font: inherit; font-size: 16px; font-weight: 900; cursor: pointer; max-width: 100%; }
         .ob-decide-btn:disabled { opacity: .45; cursor: default; }
         .ob-decide-st { font-size: 12px; color: var(--t-sub, var(--t-ink)); min-width: 0; overflow-wrap: anywhere; }
-        .ob-same { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--t-body); cursor: pointer; }
+        .ob-same { display: flex; align-items: center; gap: 6px; margin: 14px 0 0; font-size: 12px; font-weight: 700; color: var(--t-body); cursor: pointer; }
         .ob-same input { width: 16px; height: 16px; margin: 0; flex: none; accent-color: var(--ops); }
-        .ob-skip button { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 10px; font-weight: 800; cursor: pointer; }
+        .ob-skip button { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .ob-skip:has(> button) { min-height: 40px; }   /* 「✕ 外す」(hit40) のある札は 40px — 折り返した次の段の札と押せる範囲を取り合わない */
         /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
         /* 📅 レイド予定表 (S5)。色はトークンだけ (時間割の .mt-* と模擬表の .mk-* を使い回す) */
         .rt-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -3739,7 +3742,7 @@
                 </div>
                 <div id="opsBuild" class="ob" data-ops-only><p class="ob-note">運営ONで読み込みます…</p></div>
                 <div style="display:flex;justify-content:flex-end;margin:10px 0 0 0;">
-                    <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
+                    <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;min-height:40px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
                 </div>
             </div>
 
@@ -8830,8 +8833,8 @@
         }
         function _charIconHtml(name, size = 26) {
             const r = resolveNikkeChar(name);
-            if (r?.iconPath) return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" title="${escapeHtml(r.canonical || name)}" style="width:${size}px;height:${size}px;border-radius:7px;background:var(--t-ink);flex:none;">`;
-            return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:7px;background:var(--s2);font-size:${Math.round(size * 0.45)}px;font-weight:800;color:var(--t-muted);flex:none;" title="${escapeHtml(name)}">${escapeHtml(String(name).slice(0, 1))}</span>`;
+            if (r?.iconPath) return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" title="${escapeHtml(r.canonical || name)}" style="width:${size}px;height:${size}px;border-radius:${size < 24 ? 4 : 8}px;background:var(--t-ink);flex:none;">`;
+            return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${size < 24 ? 4 : 8}px;background:var(--s2);font-size:${Math.round(size * 0.45)}px;font-weight:800;color:var(--t-muted);flex:none;" title="${escapeHtml(name)}">${escapeHtml(String(name).slice(0, 1))}</span>`;
         }
 
         // ========== バースト区分 (アイコンピッカーの絞り込み・キャラ管理で共有) ==========
@@ -15137,7 +15140,7 @@
             if (!snap?.season) return '';
             const blocks = _ob.blocks || [];
             const list = (changes) => { const top = changes.slice(0, 6); return `<ul>${top.map(c => `<li>${escapeHtml(_obSyncLine(c, snap, blocks))}</li>`).join('')}${changes.length > top.length ? `<li>ほか ${changes.length - top.length} 件</li>` : ''}</ul>`; };
-            const auto = `<label class="ob-sync-auto" title="ほかの運営が手で置いた・外した駒を 10 秒ごとに確かめています。ピースを選んでいる間は、知らせるだけで反映しません"><input type="checkbox" onchange="_obSetSyncAuto(this.checked)"${_obSyncAuto() ? ' checked' : ''}>ほかの運営の駒を自動で反映する</label>`;
+            const auto = `<label class="ob-sync-auto hit40" title="ほかの運営が手で置いた・外した駒を 10 秒ごとに確かめています。ピースを選んでいる間は、知らせるだけで反映しません"><input type="checkbox" onchange="_obSetSyncAuto(this.checked)"${_obSyncAuto() ? ' checked' : ''}>ほかの運営の駒を自動で反映する</label>`;
             if (_ob.syncPending && _ob.syncPending.base !== _ob.pins) _ob.syncPending = null;   // この端末が駒を読み直した・書き換えた = 知らせた差分はもう古い (次の見回りが比べ直す)
             const pend = _ob.syncPending;
             if (pend) {
@@ -15347,7 +15350,7 @@
                 // ブロック名は文字 (上のブロックのボタンと同じ働きのボタンを 2 つ置かない — 2026-10-29 ボタンの監査 ①)。押せるのは撃破の見込みのブロックへの「○○ を開く」だけ
                 return `<div class="ob-lk-row${x.ng ? ' ng' : ''}${x.idx === idx ? ' on' : ''}"><div class="ob-lk-b">${escapeHtml(b.short)}<small>${escapeHtml(_obHours(b))}${x.idx === idx ? ' · 組んでいる' : ''}</small></div><div class="ob-lk-ppl">${ppl}</div></div>`;
             }).join('');
-            return `<details class="ob-lock" data-ob-lock${open ? ' open' : ''}><summary>「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum${ng ? ' ng' : ''}">${n} 人${ng ? ` · ⚠ 置けない見込み ${ng} 人` : ''}</span></summary>`
+            return `<details class="ob-lock" data-ob-lock${open ? ' open' : ''}><summary class="hit40">「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum${ng ? ' ng' : ''}">${n} 人${ng ? ` · ⚠ 置けない見込み ${ng} 人` : ''}</span></summary>`
                 + '<p class="ob-note">ほかのブロックに出られない人です。相手のボスが前のブロックで倒れる見込みだと、その人のブロックには置けません (Lv が上がるのは 5 体とも倒したブロックの次から)。前のブロックを組むときに、5 体とも倒して次の Lv を出すか、相手のボスを残すかを決めてください (見せるだけで、🧮 はこの人を優先しません)</p>'
                 + `<div class="ob-lk-list">${body}</div></details>`;
         }
@@ -15431,9 +15434,9 @@
                 const resv = !pin && a.fromReservation && a.reservationId != null;
                 // 自動の駒もここから外せる (🔒 予約と言っていた: Codex 指摘)。行の外なのでボスは data-ob-boss-n で渡す
                 const weak = (snap.bosses || []).find(b => Number(b.boss_number) === Number(a.bossNumber))?.weakness;
-                const act = pin ? ` <button type="button" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>`
+                const act = pin ? ` <button type="button" class="hit40" data-ob-unpin="${Number(a.reservationId)}" title="外す">✕ 外す</button>`
                     : (resv ? ' (🔒 予約 — この画面からは外せません)'
-                    : (weak ? ` <button type="button" data-ob-drop="${escapeHtml(`${a.memberId}:${weak}:${Number(a.loadoutSlot) || 1}`)}" data-ob-boss-n="${Number(a.bossNumber)}" title="外す">✕ 外す</button>` : ''));
+                    : (weak ? ` <button type="button" class="hit40" data-ob-drop="${escapeHtml(`${a.memberId}:${weak}:${Number(a.loadoutSlot) || 1}`)}" data-ob-boss-n="${Number(a.bossNumber)}" title="外す">✕ 外す</button>` : ''));
                 return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${act}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
@@ -15484,7 +15487,7 @@
             const decideHint = fresh.length ? '決定すると、メンバーの 📅 レイド予定表 と ホームの「きょうの凸」に出て、割当のある人に通知が届きます'
                 : (same ? `決定のあと組み直したブロックはありません。押すと<b>前の決定と同じ中身</b>で決定し直します (確かめた時刻が残ります・${_ob.notifySame ? 'これから凸のある人に「変わりません」と通知します' : '通知は送りません'})`
                 : '駒を手で置くか「残りを自動で組む」で組むと決定できます');
-            const sameOpt = same ? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame(this.checked)"${_ob.notifySame ? ' checked' : ''}${_ob.busy ? ' disabled' : ''}>変更なしでも、割当のある人に「変わりません」と通知する</label>` : '';
+            const sameOpt = same ? `<label class="ob-same hit40"><input type="checkbox" onchange="_obSetNotifySame(this.checked)"${_ob.notifySame ? ' checked' : ''}${_ob.busy ? ' disabled' : ''}>変更なしでも、割当のある人に「変わりません」と通知する</label>` : '';
             const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
             const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${sameOpt}${decNote}<p class="ob-note">${decideHint}</p></div>`;
             const rbHtml = rbNow && blocks[rbNow.idx] && blocks[rbNow.next]

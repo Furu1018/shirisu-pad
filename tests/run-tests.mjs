@@ -2333,7 +2333,55 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     assert.ok(html.indexOf('.dc-mb-btn::before { left:') > html.indexOf('.hit40::before, .dc-mb-btn::before {'), '横の指定が、共通の指定より前にある (負ける)');
     assert.ok(html.indexOf('.hit40::before, .dc-mb-btn::before {') > html.indexOf("button:not(.btn-elegant):not(.ma-grad-btn):not(.ar-pick-btn)::before {"), '④ より前に置いている');
     // 付ける相手は、::before を飾りに使わないボタンだけ。ホームの通知のカードの 3 つ + 従来の画面 (member_input=full) の小さいボタン (練習モードに出ないので、物差しの検査 tests/ruler.mjs では見られない: Codex 監査 fc127f8)
-    const used = [...new Set([...html.matchAll(/<button (?:type="button" )?class="hit40"[^>]*onclick="([a-zA-Z_]+)\(/g)].map(m => m[1]))].sort();
+    // ★ 付け先を固定する (2026-11-17: 撤去 1 の仕分けで deepEqual が消え、作るだけになっていた)。button のほか、開閉の summary・チェックの label にも付ける (🧱 組む)。
+    //   鍵 = onclick の関数名 / data-ob-* の名前 / 無ければ class の並び。新しく付けるときは、すぐ上下の押せる部品と (40 − 高さ) / 2 以上あいているかを確かめてからここに足す
+    //   どのタグでも・どちらの引用符でも拾う (2026-11-17 見直し: button / summary / label の class="…" しか見ておらず、<a class="hit40"> を足しても一覧が変わらなかった)
+    const sites = [...html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bclass=["'][^"']*\bhit40\b[^"']*["'][^>]*)>/g)].map(m => {
+        const a = m[2]; const on = a.match(/onclick="([a-zA-Z_]+)\(/); const d = a.match(/\b(data-ob-[a-z]+)=/); const c = a.match(/class=["']([^"']*)["']/);
+        return m[1] + ':' + (on ? on[1] : d ? d[1] : c[1].replace(/\s+/g, '.'));
+    }).sort();
+    assert.deepEqual(sites, ['button:data-ob-drop', 'button:data-ob-unpin', 'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'summary:hit40'], 'hit40 の付け先が変わった');
+    // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
+    assert.equal((html.match(/classList\.(?:add|toggle)\(\s*['"]hit40['"]|className\s*\+?=\s*[^;\n]*\bhit40\b/g) || []).length, 0, 'hit40 を JS で付けている (付け先の一覧に出ない)');
+});
+test('★ 段階 2 の物差し (🧱 組む・2026-11-17): 練習の場面に出ない部品も物差しどおり — 物差しの検査 (tests/ruler.mjs) は映らない所を見られないので、ここで値を固定する', () => {
+    const html = _perfHtml;
+    // 規則は行の頭でなくてもよい (1 行に規則を並べた所がある)。同じ選択子が 2 つあれば、どちらを見ているか分からないので落とす
+    const rule = (sel) => { const k = ' ' + sel + ' {'; const i = html.indexOf(k); assert.ok(i > 0 && html.indexOf(k, i + 1) < 0, sel + ' の規則が無い / 2 つある'); return html.slice(i, html.indexOf('}', i)); };
+    // 単独のボタンは高さ 40px (見た目も押せる範囲も)。⚠ の「○○ を開く」・🔄 の「反映する」と ✕ は、ほかの運営・撃破の見込みがあるときだけ出る
+    for (const sel of ['.obt', '.ob-auto', '.ob-reset', '.ob-lk-go', '.ob-sync-btn']) assert.match(rule(sel), /min-height: 40px;/, sel + ' が 40px 未満に戻った');
+    assert.match(rule('.ob-sync-x'), /min-height: 40px; min-width: 40px;/, '✕ (閉じる) の押せる範囲が 40×40 でない');
+    // ほかの規則で 40px を戻していない (2026-11-17 見直し: 上は「 .xxx {」の 1 つ目しか読まないので、button.ob-lk-go {…} や .ob-sync-btn:enabled {…}、同じ規則の後ろの min-height で戻すと通っていた)
+    //   <style> の規則を全部見て、その部品が選ばれる側 (選択子の最後のかたまり) に来る規則の min-height は、どれも 40px であること
+    const css = [..._perfHtml.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+    const cssRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
+    for (const cls of ['obt', 'ob-auto', 'ob-reset', 'ob-lk-go', 'ob-sync-btn', 'ob-sync-x']) {
+        const re = new RegExp('\\.' + cls + '(?![\\w-])');
+        const hits = cssRules.filter(r => r.sel.split(',').some(s => re.test(s.trim().split(/[\s>+~]+/).pop())));
+        assert.ok(hits.length >= 1, '.' + cls + ' の規則が見つからない');
+        for (const r of hits) for (const m of r.body.matchAll(/min-height\s*:\s*([^;]+)/g)) assert.equal(m[1].trim(), '40px', '.' + cls + ' の高さを別の規則で戻している: ' + r.sel);
+    }
+    // 「自動で反映する」(hit40) の押せる範囲は上下に約 12px 広がる。ふだん (idle) はカードの見出し (押すと畳む) の真下に来るので、見出しの下 6px + 8px あける (見出しの下 5px を取っていた)
+    assert.match(rule('.ob-sync.idle'), /padding-top: 8px;/, '「自動で反映する」がカードの見出しに近い (見出しの下を押すと畳まれずにチェックが切り替わる)');
+    // 幅 360px 未満: 3 列のブロックのボタンの 11px の時刻・凸数が 2 行に折れないよう、左右の余白を詰める (📅 レイド予定表はメンバーも見る)
+    assert.match(html, /@media \(max-width: 359px\) \{ \.obb \{ padding-left: 6px; padding-right: 6px; \} \}/, '狭い幅でブロックのボタンの時刻・凸数が 2 行に折れる');
+    assert.match(html, /style="display:none;padding:6px 11px;min-height:40px;border-radius:999px;/, '⏳ 組み直し中にする が 40px 未満 / display を style に足した (JS の出し入れとぶつかる)');
+    // hit40 のラベルとすぐ上の押せる部品の間: ラベルの押せる範囲は上下に (40 − 高さ) / 2 ≈ 12px 広がる → 14px あける (「反映する」・✅ 決定 の縁を取らない)
+    assert.match(rule('.ob-sync'), /gap: 14px 12px;/, '🔄 の知らせの行の間が狭い (自動で反映のチェックが「反映する」の縁を取る)');
+    assert.match(rule('.ob-same'), /margin: 14px 0 0;/, '「変わりません」のチェックが ✅ 決定に近い (決定の下の縁を押すと通知の有無が切り替わる)');
+    assert.match(html, /\n\s*\.ob-skip:has\(> button\) \{ min-height: 40px; \}/, '「✕ 外す」のある札が 40px 未満 (折り返した次の段と押せる範囲を取り合う)');
+    // 文字と角丸 (押したとき・知らせ・外した駒のときだけ出る部品)
+    for (const [sel, px] of [['.obg-lb', 11], ['.obg-noteam', 11], ['.obg-mk', 11], ['.obg-mate .why', 11], ['.obg-sum small', 11], ['.ob-skip button', 11], ['.obt small', 11], ['.ob-decide-btn', 16]]) {
+        const fs = Number((rule(sel).match(/font-size: (\d+(?:\.\d+)?)px;/) || [])[1]);
+        assert.equal(fs, px, sel + ' の文字が物差しから外れた');
+    }
+    for (const [sel, px] of [['.ob-sync.pend', 8], ['.ob-sync.done', 8], ['.ob-sync-btn', 8], ['.obg-blks span', 4], ['.obg-mk', 4], ['.ob-rebuild, .rt-rebuild, .mt-rebuild', 8]]) {
+        const r = Number((rule(sel).match(/border-radius: (\d+)px;/) || [])[1]);
+        assert.equal(r, px, sel + ' の角丸が物差しから外れた');
+    }
+    assert.match(html, /\n\s*\.ob-sync-auto \{ display: inline-flex; align-items: center; gap: 5px; font-size: 11px;/, '「自動で反映する」の文字が物差しから外れた');   // .ob-sync.idle .ob-sync-auto もあるので直接見る
+    // キャラのアイコン (共有の _charIconHtml): 24px 未満は 4・それ以上は 8
+    assert.equal((html.match(/border-radius:\$\{size < 24 \? 4 : 8\}px;/g) || []).length, 2, 'キャラのアイコンの角丸が大きさで分かれていない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
@@ -14204,7 +14252,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/const same = !fresh\.length && range\.length > 0 && !!decRow;/.test(r), '「変更なし」の判定が無い');
         assert.ok(/: \(same \? `<button type="button" class="ob-decide-btn" onclick="_obDecide\(\)"\$\{_ob\.busy \? ' disabled' : ''\}>✅ \$\{range\.map\(i => escapeHtml\(blocks\[i\]\.short\)\)\.join\('・'\)\} をこのまま決定し直す \(変更なし\)<\/button>`/.test(r), '変更なしで押せるボタンが無い');
         assert.ok(!r.includes('組み直すと決定し直せます'), '「組み直さないと決定できない」の古い文が残っている');
-        assert.ok(/const sameOpt = same \? `<label class="ob-same"><input type="checkbox" onchange="_obSetNotifySame\(this\.checked\)"/.test(r) && /\$\{sameOpt\}\$\{decNote\}/.test(r), '変更なしでも通知するスイッチが無い');
+        assert.ok(/const sameOpt = same \? `<label class="ob-same hit40"><input type="checkbox" onchange="_obSetNotifySame\(this\.checked\)"/.test(r) && /\$\{sameOpt\}\$\{decNote\}/.test(r), '変更なしでも通知するスイッチが無い');
         assert.ok(/notifySame: false,/.test(html) && /_ob\.seededFrom = null; _ob\.notifySame = false;/.test(html), 'スイッチの既定 OFF・シーズンが変わったら戻す');
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         assert.ok(!/if \(!fresh\.length\) \{ showNotification\(/.test(d), '組み直していないと止まる');
@@ -14251,7 +14299,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
             ] },
         ];
         const h = lockHtml(lock, blocks, 3, pt);
-        assert.ok(h.startsWith('<details class="ob-lock" data-ob-lock open><summary>「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum ng">4 人 · ⚠ 置けない見込み 1 人</span></summary>'), '見出し・人数・⚠ の数 / 既定で開く');
+        assert.ok(h.startsWith('<details class="ob-lock" data-ob-lock open><summary class="hit40">「このブロックのみ」「このブロックで最後」の人<span class="ob-lk-sum ng">4 人 · ⚠ 置けない見込み 1 人</span></summary>'), '見出し・人数・⚠ の数 / 既定で開く');
         assert.ok(h.includes('&lt;b&gt;M&lt;/b&gt;') && !h.includes('<b>M</b>'), '名前をエスケープしていない');
         assert.ok(h.includes(`⚠ 灼熱PT の相手 B3 アルト は Lv2 を ${blocks[2].short} で撃破する見込み → このブロックに Lv3 は出ない見込み (Lv2 の残り: B1・B4)`), '置けない見込みの文');
         assert.ok(h.includes(`<button type="button" class="ob-lk-go" data-ob-blk="2">${blocks[2].short} を開く</button>`), '撃破の見込みのブロックを開く近道が無い');
@@ -14264,7 +14312,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.equal((h.match(/class="ob-lk-row/g) || []).length, 1, '人のいないブロック・過ぎたブロックの行を出した');
         assert.ok(h.includes('🧮 はこの人を優先しません'), '見せるだけ (🧮 は優先しない) と言っていない');
         assert.equal(lockHtml([lock[0], lock[1]], blocks, 1, pt), '', '人がいないのに段を出した');
-        assert.ok(make({ lockOpen: false })._obLockHtml(lock, blocks, 3, pt).startsWith('<details class="ob-lock" data-ob-lock><summary>'), '畳んだのに開いて描く');
+        assert.ok(make({ lockOpen: false })._obLockHtml(lock, blocks, 3, pt).startsWith('<details class="ob-lock" data-ob-lock><summary class="hit40">'), '畳んだのに開いて描く');
         // 置けない理由の文 (ピース置き場の赤と同じ)
         assert.equal(dead({ why: 'lv4' }, blocks, pt, 'iron'), 'Lv4 はボス 5 だけです (鉄甲PT は使えません)');
         assert.equal(dead({ why: 'killedHere', row: { bossNumber: 2, name: 'X' }, level: 1 }, blocks, pt, 'electric'), '電撃PT の相手 B2 X は、このブロックに置いた駒で撃破 ✓ (入れ替えるなら駒を ✕ で外す)');
@@ -14305,7 +14353,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(iTog > 0 && iTog < sel.indexOf('if (bs && !bs.ok)'), '選んでいる赤いピースを押しても選ぶのをやめられない');
         assert.ok(/ctx\.ov\[p\.placedIdx\]\?\.past \? `過ぎた \$\{ctx\.blocks\[p\.placedIdx\]\?\.short \|\| 'ブロック'\} に置いたままです/.test(sel), '過ぎたブロックの駒に「開いて ✕」と案内した');
         assert.ok(r.includes('赤く塗ったピース (⚠ 置けない) は、いまは置けません') && r.includes('赤い枠だけのピースは別の編成とキャラが被る印で、置けます'), '赤く塗った (置けない) と 赤い枠 (被り・置ける) を言い分けていない');
-        assert.ok(/\.obt \.rigid \{ font-size: 10px; font-weight: 900; color: var\(--ops-on\); \}/.test(html) && /\.obt\.ng \{ border-color: var\(--bad\); background: var\(--bad-bg\); \}/.test(html), '赤が「置けない」以外にも使われている');
+        assert.ok(/\.obt \.rigid \{ font-size: 11px; font-weight: 900; color: var\(--ops-on\); \}/.test(html) && /\.obt\.ng \{ border-color: var\(--bad\); background: var\(--bad-bg\); \}/.test(html), '赤が「置けない」以外にも使われている');
     });
     await testAsync('★ _obCarrySkips を実際に動かす (2026-11-02 レビュー): 写したブロックの「凸していない」の印だけを新しい決定の id で付ける・もうある印は付けない・手元の印と版を進める・読めない / 付けられないは知らせて止めない', async () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;

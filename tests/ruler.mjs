@@ -2,6 +2,7 @@
 // 📏 物差しの検査 (全体の見直し 段階 2・2026-11-16〜) — 本物のブラウザで、揃え終わったタブに「物差しから外れた部品」が 0 個なのを確かめる
 //   node tests/ruler.mjs            揃え終わったタブ (下の DONE) を全部
 //   TABS=raid node tests/ruler.mjs  まだ揃えていないタブの外れを一覧で見る (落ちない・下調べ用)。運営タブの中の小タブは TABS=ops/メンバー,ops/組む,ops/戦況
+// 場面は「練習の編:幅」。3 つ目に動作を足せる: ':piece' = 🧱 組む のピース置き場の札 (置けるもの) を 1 つ押してから見る (押したときだけ出る 🧭 ガイド・置ける行の印を検査に入れる)
 // ----------------------------------------------------------------------------
 // ★ Chrome が要る (無ければ「スキップ」と出して終わる)。CHROME=<実行ファイル> で場所を指定できる。練習モードで開くので、本番へは書かない。
 // 物差し (ふるりの決定 2026-11-14「顔つきは今のまま、物差しだけ揃える」・正本は docs/段階2_物差し_2026-11-14.md):
@@ -21,6 +22,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // 揃え終わったタブ (ここに足す)。開く場面は、そのタブの中身が変わる所を選ぶ (練習の編・途中の課題・幅)
 const DONE = {
     mypage: ['member:390', 'member&start=schedule:390', 'member&start=report:390', 'ops-eve:390', 'ops-day:390', 'member&start=report:1366', 'ops-day:1366'],
+    // 🧱 組む (2026-11-17): 前日は「このブロックのみ」の段が開いている (PC 幅の見出しは 1 行 = hit40 が効く) / 当日は盤に駒・置いた札・やり直す。:piece = ピースを押して 🧭 ガイドを出した所
+    'ops/組む': ['ops-eve:390', 'ops-eve:1366', 'ops-day:390', 'ops-day:1366', 'ops-eve:390:piece', 'ops-day:390:piece', 'ops-day:1366:piece'],
     'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366'],   // 運営タブの小タブ (段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面)
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
@@ -55,6 +58,7 @@ const CHECK = `(() => {
         // hit40 (見た目を変えずに押せる範囲を広げる) は、class があるだけで通さない。2 つとも満たすこと:
         //   ① 押せる範囲 (::before) の高さが 40px 以上 (数字)  ② その範囲の点が、実際にこのボタンに当たる (::before が無い・消えている・pointer-events が無い・親で切れている・別の部品に覆われている、を拾う)。
         //   ② はボタンを画面の真ん中に寄せ (すぐ動かす — なめらかなスクロールの途中を測らない)、左・中・右 × 上 19.5px・真ん中・下 19.5px の 9 点で elementFromPoint を見る。押したあとの動き (disabled など) までは見ない
+        //   さらに ③ 広げた範囲が、すぐ上下の別の押せる部品を取っていないか (下の ③)
         if (e.classList.contains('hit40')) {
             const hb = parseFloat(getComputedStyle(e, '::before').height);
             e.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
@@ -63,6 +67,15 @@ const CHECK = `(() => {
             const xs = [q.left + 2, q.left + q.width / 2, q.right - 2]; const miss = [];
             for (const x of xs) for (const dy of [-19.5, 0, 19.5]) if (!hitAt(x, dy)) miss.push(Math.round(x - q.left) + ',' + dy);
             if (!(hb >= 39.5) || miss.length) out.push(['高さ', 'hit40 の押せる範囲 ' + (Number.isFinite(hb) ? Math.round(hb * 10) / 10 : '?') + 'px→40 (当たらない点 ' + (miss.join(' ') || 'なし') + ')', where(e), sig(e), txt]);
+            // ③ 広げた範囲が、すぐ上下の別の押せる部品を取らない (2026-11-17 見直し: 「自動で反映する」のチェックの範囲が、カードの見出し (押すと畳む) の下 5px を取っていた)。
+            //   見た目の外の帯 (上下に (範囲 − 高さ) / 2) の点で、いちばん上がこの部品なのに、その下に別の押せる部品 (button・a・summary・label・入力・onclick・cursor: pointer) があれば外れ。祖先と子は数えない
+            const ext = Number.isFinite(hb) ? (hb - q.height) / 2 : 0; const steal = new Set();
+            if (ext > 1) for (const x of xs) for (const y of [q.top - 1, q.top - ext / 2, q.top - ext + 1, q.bottom + 1, q.bottom + ext / 2, q.bottom + ext - 1]) {
+                const st = document.elementsFromPoint(x, y); if (!st.length || !(st[0] === e || e.contains(st[0]))) continue;
+                const vic = st.find(n => n !== e && !e.contains(n) && !n.contains(e) && (n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer'));
+                if (vic) steal.add(where(vic) + ' ' + sig(vic));
+            }
+            if (steal.size) out.push(['高さ', 'hit40 の押せる範囲がほかの押せる部品にかかる (' + [...steal].join(' / ') + ')', where(e), sig(e), txt]);
         }
     }
     return out;
@@ -105,9 +118,10 @@ ws.onmessage = (ev) => {
 const send = (method, params = {}, sessionId) => new Promise((ok, ng) => { const i = ++id; waits.set(i, { ok, ng }); ws.send(JSON.stringify({ id: i, method, params, sessionId })); });
 
 let failed = 0, checked = 0;
-for (const [tab, scenes] of Object.entries(PLAN)) {
-    for (const scene of scenes) {
-        const [scenario, w] = scene.split(':'); const W = Number(w), H = W > 700 ? 800 : 844;
+// 場面を 1 つ開いて検査する。返すのは { v: 外れの一覧 (検査できなければ null), label, openFail: タブを開けなかった・検査が動かなかった }
+const runScene = async (tab, scene) => {
+        const [scenario, w, act] = scene.split(':'); const W = Number(w), H = W > 700 ? 800 : 844;
+        const [tabId, sub] = tab.split('/');   // 'ops/組む' = 運営タブの中の小タブ (名前の一部で指す)
         const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
         const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
         const S = (method, params) => send(method, params, sessionId);
@@ -115,12 +129,13 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
         await S('Page.enable'); await S('Runtime.enable');
         await S('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: W < 700 });
         await S('Page.navigate', { url: `${ORIGIN}/index.html?practice=${scenario}` });
-        // 読み込みは時計でなく状態で待つ (途中の課題から入ると、準備のあとにもう一度読み込み直す): 練習の案内が出てから、少し置く
+        // 読み込みは時計でなく状態で待つ: 練習の案内の帯が「練習中」になってから (当日の編は開始の盤面を作って読み込み直す・途中の課題から入ると手前を済ませて読み込み直す — その前のページで通さない)。
+        //   運営の編は、役割を読み終わって運営モードになってから (なる前に運営タブを開くとホームへ回される)。重い Chrome で偽の NG が出ていた (2026-11-17 見直し)
+        const READY = `!!(window.PAD_PRACTICE && document.getElementById('pmDock') && document.readyState === 'complete' && typeof switchTab === 'function' && /練習中/.test(document.querySelector('#pmDock .pm-band .t')?.textContent || '')${scenario.startsWith('ops') ? " && document.body.classList.contains('ops-mode')" : ''})`;
         let ready = false;
-        for (let i = 0; i < 80 && !ready; i++) { await wait(500); try { ready = await ev(`!!(window.PAD_PRACTICE && document.getElementById('pmDock') && document.readyState === 'complete' && typeof switchTab === 'function')`); } catch (_) { /* 読み込み直しの最中 */ } }
+        for (let i = 0; i < 80 && !ready; i++) { await wait(500); try { ready = await ev(READY); } catch (_) { /* 読み込み直しの最中 */ } }
         await wait(2500);
-        const [tabId, sub] = tab.split('/');   // 'ops/組む' = 運営タブの中の小タブ (名前の一部で指す)
-        let v = null, label = `${tab} — ${scenario} ${W}px`;
+        let v = null, openFail = false, label = `${tab} — ${scenario} ${W}px${act ? ' (' + act + ')' : ''}`;
         try {
             // 練習の案内 (上の帯・枠) と使い方ツアーは検査の対象でない (本番の画面に無い / 別の画面)
             await ev(`(() => { const st = document.createElement('style'); st.textContent = '#pmDock, #pmRing, #tourOverlay { display: none !important; }'; document.head.appendChild(st); return 1; })()`);
@@ -135,15 +150,32 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
             //   「同じ」は 部品の数 + 文字の中身 (長さでなく中身 — 同じ長さの別の文に差し替わったのを見逃さない) + タブの高さ + 押せない・隠した・選んだ部品の数。早く揃っても 5 秒は見る (遅れて来る描画: 配信・通知・更新履歴)。
             //   ★ これは「描き終わったか」の目安で、証明ではない (5 秒より後に来る描画・見た目だけの変化は拾えない)。練習モードは端末の中の偽のサーバで動くので、通信待ちは無い
             const SHAPE = `(() => { const t = document.querySelector('.tab-content.active'); if (!t) return ''; const s = t.innerText || ''; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return t.id + ':' + t.querySelectorAll('*').length + ':' + h + ':' + t.scrollHeight + ':' + t.querySelectorAll('[disabled], [hidden], [aria-pressed="true"]').length; })()`;
-            let same = 0, last = ''; const t0 = Date.now();
-            for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; }
+            let same = 0, last = '';
+            const settle = async () => { same = 0; last = ''; const t0 = Date.now(); for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; } };
+            await settle();
+            // 動作: ピースを押す (置けるピース = 赤くない・使っていない札)。押せなければ「押せない」と出して検査しない (黙って押す前の画面を見ない)。
+            //   タブを開けていないときは押さない (開けなかった本当の理由を「ピースが無い」で上書きしない)。押したあとはピースとガイドが「見えている」か (DOM にあるだけでは通さない — 隠れたガイドは CHECK が飛ばすので、測らずに外れ 0 になる)
+            if (act && act !== 'piece') active = '知らない動作: ' + act;
+            else if (act === 'piece' && active === 'tab-' + tabId) {
+                const pressed = await ev(`(() => { const b = document.querySelector('#opsBuild .obt:not(.off):not(.ng)'); if (!b) return false; b.click(); return true; })()`);
+                if (!pressed) { active = 'ピースが無い (押せない)'; }
+                else { await settle(); if (!(await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return vis(document.querySelector('#opsBuild .obt.sel')) && vis(document.querySelector('#obGuide .obg-h')); })()`))) active = '押したのにピースが選ばれない / ガイドが見えない'; }
+            }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
-            if (active !== 'tab-' + tabId || !last.startsWith('tab-' + tabId + ':')) label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`;
+            if (active !== 'tab-' + tabId || !last.startsWith('tab-' + tabId + ':')) { label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`; openFail = active === null || /^tab-/.test(active); }
             else if (same < 3) label += ' (20 秒待っても中身が落ち着かない)';
             else if (body.n < 20 || body.loading) label += ` (中身が出ていない: 文字のある部品 ${body.n} 個・読み込み中 ${body.loading} 個)`;
             else v = await ev(CHECK);
-        } catch (e) { label += ' (検査が動かない: ' + String(e.message || e).slice(0, 120) + ')'; }
+        } catch (e) { label += ' (検査が動かない: ' + String(e.message || e).slice(0, 120) + ')'; openFail = true; }
         await send('Target.closeTarget', { targetId });
+        return { v, label, openFail };
+};
+for (const [tab, scenes] of Object.entries(PLAN)) {
+    for (const scene of scenes) {
+        let r = await runScene(tab, scene);
+        // タブを開けなかった (別のタブへ回された)・検査が動かなかったときだけ、1 回だけ開き直す (重い端末で練習の読み込み直しと競ることがある)。本物の回帰なら 2 回とも落ちる
+        if (r.openFail) { console.log(`  ↻ ${r.label} — 開き直す`); r = await runScene(tab, scene); }
+        const { v, label } = r;
         checked++;
         if (v && v.length === 0) { console.log(`  ✅ ${label}: 外れ 0`); continue; }
         if (!v) { console.log(`  ${STRICT ? '❌' : '・'} ${label}`); if (STRICT) failed++; continue; }
