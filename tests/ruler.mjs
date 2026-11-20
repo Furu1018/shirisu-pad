@@ -5,6 +5,7 @@
 // 場面は「練習の編:幅」。3 つ目に動作を足せる (+ でつなぐ): ':piece' = 🧱 組む のピース置き場の札 (置けるもの) を 1 つ押してから見る (押したときだけ出る 🧭 ガイド・置ける行の印を検査に入れる)
 //   ':open' = 畳まれているカードを全部開く / ':finish' = ⚔️ ボス状況の「締め凸検索」を押す / ':intake' = 📥 結果の取り込みで人を選んで「✏️ 手で入力」(下書きを出す)
 //   ':details' / ':maint' / ':prep' / ':end' = 👑 マスター (下の DONE) / ':board' = 📅 レイド予定表の決定の盤と模擬の表が見えていることを確かめる (押さない)
+//   ':mine' / ':nomine' / ':ack' / ':acked' = 📅 の場面ごとの状態 (★ あなたの凸 / あなたの凸なし / ✅ 確認しました / ✅ 確認済み) が見えていることを確かめる
 // ----------------------------------------------------------------------------
 // ★ Chrome が要る (無ければ「スキップ」と出して終わる)。CHROME=<実行ファイル> で場所を指定できる。練習モードで開くので、本番へは書かない。
 // 物差し (ふるりの決定 2026-11-14「顔つきは今のまま、物差しだけ揃える」・正本は docs/段階2_物差し_2026-11-14.md):
@@ -36,7 +37,8 @@ const DONE = {
     'ops/マスター': ['ops-eve:390', 'ops-eve:390:details', 'ops-eve:320:details', 'ops-day:390', 'ops-day:1366', 'ops-eve:1366:maint+details', 'ops-day:390:maint', 'ops-day:390:prep', 'ops-day:390:end'],
     // 📅 レイド予定表 (2026-11-21): メンバーの前日 = まだ配信されていません + みんなの模擬 / 途中の課題 (報告) = 決定 (夕方・夜) の盤・★ あなたの凸 /
     //   当日の運営役 = ✅ 確認しました のボタン・完了 / 未完了 の札。:board = 決定の盤と模擬の表が見えていること (決定が無くなると盤が出ず、測らずに通る)。1366px = 模擬の表の名前の列 (全体の tbody td が PC 幅だけ 13px)
-    raid: ['member:390', 'member&start=report:390:board', 'member&start=report:1366:board', 'ops-day:390:board', 'ops-day:320:board', 'ops-day:1366:board'],
+    //   場面ごとの状態も求める (2026-11-21 Codex 監査: 盤と他人の札が残れば、状態の分岐だけ消えても通っていた): :mine = ★ あなたの凸の箱 / :nomine = 「あなたの凸はありません」/ :ack = ✅ 確認しました のボタン / :acked = ✅ 確認済み
+    raid: ['member:390', 'member&start=report:390:board+mine+acked', 'member&start=report:1366:board+mine+acked', 'ops-day:390:board+ack+nomine', 'ops-day:320:board+ack+nomine', 'ops-day:1366:board+ack+nomine'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -230,6 +232,11 @@ const runScene = async (tab, scene) => {
                     // 📅 レイド予定表: 決定の状態の行・盤 (ブロックのボタン・ボスの行・名前の札)・みんなの模擬の表 が見えていること (DOM にあるだけでは通さない — 隠れた部品は CHECK が飛ばすので、測らずに外れ 0 になる)
                     const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return ['#raidStatusBody .rt-state', '#raidTimetableBody .obb', '#raidTimetableBody .obr', '#raidTimetableBody .db-tag', '#raidMocksBody table'].every(q => vis(document.querySelector(q))); })()`);
                     if (!ok) active = '決定の盤・模擬の表が見えない';
+                } else if (a === 'mine' || a === 'nomine' || a === 'ack' || a === 'acked') {
+                    // 📅 の場面ごとの状態 (その分岐だけが消えたら落ちる): 部品が見えていること (文は中身も見る)
+                    const want = { mine: ['#raidTimetableBody .db-mine', '★ あなたの凸: '], nomine: ['#raidTimetableBody .rt-note', '決まったブロックに、あなたの凸はありません'], ack: ['#raidStatusBody .rt-ack', '✅ 確認しました'], acked: ['#raidStatusBody .rt-acked', '✅ 確認済み'] }[a];
+                    const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return [...document.querySelectorAll(${JSON.stringify(want[0])})].some(e => vis(e) && e.textContent.includes(${JSON.stringify(want[1])})); })()`);
+                    if (!ok) active = '「' + want[1] + '」が見えない';
                 } else { active = '知らない動作: ' + a; break; }
             }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
