@@ -2343,7 +2343,7 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     //   ⚔️ 戦況 (2026-11-17): 📥 の行のボタン (✓ 凸の記録へ・確認する・📥 取り込む・📋 聞く・凸していない・戻す)・残 HP のチェック 2 つ (どちらか 1 つが出る)・凸していない / 🕐 の開閉。summary・label は 2 つ目の class で見分ける
     assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
         'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
-        'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');
+        'summary:hit40', 'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');   // summary:hit40 は 🧱「このブロックのみ」と 👑 🧬「メンバー一覧からまとめて読み取る」(2026-11-20)
     // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
     assert.equal((html.match(/classList\.(?:add|toggle)\(\s*['"]hit40['"]|className\s*\+?=\s*[^;\n]*\bhit40\b/g) || []).length, 0, 'hit40 を JS で付けている (付け先の一覧に出ない)');
 });
@@ -2423,6 +2423,30 @@ test('★ 段階 2 の物差し (⚔️ 戦況・2026-11-17): 練習の場面に
     has('.ops-result-draft .go, .ops-result-draft .cancel { padding: 8px 15px; min-height: 40px; border-radius: 999px;', '「やめる」「登録する」が 40px でない');
     has('id="opsResultAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:14px;', '解析中の帯の角丸が物差しから外れた');
     has('<small style="color:var(--t-muted);font-weight:700;font-size:11px;">(${why})</small>', '編成の理由が 11px でない');
+});
+test('★ 段階 2 の物差し (👑 マスター・2026-11-20): 1 人 1 行の一覧の印 (data-dense) の付け先を固定 + 練習の場面に出ない部品も物差しどおり', () => {
+    const html = _perfHtml;
+    const rule = (sel) => { const k = ' ' + sel + ' {'; const i = html.indexOf(k); assert.ok(i > 0 && html.indexOf(k, i + 1) < 0, sel + ' の規則が無い / 2 つある'); return html.slice(i, html.indexOf('}', i)); };
+    const has = (s, msg) => assert.ok(html.includes(s), msg);
+    // data-dense = 物差しの検査 (tests/ruler.mjs) が 9 / 10px と行の中の小さい部品を認める印。外れを黙らせるために足さないよう、付け先を固定する (どのタグでも・JS で付けない)
+    //   通知状況の表 (1 人 1 行)・育成の識別子の一覧 (.gr-rows)・選んだ人 (.gr-pick)・キャラマスタの一覧・アクティビティの記録 (1 件 1 行)
+    const dense = [...html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bdata-dense\b[^>]*)>/g)].map(m => { const id = m[2].match(/\bid="([^"]+)"/); const c = m[2].match(/\bclass="([^"]+)"/); return m[1] + (id ? '#' + id[1] : c ? '.' + c[1].split(/\s+/)[0] : ''); }).sort();
+    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gr-pick', 'div.gr-rows'], 'data-dense の付け先が変わった');
+    assert.ok(!/dataset\.dense|setAttribute\(\s*['"]data-dense/.test(html), 'data-dense を JS で付けている (上の一覧に出ない)');
+    // 🧪 テスト稼働中の帯の ✕ 終了 (リハーサルの間だけ出る)・シーズン制御の 🧪 テスト の札
+    has('<button onclick="handleOpsDeleteTestSeason()" style="margin-left:auto;padding:4px 10px;min-height:40px;border-radius:999px;', '🧪 ✕ 終了 が 40px でない');
+    has('<span style="border-radius:999px;padding:3px 9px;font-size:11px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.15);">🧪 テスト</span>', 'シーズン制御の 🧪 テスト の札が 11px でない');
+    // ⏱ 再編成時間の一覧 (分数が 0 でないときだけ出る)・🧬 取れなかった人の理由・知らせ (取り込みのあと)
+    assert.match(rule('.obk-rb-list'), /font-size: 12px;/, '再編成時間の一覧が 12px でない');
+    assert.match(rule('.gr-bad > .why'), /font-size: 11px;/, '取れなかった理由が 11px でない');
+    assert.match(rule('.gr-note'), /font-size: 11px;[^}]*border-radius: 8px;/, '育成の知らせが物差しから外れた');
+    // 🧬 名簿の読み取りの説明 (details の中) にも .d の 11px を効かせる (直下だけだと 15px だった)
+    assert.match(rule('.gr-step .d'), /font-size: 11px;/, '育成の説明 (.gr-step .d) が 11px でない');
+    // バーストの選択 (キャラの編集のシート・アイコンの取り込みでも使う) / 🛠 運営 ON (マスターの切り替え) / 運営担当の行 (行そのものを押す一覧) は 40px
+    has('return ' + String.fromCharCode(96) + 'padding:5px 12px;min-height:40px;border-radius:999px;', 'バーストの選択が 40px でない');
+    assert.match(html, /\.dc-nav-chip \{\s*flex: none; padding: 7px 12px; min-height: 40px;/, '🛠 運営 ON が 40px でない');
+    assert.match(rule('.roles-row'), /min-height: 40px;/, '運営担当の行が 40px 未満に戻った');
+    for (const sel of ['.obk-btn', '.obk-rb-btn, .obk-rb-on', '.gr-btn', '.gr-seg', '.dc-ops-testlink']) assert.match(rule(sel), /min-height: 40px;/, sel + ' が 40px 未満に戻った');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {

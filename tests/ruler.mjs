@@ -30,9 +30,12 @@ const DONE = {
     //   :finish = ボスの「締め凸検索」を押した所 (候補・🏁・プラン・📋 コピー) / :intake = 取り込みの下書き (ボス・ダメージ・Lv・やめる / 登録する)
     //   320px = 📥 の行のボタンが折り返して上下に並ぶ幅 (2026-11-20 Codex 監査: 「凸していない」が「📥 取り込む」の真下に来て押せる範囲が重なっていた → 行の row-gap)
     'ops/戦況': ['ops-eve:390:open', 'ops-day:390', 'ops-day:390:open', 'ops-day:320:open', 'ops-day:1366:open', 'ops-day:390:open+finish', 'ops-day:1366:open+finish', 'ops-day:390:open+intake', 'ops-day:1366:open+intake'],
+    // 👑 マスター (2026-11-20): 練習の運営役を master にして開く (runScene)。前日 = ブロックの設定を編集できる / 当日 = 決定があるので読み取り専用。:details = 名簿の読み取りの開閉を開く /
+    //   :maint = その他 › メンテナンス の 最近のアクティビティ・キャラマスタ を開く / :prep・:end = 段階を手で切り替えて シーズン作成・🧪 リハーサル / シーズン終了・リセット のボタンを出す
+    'ops/マスター': ['ops-eve:390', 'ops-eve:390:details', 'ops-eve:320:details', 'ops-day:390', 'ops-day:1366', 'ops-eve:1366:maint+details', 'ops-day:390:maint', 'ops-day:390:prep', 'ops-day:390:end'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
-// TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ)。SCENES は TABS といっしょに使う
+// TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
 const SCENES = (process.env.SCENES || '').split(',').filter(Boolean);
 if (SCENES.length && !ONLY.length) { console.error('NG: SCENES は TABS といっしょに指定してください (例: TABS=ops/戦況 SCENES=ops-day:320:open)'); process.exit(2); }
 const PLAN = ONLY.length ? Object.fromEntries(ONLY.map(t => [t, SCENES.length ? SCENES : DONE[t] || ['member:390', 'ops-eve:390', 'ops-day:390', 'ops-day:1366']])) : DONE;
@@ -50,7 +53,8 @@ const CHECK = `(() => {
     const els = []; for (const r of roots) { els.push(r); for (const e of r.querySelectorAll('*')) els.push(e); }
     // 縦に伸ばさない所 (表・1 人 1 行の一覧 = 👥 メンバー状況の行 .dc-mb-row・盤の駒と名前の札): 小さい文字 9 / 10px と、行の中の小さいボタンを認める
     //   ★ ただし ⚔️ ✓ 凸の記録の押す札 (button.db-tag) は高さだけ例外にしない = 40px (2026-11-17・当日いちばん押す・押し間違えると別の人に ✓)。札の中の文字は dense のまま (📅 の札は読むだけの span)
-    const dense = (e) => !!e.closest('table, .dc-mb-row, [class*="table"], .obr, .obpc, .db-tag');
+    //   1 人 1 行の一覧で、ほかの印が無いものは data-dense を付ける (👑 マスター の 通知状況・育成の識別子・選んだ人。付け先は run-tests が一覧で固定 = 外れを黙らせるために足さない)
+    const dense = (e) => !!e.closest('table, .dc-mb-row, [class*="table"], .obr, .obpc, .db-tag, [data-dense]');
     const ownText = (e) => [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim());
     const snapF = (px) => px < 11.3 ? 11 : px < 12.8 ? 12 : px < 15 ? 14 : px < 17.5 ? 16 : px < 24 ? 20 : px;
     const where = (e) => { let n = e; while (n && n !== document.body) { if (n.id) return '#' + n.id; n = n.parentElement; } return ''; };
@@ -58,6 +62,8 @@ const CHECK = `(() => {
     const out = [];
     for (const e of els) {
         const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        // 図 (SVG) の中は見ない: 文字の大きさは viewBox の縮尺で決まる (👑 🧱 ブロックの設定の時計は viewBox 360 を 190〜300px に縮めて描く = 指定の 13px は実際には 7〜11px)。図の外のラベル (figcaption) は見る
+        if (e.closest('svg')) continue;
         const b = e.getBoundingClientRect(); if (!b.width || !b.height) continue;
         const txt = (e.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 18);
         if (ownText(e)) { const px = parseFloat(cs.fontSize); let t = snapF(px); if (dense(e) && px < 11) t = px < 9.75 ? 9 : 10; if (Math.abs(t - px) > 0.01) out.push(['文字', px + '→' + t, where(e), sig(e), txt]); }
@@ -156,7 +162,10 @@ const runScene = async (tab, scene) => {
         try {
             // 練習の案内 (上の帯・枠) と使い方ツアーは検査の対象でない (本番の画面に無い / 別の画面)
             await ev(`(() => { const st = document.createElement('style'); st.textContent = '#pmDock, #pmRing, #tourOverlay { display: none !important; }'; document.head.appendChild(st); return 1; })()`);
-            let active = await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`);
+            // 👑 マスター の小タブは、練習の運営役 (運営担当 = ops) には出ない → 偽のサーバの運営役を master にして役割を読み直す (本番の 46 と同じ入り方。練習の DB の 1 行だけ)
+            let promoted = true;
+            if (sub === 'マスター') promoted = await ev(`(async () => { const P = window.PAD_PRACTICE; const row = P && P.db && P.db.tables.players.find(x => String(x.id) === String(P.ops && P.ops.id)); if (!row) return false; row.ops_role = 'master'; await _syncOpsRole(); if (!document.body.classList.contains('ops-mode')) toggleOpsMode(); return document.body.classList.contains('ops-master') && document.body.classList.contains('ops-mode'); })()`);   // master は 🛠 の記憶で運営⇄メンバー (練習の端末は記憶が空 = メンバーになる) → 運営の画面にする
+            let active = promoted ? await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`) : 'マスターにできない';
             if (sub && active === 'tab-' + tabId) {
                 // 小タブは、タブの中身が出てから押す (運営タブは盤面を読んでから小タブを描く)
                 let hit = false;
@@ -194,6 +203,25 @@ const runScene = async (tab, scene) => {
                     const ok = await ev(`(() => { const s = document.getElementById('opsResultPlayer'); const o = s && [...s.options].find(x => x.value); if (!o) return false; s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); const b = document.querySelector('#opsSecAttackCheck button[onclick="_opsResultManual()"]'); if (!b) return false; b.click(); return true; })()`);
                     if (!ok) active = '取り込みの人・手で入力を押せない';
                     else { await settle(); if (!(await ev(`(() => { const d = document.getElementById('opsResultDraft'); return !!d && d.getClientRects().length > 0 && d.querySelectorAll('button, input, select').length > 0; })()`))) active = '押したのに取り込みの下書きが出ない'; }
+                } else if (a === 'prep' || a === 'end') {
+                    // 運営の段階を手で切り替える (運営が段階の上書きを選ぶのと同じ関数)。👑 シーズン制御の 作成 (準備) / 終了・リセット (終了) のボタンは段階で出し分ける
+                    const called = await ev(`(() => { if (typeof handleOpsStageOverride !== 'function') return false; handleOpsStageOverride(${JSON.stringify(a)}); return true; })()`);
+                    await settle();
+                    // 段階を変えると、開く小タブが段階の既定 (準備 = 👥 メンバー) に戻る → 小タブを押し直す
+                    if (called && sub) { await ev(`(() => { const b = [...document.querySelectorAll('#opsSubTabs button')].find(x => x.textContent.includes(${JSON.stringify(sub)})); if (b) b.click(); return !!b; })()`); await settle(); }
+                    const ok = called && await ev(`[...document.querySelectorAll('#tab-ops [data-stage~="${a}"]')].some(e => e.getClientRects().length)`);
+                    if (!ok) active = '段階を「' + a + '」にできない';
+                } else if (a === 'maint') {
+                    // 👑 マスター › その他 › メンテナンス の、見出しを押して開くカード 2 枚 (最近のアクティビティ・キャラマスタ) を開く (見出しを押すのと同じ関数)
+                    await ev(`(() => { for (const [id, fn] of [['settingsActivityBody', 'toggleSettingsActivity'], ['settingsMasterBody', 'toggleSettingsMaster']]) { const b = document.getElementById(id); if (b && getComputedStyle(b).display === 'none' && typeof window[fn] === 'function') window[fn](); } return 1; })()`);
+                    await settle();
+                    if (!(await ev(`['settingsActivityBody', 'settingsMasterBody'].every(id => { const b = document.getElementById(id); return !!b && b.getClientRects().length > 0; })`))) active = 'アクティビティ・キャラマスタが開かない';
+                } else if (a === 'details') {
+                    // 畳んである開閉 (details) を全部開く (👑 マスター の 名簿の読み取り・メンテナンスなど)。開いたあとに見えている閉じた details が残れば失敗
+                    const n = await ev(`(() => { let n = 0; for (let k = 0; k < 5; k++) { const ds = [...document.querySelectorAll('.tab-content.active details:not([open])')].filter(d => d.getClientRects().length); if (!ds.length) break; ds.forEach(d => { d.open = true; }); n += ds.length; } return n; })()`);   // 中の details は親を開くと見えるので、なくなるまで (5 段まで)
+                    await settle();
+                    if (n === 0) active = '開く details が無い';
+                    else if (await ev(`[...document.querySelectorAll('.tab-content.active details:not([open])')].some(d => d.getClientRects().length)`)) active = 'details が開かない (' + n + ' 個開いた)';
                 } else { active = '知らない動作: ' + a; break; }
             }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
@@ -217,7 +245,7 @@ for (const [tab, scenes] of Object.entries(PLAN)) {
         if (STRICT) failed++;
         console.log(`  ${STRICT ? '❌' : '・'} ${label}: 外れ ${v.length} 個 (文字 ${v.filter(x => x[0] === '文字').length}・角丸 ${v.filter(x => x[0] === '角丸').length}・高さ ${v.filter(x => x[0] === '高さ').length})`);
         const grp = new Map(); for (const x of v) { const k = x.slice(0, 4).join(' | '); const g = grp.get(k) || { n: 0, ex: x[4] }; g.n++; grp.set(k, g); }
-        for (const [k, g] of [...grp.entries()].sort((p, q) => q[1].n - p[1].n).slice(0, STRICT ? 12 : 60)) console.log('       ' + String(g.n).padStart(3) + '  ' + k + '  「' + g.ex + '」');
+        for (const [k, g] of [...grp.entries()].sort((p, q) => q[1].n - p[1].n).slice(0, STRICT ? 12 : process.env.ALL ? 1e9 : 60)) console.log('       ' + String(g.n).padStart(3) + '  ' + k + '  「' + g.ex + '」');
     }
 }
 ws.close();

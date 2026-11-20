@@ -660,7 +660,7 @@
         #ptrIcon.spin { animation: ptr-spin .8s linear infinite; }
         /* ops タブ: セクションジャンプ + 運営モード */
         .dc-nav-chip {
-            flex: none; padding: 7px 12px; border-radius: 999px;
+            flex: none; padding: 7px 12px; min-height: 40px; border-radius: 999px;
             border: 1px solid rgba(var(--ink-rgb), 0.06); background: var(--card); color: var(--t-strong);
             font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap}
         #tab-ops .dc-card { scroll-margin-top: 64px; }
@@ -685,16 +685,16 @@
         /* ---- 運営モードの段階 (準備/前日/当日/終了) — 運営UI再設計 2026-09-08 ---- */
         body.ops-mode .ops-group-label { display: none; }   /* グループ見出しは段階の出し分けに置き換えた */
 /* 🧱 ブロックの設定 (👑 マスター・2026-10-30)。時計 3 つ = 朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5 */
-        .obk-note { margin: 0 0 8px; font-size: 11.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
+        .obk-note { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
         /* ⏱ 再編成時間の欄 (⑥): 選んでいる分数は札 (押せないボタンにしない)・ほかはボタン */
         .obk-rb { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
-        .obk-rb-h { font-size: 13px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
+        .obk-rb-h { font-size: 14px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
         .obk-rb-opts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-        .obk-rb-btn, .obk-rb-on { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 800; }
+        .obk-rb-btn, .obk-rb-on { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 800; }
         .obk-rb-btn { border: 1px solid var(--line); background: var(--card); color: var(--t-strong); cursor: pointer; }
         .obk-rb-btn[disabled] { opacity: .45; cursor: default; }
         .obk-rb-on { background: var(--t-ink); color: var(--card); }
-        .obk-rb-list { margin: 0 0 6px; padding-left: 18px; font-size: 11.5px; font-weight: 700; color: var(--t-body); line-height: 1.7; font-variant-numeric: tabular-nums; }
+        .obk-rb-list { margin: 0 0 6px; padding-left: 18px; font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.7; font-variant-numeric: tabular-nums; }
         .obk-clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 12px; margin: 2px 0 6px; }
         .obk-clk { margin: 0; }
         .obk-clk svg { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
@@ -715,30 +715,30 @@
         .obk-cn { font-size: 11px; font-weight: 700; fill: var(--t-muted); }
         .obk-face { fill: var(--t-muted); font-size: 22px; font-weight: 900; }
         .obk-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; font-size: 11px; font-weight: 700; color: var(--t-muted); margin-bottom: 8px; }
-        .obk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+        .obk-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 4px; vertical-align: -1px; margin-right: 4px; }
         .obk-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
-        .obk-stp { display: inline-flex; align-items: center; gap: 2px; background: var(--s2); border-radius: 10px; padding: 3px; }
-        .obk-stp button { width: 34px; height: 30px; border: 0; border-radius: 8px; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; }
+        .obk-stp { display: inline-flex; align-items: center; gap: 2px; background: var(--s2); border-radius: 14px; padding: 3px; }
+        .obk-stp button { width: 40px; height: 40px; border: 0; border-radius: 8px; background: var(--card); color: var(--t-ink); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; }
         .obk-stp button[disabled] { opacity: .35; cursor: default; }
-        .obk-stp b { min-width: 52px; text-align: center; font-size: 13px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
-        .obk-stp span { font-size: 11.5px; font-weight: 800; color: var(--t-body); padding: 0 6px 0 8px; }
-        .obk-btn { font: inherit; font-weight: 800; font-size: 11.5px; padding: 6px 10px; border-radius: 9px; border: 0; cursor: pointer; background: var(--s2); color: var(--t-ink); white-space: nowrap; }
+        .obk-stp b { min-width: 52px; text-align: center; font-size: 14px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .obk-stp span { font-size: 12px; font-weight: 800; color: var(--t-body); padding: 0 6px 0 8px; }
+        .obk-btn { font: inherit; font-weight: 800; font-size: 12px; padding: 6px 10px; min-height: 40px; border-radius: 8px; border: 0; cursor: pointer; background: var(--s2); color: var(--t-ink); white-space: nowrap; }
         .obk-btn[disabled] { opacity: .45; cursor: default; }
         .obk-rows { display: flex; flex-direction: column; gap: 6px; }
-        .obk-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--s1); border: 2px solid transparent; }
+        .obk-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 14px; background: var(--s1); border: 2px solid transparent; }
         .obk-row.on { border-color: var(--t-ink); background: var(--card); }
-        .obk-badge { width: 34px; height: 34px; border-radius: 10px; border: 0; color: var(--on-fill); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+        .obk-badge { width: 40px; height: 40px; border-radius: 8px; border: 0; color: var(--on-fill); font: inherit; font-weight: 900; font-size: 16px; cursor: pointer; display: grid; place-items: center; }
         .obk-mid { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-        .obk-name { font: inherit; font-weight: 700; font-size: 13px; padding: 6px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); width: 100%; max-width: 180px; box-sizing: border-box; }
-        .obk-when { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; font-weight: 800; color: var(--t-body); font-variant-numeric: tabular-nums; }
-        .obk-when select { font: inherit; font-weight: 800; font-size: 12.5px; padding: 5px 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); }
+        .obk-name { font: inherit; font-weight: 700; font-size: 14px; padding: 6px 9px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); width: 100%; max-width: 180px; box-sizing: border-box; }
+        .obk-when { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; font-weight: 800; color: var(--t-body); font-variant-numeric: tabular-nums; }
+        .obk-when select { font: inherit; font-weight: 800; font-size: 12px; padding: 5px 8px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); }
         .obk-len { font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .obk-acts { display: flex; flex-direction: column; gap: 4px; }
         .obk-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
         .obk-bar .sum { flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--t-body); }
-        .obk-bar .save { font: inherit; font-weight: 900; font-size: 13px; padding: 9px 16px; border-radius: 10px; border: 0; cursor: pointer; background: var(--t-ink); color: var(--card); }
+        .obk-bar .save { font: inherit; font-weight: 900; font-size: 14px; padding: 9px 16px; min-height: 40px; border-radius: 8px; border: 0; cursor: pointer; background: var(--t-ink); color: var(--card); }
         .obk-bar .save[disabled] { opacity: .45; cursor: default; }
-        .obk-lock { margin: 8px 0 0; padding: 9px 11px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-on); font-size: 12px; font-weight: 800; line-height: 1.6; }
+        .obk-lock { margin: 8px 0 0; padding: 9px 11px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-on); font-size: 12px; font-weight: 800; line-height: 1.6; }
         .obk-c0 { fill: var(--blk-0); } .obk-bg0 { background: var(--blk-0); }
         .obk-c1 { fill: var(--blk-1); } .obk-bg1 { background: var(--blk-1); }
         .obk-c2 { fill: var(--blk-2); } .obk-bg2 { background: var(--blk-2); }
@@ -779,13 +779,13 @@
         .ops-stage-list .act { flex: none; font: inherit; font-size: 11px; font-weight: 900; color: var(--ops-deep); background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer}
         .ops-etc { margin-top: 16px; }
         .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: var(--t-body); background: var(--s2); border: none; border-radius: 12px; padding: 11px; cursor: pointer}
-        .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
+        .ops-etc-label { font-size: 11px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
         /* ---- 🧬 育成データの取り込み (2026-09-09) ---- */
-        .gr-step { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 9px; background: var(--card)}
+        .gr-step { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 14px; padding: 10px 12px; margin-bottom: 9px; background: var(--card)}
         .gr-step > .h { font-size: 12px; font-weight: 900; color: var(--t-ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap}
-        .gr-step > .h .n { display: grid; place-items: center; width: 19px; height: 19px; flex: none; border-radius: 6px; background: var(--s2); font-size: 10.5px; font-weight: 900; color: var(--t-body)}
+        .gr-step > .h .n { display: grid; place-items: center; width: 19px; height: 19px; flex: none; border-radius: 4px; background: var(--s2); font-size: 11px; font-weight: 900; color: var(--t-body)}
         .gr-step.done > .h .n { background: var(--ok-solid); color: var(--ok-ink)}
-        .gr-step > .d { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; margin: 5px 0 0 26px}
+        .gr-step .d { font-size: 11px; font-weight: 700; color: var(--t-muted); line-height: 1.6; margin: 5px 0 0 26px}
         .gr-rows { margin: 8px 0 0; max-height: 300px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
         .gr-row { display: flex; align-items: center; gap: 7px; padding: 5px 2px; border-top: 1px solid rgba(var(--ink-rgb), 0.05); }
         .gr-row:first-child { border-top: none; }
@@ -797,19 +797,19 @@
         .gr-row .st.error { color: var(--attr-fire); background: rgba(255,61,68,0.10)}
         .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: 8px; padding: 5px 7px; background: var(--card); color: var(--t-ink)}
         .gr-row input.set { border-color: rgba(14,148,85,0.35); background: rgba(14,148,85,0.05); }
-        .gr-roster { margin-top: 9px; border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 10px; padding: 8px 10px; background: var(--s1)}
-        .gr-roster > summary { cursor: pointer; font-size: 11.5px; font-weight: 900; color: var(--ops-deep); list-style: none}
+        .gr-roster { margin-top: 9px; border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 8px; padding: 8px 10px; background: var(--s1)}
+        .gr-roster > summary { cursor: pointer; font-size: 12px; font-weight: 900; color: var(--ops-deep); list-style: none}
         .gr-roster > summary::-webkit-details-marker { display: none; }
         .gr-bad { padding: 6px 2px; border-top: 1px solid rgba(var(--ink-rgb), 0.05); }
         .gr-bad:first-child { border-top: none; }
         .gr-bad > .gr-row { border-top: none; padding-top: 0; }
-        .gr-bad > .why { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.5; word-break: break-word}
-        .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: var(--t-ink); color: var(--card)}
+        .gr-bad > .why { font-size: 11px; font-weight: 700; color: var(--t-muted); line-height: 1.5; word-break: break-word}
+        .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; min-height: 40px; cursor: pointer; background: var(--t-ink); color: var(--card)}
         .gr-btn.sub { background: var(--s2); color: var(--t-ink)}
         .gr-btn[disabled] { opacity: .45; cursor: default; }
         /* ② 取り込む相手の絞り込み (2026-09-15): セグメント + 「選んだ人」の一覧 */
         .gr-scope { display: flex; gap: 6px; flex-wrap: wrap; }
-        .gr-seg { font: inherit; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); cursor: pointer; }
+        .gr-seg { font: inherit; font-size: 11px; font-weight: 800; padding: 5px 10px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); cursor: pointer; }
         .gr-seg.on { background: var(--t-ink); color: var(--card); border-color: transparent; }
         .gr-seg .c { font-weight: 900; margin-left: 2px; }
         .gr-seg[disabled] { opacity: .5; cursor: default; }
@@ -819,8 +819,8 @@
         .gr-pick-row .st { flex: none; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 2px 7px; white-space: nowrap; background: var(--s2); color: var(--t-body); }
         .gr-pick-row .st.ok { color: var(--ok-deep); background: var(--ok-bg); }
         .gr-pick-row .st.private { color: var(--warn-deep); background: var(--warn-bg); }
-        .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: 10px; padding: 8px 9px; background: var(--card); color: var(--t-ink); resize: vertical}
-        .gr-note { font-size: 10.5px; font-weight: 800; line-height: 1.6; border-radius: 9px; padding: 8px 10px; margin-top: 8px; }
+        .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: 8px; padding: 8px 9px; background: var(--card); color: var(--t-ink); resize: vertical}
+        .gr-note { font-size: 11px; font-weight: 800; line-height: 1.6; border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
         .gr-note.warn { color: var(--warn-deep); background: rgba(245,158,11,0.10)}
         .gr-note.err { color: var(--bad-deep); background: rgba(255,61,68,0.09)}
         .gr-note.ok { color: var(--ok-deep); background: rgba(14,148,85,0.10)}
@@ -1003,7 +1003,7 @@
         .gv-rk .val { font-size: 13px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; text-align: right}
         .gv-rk.me .val { color: var(--ops-deep)}
         .gv-hint { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.7; margin: 7px 2px 0}
-        .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: var(--t-muted); background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer}
+        .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: var(--t-muted); background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; min-height: 40px; cursor: pointer}
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:var(--s2); border-radius:999px; padding:3px}
         .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--t-body); cursor:pointer}
@@ -2716,11 +2716,11 @@
         .rr-hm tr.me td { background: rgba(var(--ink-rgb), 0.05); }
         .rr-note { margin: 10px 0 0; font-size: 10px; color: var(--t-muted); line-height: 1.7; background: var(--s1); border-radius: 9px; padding: 8px 10px; }
         /* 👑 運営担当の任命 (設定 → その他 › メンテナンス。master だけ) */
-        .roles-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; background: var(--s1); font-size: 12px; font-weight: 800; color: var(--t-ink); cursor: pointer; }
+        .roles-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; min-height: 40px; box-sizing: border-box; border-radius: 8px; background: var(--s1); font-size: 12px; font-weight: 800; color: var(--t-ink); cursor: pointer; }
         .roles-row.on { background: var(--ops-bg); }
         .roles-row input { width: 16px; height: 16px; accent-color: var(--ops-solid); margin: 0; }
         .roles-row .rr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .roles-row .rr-role { font-size: 10.5px; font-weight: 900; color: var(--ops-deep); white-space: nowrap; }
+        .roles-row .rr-role { font-size: 11px; font-weight: 900; color: var(--ops-deep); white-space: nowrap; }
         /* PC: スクショをシートに落として読み取る (2026-10-10)。落とせる間だけ点線と案内を重ねる */
         .player-select-content.drop-over, .dc-card.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; position: relative; }   /* .dc-card: 📸 模擬の取り込み (運営) はカードそのものが受け口 */   /* ::after をシートの中に収める (無いと fixed のモーダル全体に広がる) */
         .player-select-content.drop-over::after, .dc-card.drop-over::after { content: '📷 ここに落として読み取る'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -4929,14 +4929,14 @@
             <div class="ops-group-label" data-master-only style="margin-top:4px;">👑 マスター運営 — ふるり だけに見えます</div>
             <div class="dc-card" data-span="6" data-master-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">アプリの版のしめ切り</div>
-                <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;margin-bottom:11px;">
+                <div style="font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.7;margin-bottom:11px;">
                     予約を知らない古いアプリが「凸プランの表示・凸の報告・プランの配信」をするのを止めます。<br>
                     <b style="color:var(--warn-deep);">全員が新しい版になってから締めてください。</b>先に締めると、更新できない人が何もできなくなります。
                 </div>
                 <div id="settingsGateState" style="font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.8;margin-bottom:11px;">読み込み中…</div>
                 <div style="display:flex;gap:7px;flex-wrap:wrap;">
-                    <button onclick="handleSetClientGate('now')" style="flex:1;min-width:170px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12px;font-weight:900;color:var(--card);background:var(--t-ink);cursor:pointer;">いまの版でしめ切る</button>
-                    <button onclick="handleSetClientGate('off')" style="flex:none;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">解除</button>
+                    <button onclick="handleSetClientGate('now')" style="flex:1;min-width:170px;min-height:40px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12px;font-weight:900;color:var(--card);background:var(--t-ink);cursor:pointer;">いまの版でしめ切る</button>
+                    <button onclick="handleSetClientGate('off')" style="flex:none;min-height:40px;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">解除</button>
                 </div>
             </div>
 
@@ -4946,7 +4946,7 @@
             <div class="dc-card" data-span="6" data-master-only>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
                     <div style="font-size:14px;font-weight:900;color:var(--t-ink);">👑 運営担当</div>
-                    <div id="settingsRolesCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
+                    <div id="settingsRolesCount" style="font-size:11px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;color:var(--t-muted);line-height:1.6;">任命した人は名乗った時点で運営画面になります (🧪 テスト回の通知も届きます)。任命と解任はマスター運営だけができます。</p>
                 <div id="settingsRolesBody" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">読み込み中…</div>
@@ -4955,8 +4955,8 @@
             <div class="dc-card" data-span="6" data-master-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">復元 (巻き戻し)</div>
                 <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">バックアップの JSON から全データを戻す操作です。保存は 同じ 👑 マスターのタブの「バックアップ」から。</div>
-                <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
-                    <div style="font-size:10.5px;font-weight:800;color:var(--bad-deep);margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
+                <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:14px;padding:12px;">
+                    <div style="font-size:11px;font-weight:800;color:var(--bad-deep);margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
                     <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
                     <p style="margin:0;font-size:11px;font-weight:800;color:var(--t-body);line-height:1.6;">いまは画面から復元できません。予約の履歴の表 (plan_reservation_events・39) がある DB では、表を消す順の途中で必ず止まるためです (何も消さずに止める安全策は入っています)。戻す必要があるときは SQL Editor で行います (ROADMAP「復元を 1 つのサーバ側の処理に」)。</p>
                 </div>
@@ -4965,15 +4965,15 @@
             <div class="dc-card dc-card-tight" data-span="6" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバーの通知状況</div>
-                    <div id="settingsNotifySummary" style="font-size:10.5px;color:var(--t-muted);">—</div>
+                    <div id="settingsNotifySummary" style="font-size:11px;color:var(--t-muted);">—</div>
                 </div>
                 <!-- max-height でこの要素自身がスクロールコンテナになる → 中の sticky ヘッダが効く -->
                 <!-- overflow-x:hidden 必須: overflow-y だけ指定すると overflow-x が auto に計算され、
                      行の負マージン (margin:0 -6px) ぶんの1〜数px で横スクロールが生まれてしまう -->
-                <div id="settingsNotifyTable" style="padding:0 4px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">
+                <div id="settingsNotifyTable" data-dense style="padding:0 4px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">
                     <p style="color:var(--t-muted);font-size:12px;padding:14px 0;">読み込み中…</p>
                 </div>
-                <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:10.5px;line-height:1.5;color:var(--t-muted);"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
+                <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:11px;line-height:1.5;color:var(--t-muted);"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
             </div>
 
             <!-- ②' メンバー管理 (運営) -->
@@ -4984,13 +4984,13 @@
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバー管理</div>
                         <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">新規追加・改名・脱退・復活・完全削除</div>
                     </div>
-                    <div id="settingsMemberCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;white-space:nowrap;">— 名</div>
+                    <div id="settingsMemberCount" style="font-size:11px;color:var(--t-muted);font-variant-numeric:tabular-nums;white-space:nowrap;">— 名</div>
                 </div>
-                <button onclick="switchTab('member-admin')" style="width:100%;padding:2px;background:var(--t-ink);border-radius:11px;box-shadow:0 4px 12px rgba(108,66,240,0.28);cursor:pointer;border:none;font-family:inherit;">
-                    <div style="position:relative;overflow:hidden;border-radius:9px;background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;">
+                <button onclick="switchTab('member-admin')" style="width:100%;padding:2px;background:var(--t-ink);border-radius:14px;box-shadow:0 4px 12px rgba(108,66,240,0.28);cursor:pointer;border:none;font-family:inherit;">
+                    <div style="position:relative;overflow:hidden;border-radius:14px;background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;">
                         <div style="position:absolute;inset:0;background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);pointer-events:none;"></div>
                         <div style="position:absolute;left:0;right:0;top:0;height:48%;background:linear-gradient(180deg, rgba(255,255,255,0.34), transparent);pointer-events:none;"></div>
-                        <span style="position:relative;font-size:13px;font-weight:900;color:var(--on-fill);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,40,90,0.4);"><span data-sp-icon="users" data-sp-size="14"></span> メンバー管理を開く</span>
+                        <span style="position:relative;font-size:14px;font-weight:900;color:var(--on-fill);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,40,90,0.4);"><span data-sp-icon="users" data-sp-size="14"></span> メンバー管理を開く</span>
                     </div>
                 </button>
             </div>
@@ -5000,7 +5000,7 @@
                 <div onclick="toggleSettingsActivity()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div style="display:flex;align-items:baseline;gap:8px;">
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">最近のアクティビティ</div>
-                        <div id="settingsActivityCount" style="font-size:10.5px;color:var(--t-muted);">—</div>
+                        <div id="settingsActivityCount" style="font-size:11px;color:var(--t-muted);">—</div>
                     </div>
                     <div id="settingsActivityCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
@@ -5024,24 +5024,24 @@
                     <!-- 旧 設定内容: 画像からキャラ登録 (Bootstrap) -->
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">画像からキャラ登録 (Bootstrap)</div>
-                        <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;">最新JSONから読み込み</button>
+                        <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;min-height:40px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;">最新JSONから読み込み</button>
                     </div>
                     <div id="settingsIconBootstrap" style="font-size:11px;color:var(--t-muted);">「最新JSONから読み込み」をクリックしてください。</div>
                     <!-- 新キャラの事前登録 -->
                     <div style="margin-top:18px;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">➕ 新キャラの事前登録</div>
-                        <p style="margin:5px 0 8px 0;font-size:10.5px;color:var(--t-muted);line-height:1.5;">実装されたばかりの新キャラ名を先に登録しておくと、メンバーの画像認識時に正しくこの名前へ解決されます (アイコンは提出画像から自動学習)。</p>
+                        <p style="margin:5px 0 8px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">実装されたばかりの新キャラ名を先に登録しておくと、メンバーの画像認識時に正しくこの名前へ解決されます (アイコンは提出画像から自動学習)。</p>
                         <!-- 運営改修 #6: 手動登録は「要確認」で入り、別の運営が根拠URLを見て確定する -->
                         <div style="display:flex;flex-direction:column;gap:7px;">
-                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
                             <div>
-                                <div style="font-size:10.5px;font-weight:800;color:var(--t-body);margin-bottom:4px;">バースト <span style="color:var(--attr-fire);">必須</span></div>
+                                <div style="font-size:11px;font-weight:800;color:var(--t-body);margin-bottom:4px;">バースト <span style="color:var(--attr-fire);">必須</span></div>
                                 <div id="settingsNewCharBurst"></div>
                             </div>
-                            <input id="settingsNewCharSource" type="url" inputmode="url" placeholder="根拠URL 必須 (例: https://game8.jp/nikke/… の個別ページ)" style="width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                            <input id="settingsNewCharSource" type="url" inputmode="url" placeholder="根拠URL 必須 (例: https://game8.jp/nikke/… の個別ページ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
                             <div style="display:flex;gap:7px;">
-                                <input id="settingsNewCharNotes" type="text" placeholder="メモ (任意: 素体/スキンの別、実装日など)" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
-                                <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;">要確認として登録</button>
+                                <input id="settingsNewCharNotes" type="text" placeholder="メモ (任意: 素体/スキンの別、実装日など)" style="flex:1;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                                <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;min-height:40px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;">要確認として登録</button>
                             </div>
                         </div>
                         <p id="settingsNewCharMsg" style="margin:6px 0 0 0;font-size:11px;min-height:14px;color:var(--t-muted);"></p>
@@ -5049,10 +5049,10 @@
                     <!-- マスタ一覧 -->
                     <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">マスタ一覧</div>
-                        <span id="settingsCharSummary" style="font-size:10.5px;color:var(--t-muted);"></span>
+                        <span id="settingsCharSummary" style="font-size:11px;color:var(--t-muted);"></span>
                     </div>
                     <div data-no-swipe style="overflow-x:auto;margin-top:8px;">
-                        <div id="settingsCharList" style="font-size:12px;color:var(--t-muted);">読み込み中…</div>
+                        <div id="settingsCharList" data-dense style="font-size:12px;color:var(--t-muted);">読み込み中…</div>
                     </div>
                 </div>
             </div>
@@ -10805,7 +10805,7 @@
                     </div>`;
             }).join('');
             const head2 = `
-                <div style="display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--s1);border-radius:6px;font-size:11px;font-weight:700;color:var(--t-body);">
+                <div style="display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--s1);border-radius:8px;font-size:11px;font-weight:700;color:var(--t-body);">
                     <div>アイコン</div>
                     <div>キャラ名 (canonical)</div>
                     <div style="text-align:center;">出現</div>
@@ -10887,7 +10887,7 @@
         // 単一選択。'' = 未設定 (null)。groupId ごとに状態を保持。
         const _burstState = {};
         function _burstPillStyle(color, on) {
-            return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
+            return `padding:5px 12px;min-height:40px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
                 + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
                 + (on ? `background:${color};color:${_burstInk(color)};`
                     : `background:${color}1A;color:${_burstOnBg(color, _burstTint(color))};`);
@@ -11456,15 +11456,15 @@
                     <div style="display:flex;align-items:center;height:46px;border-bottom:1px solid var(--s2);padding:0 6px;margin:0 -6px;background:${flagged ? 'rgba(255,138,43,0.06)' : 'transparent'};">
                         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;">
                             <div style="flex:none;">${renderAvatarHtml(r.id, r.name, 28)}</div>
-                            <span style="font-size:12.5px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:var(--t-muted);">×${r.deviceCount}</span>` : ''}</span>
+                            <span style="font-size:12px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:var(--t-muted);">×${r.deviceCount}</span>` : ''}</span>
                         </div>
                         ${devCell}
                         <div style="width:40px;flex:none;display:flex;justify-content:center;">
-                            <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
+                            <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
                         </div>
                         <div style="width:74px;flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;">
                             ${r.flexTime && r.slotsOn === 0
-                                ? `<span title="隙間時間型: 時間の約束はできないが3凸はする (時間帯0でも正常)" style="font-size:9.5px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.12);padding:3px 9px;border-radius:999px;white-space:nowrap;">⏳隙間型</span>`
+                                ? `<span title="隙間時間型: 時間の約束はできないが3凸はする (時間帯0でも正常)" style="font-size:10px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.12);padding:3px 9px;border-radius:999px;white-space:nowrap;">⏳隙間型</span>`
                                 : `<span style="font-size:10px;font-weight:800;color:var(--t-strong);font-variant-numeric:tabular-nums;">${r.slotsOn}/24${r.flexTime ? ` <span title=\"ハイブリッド: 登録時間は確約、それ以外は隙間で対応\" style=\"color:var(--warn-deep);\">+⏳</span>` : ''}</span>
                             <div style="width:48px;height:5px;border-radius:99px;background:var(--s2);overflow:hidden;">
                                 <div style="height:100%;width:${barPct}%;border-radius:99px;background:${barColor};"></div>
@@ -11525,18 +11525,18 @@
                 text: r.detail || '',
             }));
             const chips = _SETLOG_FILTERS.map(f =>
-                `<button data-setlog-filter="${f.key}" onclick="setSettingsLogFilter('${f.key}')" style="padding:5px 10px;border-radius:999px;border:none;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;"></button>`).join('');
+                `<button data-setlog-filter="${f.key}" onclick="setSettingsLogFilter('${f.key}')" style="padding:5px 10px;min-height:40px;border-radius:999px;border:none;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;"></button>`).join('');
             const playerNames = [...new Set(_setLogState.events.map(e => e.player).filter(Boolean))].sort();
             el.innerHTML = `
                 <div data-no-swipe style="display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px;-webkit-overflow-scrolling:touch;">${chips}</div>
                 <div style="display:flex;gap:6px;margin-bottom:10px;">
-                    <select id="setlogPlayerSel" onchange="setSettingsLogPlayer(this.value)" style="flex:1;min-width:0;padding:7px 9px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:12px;font-weight:700;">
+                    <select id="setlogPlayerSel" onchange="setSettingsLogPlayer(this.value)" style="flex:1;min-width:0;min-height:40px;padding:7px 9px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:12px;font-weight:700;">
                         <option value="all">👥 全メンバー</option>
                         ${playerNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
                     </select>
-                    <button id="setlogOrderBtn" onclick="toggleSettingsLogOrder()" style="flex:none;padding:7px 11px;border-radius:9px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
+                    <button id="setlogOrderBtn" onclick="toggleSettingsLogOrder()" style="flex:none;min-height:40px;padding:7px 11px;border-radius:8px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
                 </div>
-                <div id="setlogList"></div>`;
+                <div id="setlogList" data-dense></div>`;
             _renderSettingsLogList();
         }
 
@@ -11585,7 +11585,7 @@
                             <span style="font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${fmtTime(e.ts)}</span>
                             <span style="font-size:10px;font-weight:800;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;${pillStyle}">${t.label}</span>
                         </div>
-                        <div style="font-size:12.5px;font-weight:700;color:var(--t-ink);line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--t-ink);line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
                     </div>`;
             }).join('');
             // 残りがあれば「もっと見る」。上限に達したらその旨を出す (黙って打ち切らない)
@@ -11752,7 +11752,7 @@
                     <div title="この期間の凸・ダメージは記録用ではありません" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);font-size:11px;font-weight:700;color:var(--warn-deep);">
                         <span style="font-size:12px;">🧪</span>テスト稼働中
                     </div>
-                    <button onclick="handleOpsDeleteTestSeason()" style="margin-left:auto;padding:4px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:var(--bad-deep);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✕ 終了</button>
+                    <button onclick="handleOpsDeleteTestSeason()" style="margin-left:auto;padding:4px 10px;min-height:40px;border-radius:999px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:var(--bad-deep);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✕ 終了</button>
                 `;
             } else {
                 bannerEl.style.display = 'none';
@@ -13795,7 +13795,7 @@
                 <div class="gr-step">
                     <div class="h"><span class="n">0</span>どのレイドの育成か
                         <select onchange="handleGrowthPickSeason(this.value)" ${_growth.busy ? 'disabled' : ''}
-                                style="margin-left:auto;font:inherit;font-size:11.5px;font-weight:800;border:1px solid rgba(var(--ink-rgb), 0.12);border-radius:8px;padding:5px 7px;background:var(--card);color:var(--t-ink);max-width:60%;">
+                                style="margin-left:auto;font:inherit;font-size:12px;font-weight:800;border:1px solid rgba(var(--ink-rgb), 0.12);border-radius:8px;padding:5px 7px;min-height:40px;background:var(--card);color:var(--t-ink);max-width:60%;">
                             ${(_growth.seasons || []).map(s => `<option value="${Number(s.id)}" ${Number(s.id) === Number(_growth.seasonId) ? 'selected' : ''}>${esc(seasonJp(s))}</option>`).join('')}
                         </select>
                     </div>
@@ -13817,7 +13817,7 @@
                     <div class="h"><span class="n">1</span>BlaBlaLINK の識別子をひも付ける</div>
                     <div class="d">ユニオン一覧で名前を開いたときの URL (<code>?uid=…</code>) をそのまま貼れます。1人1回だけの作業です。</div>
                     <details class="gr-roster" ${_growth.rosterOpen ? 'open' : ''} ontoggle="_growth.rosterOpen = this.open;">
-                        <summary>📋 メンバー一覧からまとめて読み取る (入れ替えが多いときはこちら)</summary>
+                        <summary class="hit40">📋 メンバー一覧からまとめて読み取る (入れ替えが多いときはこちら)</summary>
                         <div class="d" style="margin-left:0;">BlaBlaLINK に<strong>ログインした状態</strong>で (BlaBlaLINK 内ならどのページでも構いません)、
                             <strong>開発者ツールを閉じたまま</strong>このブックマークレットを実行します。いま所属しているユニオンの一覧を読むので、
                             ユニオンが変わっても同じブックマークレットで構いません。
@@ -13826,7 +13826,7 @@
                         <textarea id="opsGrowthRoster" class="gr-paste" style="margin-top:8px;" placeholder="なべりうす&#9;3273786220482814289&#10;…" ${_growth.busy ? 'disabled' : ''}></textarea>
                         <button type="button" class="gr-btn" style="margin-top:8px;" onclick="handleGrowthApplyRoster()" ${_growth.busy ? 'disabled' : ''}>名前で突き合わせてひも付ける</button>
                     </details>
-                    <div class="gr-rows">${rows}</div>
+                    <div class="gr-rows" data-dense>${rows}</div>
                 </div>`;
 
             // ② ブックマークレット
@@ -13854,7 +13854,7 @@
                     <div class="gr-scope" style="margin:8px 0 0 26px;">
                         ${dom.IMPORT_SCOPES.map(s => `<button type="button" class="gr-seg ${s === scope ? 'on' : ''}" onclick="handleGrowthScope('${s}')" ${_growth.busy ? 'disabled' : ''}>${esc(dom.IMPORT_SCOPE_JP[s])} <span class="c">${tg.counts[s]}</span></button>`).join('')}
                     </div>
-                    ${scope === 'picked' ? `<div class="gr-pick" style="margin:8px 0 0 26px;">${linked.map(p => {
+                    ${scope === 'picked' ? `<div class="gr-pick" data-dense style="margin:8px 0 0 26px;">${linked.map(p => {
                         const st = statusBy.get(String(p.id));
                         return `<label class="gr-pick-row"><input type="checkbox" ${pickedSet.has(String(p.id)) ? 'checked' : ''} ${_growth.busy ? 'disabled' : ''} data-pid="${Number(p.id)}" onchange="handleGrowthPick(${Number(p.id)}, this.checked)"><span class="nm">${esc(p.name)}</span><span class="st ${esc(st ? st.status : 'none')}">${esc(st ? (dom.STATUS_SHORT[st.status] || st.status) : '未取り込み')}</span></label>`;
                     }).join('')}</div>` : ''}
@@ -17021,15 +17021,15 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
             const pills = (bosses || []).slice().sort((a, b) => a.boss_number - b.boss_number).map(b => {
                 const v = ATTR_VISUAL[b.attribute] || { color: '#7A7C81' };
-                return `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;color:${v.color};background:${v.color}1A;white-space:nowrap;">B${b.boss_number} ${escapeHtml(b.boss_code)}</span>`;
+                return `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:900;color:${v.color};background:${v.color}1A;white-space:nowrap;">B${b.boss_number} ${escapeHtml(b.boss_code)}</span>`;
             }).join('');
             el.innerHTML = `
-                <div style="padding:10px 12px;border-radius:12px;background:var(--s1);display:flex;flex-direction:column;gap:8px;">
+                <div style="padding:10px 12px;border-radius:14px;background:var(--s1);display:flex;flex-direction:column;gap:8px;">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span style="font-size:13px;font-weight:900;color:var(--t-ink);">🗓 ${escapeHtml(season.month_key || '?')}</span>
-                        ${season.is_test ? '<span style="border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.15);">🧪 テスト</span>' : ''}
+                        <span style="font-size:14px;font-weight:900;color:var(--t-ink);">🗓 ${escapeHtml(season.month_key || '?')}</span>
+                        ${season.is_test ? '<span style="border-radius:999px;padding:3px 9px;font-size:11px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.15);">🧪 テスト</span>' : ''}
                         <span style="font-size:11px;font-weight:700;color:var(--t-body);">ハード日 ${hdLabel} · Lv${season.current_level || 1}</span>
-                        <button onclick="openOpsSeasonEditModal()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">✏️ 確認・編集</button>
+                        <button onclick="openOpsSeasonEditModal()" style="margin-left:auto;padding:5px 11px;min-height:40px;border-radius:999px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">✏️ 確認・編集</button>
                     </div>
                     <div style="display:flex;gap:5px;flex-wrap:wrap;">${pills}</div>
                 </div>`;
