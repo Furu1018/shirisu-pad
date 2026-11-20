@@ -2731,7 +2731,7 @@
         .ops-atk-f { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
         .ops-atk-f button { padding: 5px 11px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
         .ops-atk-f button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
-        .ops-atk-row { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; flex-wrap: wrap; }
+        .ops-atk-row { display: flex; align-items: center; gap: 15px 6px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; flex-wrap: wrap; }   /* 折り返した行どうしは 15px (ボタン 27px + 15 = 中心の間隔 42px — hit40 の 40px が上下で重ならない: 320px で「凸していない」が「📥 取り込む」の真下に来る) */
         .ops-atk-row:first-child { border-top: none; }
         .ops-atk-row .t { flex: none; width: 38px; font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 800; color: var(--t-muted); }
         .ops-atk-row .b { flex: none; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 900; color: var(--t-ink); }

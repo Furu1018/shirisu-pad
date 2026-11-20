@@ -28,11 +28,13 @@ const DONE = {
     'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366'],   // 運営タブの小タブ (段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面)
     // ⚔️ 戦況 (2026-11-17): 当日は 締め凸検索・結果の取り込み が畳まれて出る → 開かない場面 1 つ (畳んだ見出し) + :open (全部開く)。前日は空の文。
     //   :finish = ボスの「締め凸検索」を押した所 (候補・🏁・プラン・📋 コピー) / :intake = 取り込みの下書き (ボス・ダメージ・Lv・やめる / 登録する)
-    'ops/戦況': ['ops-eve:390:open', 'ops-day:390', 'ops-day:390:open', 'ops-day:1366:open', 'ops-day:390:open+finish', 'ops-day:1366:open+finish', 'ops-day:390:open+intake', 'ops-day:1366:open+intake'],
+    //   320px = 📥 の行のボタンが折り返して上下に並ぶ幅 (2026-11-20 Codex 監査: 「凸していない」が「📥 取り込む」の真下に来て押せる範囲が重なっていた → 行の row-gap)
+    'ops/戦況': ['ops-eve:390:open', 'ops-day:390', 'ops-day:390:open', 'ops-day:320:open', 'ops-day:1366:open', 'ops-day:390:open+finish', 'ops-day:1366:open+finish', 'ops-day:390:open+intake', 'ops-day:1366:open+intake'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
-// SCENES=ops-day:390:open,ops-day:1366 で場面を差し替えて下調べできる (落ちない・一覧だけ)
+// TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ)。SCENES は TABS といっしょに使う
 const SCENES = (process.env.SCENES || '').split(',').filter(Boolean);
+if (SCENES.length && !ONLY.length) { console.error('NG: SCENES は TABS といっしょに指定してください (例: TABS=ops/戦況 SCENES=ops-day:320:open)'); process.exit(2); }
 const PLAN = ONLY.length ? Object.fromEntries(ONLY.map(t => [t, SCENES.length ? SCENES : DONE[t] || ['member:390', 'ops-eve:390', 'ops-day:390', 'ops-day:1366']])) : DONE;
 const STRICT = (!ONLY.length || ONLY.every(t => DONE[t])) && !SCENES.length;
 

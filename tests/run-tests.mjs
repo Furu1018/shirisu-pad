@@ -2411,6 +2411,7 @@ test('★ 段階 2 の物差し (⚔️ 戦況・2026-11-17): 練習の場面に
     assert.equal(Number((rule('.db-others').match(/border-radius: (\d+)px;/) || [])[1]), 14, '盤に載らない凸の箱の角丸が物差しから外れた');
     // 結果の取り込み: 行のボタンに hit40 → 行の中心の間隔を 41.4px 以上に (行の余白 7px・.src の余白 6px。40.4px だと当たり判定の丸めで上下の行と取り合う)・横には広げない (6px の間で並ぶ)
     assert.match(rule('.ops-atk-row'), /padding: 7px 0;/, '取り込みの行の余白が狭い (hit40 が上下の行のボタンを取る)');
+    assert.match(rule('.ops-atk-row'), /gap: 15px 6px;/, '取り込みの行が折り返したときの上下の間が狭い (320px で「凸していない」が「📥 取り込む」の真下に来て押せる範囲が重なる)');
     assert.match(rule('.ops-atk-row .src'), /padding: 6px 2px;/, '「✓ 凸の記録で付けた ›」の余白が狭い');
     assert.match(html, /\n\s*\.ops-atk-row \.hit40::before \{ left: 0 !important; right: 0 !important; \}/, '行のボタンの押せる範囲が横に重なる');
     assert.match(rule('.ops-atk-row .fl'), /font-size: 11px;/, '食い違いの印が 11px でない');
