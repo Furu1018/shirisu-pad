@@ -2998,7 +2998,8 @@
         .mt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; color: var(--t-ink); }
         .mt-hr { font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
         .mt-lv { font-size: 11px; font-weight: 900; color: var(--ops-deep); }
-        .mt-chip { font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }   /* 札の中で折らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた・2026-11-21) — 入らなければ札ごと次の行へ */
+        .mt-chip { display: inline-block; max-width: 100%; font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; word-break: keep-all; }   /* 札を行の途中で切らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた・2026-11-21): 入らなければ札ごと次の行へ。
+           nowrap にしない — 320px で再編成時間の「17:00 から」がボタンから 10px はみ出す。それでも入らない札だけ、空白の所で札の中を 2 行に (keep-all = 日本語の字の間では切らない) */
         .mt-chip.now { background: var(--ops-solid); color: var(--ops-ink); } .mt-chip.past { color: var(--t-muted); }
         .mt-none { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--t-muted); }
         .mt-me { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }

@@ -2465,8 +2465,10 @@ test('★ 段階 2 の物差し (📅 レイド予定表・2026-11-21): 練習�
     assert.match(rule('.rt-state'), /font-size: 14px;/, '状態の行の文字が物差しから外れた');
     // 模擬の表 (📅 みんなの模擬・👥 ▶︎ 模擬ダメージ表): 全体の tbody td は PC 幅だけ 13px → 表の側で 12px に決める (名前の列が PC 幅だけ 13px だった)
     assert.match(html, /\n\s*\.mk-tbl td \{ font-size: 12px;/, '模擬の表の文字が全体の tbody td (PC 幅 13px) に負けている');   // 「.mk-tbl th, .mk-tbl td {」もあるので直接見る
-    // 「いま」「⏱ 再編成中」の札は札の中で折らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた — 物差しの検査では拾えない)
-    assert.match(html, /\n\s*\.mt-chip \{ [^}]*white-space: nowrap;/, '「いま」の札が札の中で 2 行に折れる');   // 「.obb .nm .mt-chip {」もあるので直接見る
+    // 「いま」「17:00 から」の札は行の途中で切らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた — 物差しの検査では拾えない)。
+    //   札ごと次の行へ送る (inline-block)・ボタンからはみ出さない (max-width・nowrap にしない = 320px で「17:00 から」が 10px はみ出す)・日本語の字の間では切らない (keep-all)
+    assert.match(html, /\n\s*\.mt-chip \{ display: inline-block; max-width: 100%; [^}]*word-break: keep-all;/, '「いま」の札が行の途中で 2 行に折れる / 長い札がボタンからはみ出す');   // 「.obb .nm .mt-chip {」もあるので直接見る
+    assert.ok(!/\n\s*\.mt-chip \{[^}]*white-space: nowrap/.test(html), '札を nowrap にした (320px で「17:00 から」がブロックのボタンからはみ出す)');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
