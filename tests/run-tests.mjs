@@ -2451,6 +2451,23 @@ test('★ 段階 2 の物差し (👑 マスター・2026-11-20): 1 人 1 行の
     assert.match(rule('.roles-row'), /min-height: 40px;/, '運営担当の行が 40px 未満に戻った');
     for (const sel of ['.obk-btn', '.obk-rb-btn, .obk-rb-on', '.gr-btn', '.gr-seg', '.dc-ops-testlink']) assert.match(rule(sel), /min-height: 40px;/, sel + ' が 40px 未満に戻った');
 });
+test('★ 段階 2 の物差し (📅 レイド予定表・2026-11-21): 練習の場面に出ない部品も物差しどおり — 再編成時間の帯・古い版の「更新する」・PC 幅の模擬の表', () => {
+    const html = _perfHtml;
+    const rule = (sel) => { const k = ' ' + sel + ' {'; const i = html.indexOf(k); assert.ok(i > 0 && html.indexOf(k, i + 1) < 0, sel + ' の規則が無い / 2 つある'); return html.slice(i, html.indexOf('}', i)); };
+    // ⏱ 再編成時間の帯 (練習のシーズンは 0 分 = 出ない): 文字 12px (角丸 8 は 🧱 の節が見る)
+    assert.match(rule('.ob-rebuild, .rt-rebuild, .mt-rebuild'), /font-size: 12px;/, '再編成時間の帯の文字が物差しから外れた');
+    // ✅ 確認しました と、互換ゲートで古い版のときだけ出る「更新する」は同じ形 (.rt-ack) — 40px・12px (✅ は練習の当日に出るが、出なくなっても見張れるように)
+    assert.ok(html.includes('_gateReloadHtml(\'<button type="button" class="rt-ack" onclick="_reloadFresh()">更新する</button>\')'), '古い版の「更新する」が .rt-ack でない');
+    assert.match(rule('.rt-ack'), /min-height: 40px;/, '✅ 確認しました / 更新する が 40px 未満に戻った');
+    assert.match(rule('.rt-ack'), /font-size: 12px;/, '✅ 確認しました / 更新する の文字が物差しから外れた');
+    // 見出しの右の小さい数字 (月・完了 N / M 凸・5 属性そろった人) と 状態の行 (まだ配信されていません / ✅ 決定)
+    assert.match(rule('.rt-meta'), /font-size: 11px;/, 'カードの見出しの右の数字が物差しから外れた');
+    assert.match(rule('.rt-state'), /font-size: 14px;/, '状態の行の文字が物差しから外れた');
+    // 模擬の表 (📅 みんなの模擬・👥 ▶︎ 模擬ダメージ表): 全体の tbody td は PC 幅だけ 13px → 表の側で 12px に決める (名前の列が PC 幅だけ 13px だった)
+    assert.match(html, /\n\s*\.mk-tbl td \{ font-size: 12px;/, '模擬の表の文字が全体の tbody td (PC 幅 13px) に負けている');   // 「.mk-tbl th, .mk-tbl td {」もあるので直接見る
+    // 「いま」「⏱ 再編成中」の札は札の中で折らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた — 物差しの検査では拾えない)
+    assert.match(html, /\n\s*\.mt-chip \{ [^}]*white-space: nowrap;/, '「いま」の札が札の中で 2 行に折れる');   // 「.obb .nm .mt-chip {」もあるので直接見る
+});
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });

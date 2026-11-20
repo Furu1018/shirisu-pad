@@ -2904,7 +2904,7 @@
         button.db-tag { cursor: pointer; min-height: 40px; }   /* ⚔️ ✓ 凸の記録の押す札は 40px (当日いちばん押す・押し間違えると別の人に ✓ が付き、外れた 📌 は取り消しでも戻らない)。📅 の札は読むだけの span なので 30px のまま */
         button.db-tag:disabled { cursor: progress; opacity: .55; }
         .db-others { margin-top: 8px; padding: 7px 9px; border-radius: 14px; border: 1.5px dashed var(--line); }
-        .db-mine { margin: 0 0 8px; padding: 7px 10px; border-radius: 10px; background: var(--ops-bg); font-size: 12px; font-weight: 800; color: var(--ops-deep); line-height: 1.6; }
+        .db-mine { margin: 0 0 8px; padding: 7px 10px; border-radius: 8px; background: var(--ops-bg); font-size: 12px; font-weight: 800; color: var(--ops-deep); line-height: 1.6; }
         .ob-tray { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 11px; }
         .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
@@ -2998,7 +2998,7 @@
         .mt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; color: var(--t-ink); }
         .mt-hr { font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
         .mt-lv { font-size: 11px; font-weight: 900; color: var(--ops-deep); }
-        .mt-chip { font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; }
+        .mt-chip { font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }   /* 札の中で折らない (390px の 3 列のブロックのボタンで「い / ま」と 2 行に折れていた・2026-11-21) — 入らなければ札ごと次の行へ */
         .mt-chip.now { background: var(--ops-solid); color: var(--ops-ink); } .mt-chip.past { color: var(--t-muted); }
         .mt-none { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--t-muted); }
         .mt-me { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 8px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); }
@@ -3034,16 +3034,12 @@
         /* 📅 レイド予定表 (S5)。色はトークンだけ (時間割の .mt-* と模擬表の .mk-* を使い回す) */
         .rt-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
         .rt-title { font-size: 14px; font-weight: 800; color: var(--t-ink); letter-spacing: 0.2px; }
-        .rt-meta { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .rt-meta { font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .rt-note { margin: 4px 0; font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.6; }
-        .rt-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; font-weight: 800; color: var(--t-ink); }
-        .rt-ack { border: none; border-radius: 999px; padding: 9px 16px; font: inherit; font-size: 12.5px; font-weight: 900; color: var(--on-fill); background: var(--ops-solid); cursor: pointer; }
+        .rt-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; font-weight: 800; color: var(--t-ink); }
+        .rt-ack { border: none; border-radius: 999px; padding: 9px 16px; min-height: 40px; font: inherit; font-size: 12px; font-weight: 900; color: var(--on-fill); background: var(--ops-solid); cursor: pointer; }
         .rt-ack:disabled { opacity: .6; cursor: default; }
         .rt-acked { font-size: 12px; font-weight: 900; color: var(--ok-deep); }
-        .rt-mine { margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--ops-bg); color: var(--ops-deep); font-size: 12px; font-weight: 800; line-height: 1.55; overflow-wrap: anywhere; }
-        .rt-blk-past > summary { list-style: none; cursor: pointer; }
-        .rt-blk-past > summary::-webkit-details-marker { display: none; }
-        .rt-e-sub { font-weight: 700; color: var(--t-muted); }
         .mk-chip.ro { cursor: default; }
         .mk-row-me td { background: var(--ops-bg); }
         /* 📅 レイド予定表のみんなの模擬: 属性のマスはインラインの地色を持つので、自分の行は地色ではなく上下の線で示す (S5 レビュー RT-6)。
@@ -3056,7 +3052,7 @@
         .mk-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
         .mk-tbl th, .mk-tbl td { padding: 4px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); white-space: nowrap; }
         .mk-tbl th { font-size: 10px; font-weight: 800; color: var(--t-muted); line-height: 1.3; }
-        .mk-tbl td { font-variant-numeric: tabular-nums; }
+        .mk-tbl td { font-size: 12px; font-variant-numeric: tabular-nums; }   /* 全体の tbody td (PC 幅 13px) に負けないよう表の側で決める (📅 の名前の列が PC 幅だけ 13px だった・2026-11-21) */
         .mk-name { border: 0; background: transparent; color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; padding: 2px 0; }
         .mk-dl { font-size: 10px; font-weight: 800; color: var(--t-muted); } .mk-dl.warn { color: var(--warn-deep); }
         .mk-chip { display: inline-block; margin: 1px 2px 1px 0; padding: 2px 7px; border-radius: 8px; border: 2px solid transparent; background: var(--card); color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; cursor: pointer; }
