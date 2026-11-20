@@ -172,7 +172,12 @@ const runScene = async (tab, scene) => {
             let promoted = true;
             if (sub === 'マスター') promoted = await ev(`(async () => { const P = window.PAD_PRACTICE; const row = P && P.db && P.db.tables.players.find(x => String(x.id) === String(P.ops && P.ops.id)); if (!row) return false; row.ops_role = 'master'; await _syncOpsRole(); if (!document.body.classList.contains('ops-mode')) toggleOpsMode(); return document.body.classList.contains('ops-master') && document.body.classList.contains('ops-mode'); })()`);   // master は 🛠 の記憶で運営⇄メンバー (練習の端末は記憶が空 = メンバーになる) → 運営の画面にする
             let active = promoted ? await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`) : 'マスターにできない';
-            if (sub && active === 'tab-' + tabId) {
+            if (sub && active === 'tab-' + tabId && tabId === 'slv-ranking') {
+                // 分析の画面 ('slv-ranking/review' = 🛡 全体分析・fururi・growth・sim・gb): 上のセグメントのボタンを押す (メンバーが押すのと同じ)。押したあと、その画面の部品が見えていること
+                const hit = await ev(`(() => { const b = document.querySelector('#tab-slv-ranking .ana-seg button[data-view=' + ${JSON.stringify(JSON.stringify(sub))} + ']'); if (!b) return false; b.click(); return true; })()`);
+                const shown = hit && await ev(`[...document.querySelectorAll('#tab-slv-ranking [data-slv-view=' + ${JSON.stringify(JSON.stringify(sub))} + ']')].some(e => !e.hidden && e.getClientRects().length > 0)`);
+                if (!shown) active = '分析の画面「' + sub + '」を開けない';
+            } else if (sub && active === 'tab-' + tabId) {
                 // 小タブは、タブの中身が出てから押す (運営タブは盤面を読んでから小タブを描く)
                 let hit = false;
                 for (let i = 0; i < 20 && !hit; i++) { await wait(500); hit = await ev(`(() => { const b = [...document.querySelectorAll('#opsSubTabs button')].find(x => x.textContent.includes(${JSON.stringify(sub)})); if (!b) return false; b.click(); return true; })()`); }
@@ -237,6 +242,29 @@ const runScene = async (tab, scene) => {
                     const want = { mine: ['#raidTimetableBody .db-mine', '★ あなたの凸: '], nomine: ['#raidTimetableBody .rt-note', '決まったブロックに、あなたの凸はありません'], ack: ['#raidStatusBody .rt-ack', '✅ 確認しました'], acked: ['#raidStatusBody .rt-acked', '✅ 確認済み'] }[a];
                     const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return [...document.querySelectorAll(${JSON.stringify(want[0])})].some(e => vis(e) && e.textContent.includes(${JSON.stringify(want[1])})); })()`);
                     if (!ok) active = '「' + want[1] + '」が見えない';
+                } else if (a.startsWith('click=')) {
+                    // 汎用 (2026-11-21 分析から): 見えている最初の部品を押す (結果まとめ・グラフの切り替え・開閉・モードなど)。選択子に ':' と '+' は使えない (場面の区切り)
+                    const q = a.slice(6);
+                    const ok = await ev(`(() => { const e = [...document.querySelectorAll(${JSON.stringify(q)})].find(x => x.getClientRects().length > 0); if (!e) return false; e.click(); return true; })()`);
+                    if (!ok) { active = '「' + q + '」を押せない'; break; }
+                    await settle();
+                } else if (a.startsWith('pick=')) {
+                    // 汎用: select の最初の空でない選択肢を選んで change を送る (シミュレータのプレイヤーなど)
+                    const q = a.slice(5);
+                    const ok = await ev(`(() => { const s = document.querySelector(${JSON.stringify(q)}); const o = s && [...s.options].find(x => x.value); if (!o) return false; s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+                    if (!ok) { active = '「' + q + '」で選べない'; break; }
+                    await settle();
+                } else if (a.startsWith('type=')) {
+                    // 汎用: 入力欄に値を入れて input を送る。type=#fsimDamage=30 (最後の = の後ろが値)
+                    const k = a.lastIndexOf('='); const q = a.slice(5, k), val = a.slice(k + 1);
+                    const ok = k > 5 && await ev(`(() => { const e = document.querySelector(${JSON.stringify(q)}); if (!e) return false; e.value = ${JSON.stringify(val)}; e.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+                    if (!ok) { active = '「' + q + '」に入れられない'; break; }
+                    await settle();
+                } else if (a.startsWith('need=')) {
+                    // 汎用: その部品が見えていること (押した・選んだ結果が出たか。出ないまま外れ 0 で通さない)
+                    const q = a.slice(5);
+                    const ok = await ev(`[...document.querySelectorAll(${JSON.stringify(q)})].some(e => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden')`);
+                    if (!ok) { active = '「' + q + '」が見えない'; break; }
                 } else { active = '知らない動作: ' + a; break; }
             }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);

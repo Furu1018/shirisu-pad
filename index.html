@@ -1349,7 +1349,7 @@
             align-items: center;
             padding: 3px 9px;
             border-radius: 999px;
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.2px;
             background: var(--s2);
@@ -1358,7 +1358,7 @@
         /* ========== Table (ClaudeDesign) ========== */
         .data-table {
             overflow-x: auto;
-            border-radius: 13px;
+            border-radius: 14px;
             border: 1px solid rgba(var(--ink-rgb), 0.06);
         }
 
@@ -1380,7 +1380,7 @@
         tbody td {
             padding: 10px 14px;
             border-bottom: 1px solid var(--s1);
-            font-size: 13px;
+            font-size: 14px;
             color: var(--t-ink)}
 
         tbody tr:last-child td { border-bottom: none; }
@@ -1416,11 +1416,12 @@
             align-items: center;
             gap: 4px;
             padding: 6px 14px;
+            min-height: 40px;
             border-radius: 20px;
             border: 1px solid rgba(var(--ink-rgb), 0.14);
             background: transparent;
             color: var(--t-ink);
-            font-size: 13px;
+            font-size: 14px;
             cursor: pointer;
             transition: all 0.2s}
 
@@ -1434,7 +1435,7 @@
            上段=自分のPT (主役)、下段=⚔ 相手ボス。--fa / --fa-soft は各ボタンの inline style で注入 */
         .fsim-attr-btn {
             display: flex; flex-direction: column; align-items: center; gap: 3px;
-            padding: 9px 2px 7px; border-radius: 12px; cursor: pointer;
+            padding: 9px 2px 7px; border-radius: 14px; cursor: pointer;
             border: 1.5px solid transparent;
             background: var(--fa-soft);
             transition: all 0.15s;
@@ -1445,7 +1446,7 @@
         .fsim-attr-btn .fsim-attr-name { font-size: 11px; font-weight: 900; color: var(--fa); letter-spacing: 0.2px; white-space: nowrap; }
         .fsim-attr-btn .fsim-attr-vs {
             display: inline-flex; align-items: center; gap: 2px;
-            font-size: 9px; font-weight: 800; color: var(--t-muted); white-space: nowrap}
+            font-size: 11px; font-weight: 800; color: var(--t-muted); white-space: nowrap}
         .fsim-attr-btn .fsim-attr-vs img { width: 11px; height: 11px; opacity: 0.85; }
         .fsim-attr-btn.active {
             background: var(--fa); border-color: var(--fa);
@@ -1461,7 +1462,8 @@
            溝に収まる2択は ana-seg、独立した並列ボタンはこちら */
         .sim-mode-btn {
             padding: 8px 14px;
-            border-radius: 10px;
+            min-height: 40px;
+            border-radius: 8px;
             border: none;
             background: var(--s2);
             color: var(--t-body);
@@ -1890,7 +1892,7 @@
             border: 2px solid var(--t-ink);
             background: transparent;
             color: var(--t-ink);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             display: flex; align-items: center; justify-content: center}
@@ -2173,11 +2175,12 @@
             align-items: center;
             gap: 5px;
             padding: 5px 10px;
+            min-height: 40px;
             border-radius: 20px;
             border: 2px solid var(--btn-color);
             background: var(--btn-color);
             color: var(--on-fill);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s, background 0.2s;
@@ -2199,10 +2202,10 @@
         .stat-card {
             background: var(--s1);
             border: 1px solid rgba(var(--ink-rgb), 0.04);
-            border-radius: 13px;
+            border-radius: 14px;
             padding: 14px 16px}
 
-        .stat-label { font-size:10.5px; font-weight: 800; letter-spacing: 0.6px; color: var(--t-muted); margin-bottom: 5px}
+        .stat-label { font-size:11px; font-weight: 800; letter-spacing: 0.6px; color: var(--t-muted); margin-bottom: 5px}
         .stat-value { font-size: 20px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.3px}
 
         /* ========== Chart container ========== */
@@ -2390,7 +2393,7 @@
         /* 分析タブ: 実績⇄ふるり値 セグメント (見た目1タブ・実体2タブの切替UI — TAB_REGISTRY の navTab 参照) */
         .ana-seg { display:flex; gap:2px; background:var(--line); border-radius:999px; padding:3px; width:fit-content; margin:2px 2px 12px}
         .ana-seg button { border:none; background:transparent; color:var(--t-body); font-family:inherit;
-            font-size:11.5px; font-weight:800; padding:7px 18px; border-radius:999px; cursor:pointer; white-space:nowrap}
+            font-size:12px; font-weight:800; padding:7px 18px; min-height:40px; border-radius:999px; cursor:pointer; white-space:nowrap}
         .ana-seg button.active { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px rgba(20,22,26,0.12)}
         /* 4分割セグ (実績/ふるり値/シミュレータ/GB比較) は fit-content だと画面幅を超える —
            全幅+均等割りで収め、狭い端末では絵文字を落として文字を守る (実機FB 2026-08-05) */
@@ -2507,13 +2510,13 @@
         .dc-card-tight .dc-table-wrap { margin: 0 -14px -12px; }
         .dc-table {
             width: 100%; border-collapse: separate; border-spacing: 0;
-            font-size: 13px;
+            font-size: 14px;
         }
         .dc-table thead th {
             background: var(--s1);
             color: var(--t-muted);
             padding: 9px 12px;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 800;
             letter-spacing: 1px;
             text-align: left;
@@ -2523,7 +2526,7 @@
         .dc-table tbody td {
             padding: 9px 12px;
             border-bottom: 1px solid var(--s1);
-            font-size: 13px;
+            font-size: 14px;
             color: var(--t-ink);
             vertical-align: middle;
             line-height: 1.3}
@@ -3819,8 +3822,8 @@
                     <div id="rankingPageSubtitle" style="font-size:11px;color:var(--t-muted);margin-top:3px;letter-spacing:0.2px;">読み込み中...</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了</div>
-                    <div id="rankingComparisonLabel" style="font-size:10px;font-weight:700;color:var(--t-muted);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">&nbsp;</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:0.8px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了</div>
+                    <div id="rankingComparisonLabel" style="font-size:11px;font-weight:700;color:var(--t-muted);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">&nbsp;</div>
                 </div>
             </div>
 
@@ -3839,18 +3842,18 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:8px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">属性別ダメージ分析</div>
-                        <div style="font-size:10.5px;color:var(--t-muted);margin-top:2px;">各プレイヤーの本番3凸の属性内訳</div>
+                        <div style="font-size:11px;color:var(--t-muted);margin-top:2px;">各プレイヤーの本番3凸の属性内訳</div>
                     </div>
-                    <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:var(--s2);font-size:11px;font-weight:800;color:var(--t-body);cursor:pointer;padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;">
+                    <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:var(--s2);font-size:11px;font-weight:800;color:var(--t-body);cursor:pointer;padding:6px 11px;min-height:40px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;">
                         <span data-sp-icon="chart" data-sp-size="14"></span> <span id="statsToggleText">結果まとめ</span> <span id="statsToggleArrow">▼</span>
                     </button>
                 </div>
                 <!-- 統計 (折り畳み) -->
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
                 <!-- グラフモード切替: SLv×ダメージ散布図 (SLvの割に出てる人が分かる) ⇄ 属性内訳の積み上げ棒 -->
-                <div style="display:flex;gap:2px;margin-top:8px;background:var(--s2);border-radius:9px;padding:2px;width:fit-content;max-width:100%;">
-                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📊 属性内訳</button>
-                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
+                <div style="display:flex;gap:2px;margin-top:8px;background:var(--s2);border-radius:8px;padding:2px;width:fit-content;max-width:100%;">
+                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="padding:5px 11px;min-height:40px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;">📊 属性内訳</button>
+                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;min-height:40px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
                 </div>
                 <!-- 属性トグル (属性内訳モードのみ表示) -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
@@ -3873,14 +3876,14 @@
                 <div class="chart-container">
                     <canvas id="attributeStackedChart"></canvas>
                 </div>
-                <p id="rankChartNote" style="margin:6px 0 0 0;font-size:10.5px;color:var(--t-muted);min-height:14px;"></p>
+                <p id="rankChartNote" style="margin:6px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;"></p>
             </div>
 
             <!-- ② ランキングテーブル -->
             <div class="dc-card dc-card-tight" data-span="5">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ランキング</div>
-                    <span style="font-size:10.5px;color:var(--t-muted);">前月比あり</span>
+                    <span style="font-size:11px;color:var(--t-muted);">前月比あり</span>
                 </div>
                 <div class="dc-table-wrap" data-no-swipe>
                     <table id="resultsTable" class="dc-table">
@@ -3896,13 +3899,13 @@
                             <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--t-muted);">データを読み込み中...</td></tr>
                         </tbody>
                     </table>
-                    <p id="rankingKillNote" style="display:none;margin:8px 2px 0;font-size:10.5px;line-height:1.6;color:var(--warn-deep);"></p>
+                    <p id="rankingKillNote" style="display:none;margin:8px 2px 0;font-size:11px;line-height:1.6;color:var(--warn-deep);"></p>
                 </div>
             </div>
 
             <!-- シーズン切替 -->
-            <div style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
-                <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
+            <div style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:14px;">
+                <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:11px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
             </div>
 
             <!-- ③ NIKKE編成 (折り畳み) -->
@@ -3917,7 +3920,7 @@
                 <div id="charactersSectionBody" style="display:none;margin-top:14px;animation:dcFadeIn 0.2s ease;">
                     <!-- 属性別フィルタ -->
                     <div style="margin-bottom:16px;">
-                        <div style="font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);margin-bottom:9px;">PT属性フィルタ</div>
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);margin-bottom:9px;">PT属性フィルタ</div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="attribute-tab-btn active" data-attribute="ALL" onclick="switchAttributeTab('ALL')">全PT属性</button>
                             <button class="attribute-tab-btn" data-attribute="FIRE" onclick="switchAttributeTab('FIRE')" title="灼熱PT 対 風圧">
@@ -3950,7 +3953,7 @@
 
                     <!-- 編成一覧 -->
                     <div id="teamCompositionsContainer">
-                        <p style="color: var(--t-body); text-align: center; padding: 24px; font-size: 13px;">データを読み込むと表示されます</p>
+                        <p style="color: var(--t-body); text-align: center; padding: 24px; font-size: 14px;">データを読み込むと表示されます</p>
                     </div>
                 </div>
             </div>
@@ -3968,13 +3971,13 @@
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">分析</div>
-                        <button class="fururi-help-btn" data-slv-view="fururi" onclick="openFururiHelp()" title="ふるり値について">?</button>
+                        <button class="fururi-help-btn hit40" data-slv-view="fururi" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
                     <div id="fururiPageSubtitle" data-slv-view="fururi" style="font-size:11px;color:var(--t-muted);margin-top:4px;letter-spacing:0.2px;">SLv補正スコア</div>
                 </div>
                 <div data-slv-view="fururi" style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
-                    <div id="fururiSeasonBadge" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了 · シーズン結果</div>
-                    <div style="text-align:right;font-size:10.5px;color:var(--t-muted);line-height:1.5;"><span style="color:var(--t-strong);font-weight:700;">基準:</span> <span id="fururiBaseInfo">読み込み中...</span></div>
+                    <div id="fururiSeasonBadge" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--ok);background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了 · シーズン結果</div>
+                    <div style="text-align:right;font-size:11px;color:var(--t-muted);line-height:1.5;"><span style="color:var(--t-strong);font-weight:700;">基準:</span> <span id="fururiBaseInfo">読み込み中...</span></div>
                 </div>
             </div>
 
@@ -3999,9 +4002,9 @@
                     <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整</button>
                     <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">上位10名</button>
                 </div>
-                <p id="fururiModeHint" style="font-size:10.5px;color:var(--t-muted);margin:6px 0 0 0;min-height:14px;"></p>
+                <p id="fururiModeHint" style="font-size:11px;color:var(--t-muted);margin:6px 0 0 0;min-height:14px;"></p>
                 <div style="height:1px;background:var(--s2);margin:14px 0 12px;"></div>
-                <div style="font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);margin-bottom:9px;">属性別表示</div>
+                <div style="font-size:11px;font-weight:800;letter-spacing:1.4px;color:var(--t-muted);margin-bottom:9px;">属性別表示</div>
                 <!-- 1列固定: 折り返さず横スクロール (実機FB「2列になる」)。横スクロール要素なので data-no-swipe 必須 -->
                 <div data-no-swipe class="fururi-attr-row">
                     <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
@@ -4027,7 +4030,7 @@
             <div class="dc-card dc-card-tight" data-slv-view="fururi">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ふるり値ランキング</div>
-                    <div id="fururiActiveAttrLabel" style="font-size:10.5px;color:var(--t-muted);">全体</div>
+                    <div id="fururiActiveAttrLabel" style="font-size:11px;color:var(--t-muted);">全体</div>
                 </div>
                 <div class="dc-table-wrap" data-no-swipe>
                     <table id="fururiRankingTable" class="dc-table">
@@ -4042,13 +4045,13 @@
                             <tr><td colspan="3" style="text-align:center;padding:24px;color:var(--t-muted);">データを読み込み中...</td></tr>
                         </tbody>
                     </table>
-                    <p id="fururiKillNote" style="display:none;margin:8px 2px 0;font-size:10.5px;line-height:1.6;color:var(--warn-deep);"></p>
+                    <p id="fururiKillNote" style="display:none;margin:8px 2px 0;font-size:11px;line-height:1.6;color:var(--warn-deep);"></p>
                 </div>
             </div>
 
             <!-- シーズン切替 -->
-            <div data-slv-view="fururi" style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;">
-                <div id="fururiSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
+            <div data-slv-view="fururi" style="display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:14px;">
+                <div id="fururiSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:14px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:11px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
             </div>
 
             <!-- ③ シミュレータ (シミュレータビュー — 旧折り畳みから格上げ。既定は非表示、_setSlvView('sim') で表示) -->
@@ -4128,40 +4131,40 @@
 
                     <!-- ===== Mode A: ダメージ予測 ===== -->
                     <div id="simModeDamage" class="sim-mode-panel">
-                        <p style="font-size: 13px; color: var(--t-muted); margin: 0 0 16px 0;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します。</p>
+                        <p style="font-size: 14px; color: var(--t-muted); margin: 0 0 16px 0;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します。</p>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">プレイヤー選択</label>
-                                <select id="simPlayerSelect" onchange="_simPlayerChanged()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
+                                <select id="simPlayerSelect" onchange="_simPlayerChanged()" style="width: 100%; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
                                     <option value="">-- 選択してください --</option>
                                 </select>
                             </div>
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 700; color: var(--t-muted);"></span></label>
-                                <input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;" placeholder="例: 160">
+                                <input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput()" style="width: 100%; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;" placeholder="例: 160">
                             </div>
                         </div>
                         <!-- 締め凸の置き換え (2026-09-13 ユーザー要望): 撃破した凸は残HP分しか記録されないので、その凸だけ 模擬 (提出があれば自動・端末に記憶) か
                              手入力の値に置き換えて「3分間戦闘した結果」で予測する。判定は slvSimDomain.totalWithKillSubs。_renderSimKillBox が描く -->
-                        <div id="simKillBox" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: var(--s1); border-radius: 12px; border-left: 4px solid var(--warn-solid);"></div>
+                        <div id="simKillBox" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: var(--s1); border-radius: 14px; border-left: 4px solid var(--warn-solid);"></div>
                         <!-- 逆引き (2026-09-13 ユーザー要望「〇〇ダメージ上げるのに必要な SLv」): 目標ダメージ → 届く最小の SLv。
                              入れると目標 SLv に写して予測と順位表も動く。判定は slvSimDomain.requiredSlv -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: end;">
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">逆引き: 目標ダメージ (B)</label>
-                                <input id="simTargetDmgB" type="number" min="0" step="0.1" inputmode="decimal" placeholder="例: 35" oninput="runSimReverse()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-size: 14px; font-family: inherit; box-sizing: border-box;">
+                                <input id="simTargetDmgB" type="number" min="0" step="0.1" inputmode="decimal" placeholder="例: 35" oninput="runSimReverse()" style="width: 100%; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-size: 14px; font-family: inherit; box-sizing: border-box;">
                             </div>
-                            <div id="simReverseResult" style="font-size: 12.5px; font-weight: 800; color: var(--t-ink); line-height: 1.5; min-height: 20px;"></div>
+                            <div id="simReverseResult" style="font-size: 12px; font-weight: 800; color: var(--t-ink); line-height: 1.5; min-height: 20px;"></div>
                         </div>
-                        <div id="simResult" style="display: none; padding: 16px; background: var(--s1); border-radius: 12px; border-left: 4px solid var(--ops-solid);">
+                        <div id="simResult" style="display: none; padding: 16px; background: var(--s1); border-radius: 14px; border-left: 4px solid var(--ops-solid);">
                             <div style="font-size: 12px; color: var(--t-muted); margin-bottom: 4px;">予測ダメージ</div>
                             <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
                                 <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: var(--ops);"></span>
-                                <span id="simDiff" style="font-size: 15px; font-weight: 700;"></span>
+                                <span id="simDiff" style="font-size: 16px; font-weight: 700;"></span>
                             </div>
                             <div id="simCurrentDmgLabel" style="font-size: 12px; color: var(--t-muted); margin-top: 4px;"></div>
                         </div>
-                        <div id="simError" style="display: none; padding: 12px 16px; background: var(--s1); border-radius: 10px; color: var(--t-muted); font-size: 13px;"></div>
+                        <div id="simError" style="display: none; padding: 12px 16px; background: var(--s1); border-radius: 8px; color: var(--t-muted); font-size: 14px;"></div>
                         <div class="data-table" data-no-swipe id="simTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
                                 <thead>
@@ -4179,53 +4182,53 @@
 
                     <!-- ===== Mode B: ふるり値試算 ===== -->
                     <div id="simModeFururi" class="sim-mode-panel" style="display: none;">
-                        <p style="font-size: 13px; color: var(--t-muted); margin: 0 0 16px 0;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます。</p>
+                        <p style="font-size: 14px; color: var(--t-muted); margin: 0 0 16px 0;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます。</p>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">プレイヤー</label>
-                                <select id="fsimPlayerSelect" onchange="onFururiSimPlayerChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
+                                <select id="fsimPlayerSelect" onchange="onFururiSimPlayerChange()" style="width: 100%; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
                                     <option value="">-- 選択してください --</option>
                                 </select>
                             </div>
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">SLv <span id="fsimRaidSlvLabel" style="font-weight: 700; color: var(--t-muted);"></span></label>
                                 <div style="display: flex; gap: 6px; align-items: center;">
-                                    <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 16px; cursor: pointer;">−</button>
-                                    <input id="fsimSlv" type="number" min="1" max="1183" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px; text-align: center;">
-                                    <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 16px; cursor: pointer;">＋</button>
+                                    <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 40px; height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 16px; cursor: pointer;">−</button>
+                                    <input id="fsimSlv" type="number" min="1" max="1183" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px; text-align: center;">
+                                    <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 40px; height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 16px; cursor: pointer;">＋</button>
                                 </div>
                             </div>
                         </div>
 
                         <div style="margin-bottom: 16px;">
-                            <label style="display: block; font-size: 13px; font-weight: 700; color: var(--t-ink); margin-bottom: 4px;">あなたのPT属性</label>
+                            <label style="display: block; font-size: 14px; font-weight: 700; color: var(--t-ink); margin-bottom: 4px;">あなたのPT属性</label>
                             <p style="margin: 0 0 8px 0; font-size: 11px; color: var(--t-muted);">試算したい編成の属性を選択。⚔ の後ろは<strong>そのPTで殴る相手ボス</strong>です</p>
                             <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px;">
                                 <button class="fsim-attr-btn" data-fsim-attr="FIRE" style="--fa:var(--attr-fire-solid);--fa-ink:var(--attr-fire-ink);--fa-soft:#FF3D4414;" onclick="selectFururiSimAttr('FIRE')" title="灼熱PTのダメージを試算 (相手は風圧ボス)">
                                     <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/灼熱.png" alt="灼熱">
                                     <span class="fsim-attr-name">灼熱PT</span>
-                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="">風圧ボス</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="">風圧</span>
                                 </button>
                                 <button class="fsim-attr-btn" data-fsim-attr="WATER" style="--fa:var(--attr-water-solid);--fa-ink:var(--attr-water-ink);--fa-soft:#2E8BFF14;" onclick="selectFururiSimAttr('WATER')" title="水冷PTのダメージを試算 (相手は灼熱ボス)">
                                     <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/水冷.png" alt="水冷">
                                     <span class="fsim-attr-name">水冷PT</span>
-                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="">灼熱ボス</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="">灼熱</span>
                                 </button>
                                 <button class="fsim-attr-btn" data-fsim-attr="ELECTRIC" style="--fa:var(--attr-electric-solid);--fa-ink:var(--attr-electric-ink);--fa-soft:#9B4DFF14;" onclick="selectFururiSimAttr('ELECTRIC')" title="電撃PTのダメージを試算 (相手は水冷ボス)">
                                     <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/電撃.png" alt="電撃">
                                     <span class="fsim-attr-name">電撃PT</span>
-                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="">水冷ボス</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="">水冷</span>
                                 </button>
                                 <button class="fsim-attr-btn" data-fsim-attr="IRON" style="--fa:var(--attr-iron-solid);--fa-ink:var(--attr-iron-ink);--fa-soft:#FF8A2B14;" onclick="selectFururiSimAttr('IRON')" title="鉄甲PTのダメージを試算 (相手は電撃ボス)">
                                     <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/鉄甲.png" alt="鉄甲">
                                     <span class="fsim-attr-name">鉄甲PT</span>
-                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="">電撃ボス</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="">電撃</span>
                                 </button>
                                 <button class="fsim-attr-btn" data-fsim-attr="WIND" style="--fa:var(--ok-solid);--fa-ink:var(--ok-ink);--fa-soft:#18C26B14;" onclick="selectFururiSimAttr('WIND')" title="風圧PTのダメージを試算 (相手は鉄甲ボス)">
                                     <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/風圧.png" alt="風圧">
                                     <span class="fsim-attr-name">風圧PT</span>
-                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="">鉄甲ボス</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="">鉄甲</span>
                                 </button>
                             </div>
                         </div>
@@ -4233,13 +4236,13 @@
                         <div style="margin-bottom: 20px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; flex-wrap: wrap;">
                                 <label style="font-size: 12px; font-weight: 800; color: var(--t-body);">想定ダメージ</label>
-                                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 12px; cursor: pointer;">
+                                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; min-height: 40px; box-sizing: border-box; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 12px; cursor: pointer;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                                     画像から読み取り
                                     <input id="fsimOcrFile" type="file" accept="image/*" onchange="fsimOcrUpload(event)" style="display: none;">
                                 </label>
                             </div>
-                            <input id="fsimDamage" type="number" min="0" step="any" inputmode="decimal" oninput="onFsimDamageInput()" placeholder="例: 32.5 (B単位。桁で入れても可)" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
+                            <input id="fsimDamage" type="number" min="0" step="any" inputmode="decimal" oninput="onFsimDamageInput()" placeholder="例: 32.5 (B単位。桁で入れても可)" style="width: 100%; padding: 8px 12px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
                             <p id="fsimDamagePreview" style="margin: 4px 0 0 0; font-size: 12px; color: var(--t-muted); min-height: 16px;">&nbsp;</p>
                             <p id="fsimOcrStatus" style="margin: 4px 0 0 0; font-size: 12px; color: var(--t-muted); min-height: 16px;">&nbsp;</p>
                             <details id="fsimOcrDebugWrapper" style="display: none; margin-top: 6px;">
@@ -4248,7 +4251,7 @@
                             </details>
                         </div>
 
-                        <div id="fsimResult" style="display: none; padding: 16px; background: var(--s1); border-radius: 12px; border-left: 4px solid var(--ops-solid);">
+                        <div id="fsimResult" style="display: none; padding: 16px; background: var(--s1); border-radius: 14px; border-left: 4px solid var(--ops-solid);">
                             <div style="font-size: 12px; color: var(--t-muted); margin-bottom: 4px;">算出ふるり値</div>
                             <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
                                 <span id="fsimScore" style="font-size: 32px; font-weight: 700; color: var(--ops);"></span>
@@ -4256,7 +4259,7 @@
                             </div>
                             <div id="fsimDetail" style="font-size: 12px; color: var(--t-muted); margin-top: 6px;"></div>
                         </div>
-                        <div id="fsimError" style="display: none; padding: 12px 16px; background: var(--s1); border-radius: 10px; color: var(--t-muted); font-size: 13px;"></div>
+                        <div id="fsimError" style="display: none; padding: 12px 16px; background: var(--s1); border-radius: 8px; color: var(--t-muted); font-size: 14px;"></div>
 
                         <div class="data-table" data-no-swipe id="fsimTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
@@ -18179,7 +18182,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const compLabel = document.getElementById('rankingComparisonLabel');
             if (compLabel) compLabel.textContent = previousMonthKey ? `${currentMonthKey} → ${previousMonthKey} 比較` : `${currentMonthKey}`;
             const seasonCur = document.getElementById('rankingSeasonCurrent');
-            if (seasonCur) seasonCur.innerHTML = `${currentMonthKey} <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span>`;
+            if (seasonCur) seasonCur.innerHTML = `${currentMonthKey} <span style="font-size:11px;font-weight:700;color:var(--t-muted);">(最新)</span>`;
 
             // ふるり値ページ専用ヘッダー
             const fururiSub = document.getElementById('fururiPageSubtitle');
@@ -18187,7 +18190,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const fururiBadge = document.getElementById('fururiSeasonBadge');
             if (fururiBadge) fururiBadge.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:var(--ok-solid);"></span>完了 · ${currentMonthKey} シーズン結果`;
             const fururiSeasonCur = document.getElementById('fururiSeasonCurrent');
-            if (fururiSeasonCur) fururiSeasonCur.innerHTML = `${currentMonthKey} <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span>`;
+            if (fururiSeasonCur) fururiSeasonCur.innerHTML = `${currentMonthKey} <span style="font-size:11px;font-weight:700;color:var(--t-muted);">(最新)</span>`;
 
             renderAll();
             const srcLabel = dataSource === 'supabase' ? 'Supabase' : dataSource === 'json' ? 'ローカルJSON' : 'Supabase + JSON';
@@ -19153,8 +19156,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const mock = mocks && mocks[key] > 0 ? mocks[key] : null;
                 // 出どころを必ず見せる: 手入力 / 模擬から自動 (いまの提出を最初に開いたときに覚える。当時の模擬とは限らない: Codex指摘)
                 const savedAt = cur?.at ? new Date(cur.at) : null;
-                const srcLabel = cur?.src === 'manual' ? ' <span style="font-size:10px;font-weight:900;color:var(--ops);">手入力</span>'
-                    : cur?.src === 'mock' ? ` <span style="font-size:10px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
+                const srcLabel = cur?.src === 'manual' ? ' <span style="font-size:11px;font-weight:900;color:var(--ops);">手入力</span>'
+                    : cur?.src === 'mock' ? ` <span style="font-size:11px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
                 // 何属性の PT で・B何・どのボスに (2026-09-13 ユーザー要望「属性アイコンで分かりやすく」)。ボス番号はその月の本番シーズンから (無ければ出さない)
                 const bossKey = typeof bossAttributeOf === 'function' ? bossAttributeOf({ weakness: key }) : null;
                 // ボス名 (鉄甲デメテル 等) は出さない (実機FB 2026-09-13)。B番号が引けない月だけ属性名で補う
@@ -19163,8 +19166,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const who = `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${key ? renderAttrIcon(key, 14, { title: `${info.attributeJP || ''}PT` }) : ''}${esc(info.attributeJP || '')}PT</span> <span style="color:var(--t-muted);">で凸 →</span> `
                     + `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${bossKey ? renderAttrIcon(bossKey, 14, { title: info.bossAttributeJP || '' }) : ''}${esc(bn)}</span>${lv}`;
                 return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:8px;">
-                    <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.5;">${who}<br><span style="color:var(--t-muted);">記録 (締) ${esc(formatDamage(a.damage))}</span>${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
-                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" data-name="${esc(player.player)}" data-boss="${esc(String(a.bossCode || ''))}" oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
+                    <div style="font-size:12px;color:var(--t-body);min-width:0;line-height:1.5;">${who}<br><span style="color:var(--t-muted);">記録 (締) ${esc(formatDamage(a.damage))}</span>${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
+                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" data-name="${esc(player.player)}" data-boss="${esc(String(a.bossCode || ''))}" oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;min-height:40px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:14px;font-family:inherit;box-sizing:border-box;text-align:right;">
                 </div>`;
             }).join('');
             box.innerHTML = `<div style="font-size:12px;font-weight:900;color:var(--warn-deep);">締め凸の置き換え</div>
@@ -19215,7 +19218,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 return;
             }
             const sign = r.delta > 0 ? '+' : '';
-            out.innerHTML = `<span style="color:var(--ops);font-size:18px;">SLv ${r.slv}</span> <span style="color:${r.delta > 0 ? 'var(--ok)' : 'var(--t-muted)'};">(${sign}${r.delta})</span><br><span style="font-weight:700;color:var(--t-muted);">${escapeHtml(formatDamage(r.predicted))} に届きます</span>`;
+            out.innerHTML = `<span style="color:var(--ops);font-size:20px;">SLv ${r.slv}</span> <span style="color:${r.delta > 0 ? 'var(--ok)' : 'var(--t-muted)'};">(${sign}${r.delta})</span><br><span style="font-weight:700;color:var(--t-muted);">${escapeHtml(formatDamage(r.predicted))} に届きます</span>`;
             if (slvInput) { slvInput.value = String(r.slv); runSimulator(); }
         }
 
@@ -19660,7 +19663,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-width: 280px;">
                         ${comp.characters.map(url =>
                             typeof url === 'string' && url && !url.includes('属性アイコン')
-                                ? `<img loading="lazy" decoding="async" src="${url}" alt="キャラ" style="width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.opacity='0.3'">`
+                                ? `<img loading="lazy" decoding="async" src="${url}" alt="キャラ" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.opacity='0.3'">`
                                 : ''
                         ).join('')}
                     </div>
@@ -19742,7 +19745,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const title = opts.withCount && n > 1
                 ? `3凸のうち ${n}凸が締め凸。${KILL_NOTE}`
                 : KILL_NOTE;
-            return `<span title="${escapeHtml(title)}" style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;font-size:9.5px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.16);vertical-align:middle;white-space:nowrap;">${label}</span>`;
+            return `<span title="${escapeHtml(title)}" style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.16);vertical-align:middle;white-space:nowrap;">${label}</span>`;
         }
 
         function calculateFururiScore(playerDamage, playerSLv, basePlayer, mode = 'classic') {

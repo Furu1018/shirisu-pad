@@ -6,7 +6,20 @@
 メニューの並びと色 / 下メニューの斑点とウェットガラス / 運営モードを名乗る人ごとに覚える) も反映済み。
 **SQL 39〜44 すべて適用済み**。
 
-###### ⏸ 2026-11-21 時点 (どのPCでもここから・いちばん新しい) — 段階 2 の 📅 レイド予定表 を揃えて公開した。次は 分析
+###### ⏸ 2026-11-21 (2) 時点 (職場PC・ブランチ `ruler-ana-2026-11-21` だけにある・**未監査・未 push**) — 分析の 1 回目 (実績・ふるり値・シミュレータ) を揃えた途中
+- **状態**: 職場 PC のローカルのブランチ `ruler-ana-2026-11-21` に 1 commit (main = live = c58f287 のまま)。**Codex 監査・変異テスト・写真の確認・docs / 更新履歴 はまだ**。別の PC では続けられない (push していない)。
+- **分析は 2 回に分けて公開する**: 1 回目 = 実績・ふるり値・シミュレータ (順位表・シーズン・切り替えボタンが共通) / 2 回目 = 全体分析 (外れ 182)・GB比較 (138)・育成 (練習のデータに中身が無く測れない — 測り方から考える)。
+- **やったこと (1 回目)**: 外れ 実績 106・NIKKE編成を開くと 492・ふるり値 107・シミュレータ 14〜29 → すべて 0 (11 場面)。
+  分析の上の切り替え (`.ana-seg button`)・属性のボタン (`.attribute-tab-btn` / `.chart-toggle-btn`)・モード (`.sim-mode-btn`)・結果まとめ・グラフの切り替え・シミュレータの欄 / select / − ＋ / 画像から読み取り を 40px。
+  ふるり値の「?」は 24px の丸のまま `hit40`。順位表 (`.dc-table`) の文字 13 → 14px・見出し 10.5 → 10px (表)・全体の `tbody td` (PC 幅) 13 → 14px・締 の札 9.5 → 9px (表と GB の一覧の中だけ)・NIKKE編成のキャラの角丸 6 → 8・`.badge` 11px。
+  ふるり値試算の PT 属性の「⚔ 風圧ボス」は 11px で 390px の 5 列からはみ出すので「⚔ 風圧」に (説明文と title に「相手ボス」が残る)。
+- **検査**: tests/ruler.mjs に `slv-ranking/<画面>` (分析の画面をセグメントのボタンで開く) と 汎用の動作 `click=選択子` / `pick=選択子` / `type=選択子=値` / `need=選択子` (選択子に : と + は使えない)。**DONE にはまだ足していない**。
+  使った場面: `ranking` = member:390 / member:1366 / `click=#statsToggleInline+need=#statsGrid .stat-card` / `click=#rankChartModeBtnSlv` / `click=[onclick="toggleCharactersSection()"]+need=#charactersSectionBody`・
+  `slv-ranking/fururi` = member:390 / member:1366 / `click=[data-fururi-boss="H.S.T.A."]`・`slv-ranking/sim` = `pick=#simPlayerSelect+type=#simTargetSlv=700+need=#simResult` (390 / 1366) / `click=.sim-mode-btn[data-sim-mode="fururi"]+pick=#fsimPlayerSelect+click=[data-fsim-attr="FIRE"]+type=#fsimDamage=30+need=#fsimResult`。
+- **続きの手順**: ① 写真で崩れを見る (撮影は済み: 390px でタブ +53〜93px — 切り替えが 40px になった分。崩れの有無はまだ見ていない) ② 逆引きの結果・締め凸の置き換えの欄など練習に出ない部品を run-tests で固定 ③ DONE に場面を足す ④ 変異テスト ⑤ docs / CLAUDE.md / 更新履歴 ⑥ Codex 監査 → push。
+  ★ `.ana-seg button` の 40px は 全体分析・育成 のセグメントにも効く (2 回目で一緒に見る)。
+
+###### ⏸ 2026-11-21 時点 (どのPCでもここから・main のいちばん新しい) — 段階 2 の 📅 レイド予定表 を揃えて公開した。次は 分析
 - **状態**: `git pull` だけでよい。main = live (この節を入れた commit)・作業ブランチなし・未 push なし・SQL は 59 のまま (適用待ちなし)。gh は push のときだけ `gh auth switch -u Furu1018`。
 - **✅ 📅 レイド予定表** (外れ 3〜38 → 0・6 場面): 盤は 🧱 組む と共有で揃っていたので、自前の部品だけ — 見出しの右の数字 11px・状態の行 14px・**✅ 確認しました (と古い版の「更新する」) は 40px**・★ あなたの凸の箱の角丸 8。
   **模擬の表 (`.mk-tbl td`) は表の側で 12px** (全体の `tbody td` が PC 幅だけ 13px で、名前の列が PC 幅だけ 13px だった・👥 の模擬ダメージ表は見た目そのまま)。

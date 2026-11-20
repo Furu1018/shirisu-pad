@@ -2342,7 +2342,7 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
     }).sort();
     //   ⚔️ 戦況 (2026-11-17): 📥 の行のボタン (✓ 凸の記録へ・確認する・📥 取り込む・📋 聞く・凸していない・戻す)・残 HP のチェック 2 つ (どちらか 1 つが出る)・凸していない / 🕐 の開閉。summary・label は 2 つ目の class で見分ける
     assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
-        'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
+        'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:openFururiHelp', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
         'summary:hit40', 'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');   // summary:hit40 は 🧱「このブロックのみ」と 👑 🧬「メンバー一覧からまとめて読み取る」(2026-11-20)
     // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
     assert.equal((html.match(/classList\.(?:add|toggle)\(\s*['"]hit40['"]|className\s*\+?=\s*[^;\n]*\bhit40\b/g) || []).length, 0, 'hit40 を JS で付けている (付け先の一覧に出ない)');
@@ -15155,7 +15155,7 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
     test('★ 分析 / ツアー / 設定 / 練習: 押せない・同じ・残骸のボタンを置かない', () => {
         assert.ok(!html.includes('rankingSeasonNav') && !html.includes('fururi-help-footer') && !html.includes('toggleSimulatorSection'), '分析の押せない / 同じ / 残骸のボタンがある');
         assert.ok(html.includes(".attribute-tab-btn[data-attribute]').forEach") && html.includes(".sim-mode-btn[data-sim-mode]').forEach"), 'ほかのボタンを押すと、ふるり値の選択の印が消える');
-        assert.ok(/<button class="fururi-help-btn" data-slv-view="fururi"/.test(html) && /<div id="fururiPageSubtitle" data-slv-view="fururi"/.test(html), 'ふるり値の「?」がほかの分析にも出る');
+        assert.ok(/<button class="fururi-help-btn hit40" data-slv-view="fururi"/.test(html) && /<div id="fururiPageSubtitle" data-slv-view="fururi"/.test(html), 'ふるり値の「?」がほかの分析にも出る');
         assert.ok(html.includes(`\${isLast ? '<div style="width:50px;"></div>' : '<button class="tour-skip" onclick="_skipTour()">スキップ</button>'}`), 'ツアー最後の章に「スキップ」と「完了」が並ぶ');
         assert.ok(!html.includes('_tourJumpAndContinue') && !html.includes('tour-flow'), 'ツアーの残骸がある');
         assert.ok(!html.includes('運営</strong> をONにすると表示されます') && html.includes("openHelpFromSettings('help-finisher')"), '設定の案内 / ガイドの章の行き先が古い');
