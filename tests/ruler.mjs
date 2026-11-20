@@ -82,6 +82,14 @@ const CHECK = `(() => {
                 const vic = st.find(n => n !== e && !e.contains(n) && !n.contains(e) && (n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer'));
                 if (vic) steal.add(where(vic) + ' ' + sig(vic));
             }
+            //   左右も同じ (2026-11-20: 既定の hit40 は左右に 4px 広げる。⚔️ 📥 の行のボタンは 6px の間で並ぶので、広げると隣のボタンの端を取る — 行では left/right 0 にしてある)
+            const bs = getComputedStyle(e, '::before'); const exL = -parseFloat(bs.left), exR = -parseFloat(bs.right);
+            for (const [ex, side] of [[exL, -1], [exR, 1]]) if (ex > 0.5) for (const y of [cy - q.height / 4, cy, cy + q.height / 4]) for (const d of [0.5, ex / 2, ex - 0.5]) {
+                const x = side < 0 ? q.left - d : q.right + d;
+                const st = document.elementsFromPoint(x, y); if (!st.length || !(st[0] === e || e.contains(st[0]))) continue;
+                const vic = st.find(n => n !== e && !e.contains(n) && !n.contains(e) && (n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer'));
+                if (vic) steal.add(where(vic) + ' ' + sig(vic));
+            }
             if (steal.size) out.push(['高さ', 'hit40 の押せる範囲がほかの押せる部品にかかる (' + [...steal].join(' / ') + ')', where(e), sig(e), txt]);
         }
     }
