@@ -2429,9 +2429,12 @@ test('★ 段階 2 の物差し (👑 マスター・2026-11-20): 1 人 1 行の
     const rule = (sel) => { const k = ' ' + sel + ' {'; const i = html.indexOf(k); assert.ok(i > 0 && html.indexOf(k, i + 1) < 0, sel + ' の規則が無い / 2 つある'); return html.slice(i, html.indexOf('}', i)); };
     const has = (s, msg) => assert.ok(html.includes(s), msg);
     // data-dense = 物差しの検査 (tests/ruler.mjs) が 9 / 10px と行の中の小さい部品を認める印。外れを黙らせるために足さないよう、付け先を固定する (どのタグでも・JS で付けない)
-    //   通知状況の表 (1 人 1 行)・育成の識別子の一覧 (.gr-rows)・選んだ人 (.gr-pick)・キャラマスタの一覧・アクティビティの記録 (1 件 1 行)
+    //   通知状況の表 (1 人 1 行)・育成の識別子の一覧と ④ 取れなかった人の一覧 (どちらも .gr-rows)・選んだ人 (.gr-pick)・キャラマスタの一覧・アクティビティの記録 (1 件 1 行)
     const dense = [...html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bdata-dense\b[^>]*)>/g)].map(m => { const id = m[2].match(/\bid="([^"]+)"/); const c = m[2].match(/\bclass="([^"]+)"/); return m[1] + (id ? '#' + id[1] : c ? '.' + c[1].split(/\s+/)[0] : ''); }).sort();
-    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gr-pick', 'div.gr-rows'], 'data-dense の付け先が変わった');
+    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gr-pick', 'div.gr-rows', 'div.gr-rows'], 'data-dense の付け先が変わった');
+    // ④ 取り込みの結果 (取り込んだあとだけ出る・練習の場面に無い): 取れなかった人の一覧は 1 人 1 行 (状態の札 10px を認める)・見出しの人数は 11px (Codex 監査 e27a25b)
+    has('+ `<div class="gr-rows" data-dense>${badRows}</div>`', '取れなかった人の一覧に data-dense が無い');
+    has('<span style="font-weight:800;color:var(--t-muted);font-size:11px;">取れた ${ok.length}人', '取り込みの結果の人数が 11px でない');
     assert.ok(!/dataset\.dense|setAttribute\(\s*['"]data-dense/.test(html), 'data-dense を JS で付けている (上の一覧に出ない)');
     // 🧪 テスト稼働中の帯の ✕ 終了 (リハーサルの間だけ出る)・シーズン制御の 🧪 テスト の札
     has('<button onclick="handleOpsDeleteTestSeason()" style="margin-left:auto;padding:4px 10px;min-height:40px;border-radius:999px;', '🧪 ✕ 終了 が 40px でない');

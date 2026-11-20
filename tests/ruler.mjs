@@ -209,11 +209,11 @@ const runScene = async (tab, scene) => {
                     await settle();
                     // 段階を変えると、開く小タブが段階の既定 (準備 = 👥 メンバー) に戻る → 小タブを押し直す
                     if (called && sub) { await ev(`(() => { const b = [...document.querySelectorAll('#opsSubTabs button')].find(x => x.textContent.includes(${JSON.stringify(sub)})); if (b) b.click(); return !!b; })()`); await settle(); }
-                    const ok = called && await ev(`[...document.querySelectorAll('#tab-ops [data-stage~="${a}"]')].some(e => e.getClientRects().length)`);
+                    const ok = called && await ev(`[...document.querySelectorAll('#tab-ops button[data-stage~="${a}"]')].some(e => e.getClientRects().length)`);   // ボタンが見えていること (説明文だけ残ったのを通さない)
                     if (!ok) active = '段階を「' + a + '」にできない';
                 } else if (a === 'maint') {
-                    // 👑 マスター › その他 › メンテナンス の、見出しを押して開くカード 2 枚 (最近のアクティビティ・キャラマスタ) を開く (見出しを押すのと同じ関数)
-                    await ev(`(() => { for (const [id, fn] of [['settingsActivityBody', 'toggleSettingsActivity'], ['settingsMasterBody', 'toggleSettingsMaster']]) { const b = document.getElementById(id); if (b && getComputedStyle(b).display === 'none' && typeof window[fn] === 'function') window[fn](); } return 1; })()`);
+                    // 👑 マスター › その他 › メンテナンス の、見出しを押して開くカード 2 枚 (最近のアクティビティ・キャラマスタ) を、見出しを押して開く
+                    await ev(`(() => { for (const [id, fn] of [['settingsActivityBody', 'toggleSettingsActivity'], ['settingsMasterBody', 'toggleSettingsMaster']]) { const b = document.getElementById(id); const h = document.querySelector('#tab-ops [onclick="' + fn + '()"]'); if (b && h && getComputedStyle(b).display === 'none') h.click(); } return 1; })()`);
                     await settle();
                     if (!(await ev(`['settingsActivityBody', 'settingsMasterBody'].every(id => { const b = document.getElementById(id); return !!b && b.getClientRects().length > 0; })`))) active = 'アクティビティ・キャラマスタが開かない';
                 } else if (a === 'details') {
