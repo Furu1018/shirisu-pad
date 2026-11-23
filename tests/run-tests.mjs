@@ -2470,6 +2470,33 @@ test('★ 段階 2 の物差し (📅 レイド予定表・2026-11-21): 練習�
     assert.match(html, /\n\s*\.mt-chip \{ display: inline-block; max-width: 100%; [^}]*word-break: keep-all;/, '「いま」の札が行の途中で 2 行に折れる / 長い札がボタンからはみ出す');   // 「.obb .nm .mt-chip {」もあるので直接見る
     assert.ok(!/\n\s*\.mt-chip \{[^}]*white-space: nowrap/.test(html), '札を nowrap にした (320px で「17:00 から」がブロックのボタンからはみ出す)');
 });
+test('★ 段階 2 の物差し (分析 1 回目 = 実績・ふるり値・シミュレータ・2026-11-24): 練習の場面に出ない部品も物差しどおり', () => {
+    const html = _perfHtml;
+    const cut = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i > 0 && j > i, a + ' の範囲が見つからない'); return html.slice(i, j); };
+    // ① 画面の HTML (実績のタブ全体・ふるり値の頭とカード・シミュレータ) の文字と角丸は物差しの値だけ — エラーの箱・OCR の詳細など、練習で出ない所も含めて
+    const parts = [cut('<div id="tab-ranking" class="tab-content tab-page">', '<!-- ========== Tab: 分析·ふるり値'),
+        cut('<div id="tab-slv-ranking" class="tab-content tab-page">', '<!-- ③ シミュレータ (シミュレータビュー'),
+        cut('<div class="dc-card" data-slv-view="sim" hidden>', '<!-- ========== (旧 Tab: NIKKE編成')];
+    for (const p of parts) {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(['11', '12', '14', '16', '20', '24', '28', '32'].includes(m[1]), '分析の HTML に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(['4', '8', '14', '22', '999'].includes(m[1]), '分析の HTML に物差しの外の角丸 ' + m[1] + 'px');
+    }
+    // ② シミュレータの 締め凸の置き換え (締め凸のある人を選んだときだけ): 欄は 40px・14px / 手入力・模擬から自動 の札 11px / 説明 12px
+    assert.ok(html.includes('oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;min-height:40px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:14px;'), '締め凸の置き換えの欄が 40px / 14px でない');
+    assert.ok(html.includes(`' <span style="font-size:11px;font-weight:900;color:var(--ops);">手入力</span>'`) && html.includes('` <span style="font-size:11px;font-weight:900;color:var(--warn-deep);">模擬から自動'), '締め凸の置き換えの札が 11px でない');
+    assert.ok(html.includes('<div style="font-size:12px;color:var(--t-body);min-width:0;line-height:1.5;">${who}<br>'), '締め凸の置き換えの説明が 12px でない');
+    // ③ 締 の札は 9px (順位表と GB の一覧 = 表と 1 人 1 行の一覧の中だけ)
+    assert.ok(html.includes('padding:1px 6px;border-radius:999px;font-size:9px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.16);'), '締 の札が 9px でない');
+    // ④ ふるり値試算の PT 属性は「⚔ 風圧」(11px で「⚔ 風圧ボス」は 390px の 5 列からはみ出す — 相手ボスであることは上の説明文と title が言う)
+    const vs = [...html.matchAll(/<span class="fsim-attr-vs">([\s\S]*?)<\/span>/g)].map(m => m[1]);
+    assert.equal(vs.length, 5, 'ふるり値試算の PT 属性が 5 つでない');
+    assert.ok(vs.every(t => !t.includes('ボス')), '「⚔ 〇〇ボス」に戻した (11px で 5 列からはみ出す)');
+    assert.match(html, /\n\s*\.fsim-attr-btn \.fsim-attr-vs \{[^}]*font-size: 11px;/, '「⚔ 〇〇」の文字が 11px でない');
+    // ⑤ シミュレータの 2 列の欄は、狭い幅 (320px) では縦に積む (− ＋ が 40px になって、選択欄が「--」だけに潰れていた)
+    const sim = parts[2];
+    assert.equal((sim.match(/grid-template-columns: repeat\(auto-fit, minmax\(140px, 1fr\)\); gap: 16px;/g) || []).length, 3, 'シミュレータの欄が狭い幅で縦に積まれない');
+    assert.ok(!/grid-template-columns: 1fr 1fr/.test(sim), 'シミュレータの欄を 2 列に固定した (320px で選択欄が潰れる)');
+});
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });

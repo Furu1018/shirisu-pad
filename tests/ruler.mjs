@@ -39,6 +39,15 @@ const DONE = {
     //   当日の運営役 = ✅ 確認しました のボタン・完了 / 未完了 の札。:board = 決定の盤と模擬の表が見えていること (決定が無くなると盤が出ず、測らずに通る)。1366px = 模擬の表の名前の列 (全体の tbody td が PC 幅だけ 13px)
     //   場面ごとの状態も求める (2026-11-21 Codex 監査: 盤と他人の札が残れば、状態の分岐だけ消えても通っていた): :mine = ★ あなたの凸の箱 / :nomine = 「あなたの凸はありません」/ :ack = ✅ 確認しました のボタン / :acked = ✅ 確認済み
     raid: ['member:390', 'member&start=report:390:board+mine+acked', 'member&start=report:1366:board+mine+acked', 'ops-day:390:board+ack+nomine', 'ops-day:320:board+ack+nomine', 'ops-day:1366:board+ack+nomine'],
+    // 分析 1 回目 (2026-11-24): 📊 実績 = 順位表・グラフの切り替え・結果まとめ (押すと出る)・NIKKE編成 (開くと出る・キャラの顔 315 枚) / ⚡ ふるり値 = 順位表・属性別・モード /
+    //   🧪 シミュレータ = プレイヤーを選んで目標 SLv → 予測と順位表・逆引き (目標ダメージ → SLv) / ふるり値試算 (属性・ダメージ → 算出と順位表)。分析の画面は 'slv-ranking/<画面>' (セグメントのボタンで開く)
+    //   汎用の動作 click= / pick= / type= / need= (選択子に : と + は使えない)。need= で、押した・選んだ結果が出ていることを確かめる (出ないまま外れ 0 で通さない)
+    ranking: ['member:390', 'member:1366', 'member:320', 'member:390:click=#statsToggleInline+need=#statsGrid .stat-card', 'member:390:click=#rankChartModeBtnSlv+need=#rankChartModeBtnSlv',
+        'member:390:click=[onclick="toggleCharactersSection()"]+need=#teamCompositionsContainer .card'],
+    'slv-ranking/fururi': ['member:390', 'member:1366', 'member:320', 'member:390:click=[data-fururi-boss="H.S.T.A."]+need=#fururiRankingBody tr', 'member:390:click=#fururiModeBtnMean+need=#fururiRankingBody tr'],
+    'slv-ranking/sim': ['member:390:pick=#simPlayerSelect+type=#simTargetSlv=700+need=#simResult+need=#simTableBody tr', 'member:1366:pick=#simPlayerSelect+type=#simTargetSlv=700+need=#simResult+need=#simTableBody tr',
+        'member:390:pick=#simPlayerSelect+type=#simTargetDmgB=40+need=#simReverseResult span',
+        'member:320:click=.sim-mode-btn[data-sim-mode="fururi"]+pick=#fsimPlayerSelect+click=[data-fsim-attr="FIRE"]+type=#fsimDamage=30+need=#fsimResult+need=#fsimTableBody tr'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
