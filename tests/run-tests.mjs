@@ -2492,6 +2492,7 @@ test('★ 段階 2 の物差し (分析 1 回目 = 実績・ふるり値・シ�
     assert.equal(vs.length, 5, 'ふるり値試算の PT 属性が 5 つでない');
     assert.ok(vs.every(t => !t.includes('ボス')), '「⚔ 〇〇ボス」に戻した (11px で 5 列からはみ出す)');
     assert.match(html, /\n\s*\.fsim-attr-btn \.fsim-attr-vs \{[^}]*font-size: 11px;/, '「⚔ 〇〇」の文字が 11px でない');
+    assert.match(html, /\n\s*\.fsim-attr-btn \.fsim-attr-vs \{[^}]*flex-wrap: wrap;/, '「⚔ 〇〇」が 360px 未満で折り返さない (320px で 5px はみ出して隣と重なる・物差しの検査の fit= も見る)');
     // ⑤ シミュレータの 2 列の欄は、狭い幅 (320px) では縦に積む (− ＋ が 40px になって、選択欄が「--」だけに潰れていた)
     const sim = parts[2];
     assert.equal((sim.match(/grid-template-columns: repeat\(auto-fit, minmax\(140px, 1fr\)\); gap: 16px;/g) || []).length, 3, 'シミュレータの欄が狭い幅で縦に積まれない');

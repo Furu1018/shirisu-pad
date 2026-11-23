@@ -1445,7 +1445,7 @@
         .fsim-attr-btn .fsim-attr-ico { width: 24px; height: 24px; }
         .fsim-attr-btn .fsim-attr-name { font-size: 11px; font-weight: 900; color: var(--fa); letter-spacing: 0.2px; white-space: nowrap; }
         .fsim-attr-btn .fsim-attr-vs {
-            display: inline-flex; align-items: center; gap: 2px;
+            display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; justify-content: center; row-gap: 0;   /* 360px 未満 (ボタン幅 46〜50px) は「⚔ [icon]」と「風圧」の間で折り返す — 1 行のままだと 320px で 5px はみ出して隣と重なる (2026-11-24 Codex 監査) */
             font-size: 11px; font-weight: 800; color: var(--t-muted); white-space: nowrap}
         .fsim-attr-btn .fsim-attr-vs img { width: 11px; height: 11px; opacity: 0.85; }
         .fsim-attr-btn.active {

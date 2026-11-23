@@ -42,12 +42,14 @@ const DONE = {
     // 分析 1 回目 (2026-11-24): 📊 実績 = 順位表・グラフの切り替え・結果まとめ (押すと出る)・NIKKE編成 (開くと出る・キャラの顔 315 枚) / ⚡ ふるり値 = 順位表・属性別・モード /
     //   🧪 シミュレータ = プレイヤーを選んで目標 SLv → 予測と順位表・逆引き (目標ダメージ → SLv) / ふるり値試算 (属性・ダメージ → 算出と順位表)。分析の画面は 'slv-ranking/<画面>' (セグメントのボタンで開く)
     //   汎用の動作 click= / pick= / type= / need= (選択子に : と + は使えない)。need= で、押した・選んだ結果が出ていることを確かめる (出ないまま外れ 0 で通さない)
-    ranking: ['member:390', 'member:1366', 'member:320', 'member:390:click=#statsToggleInline+need=#statsGrid .stat-card', 'member:390:click=#rankChartModeBtnSlv+need=#rankChartModeBtnSlv',
+    //   押した結果は押す前から見えている部品で確かめない (2026-11-24 Codex 監査): グラフの切り替え = 属性のトグルが消える (gone=) / ふるり値の属性・モード = 押したボタンが選ばれた (.active)
+    ranking: ['member:390', 'member:1366', 'member:320', 'member:390:click=#statsToggleInline+need=#statsGrid .stat-card', 'member:390:click=#rankChartModeBtnSlv+gone=#chartAttributeToggle',
         'member:390:click=[onclick="toggleCharactersSection()"]+need=#teamCompositionsContainer .card'],
-    'slv-ranking/fururi': ['member:390', 'member:1366', 'member:320', 'member:390:click=[data-fururi-boss="H.S.T.A."]+need=#fururiRankingBody tr', 'member:390:click=#fururiModeBtnMean+need=#fururiRankingBody tr'],
+    'slv-ranking/fururi': ['member:390', 'member:1366', 'member:320', 'member:390:click=[data-fururi-boss="H.S.T.A."]+need=[data-fururi-boss="H.S.T.A."].active+need=#fururiRankingBody tr',
+        'member:390:click=#fururiModeBtnMean+need=#fururiModeBtnMean.active+need=#fururiRankingBody tr'],
     'slv-ranking/sim': ['member:390:pick=#simPlayerSelect+type=#simTargetSlv=700+need=#simResult+need=#simTableBody tr', 'member:1366:pick=#simPlayerSelect+type=#simTargetSlv=700+need=#simResult+need=#simTableBody tr',
         'member:390:pick=#simPlayerSelect+type=#simTargetDmgB=40+need=#simReverseResult span',
-        'member:320:click=.sim-mode-btn[data-sim-mode="fururi"]+pick=#fsimPlayerSelect+click=[data-fsim-attr="FIRE"]+type=#fsimDamage=30+need=#fsimResult+need=#fsimTableBody tr'],
+        'member:320:click=.sim-mode-btn[data-sim-mode="fururi"]+pick=#fsimPlayerSelect+click=[data-fsim-attr="FIRE"]+type=#fsimDamage=30+need=#fsimResult+need=#fsimTableBody tr+fit=.fsim-attr-vs'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -183,8 +185,13 @@ const runScene = async (tab, scene) => {
             let active = promoted ? await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`) : 'マスターにできない';
             if (sub && active === 'tab-' + tabId && tabId === 'slv-ranking') {
                 // 分析の画面 ('slv-ranking/review' = 🛡 全体分析・fururi・growth・sim・gb): 上のセグメントのボタンを押す (メンバーが押すのと同じ)。押したあと、その画面の部品が見えていること
-                const hit = await ev(`(() => { const b = document.querySelector('#tab-slv-ranking .ana-seg button[data-view=' + ${JSON.stringify(JSON.stringify(sub))} + ']'); if (!b) return false; b.click(); return true; })()`);
-                const shown = hit && await ev(`[...document.querySelectorAll('#tab-slv-ranking [data-slv-view=' + ${JSON.stringify(JSON.stringify(sub))} + ']')].some(e => !e.hidden && e.getClientRects().length > 0)`);
+                //   ★ 先に別の画面へ切り替えて、目当ての画面が隠れたのを確かめてから押す (ふるり値は最初から出ている画面 — そのままだとボタンが壊れていても通る: 2026-11-24 Codex 監査)
+                const view = JSON.stringify(JSON.stringify(sub));
+                const shownNow = `[...document.querySelectorAll('#tab-slv-ranking [data-slv-view=' + ${view} + ']')].some(e => !e.hidden && e.getClientRects().length > 0)`;
+                await ev(`_setSlvView(${JSON.stringify(sub === 'sim' ? 'fururi' : 'sim')})`);
+                const hidden = !(await ev(shownNow));
+                const hit = hidden && await ev(`(() => { const b = document.querySelector('#tab-slv-ranking .ana-seg button[data-view=' + ${view} + ']'); if (!b) return false; b.click(); return true; })()`);
+                const shown = hit && await ev(shownNow);
                 if (!shown) active = '分析の画面「' + sub + '」を開けない';
             } else if (sub && active === 'tab-' + tabId) {
                 // 小タブは、タブの中身が出てから押す (運営タブは盤面を読んでから小タブを描く)
@@ -274,6 +281,16 @@ const runScene = async (tab, scene) => {
                     const q = a.slice(5);
                     const ok = await ev(`[...document.querySelectorAll(${JSON.stringify(q)})].some(e => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden')`);
                     if (!ok) { active = '「' + q + '」が見えない'; break; }
+                } else if (a.startsWith('gone=')) {
+                    // 汎用: その部品が見えていないこと (押した結果、消えるはずの部品 — 例: グラフを SLv×ダメージ にすると属性のトグルが消える)
+                    const q = a.slice(5);
+                    const shown = await ev(`[...document.querySelectorAll(${JSON.stringify(q)})].some(e => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0)`);
+                    if (shown) { active = '「' + q + '」が消えない'; break; }
+                } else if (a.startsWith('fit=')) {
+                    // 汎用: その部品が親の中に収まっていること (中身の幅が親の中身の幅を超えない = 隣にはみ出さない。物差しの検査では拾えない並び崩れ — 2026-11-24 Codex 監査: 320px の ⚔ の行)
+                    const q = a.slice(4);
+                    const bad = await ev(`(() => { const els = [...document.querySelectorAll(${JSON.stringify(q)})].filter(e => e.getClientRects().length > 0); if (!els.length) return '見えない'; for (const e of els) { const p = e.parentElement; const cs = getComputedStyle(p); const inner = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); if (e.scrollWidth > inner + 0.5) return (e.textContent || '').trim().slice(0, 12) + ' が ' + Math.round(e.scrollWidth - inner) + 'px はみ出す'; } return ''; })()`);
+                    if (bad) { active = '「' + q + '」' + bad; break; }
                 } else { active = '知らない動作: ' + a; break; }
             }
             const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
