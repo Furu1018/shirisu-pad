@@ -66,6 +66,11 @@ const DONE = {
         'ops-day:390:growth-them+click=.gv-pt .gc-more+click=.gc-char .gc-more+need=.gc-tbl',
         `ops-day:390:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`, `ops-day:320:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`,
         `ops-day:1366:growth-them+click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gc-char`, 'ops-day:390:click=.gc-more+need=.gc-mrow'],
+    // 設定・ヘルプ (2026-11-24): 設定 = 状態のチップ・見た目・保存容量・現在のプレイヤー・危ない操作 / ガイド (開くと出る)。運営の画面でも見る (運営の部品は 👑 に移してある)。
+    //   ヘルプ = 目次・各章 (本文・手順・注意の箱)・更新履歴・ガイドを開始
+    //   システム状態のチップのラベル (Supabase・Edge Func・PADバージョン) は fit= で、チップからはみ出さないことも見る (4 枚を横 1 列に並べていた頃は 390px で 2px・320px で 17px はみ出していた → 2 × 2)
+    settings: ['member:390:fit=.dc-status-label', 'member:1366:fit=.dc-status-label', 'member:320:fit=.dc-status-label', 'ops-eve:390', 'member:390:click=[onclick="toggleSettingsGuide()"]+need=#settingsGuideBody'],
+    help: ['member:390', 'member:1366', 'member:320'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う

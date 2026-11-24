@@ -2541,6 +2541,32 @@ test('★ 段階 2 の物差し (分析 3 回目 = 🧬 育成・2026-11-24): �
     // 差の大きさ (くらべた結果の見出しの下) は 16px
     assert.ok(_perfHtml.includes('<div class="gc-big" style="font-size:16px;margin:7px 0 0;">差 ${dom.fmtPct(Math.abs(s.diff))}</div>'), 'くらべた結果の差が 16px でない');
 });
+test('★ 段階 2 の物差し (設定・ヘルプ・2026-11-24): 練習の場面に出ない部品も物差しどおり — 両タブの HTML・ヘルプの CSS・設定の現在のプレイヤー', () => {
+    const html = _perfHtml;
+    const cut = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i + 1); assert.ok(i > 0 && j > i, a + ' の範囲が見つからない'); return html.slice(i, j); };
+    // ① ヘルプ・設定の HTML の文字と角丸は物差しの値だけ (隠れている部分 = メンバー管理の警告・バックアップの箱なども含めて)
+    const parts = { ヘルプ: cut('<div id="tab-help" class="tab-content">', '<div id="tab-settings" class="tab-content tab-page">'), 設定: cut('<div id="tab-settings" class="tab-content tab-page">', '<!-- ========== 運営: 🔔 通知の疎通確認') };
+    for (const [k, p] of Object.entries(parts)) {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(['11', '12', '14', '16', '20', '24', '28', '32'].includes(m[1]), k + 'の HTML に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(['4', '8', '14', '22', '99', '999'].includes(m[1]), k + 'の HTML に物差しの外の角丸 ' + m[1] + 'px');
+    }
+    // ② ヘルプの CSS (.help-*): 文字と角丸は物差しの値だけ・区画の既定は 14px (p / li 以外の手順の文・強調も 15px を受け継がない)
+    const css = html.slice(0, html.indexOf('</style>'));
+    const rules = [...css.matchAll(/\n[ \t]*(\.help-[^{}]*)\{([^}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
+    assert.ok(rules.length >= 12, 'ヘルプの CSS の規則が見つからない (' + rules.length + ')');
+    for (const r of rules) {
+        for (const m of r.body.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(['11', '12', '14', '16', '20'].includes(m[1]), r.sel + ' の文字 ' + m[1] + 'px が物差しの外');
+        for (const m of r.body.matchAll(/border-radius: ?([\d.]+)(px|%)/g)) assert.ok(m[2] === '%' || ['4', '8', '14', '22', '999'].includes(m[1]), r.sel + ' の角丸 ' + m[1] + 'px が物差しの外');
+    }
+    assert.match(rules.find(r => r.sel === '.help-section').body, /font-size: 14px;/, 'ヘルプの区画の既定が 14px でない (手順の文などが 15px になる)');
+    // ③ 押すもの: 見た目の切り替え (.th-b)・ガイドを開始 (.tour-guide-launcher) は 40px
+    assert.match(html, /\n\s*\.th-b \{[^}]*min-height:40px;/, '見た目の切り替えが 40px 未満');
+    assert.match(html, /\n\s*\.tour-guide-launcher \{[^}]*min-height: 40px;/, '「ガイドを開始」が 40px 未満');
+    // ④ 設定の 現在のプレイヤー (JS が描く) は 11px
+    assert.ok(html.includes('<div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>'), '設定の「現在のプレイヤー」が 11px でない');
+    // ⑤ システム状態のチップは スマホ幅で 2 × 2 (横 1 列だとラベルが 11px で 390px でも はみ出す・検査の fit= も見る)
+    assert.ok(html.includes('<div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:7px;">'), 'システム状態のチップが横 1 列に戻った (ラベルがはみ出す)');
+});
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });

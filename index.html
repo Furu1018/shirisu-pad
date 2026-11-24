@@ -1480,41 +1480,41 @@
         .help-toc {
             position: sticky; top: 16px; align-self: start;
             padding: 14px 12px; background: var(--s1);
-            border-radius: 12px; max-height: calc(100vh - 32px); overflow-y: auto}
+            border-radius: 14px; max-height: calc(100vh - 32px); overflow-y: auto}
         @media (max-width: 900px) { .help-toc { position: static; max-height: none; } }
         .help-toc-title { font-size: 12px; font-weight: 700; color: var(--t-body); padding: 4px 8px 8px}
         .help-toc a {
-            display: block; padding: 7px 10px; font-size: 13px;
+            display: block; padding: 7px 10px; font-size: 14px;
             color: var(--t-ink); text-decoration: none;
-            border-radius: 6px; line-height: 1.4}
+            border-radius: 8px; line-height: 1.4}
         .help-toc a:hover { background: var(--card)}
         .help-section {
-            padding: 22px; border-radius: 15px;
+            padding: 22px; border-radius: 14px; font-size: 14px;
             border: 1px solid rgba(var(--ink-rgb), 0.05);
             background: var(--card); margin-bottom: 14px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.03);
             scroll-margin-top: 16px}
         .help-section h2 {
-            margin: 0 0 12px 0; font-size: 18px; font-weight: 900; letter-spacing: 0.2px;
+            margin: 0 0 12px 0; font-size: 20px; font-weight: 900; letter-spacing: 0.2px;
             color: var(--t-ink);
             display: flex; align-items: center; gap: 8px}
         .help-section h3 {
             margin: 18px 0 6px 0; font-size: 14px; font-weight: 800;
             color: var(--t-ink)}
         .help-section p, .help-section li {
-            font-size: 13.5px; line-height: 1.75;
+            font-size: 14px; line-height: 1.75;
             color: var(--t-strong)}
         .help-section ul, .help-section ol { padding-left: 22px; margin: 6px 0 10px 0; }
         .help-section strong { color: var(--t-ink); font-weight: 700}
         .help-callout {
-            display: flex; gap: 10px; padding: 12px 14px; border-radius: 11px;
+            display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px;
             background: var(--s1); border: 1px solid rgba(var(--ink-rgb), 0.05);
             border-left: 3px solid var(--ops-solid); margin: 12px 0}
         .help-callout.warn { border-left-color: var(--warn-solid)}
         .help-callout.tip { border-left-color: var(--ok-solid)}
         .help-callout.danger { border-left-color: var(--attr-fire-solid)}
-        .help-callout p { margin: 0; font-size: 12.5px; line-height: 1.65; }
-        .help-callout .ico { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+        .help-callout p { margin: 0; font-size: 12px; line-height: 1.65; }
+        .help-callout .ico { font-size: 20px; flex-shrink: 0; line-height: 1.4; }
         .help-pill {
             display: inline-block; padding: 2px 9px; border-radius: 999px;
             background: var(--s2); color: var(--t-body);
@@ -1527,7 +1527,7 @@
         .help-flow-num {
             flex-shrink: 0; width: 26px; height: 26px;
             border-radius: 50%; background: var(--t-ink); color: var(--card);
-            font-size: 13px; font-weight: 900;
+            font-size: 14px; font-weight: 900;
             display: flex; align-items: center; justify-content: center}
 
         /* ========== Loading/Error ========== */
@@ -1951,10 +1951,10 @@
         .fururi-help-body p { margin-bottom: 12px; }
 
         /* ===== 見た目の切り替え (設定タブ) ===== */
-        .th-seg { display:flex; gap:4px; margin-top:13px; background:var(--s2); border-radius:12px; padding:4px; }
+        .th-seg { display:flex; gap:4px; margin-top:13px; background:var(--s2); border-radius:14px; padding:4px; }
         .th-b {
-            flex:1; min-width:0; border:none; cursor:pointer; font:inherit; font-size:11.5px; font-weight:800;
-            padding:9px 6px; border-radius:9px; background:transparent; color:var(--t-body);
+            flex:1; min-width:0; border:none; cursor:pointer; font:inherit; font-size:12px; font-weight:800;
+            padding:9px 6px; min-height:40px; border-radius:8px; background:transparent; color:var(--t-body);
             display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap;
             transition:background .15s ease, color .15s ease}
         .th-b[aria-pressed="true"] { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px var(--hair)}
@@ -2348,10 +2348,10 @@
         #tourOverlay .tour-next-btn > span { position: relative; z-index: 1; }
         .tour-guide-launcher {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 14px; border-radius: 8px;
+            padding: 8px 14px; min-height: 40px; border-radius: 8px;
             border: 1px solid rgba(var(--ink-rgb), 0.08);
             background: var(--card); color: var(--t-ink);
-            font-size: 13px; font-weight: 700; cursor: pointer}
+            font-size: 14px; font-weight: 700; cursor: pointer}
         .tour-guide-launcher:hover { background: var(--s1)}
 
         /* 体験デモ (実UIのモックアップを触って学ぶゾーン) */
@@ -2597,7 +2597,7 @@
         /* === 設定タブ: システム状態チップ === */
         .dc-status-chip {
             flex: 1; min-width: 0;
-            border-radius: 12px; padding: 11px 9px;
+            border-radius: 14px; padding: 11px 9px;
             background: var(--s1);
             border: 1px solid rgba(var(--ink-rgb), 0.05);
             cursor: pointer;
@@ -2615,7 +2615,7 @@
         .dc-status-chip.error .dc-status-dot { background: var(--attr-fire-solid)}
         .dc-status-chip.neutral .dc-status-dot { background: var(--ghost)}
         .dc-status-label {
-            font-size:10px; font-weight: 800; color: var(--t-muted);
+            font-size:11px; font-weight: 800; color: var(--t-muted);
             letter-spacing: 0.2px; white-space: nowrap}
         .dc-status-val {
             font-size: 14px; font-weight: 900;
@@ -2642,11 +2642,11 @@
         .dc-danger-btn {
             display: flex; align-items: center; gap: 9px;
             height: 46px; padding: 0 13px;
-            border-radius: 11px;
+            border-radius: 14px;
             background: var(--card);
             border: 1px solid rgba(255,61,68,0.28);
             color: var(--bad);
-            font-size: 12.5px; font-weight: 800;
+            font-size: 12px; font-weight: 800;
             cursor: pointer;
             font-family: inherit;
             transition: background 0.15s ease;
@@ -4310,15 +4310,15 @@
                     <section id="help-overview" class="help-section">
                         <h2>📘 1. しりすこPAD とは</h2>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
-                            <span style="font-size:18px;">🎓</span>
-                            <span style="flex:1;font-size:13px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります (2026-10 の 🧱 ブロック制の画面に合わせて更新)</span>
+                            <span style="font-size:20px;">🎓</span>
+                            <span style="flex:1;font-size:14px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります (2026-10 の 🧱 ブロック制の画面に合わせて更新)</span>
                             <button class="tour-guide-launcher" onclick="startTour()">ガイドを開始</button>
                         </div>
                         <!-- 🎮 練習モード (2026-10-02 ユーザー要望「実際に試しに触れることが大事・本番の動きやボタンと一致していること」)。
                              本番の画面のまま、通信だけ端末の中の偽のサーバに差し替える (js/practice/)。入口はここ -->
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
-                            <span style="font-size:18px;">🎮</span>
-                            <span style="flex:1;min-width:200px;font-size:13px;"><strong>練習する</strong> — 本番と同じ画面を、練習用のデータで実際に触れます (各 5 分ほど)。ここでの操作は本番に反映されません</span>
+                            <span style="font-size:20px;">🎮</span>
+                            <span style="flex:1;min-width:200px;font-size:14px;"><strong>練習する</strong> — 本番と同じ画面を、練習用のデータで実際に触れます (各 5 分ほど)。ここでの操作は本番に反映されません</span>
                             <span style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button class="tour-guide-launcher" onclick="startPractice('member')">メンバー編</button>
                                 <button class="tour-guide-launcher" onclick="startPractice('ops-eve')">運営編・前日</button>
@@ -4734,22 +4734,22 @@
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <div onclick="switchTab('settings')" style="width:30px;height:30px;border-radius:9px;background:var(--s2);color:var(--t-body);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;cursor:pointer;">‹</div>
+                        <div onclick="switchTab('settings')" style="width:30px;height:30px;border-radius:8px;background:var(--s2);color:var(--t-body);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;cursor:pointer;">‹</div>
                         <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">メンバー管理</div>
                     </div>
                     <div id="maHeaderSub" style="font-size:11px;color:var(--t-muted);margin-top:4px;letter-spacing:0.2px;padding-left:38px;">ユニオン</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--ops);background:rgba(108,66,240,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ops-solid);"></span>管理者</div>
-                    <div id="maHeaderSeason" style="font-size:10px;font-weight:700;color:var(--t-muted);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">—</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:0.8px;color:var(--ops);background:rgba(108,66,240,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--ops-solid);"></span>管理者</div>
+                    <div id="maHeaderSeason" style="font-size:11px;font-weight:700;color:var(--t-muted);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">—</div>
                 </div>
             </div>
 
             <!-- (1) 概要 STATS -->
             <div class="dc-card" style="padding:14px;">
                 <div id="maStatsRow" style="display:flex;gap:6px;">
-                    <div style="flex:1;min-width:0;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;padding:11px 8px;text-align:center;">
-                        <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);">読み込み中…</div>
+                    <div style="flex:1;min-width:0;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:14px;padding:11px 8px;text-align:center;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);">読み込み中…</div>
                     </div>
                 </div>
             </div>
@@ -4758,26 +4758,26 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">＋ 新メンバー追加</div>
-                    <div id="maSlotsLabel" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
+                    <div id="maSlotsLabel" style="font-size:11px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
                 </div>
                 <div style="display:flex;gap:8px;align-items:stretch;">
                     <input id="maAddInput" type="text" placeholder="新メンバーの名前" oninput="maOnAddInput()" onkeydown="if(event.key==='Enter')maHandleAdd()" class="ma-input" style="flex:1;min-width:0;">
                     <button onclick="maHandleAdd()" class="ma-grad-btn" style="flex:none;display:flex;align-items:center;"><span>＋ 追加</span></button>
                 </div>
-                <div id="maDupWarning" style="display:none;align-items:center;gap:7px;margin-top:9px;padding:8px 11px;border-radius:9px;background:var(--s2);border:1px solid rgba(var(--ink-rgb), 0.05);font-size:11.5px;font-weight:700;color:var(--t-muted);animation:dcFadeIn 0.15s ease;">
-                    <span style="font-size:13px;">⚠️</span><span id="maDupWarningText">同名のメンバーが既に存在します</span>
+                <div id="maDupWarning" style="display:none;align-items:center;gap:7px;margin-top:9px;padding:8px 11px;border-radius:8px;background:var(--s2);border:1px solid rgba(var(--ink-rgb), 0.05);font-size:12px;font-weight:700;color:var(--t-muted);animation:dcFadeIn 0.15s ease;">
+                    <span style="font-size:14px;">⚠️</span><span id="maDupWarningText">同名のメンバーが既に存在します</span>
                 </div>
-                <div id="maMessage" style="display:none;margin-top:9px;padding:8px 11px;border-radius:9px;font-size:11.5px;font-weight:700;animation:dcFadeIn 0.2s ease;"></div>
+                <div id="maMessage" style="display:none;margin-top:9px;padding:8px 11px;border-radius:8px;font-size:12px;font-weight:700;animation:dcFadeIn 0.2s ease;"></div>
             </div>
 
             <!-- (3) フィルタ + 検索 -->
             <div class="dc-card" style="padding:14px;">
                 <div id="maFilterTabs" style="display:flex;gap:6px;margin-bottom:11px;">
-                    <div style="flex:1;min-width:0;height:38px;display:flex;align-items:center;justify-content:center;color:var(--t-body);font-size:12.5px;">読み込み中…</div>
+                    <div style="flex:1;min-width:0;height:38px;display:flex;align-items:center;justify-content:center;color:var(--t-body);font-size:12px;">読み込み中…</div>
                 </div>
                 <div style="position:relative;">
                     <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t-muted);pointer-events:none;" data-sp-icon="search" data-sp-size="14"></span>
-                    <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--s1);color:var(--t-ink);font-size:13px;font-family:inherit;outline:none;">
+                    <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--s1);color:var(--t-ink);font-size:14px;font-family:inherit;outline:none;">
                 </div>
             </div>
 
@@ -4786,23 +4786,23 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px 9px;gap:10px;">
                     <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
                         <div id="maListTitle" style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">アクティブメンバー</div>
-                        <div id="maListCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">— / — 名</div>
+                        <div id="maListCount" style="font-size:11px;color:var(--t-muted);font-variant-numeric:tabular-nums;">— / — 名</div>
                     </div>
-                    <div id="maSelectToggle" onclick="maToggleSelectMode()" style="display:none;padding:6px 13px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;letter-spacing:0.2px;flex:none;color:var(--t-body);background:var(--s2);border:1px solid rgba(var(--ink-rgb), 0.06);">選択</div>
+                    <div id="maSelectToggle" onclick="maToggleSelectMode()" style="display:none;padding:6px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.2px;flex:none;color:var(--t-body);background:var(--s2);border:1px solid rgba(var(--ink-rgb), 0.06);">選択</div>
                 </div>
 
                 <div id="maSortContainer" style="display:none;align-items:center;gap:6px;padding:0 10px 11px;">
-                    <span style="font-size:10px;font-weight:800;letter-spacing:0.6px;color:var(--t-muted);flex:none;">並び替え</span>
+                    <span style="font-size:11px;font-weight:800;letter-spacing:0.6px;color:var(--t-muted);flex:none;">並び替え</span>
                     <div id="maSortPills" style="display:flex;gap:5px;flex:1;"></div>
                 </div>
 
-                <div id="maArchivedWarning" style="display:none;align-items:center;gap:9px;margin:0 6px 9px;padding:10px 12px;border-radius:11px;background:linear-gradient(180deg, rgba(255,61,68,0.07), rgba(255,61,68,0.04));border:1px solid rgba(255,61,68,0.22);">
-                    <div style="width:24px;height:24px;flex:none;border-radius:7px;background:var(--attr-fire-solid);color:var(--on-fill);display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 3px 8px rgba(255,61,68,0.35);">⚠</div>
+                <div id="maArchivedWarning" style="display:none;align-items:center;gap:9px;margin:0 6px 9px;padding:10px 12px;border-radius:14px;background:linear-gradient(180deg, rgba(255,61,68,0.07), rgba(255,61,68,0.04));border:1px solid rgba(255,61,68,0.22);">
+                    <div style="width:24px;height:24px;flex:none;border-radius:8px;background:var(--attr-fire-solid);color:var(--on-fill);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 3px 8px rgba(255,61,68,0.35);">⚠</div>
                     <div style="font-size:11px;line-height:1.5;color:var(--bad-deep);font-weight:700;"><strong style="color:var(--bad-deep);">完全削除は元に戻せません。</strong>ダメージ履歴・凸記録もすべて消去されます。</div>
                 </div>
 
                 <div id="maList">
-                    <div style="text-align:center;padding:32px 12px;font-size:12.5px;color:var(--t-muted);">読み込み中…</div>
+                    <div style="text-align:center;padding:32px 12px;font-size:12px;color:var(--t-muted);">読み込み中…</div>
                 </div>
             </div>
 
@@ -4814,10 +4814,10 @@
         </div>
 
         <!-- bulk action bar -->
-        <div id="maBulkBar" style="display:none;position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom, 20px) + 84px);z-index:56;align-items:center;gap:11px;padding:11px 12px 11px 16px;background:var(--t-ink);border-radius:15px;box-shadow:0 12px 30px rgba(20,22,26,0.32);animation:maSlideUp 0.22s ease;">
-            <div style="flex:1;min-width:0;font-size:13px;font-weight:800;color:var(--card);"><span id="maSelectedCount">0</span>名を選択中</div>
-            <div onclick="maClearSelection()" style="padding:8px 12px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:800;color:var(--card);background:rgba(var(--paper-rgb), 0.14);">解除</div>
-            <div onclick="maBulkArchive()" style="padding:8px 15px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:900;color:var(--t-ink);background:var(--warn-solid);box-shadow:0 4px 12px rgba(245,158,11,0.4);white-space:nowrap;">まとめて脱退</div>
+        <div id="maBulkBar" style="display:none;position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom, 20px) + 84px);z-index:56;align-items:center;gap:11px;padding:11px 12px 11px 16px;background:var(--t-ink);border-radius:14px;box-shadow:0 12px 30px rgba(20,22,26,0.32);animation:maSlideUp 0.22s ease;">
+            <div style="flex:1;min-width:0;font-size:14px;font-weight:800;color:var(--card);"><span id="maSelectedCount">0</span>名を選択中</div>
+            <div onclick="maClearSelection()" style="padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;color:var(--card);background:rgba(var(--paper-rgb), 0.14);">解除</div>
+            <div onclick="maBulkArchive()" style="padding:8px 15px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:900;color:var(--t-ink);background:var(--warn-solid);box-shadow:0 4px 12px rgba(245,158,11,0.4);white-space:nowrap;">まとめて脱退</div>
         </div>
     </div>
 
@@ -4832,7 +4832,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex:none;">
                     <!-- ops タブと同じ 🛠運営 モードを共有 (body.ops-mode / data-ops-only) -->
-                    <button id="settingsOpsModeBtn" onclick="toggleOpsMode()" title="運営の画面 ⇄ メンバーの見え方 を切り替える (この端末だけ・ホームの切替と同じ)" style="padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10px;font-weight:800;letter-spacing:0.3px;cursor:pointer;font-family:inherit;white-space:nowrap;">🛠 運営</button>
+                    <button id="settingsOpsModeBtn" onclick="toggleOpsMode()" title="運営の画面 ⇄ メンバーの見え方 を切り替える (この端末だけ・ホームの切替と同じ)" style="padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;letter-spacing:0.3px;cursor:pointer;font-family:inherit;white-space:nowrap;">🛠 運営</button>
                 </div>
             </div>
 
@@ -4857,19 +4857,19 @@
                             <div style="font-size:12px;font-weight:900;color:var(--on-fill);letter-spacing:1.5px;text-shadow:0 1px 4px rgba(0,40,90,0.4);">CHAPTER GUIDE</div>
                         </div>
                         <!-- 下部ラベル -->
-                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">10 CHAPTERS · 6 min</div>
-                        <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:var(--on-fill);font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">▶ 再生</div>
+                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">10 CHAPTERS · 6 min</div>
+                        <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:var(--on-fill);font-size:11px;font-weight:800;padding:2px 7px;border-radius:4px;">▶ 再生</div>
                     </button>
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
-                    <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                    <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:14px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (メンバー編)
                         <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — Discord で出られるブロックを伝える → 📅 レイド予定表で確かめる → 凸したら Discord へ・約3分</span>
                     </button>
-                    <button onclick="startPractice('ops-eve')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                    <button onclick="startPractice('ops-eve')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:14px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・前日)
                         <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 📸 模擬を登録 → 🧱 朝を組む (📌 仮置き → 残りを自動で) → 午前も組む → ✅ 決定・約5分</span>
                     </button>
-                    <button onclick="startPractice('ops-day')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                    <button onclick="startPractice('ops-day')" data-ops-only style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:14px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・当日)
                         <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 17 時 (夕方のブロックの頭) の運営役として — 🎯 HP → ✓ 凸の記録 → 🧱 夕方を組み直す → ✅ 決定し直す → 締め凸検索・約5分</span>
                     </button>
@@ -4877,27 +4877,27 @@
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
                         <button onclick="openHelpFromSettings('help-overview')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">01</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">PADの全体像</div>
+                            <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">PADの全体像</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-mypage')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">02</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">ホームの使い方</div>
+                            <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">ホームの使い方</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-real')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">03</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">凸したら Discord へ</div>
+                            <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">凸したら Discord へ</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">通知を受け取る</div>
+                            <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">通知を受け取る</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-finisher')" class="dc-guide-row" style="border-bottom:none;">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--t-muted);">05</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:700;color:var(--t-ink);">締め凸</div>
+                            <div style="flex:1;font-size:14px;font-weight:700;color:var(--t-ink);">締め凸</div>
                             <div style="font-size:11px;color:var(--t-muted);">›</div>
                         </button>
                     </div>
@@ -4907,13 +4907,13 @@
             <!-- ① システム状態 -->
             <div class="dc-card" data-span="6">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:13px;">システム状態</div>
-                <div id="settingsStatusChips" style="display:flex;gap:7px;">
+                <div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:7px;">
                     <div class="dc-status-chip"><div style="display:flex;align-items:center;gap:5px;"><span class="dc-status-dot"></span><span class="dc-status-label">読み込み中</span></div><div class="dc-status-val">—</div></div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:12px;border-top:1px solid var(--s2);">
-                    <div style="font-size:10.5px;color:var(--t-muted);">最終同期: <span id="settingsLastSync" style="font-weight:700;color:var(--t-muted);">—</span></div>
-                    <div style="font-size:10.5px;color:var(--t-muted);">データソース: <span id="settingsDataSource" style="font-weight:700;color:var(--t-muted);">—</span></div>
-                    <div style="font-size:10.5px;color:var(--t-muted);">ビルド: <span id="settingsBuildId" style="font-weight:700;color:var(--t-muted);font-family:ui-monospace,monospace;">—</span></div>
+                    <div style="font-size:11px;color:var(--t-muted);">最終同期: <span id="settingsLastSync" style="font-weight:700;color:var(--t-muted);">—</span></div>
+                    <div style="font-size:11px;color:var(--t-muted);">データソース: <span id="settingsDataSource" style="font-weight:700;color:var(--t-muted);">—</span></div>
+                    <div style="font-size:11px;color:var(--t-muted);">ビルド: <span id="settingsBuildId" style="font-weight:700;color:var(--t-muted);font-family:ui-monospace,monospace;">—</span></div>
                 </div>
                 <!-- 旧 ID: 詳細を後方互換のため非表示で保持 -->
                 <div id="settingsSystemInfo" style="display:none;"></div>
@@ -5030,14 +5030,14 @@
                         <p style="margin:5px 0 8px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">実装されたばかりの新キャラ名を先に登録しておくと、メンバーの画像認識時に正しくこの名前へ解決されます (アイコンは提出画像から自動学習)。</p>
                         <!-- 運営改修 #6: 手動登録は「要確認」で入り、別の運営が根拠URLを見て確定する -->
                         <div style="display:flex;flex-direction:column;gap:7px;">
-                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:14px;outline:none;">
                             <div>
                                 <div style="font-size:11px;font-weight:800;color:var(--t-body);margin-bottom:4px;">バースト <span style="color:var(--attr-fire);">必須</span></div>
                                 <div id="settingsNewCharBurst"></div>
                             </div>
-                            <input id="settingsNewCharSource" type="url" inputmode="url" placeholder="根拠URL 必須 (例: https://game8.jp/nikke/… の個別ページ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                            <input id="settingsNewCharSource" type="url" inputmode="url" placeholder="根拠URL 必須 (例: https://game8.jp/nikke/… の個別ページ)" style="width:100%;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:14px;outline:none;">
                             <div style="display:flex;gap:7px;">
-                                <input id="settingsNewCharNotes" type="text" placeholder="メモ (任意: 素体/スキンの別、実装日など)" style="flex:1;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:13px;outline:none;">
+                                <input id="settingsNewCharNotes" type="text" placeholder="メモ (任意: 素体/スキンの別、実装日など)" style="flex:1;min-width:0;min-height:40px;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:14px;outline:none;">
                                 <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;min-height:40px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;">要確認として登録</button>
                             </div>
                         </div>
@@ -5071,12 +5071,12 @@
                 <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.6;">この端末・ブラウザに保存された情報の管理</div>
 
                 <!-- 現在プレイヤー カード -->
-                <div id="settingsLocalInfo" style="display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:12px;">
+                <div id="settingsLocalInfo" style="display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:14px;">
                     <div style="width:34px;height:34px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,var(--card),var(--track) 50%,var(--s2));">
                         <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--card);font-size:12px;font-weight:900;">—</div>
                     </div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
+                        <div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
                         <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:1px;">未選択</div>
                     </div>
                 </div>
@@ -5093,20 +5093,20 @@
                         <div style="width:0%;background:var(--attr-iron-solid);"></div>
                     </div>
                     <div id="settingsStorageLegend" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;">
-                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:2px;background:var(--attr-water-solid);"></span>localStorage <span id="settingsStorageLocal">—</span></div>
-                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:2px;background:var(--attr-electric-solid);"></span>Cache <span id="settingsStorageCache">—</span></div>
-                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:2px;background:var(--attr-iron-solid);"></span>Service Worker <span id="settingsStorageSw">—</span></div>
+                        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:4px;background:var(--attr-water-solid);"></span>localStorage <span id="settingsStorageLocal">—</span></div>
+                        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:4px;background:var(--attr-electric-solid);"></span>Cache <span id="settingsStorageCache">—</span></div>
+                        <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--t-muted);"><span style="width:8px;height:8px;border-radius:4px;background:var(--attr-iron-solid);"></span>Service Worker <span id="settingsStorageSw">—</span></div>
                     </div>
                 </div>
 
                 <!-- デンジャーゾーン -->
-                <div style="margin-top:16px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
+                <div style="margin-top:16px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:14px;padding:12px;">
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span data-sp-icon="user" data-sp-size="15"></span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
-                        <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span data-sp-icon="trash" data-sp-size="15"></span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span data-sp-icon="user" data-sp-size="15"></span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:var(--bad);font-size:20px;font-weight:300;">›</span></button>
+                        <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span data-sp-icon="trash" data-sp-size="15"></span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:var(--bad);font-size:20px;font-weight:300;">›</span></button>
                     </div>
                 </div>
-                <div style="font-size:10px;color:var(--t-muted);margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
             </div>
 
             <!-- ⑥ バックアップ / 復元 (運営 · 折り畳み · 最下部配置で誤操作防止) -->
@@ -5119,7 +5119,7 @@
                     <div id="settingsBackupCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
                 <div id="settingsBackupBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
-                    <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s1);color:var(--t-ink);font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
+                    <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:14px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s1);color:var(--t-ink);font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
                     <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;text-align:center;"></p>
                 </div>
             </div>
@@ -11339,7 +11339,7 @@
                         <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--card);font-size:12px;font-weight:900;">${escapeHtml(initial)}</div>
                     </div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
+                        <div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
                         <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:1px;">${escapeHtml(name)}</div>
                     </div>`;
             }
