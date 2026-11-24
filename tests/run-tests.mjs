@@ -2431,7 +2431,8 @@ test('★ 段階 2 の物差し (👑 マスター・2026-11-20): 1 人 1 行の
     // data-dense = 物差しの検査 (tests/ruler.mjs) が 9 / 10px と行の中の小さい部品を認める印。外れを黙らせるために足さないよう、付け先を固定する (どのタグでも・JS で付けない)
     //   通知状況の表 (1 人 1 行)・育成の識別子の一覧と ④ 取れなかった人の一覧 (どちらも .gr-rows)・選んだ人 (.gr-pick)・キャラマスタの一覧・アクティビティの記録 (1 件 1 行)
     const dense = [...html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bdata-dense\b[^>]*)>/g)].map(m => { const id = m[2].match(/\bid="([^"]+)"/); const c = m[2].match(/\bclass="([^"]+)"/); return m[1] + (id ? '#' + id[1] : c ? '.' + c[1].split(/\s+/)[0] : ''); }).sort();
-    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gb-members', 'div.gr-pick', 'div.gr-rows', 'div.gr-rows'], 'data-dense の付け先が変わった');   // div.gb-members = 🌏 GB比較のメンバー% (1 人 1 行・2026-11-24)
+    //   div.gb-members = 🌏 GB比較のメンバー% (1 人 1 行・2026-11-24) / div.gv-grid・div.gv-team = 🧬 育成の顔のマスの一覧と編成のアイコンの列 (46px の顔の上の札・下の小さな数字 = 🧱 の盤の駒と同じ「縦に伸ばさない所」・2026-11-24)
+    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gb-members', 'div.gr-pick', 'div.gr-rows', 'div.gr-rows', 'div.gv-grid', 'div.gv-team'], 'data-dense の付け先が変わった');
     // ④ 取り込みの結果 (取り込んだあとだけ出る・練習の場面に無い): 取れなかった人の一覧は 1 人 1 行 (状態の札 10px を認める)・見出しの人数は 11px (Codex 監査 e27a25b)
     has('+ `<div class="gr-rows" data-dense>${badRows}</div>`', '取れなかった人の一覧に data-dense が無い');
     has('<span style="font-weight:800;color:var(--t-muted);font-size:11px;">取れた ${ok.length}人', '取り込みの結果の人数が 11px でない');
@@ -2517,6 +2518,27 @@ test('★ 段階 2 の物差し (分析 2 回目 = 🛡 全体分析・🌏 GB�
     assert.ok(!/<div style="margin-top:10px;font-size:10px;color:var\(--t-muted\);line-height:1\.7;background:var\(--s1\);border-radius:9px;/.test(html), 'GB比較の説明の箱に 10px / 角丸 9 が残っている');
     // ⑤ GB比較の SLv の欄は 40px・14px・角丸 8
     assert.ok(html.includes('style="width:82px;padding:6px 8px;min-height:40px;box-sizing:border-box;border:1.5px solid var(--line);border-radius:8px;font-size:14px;'), 'GB比較の SLv の欄が 40px / 14px / 角丸 8 でない');
+});
+test('★ 段階 2 の物差し (分析 3 回目 = 🧬 育成・2026-11-24): 育成の CSS の値は物差しどおり (練習の場面に出ない 非公開の札・顔の無いときの頭文字 なども)', () => {
+    const css = _perfHtml.slice(0, _perfHtml.indexOf('</style>'));
+    const rules = [...css.matchAll(/\n\s*(\.g[cv]-[^{]+)\{([^}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
+    assert.ok(rules.length >= 60, '育成の CSS の規則が見つからない (' + rules.length + ')');
+    // 9 / 10px を使ってよいのは data-dense の中 (顔のマス .gv-tile / その札 .gv-bg / 編成のアイコンの列 .gv-tm) だけ
+    const dense = (sel) => /\.gv-(tile|bg|tm)\b/.test(sel);
+    for (const r of rules) {
+        for (const m of r.body.matchAll(/font-size: ?([\d.]+)px/g)) {
+            const ok = ['11', '12', '14', '16', '20'].includes(m[1]) || (dense(r.sel) && ['9', '10'].includes(m[1]));
+            assert.ok(ok, r.sel + ' の文字 ' + m[1] + 'px が物差しの外');
+        }
+        for (const m of r.body.matchAll(/border-radius: ?([\d.]+)(px|%)/g)) assert.ok(m[2] === '%' || ['4', '8', '14', '22', '999'].includes(m[1]), r.sel + ' の角丸 ' + m[1] + 'px が物差しの外');
+    }
+    // 押すもの: 取り込みの内訳・1 体ずつくらべる (.gc-more)・どのレイドか (.gv-sel)・見方 (.gv-seg)・絞り込み (.gv-pills)・探す (.gv-srch) は 40px
+    for (const sel of ['.gc-more', '.gv-sel', '.gv-seg button', '.gv-pills button', '.gv-srch']) {
+        const r = rules.find(x => x.sel === sel); assert.ok(r, sel + ' の規則が無い');
+        assert.match(r.body, /min-height: 40px;/, sel + ' が 40px 未満に戻った');
+    }
+    // 差の大きさ (くらべた結果の見出しの下) は 16px
+    assert.ok(_perfHtml.includes('<div class="gc-big" style="font-size:16px;margin:7px 0 0;">差 ${dom.fmtPct(Math.abs(s.diff))}</div>'), 'くらべた結果の差が 16px でない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {

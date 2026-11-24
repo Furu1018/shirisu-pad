@@ -58,6 +58,12 @@ const DONE = {
     'slv-ranking/gb': ['member:390', 'member:1366', 'member:320', `member:390:click=[onclick="_setGbView('comps')"]+need=#gbCompareCard [onclick^="_setGbMode"]`,
         `member:320:click=[onclick="_setGbView('comps')"]+need=#gbCompareCard [onclick^="_setGbMode"]`,
         `member:390:click=[onclick="_setGbView('best')"]+need=#gbCompareCard [onclick^="_setGbPick"]`, `member:320:click=[onclick="_setGbView('best')"]+need=#gbCompareCard [onclick^="_setGbPick"]`],
+    // 分析 3 回目 = 🧬 育成 (2026-11-24): 練習のシーズンに育成の行を入れて、この回の凸がいちばん多い人を名乗ってから開く (runScene の sub === 'growth')。当日の編 = 凸の記録がある (使った編成は凸の記録から作る)。
+    //   相手 (ユニオン全体 / growth-them = 凸した人) × 見方 (使った編成 / キャラ別)・1 体ずつくらべる・全項目・取り込みの内訳。顔のマスと編成のアイコンの列は data-dense (盤の駒と同じ「縦に伸ばさない所」)
+    'slv-ranking/growth': ['ops-day:390:need=.gv-pt', 'ops-day:320:need=.gv-pt', 'ops-day:1366:need=.gv-pt', 'ops-day:390:click=.gv-pt .gc-more+need=.gv-rk',
+        `ops-day:390:growth-them+click=[onclick="handleGrowthAnaBase('them')"]+need=.gv-pt`, 'ops-day:390:growth-them+click=.gv-pt .gc-more+click=.gc-char .gc-more+need=.gc-tbl',
+        `ops-day:390:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`, `ops-day:320:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`,
+        `ops-day:1366:growth-them+click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gc-char`, 'ops-day:390:click=.gc-more+need=.gc-mrow'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -191,6 +197,35 @@ const runScene = async (tab, scene) => {
             let promoted = true;
             if (sub === 'マスター') promoted = await ev(`(async () => { const P = window.PAD_PRACTICE; const row = P && P.db && P.db.tables.players.find(x => String(x.id) === String(P.ops && P.ops.id)); if (!row) return false; row.ops_role = 'master'; await _syncOpsRole(); if (!document.body.classList.contains('ops-mode')) toggleOpsMode(); return document.body.classList.contains('ops-master') && document.body.classList.contains('ops-mode'); })()`);   // master は 🛠 の記憶で運営⇄メンバー (練習の端末は記憶が空 = メンバーになる) → 運営の画面にする
             let active = promoted ? await ev(`(() => { switchTab(${JSON.stringify(tabId)}); return document.querySelector('.tab-content.active')?.id || null; })()`) : 'マスターにできない';
+            // 🧬 育成 (2026-11-24): 練習の偽のサーバは育成の表が空 = 「まだ育成データがありません」しか出ない → 練習のシーズンの凸と模擬に出てくるキャラで、
+            //   取り込みの本物の保存の関数 (supabaseSaveMemberGrowth / Status) で育成の行を入れてから開く (練習の DB だけ・本番に触れない・数字は名前から決まる = 乱数なし)
+            if (sub === 'growth' && active === 'tab-' + tabId) {
+                const seeded = await ev(`(async () => {
+                    const P = window.PAD_PRACTICE; const t = P && P.db && P.db.tables; if (!t) return '練習の DB が無い';
+                    const season = (t.seasons || []).find(s => s.is_active) || (t.seasons || [])[0]; if (!season) return 'シーズンが無い';
+                    const chars = new Map();
+                    const add = (pid, list) => { if (!Array.isArray(list)) return; const s = chars.get(String(pid)) || new Set(); list.filter(Boolean).forEach(c => s.add(String(c))); chars.set(String(pid), s); };
+                    (t.attacks || []).filter(a => String(a.season_id) === String(season.id)).forEach(a => add(a.player_id, a.characters));
+                    (t.player_damages || []).forEach(d => add(d.player_id, d.characters));
+                    if (!chars.size) return '凸にも模擬にもキャラが無い';
+                    for (const [pid, set] of chars) {
+                        const rows = [...set].map(c => { const h = [...(pid + c)].reduce((x, ch) => (x * 31 + ch.charCodeAt(0)) % 9973, 7);
+                            return { character_name: c, grade: 3, core: 1 + h % 7, lv: 360 + h % 80, skill1_lv: 10 - h % 3, skill2_lv: 10 - h % 4, ulti_skill_lv: 10 - h % 2, combat: 80000 + h * 13, harmony_cube_lv: 1 + h % 15,
+                                overload: { 有利コード: 5 + h % 25, 攻撃力: 4 + h % 18, 最大装弾数: h % 12 } }; });
+                        await window.supabaseSaveMemberGrowth(season.id, Number(pid), rows);
+                        await window.supabaseSaveMemberGrowthStatus(season.id, Number(pid), { status: 'ok', characterCount: rows.length });
+                    }
+                    // 「使った編成」は凸の記録から作る — 練習の運営役は凸していないので、編成のカードが出ない → この回の凸がいちばん多い人を名乗る (同じ数なら id の小さい人)
+                    const cnt = new Map();
+                    (t.attacks || []).filter(a => String(a.season_id) === String(season.id) && Array.isArray(a.characters) && a.characters.length).forEach(a => cnt.set(String(a.player_id), (cnt.get(String(a.player_id)) || 0) + 1));
+                    const top = [...cnt.entries()].sort((x, y) => y[1] - x[1] || Number(x[0]) - Number(y[0]))[0];
+                    const mp = top && (t.players || []).find(p => String(p.id) === top[0]);
+                    if (!mp) return 'この回に凸した人がいない';
+                    setCurrentIdentity({ id: mp.id, name: mp.name });
+                    return chars.size;
+                })()`);
+                if (!(seeded > 0)) active = '育成の行を入れられない (' + seeded + ')';
+            }
             if (sub && active === 'tab-' + tabId && tabId === 'slv-ranking') {
                 // 分析の画面 ('slv-ranking/review' = 🛡 全体分析・fururi・growth・sim・gb): 上のセグメントのボタンを押す (メンバーが押すのと同じ)。押したあと、その画面の部品が見えていること
                 //   ★ 先に別の画面へ切り替えて、目当ての画面が隠れたのを確かめてから押す (ふるり値は最初から出ている画面 — そのままだとボタンが壊れていても通る: 2026-11-24 Codex 監査)
@@ -266,6 +301,14 @@ const runScene = async (tab, scene) => {
                     const want = { mine: ['#raidTimetableBody .db-mine', '★ あなたの凸: '], nomine: ['#raidTimetableBody .rt-note', '決まったブロックに、あなたの凸はありません'], ack: ['#raidStatusBody .rt-ack', '✅ 確認しました'], acked: ['#raidStatusBody .rt-acked', '✅ 確認済み'] }[a];
                     const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return [...document.querySelectorAll(${JSON.stringify(want[0])})].some(e => vis(e) && e.textContent.includes(${JSON.stringify(want[1])})); })()`);
                     if (!ok) active = '「' + want[1] + '」が見えない';
+                } else if (a === 'growth-them') {
+                    // 🧬 育成: くらべる相手に、この回に凸した人 (名乗っている人の次に凸が多い人) を選ぶ (相手えらびのボタンを押す)。凸の無い相手だと「その人が使った編成」が空になる
+                    const ok = await ev(`(() => { const t = window.PAD_PRACTICE.db.tables; const me = String(getCurrentIdentity()?.id ?? ''); const sid = String(_gv.seasonId);
+                        const cnt = new Map(); (t.attacks || []).filter(x => String(x.season_id) === sid && Array.isArray(x.characters) && x.characters.length && String(x.player_id) !== me).forEach(x => cnt.set(String(x.player_id), (cnt.get(String(x.player_id)) || 0) + 1));
+                        const top = [...cnt.entries()].sort((x, y) => y[1] - x[1] || Number(x[0]) - Number(y[0]))[0]; if (!top) return false;
+                        const b = document.querySelector('.gv-who button[onclick="handleGrowthAnaWho(' + Number(top[0]) + ')"]'); if (!b) return false; b.click(); return true; })()`);
+                    if (!ok) { active = 'くらべる相手 (凸した人) を選べない'; break; }
+                    await settle();
                 } else if (a.startsWith('click=')) {
                     // 汎用 (2026-11-21 分析から): 見えている最初の部品を押す (結果まとめ・グラフの切り替え・開閉・モードなど)。選択子に ':' と '+' は使えない (場面の区切り)
                     const q = a.slice(6);
