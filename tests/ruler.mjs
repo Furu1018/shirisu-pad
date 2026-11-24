@@ -77,7 +77,8 @@ const DONE = {
     'mypage@シート': ['member:390:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal', 'member:320:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal',
         'member:390:click=[onclick="openAvatarEditModal()"]+sheet=#avatarEditModal',
         'member:390:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal', 'member:1366:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal',
-        'member:320:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal',   // 320px = バーストの絞り込み (40px のピル) が折り返す幅 (2026-11-24 Codex 監査)
+        //   320px = バーストの絞り込み (40px のピル) が折り返す幅。fit= で、ピルが行 (#iconPickerBurstFilter) からはみ出していないことも見る (折り返しが消えると、シートの overflow-x: hidden で右のピルが隠れるだけ = 物差しでは拾えない: 2026-11-24 Codex 監査)
+        'member:320:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal+fit=#iconPickerBurstFilter button',
         'member:390:click=[onclick="openMyStrongAttrsModal()"]+sheet=#myStrongAttrsModal', 'member:390:click=[onclick="openMyPushModal()"]+sheet=#myPushModal',
         'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer'],
     'ranking@シート': ['member:390:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:320:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:1366:click=[onclick^="showPlayerDetails"]+sheet=#playerModal'],
