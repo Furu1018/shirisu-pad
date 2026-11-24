@@ -2680,7 +2680,7 @@
         /* レイドの振り返り (分析タブ・2026-09-15)。色はトークンなのでテーマ切り替えに自動で追随する (Chart.js を使わない理由) */
         .rr-row { margin-bottom: 11px; }
         .rr-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
-        .rr-head .n { margin-left: auto; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .rr-head .n { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .rr-track { display: flex; gap: 2px; height: 18px; }
         /* ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望「一人一人の凸がどれくらいの割合だったか視覚的に」)。
            区切りは inset の影 (幅を食わないので細い凸でも割合が正しいまま) */
@@ -2690,19 +2690,19 @@
         .rr-sl { border: none; padding: 0; margin: 0; height: 100%; flex: 0 0 auto; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
         .rr-sl:hover { filter: brightness(1.12); }
         .rr-sl.on { box-shadow: inset 0 0 0 2px var(--t-ink); }
-        .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; pointer-events: none; text-shadow: 0 0 2px var(--card); }
-        .rr-det { margin-top: 7px; padding: 9px 11px; border-radius: 11px; background: var(--s1); border: 1px solid var(--line); }
-        .rr-det-h { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 900; color: var(--t-ink); }
-        .rr-det-h .lv { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
-        .rr-det-h .k { font-size: 9.5px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border-radius: 999px; padding: 1px 6px; }
+        .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: var(--t-body); font-style: normal; pointer-events: none; text-shadow: 0 0 2px var(--card); }
+        .rr-det { margin-top: 7px; padding: 9px 11px; border-radius: 14px; background: var(--s1); border: 1px solid var(--line); }
+        .rr-det-h { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .rr-det-h .lv { font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .rr-det-h .k { font-size: 11px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border-radius: 999px; padding: 1px 6px; }
         .rr-det-h button { margin-left: auto; flex: none; border: none; background: var(--s2); color: var(--t-body); border-radius: 999px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; font-family: inherit; }
         .rr-det-t { display: flex; flex-wrap: wrap; gap: 2px; margin: 7px 0; }
         .rr-det-p { font-size: 11px; color: var(--t-body); line-height: 1.7; }
         .rr-det-p b { color: var(--t-ink); font-variant-numeric: tabular-nums; }
-        .rr-foot { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .rr-foot { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
         .rr-foot .pct { color: var(--t-ink); font-size: 12px; }
         .rr-foot .done { color: var(--ok-deep); }
-        .rr-bar { display: grid; grid-template-columns: 78px minmax(0, 1fr) 62px; gap: 8px; align-items: center; margin-bottom: 7px; font-size: 11.5px; }
+        .rr-bar { display: grid; grid-template-columns: 78px minmax(0, 1fr) 62px; gap: 8px; align-items: center; margin-bottom: 7px; font-size: 12px; }
         .rr-bar .lb { display: flex; align-items: center; gap: 5px; font-weight: 900; color: var(--t-ink); white-space: nowrap; }
         .rr-bar .tr { position: relative; height: 14px; background: var(--track); border-radius: 999px; overflow: hidden; }
         .rr-bar .tr i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 999px; }
@@ -2714,10 +2714,10 @@
         .rr-hm th { font-weight: 900; color: var(--t-muted); background: var(--card); }
         .rr-hm td.nm { text-align: left; font-weight: 800; color: var(--t-ink); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
         /* 濃さは color-mix で出す。使えない環境では下の地だけが残る (濃淡は消えるが数字は読める) */
-        .rr-hm td.c { font-weight: 800; color: var(--t-ink); border-radius: 6px; background: var(--s1); }
+        .rr-hm td.c { font-weight: 800; color: var(--t-ink); border-radius: 8px; background: var(--s1); }
         .rr-hm td.c.z { color: var(--dim); }
         .rr-hm tr.me td { background: rgba(var(--ink-rgb), 0.05); }
-        .rr-note { margin: 10px 0 0; font-size: 10px; color: var(--t-muted); line-height: 1.7; background: var(--s1); border-radius: 9px; padding: 8px 10px; }
+        .rr-note { margin: 10px 0 0; font-size: 11px; color: var(--t-muted); line-height: 1.7; background: var(--s1); border-radius: 8px; padding: 8px 10px; }
         /* 👑 運営担当の任命 (設定 → その他 › メンテナンス。master だけ) */
         .roles-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; min-height: 40px; box-sizing: border-box; border-radius: 8px; background: var(--s1); font-size: 12px; font-weight: 800; color: var(--t-ink); cursor: pointer; }
         .roles-row.on { background: var(--ops-bg); }
@@ -4062,20 +4062,20 @@
             <div class="dc-card" data-slv-view="review" data-span="12" hidden>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🛡 全体分析 — この画面で分かること</div>
                 <div style="display:grid;gap:8px;margin-top:10px;">
-                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:12px;line-height:1.6;color:var(--t-body);">
                         <b style="color:var(--t-ink);white-space:nowrap;">🛡 属性別の進捗</b>
                         <span>どの属性に凸が集まり、ボスの総HPを<b>どこまで削れたか</b>。<b>やり残したボス</b>と<b>凸の偏り</b>が一目で分かります。</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:12px;line-height:1.6;color:var(--t-body);">
                         <b style="color:var(--t-ink);white-space:nowrap;">⚔ 得意・不得意</b>
                         <span>SLv の差を補正した「<b>1凸あたりの力</b>」。ユニオンが<b>どの属性に強く / 弱いか</b>、次のレイドで<b>どの属性に凸を回すべきか</b>の判断に使えます。</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:12px;line-height:1.6;color:var(--t-body);">
                         <b style="color:var(--t-ink);white-space:nowrap;">👥 誰がどの属性で</b>
                         <span>誰がどの属性を担当したか。<b>その属性を任せられる人が何人いるか</b>、特定の人に偏っていないかが分かります。</span>
                     </div>
                 </div>
-                <p style="margin:10px 0 0;font-size:10.5px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">
+                <p style="margin:10px 0 0;font-size:11px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:8px;padding:8px 10px;">
                     ★ <b>進捗率は「強さ」ではありません</b> — 弱い属性でも凸を集中させれば 100% になり、踏破すると頭打ちになります。
                     ユニオンの得意・不得意は必ず <b>⚔</b> の方で見てください。
                 </p>
@@ -7427,7 +7427,7 @@
                 const upper = a.key.toUpperCase();
                 const on = upper === activeUpper;
                 const c = DC_ATTR_COLORS[a.key];
-                return `<button type="button" onclick="${onclickName}('${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">
+                return `<button type="button" onclick="${onclickName}('${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;min-height:40px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">
                     ${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
             }).join('');
         }
@@ -7486,13 +7486,13 @@
             card.innerHTML = `
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🌏 GB比較</div>
-                    <span style="font-size:10.5px;color:var(--t-muted);">しりすこPAD GB ${escapeHtml(ex.season)} 凍結データ</span>
+                    <span style="font-size:11px;color:var(--t-muted);">しりすこPAD GB ${escapeHtml(ex.season)} 凍結データ</span>
                 </div>
                 <div class="ana-seg" style="margin:0 0 10px;">
                     ${segBtn('members', 'メンバー%')}${segBtn('comps', '編成')}${segBtn('best', '最適3凸')}
                 </div>
                 ${body}
-                ${idx.dropped.length ? `<div style="margin-top:8px;font-size:10px;color:var(--warn-deep);">⚠ ${idx.dropped.map(escapeHtml).join(' / ')}</div>` : ''}`;
+                ${idx.dropped.length ? `<div style="margin-top:8px;font-size:11px;color:var(--warn-deep);">⚠ ${idx.dropped.map(escapeHtml).join(' / ')}</div>` : ''}`;
             if (typeof initSpIcons === 'function') initSpIcons(card);
         }
 
@@ -7524,13 +7524,13 @@
                     const kill = x.isKill ? '<span style="font-size:9px;font-weight:900;color:var(--warn-deep);">締</span>' : '';
                     return `<span${x.isKill ? ` title="${escapeHtml(KILL_NOTE)}"` : ''} style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;${x.isKill ? 'opacity:0.65;outline:1px dashed var(--warn-solid);' : ''}">${kill}${renderAttrIcon(x.attr.toLowerCase(), 12)}${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
                 }).join('');
-                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
+                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:8px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:var(--t-muted);text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
                     <div style="min-width:0;">
                         <div style="display:flex;align-items:center;min-width:0;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800;color:var(--t-ink);">${escapeHtml(r.name)}</span><span style="flex:none;display:inline-flex;align-items:center;">${r.kills ? _killBadge(r.kills, { withCount: true }) : ''}${mine ? ' <span style="font-size:9px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;margin-left:5px;">あなた</span>' : ''}</span></div>
                         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${pills}</div>
                     </div>
-                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${r.avg != null ? Math.round(r.avg) + '<small style="font-size:9px;color:var(--t-muted);">%</small>' : (r.kills ? '<span style="font-size:10px;font-weight:900;color:var(--warn-deep);">締のみ</span>' : '—')}</div>
+                    <div style="font-size:14px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${r.avg != null ? Math.round(r.avg) + '<small style="font-size:9px;color:var(--t-muted);">%</small>' : (r.kills ? '<span style="font-size:10px;font-weight:900;color:var(--warn-deep);">締のみ</span>' : '—')}</div>
                 </div>`;
             }).join('');
 
@@ -7541,8 +7541,8 @@
             if (!(ratioBase > 0)) return `<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">SLv補正テーブルを読み込めないため計算できません。</p>`;
             if (noSlv.length) notes.push(`SLv未登録のため対象外: ${noSlv.length}人`);
             if (_seasonHasKillFlags()) notes.push('締 = 撃破した凸。残HPを超えた分は記録されないので数字は実力より小さい → 平均には入れません (締め凸だけの人は「締のみ」)。');
-            return (rows.length ? rowHtml : '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">表示できる凸データがありません。</p>') +
-                `<div style="margin-top:10px;font-size:10px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
+            return (rows.length ? `<div class="gb-members" data-dense>${rowHtml}</div>` : '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">表示できる凸データがありません。</p>') +
+                `<div style="margin-top:10px;font-size:11px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:8px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
         }
 
         // ② GB編成ブラウズ — 人気 (採用順) / 強い (中央値順) / 強い且つ人気 (採用10人以上かつ属性中央値以上)
@@ -7562,16 +7562,16 @@
                     ${_gbFacesHtml(c.names)}
                     <div style="text-align:right;min-width:0;">
                         <div style="font-size:12px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;white-space:nowrap;">${medPct != null ? `${medPct}%` : c.medianFururi.toFixed(2)}</div>
-                        <div style="font-size:10px;font-weight:800;color:var(--t-muted);white-space:nowrap;">${c.n}人</div>
+                        <div style="font-size:11px;font-weight:800;color:var(--t-muted);white-space:nowrap;">${c.n}人</div>
                     </div>
                 </div>`;
             }).join('');
             const note = `GB利用者 ${g.compCohortN}人の編成つき提出から (採用5人未満の編成は非公開)。中央値比 = その属性のGB全体中央値を100%とした編成中央値。`;
             const colHead = list.length
-                ? `<div style="text-align:right;font-size:10px;font-weight:800;color:var(--t-muted);margin-bottom:2px;">中央値比 / 採用人数</div>` : '';
+                ? `<div style="text-align:right;font-size:11px;font-weight:800;color:var(--t-muted);margin-bottom:2px;">中央値比 / 採用人数</div>` : '';
             return head + colHead +
                 (list.length ? rowsHtml : `<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">条件 (採用10人以上かつ属性中央値以上) に合う編成がありません。</p>`) +
-                `<div style="margin-top:10px;font-size:10px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
+                `<div style="margin-top:10px;font-size:11px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:8px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
         // 換算SLvの手動上書き (null = 自分のSLv)。空・不正入力で自分に戻る
@@ -7588,12 +7588,12 @@
         function _gbBestHtml(ex, idx, mySlv) {
             const pickRows = _gbCmpPicks.map((sel, i) => `
                 <div data-no-swipe style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
-                    <span style="flex:none;font-size:10px;font-weight:900;color:var(--t-muted);width:26px;">凸${i + 1}</span>
+                    <span style="flex:none;font-size:11px;font-weight:900;color:var(--t-muted);width:26px;">凸${i + 1}</span>
                     ${PT_ATTRS.map(a => {
                         const upper = a.key.toUpperCase();
                         const on = upper === sel;
                         const c = DC_ATTR_COLORS[a.key];
-                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
+                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;min-height:40px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
                     }).join('')}
                 </div>`).join('');
             // SLv換算: 基準SLv → 表示SLv (上書き > 自分のSLv) への攻撃力係数比。
@@ -7609,13 +7609,13 @@
                 : `GB基準SLv ${Number.isFinite(baseSlvNum) ? baseSlvNum : '?'} 換算`;
             const slvRow = `
                 <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;">
-                    <span style="flex:none;font-size:10px;font-weight:900;color:var(--t-muted);width:26px;">SLv</span>
+                    <span style="flex:none;font-size:11px;font-weight:900;color:var(--t-muted);width:26px;">SLv</span>
                     <input type="number" inputmode="numeric" min="1" max="999" value="${effSlv ?? ''}"
                         placeholder="${Number.isFinite(baseSlvNum) ? baseSlvNum : ''}" onchange="_setGbSlv(this.value)"
-                        style="width:82px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:800;font-family:inherit;color:var(--t-ink);text-align:center;background:var(--card);">
+                        style="width:82px;padding:6px 8px;min-height:40px;box-sizing:border-box;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:800;font-family:inherit;color:var(--t-ink);text-align:center;background:var(--card);">
                     ${_gbSlvOverride != null
-                        ? `<button type="button" onclick="_setGbSlv('')" style="border:1.5px solid var(--line);background:var(--card);color:var(--t-muted);border-radius:999px;padding:5px 11px;font-size:10px;font-weight:900;font-family:inherit;cursor:pointer;">↩ 自分のSLvに戻す</button>`
-                        : `<span style="font-size:10px;color:var(--t-muted);">${mySlv != null ? 'あなたのSLvで換算中 (変更可)' : '未登録 — SLvを入力すると換算できます'}</span>`}
+                        ? `<button type="button" onclick="_setGbSlv('')" style="border:1.5px solid var(--line);background:var(--card);color:var(--t-muted);border-radius:999px;padding:5px 11px;min-height:40px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;">↩ 自分のSLvに戻す</button>`
+                        : `<span style="font-size:11px;color:var(--t-muted);">${mySlv != null ? 'あなたのSLvで換算中 (変更可)' : '未登録 — SLvを入力すると換算できます'}</span>`}
                 </div>`;
             const r = gbCompareDomain.optimizeTriple(idx, _gbCmpPicks);
             let resultHtml = '';
@@ -7633,9 +7633,9 @@
                             const g = idx.attrs[c.attr];
                             const medPct = g && g.attackMedianFururi > 0 ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
                             return `<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">
-                                <span style="flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 6px;">${si + 1}${renderAttrIcon(c.attr.toLowerCase(), 13)}</span>
+                                <span style="flex:none;display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 6px;">${si + 1}${renderAttrIcon(c.attr.toLowerCase(), 13)}</span>
                                 ${_gbFacesHtml(c.names, 22)}
-                                <span style="flex:none;margin-left:auto;min-width:0;font-size:10px;font-weight:800;color:var(--t-muted);text-align:right;white-space:nowrap;">${formatDamage(c.estDamage * scale)}<br>${medPct != null ? `${medPct}%·` : ''}${c.n}人</span>
+                                <span style="flex:none;margin-left:auto;min-width:0;font-size:11px;font-weight:800;color:var(--t-muted);text-align:right;white-space:nowrap;">${formatDamage(c.estDamage * scale)}<br>${medPct != null ? `${medPct}%·` : ''}${c.n}人</span>
                             </div>`;
                         }).join('')}
                     </div>`).join('');
@@ -7645,7 +7645,7 @@
                 `表示は${slvLabel}。` +
                 `中央値ベースの推定で、ボス残HP・自ユニオンの所持/育成状況・同属性2凸目の減衰は考慮していません。`;
             return pickRows + slvRow + resultHtml +
-                `<div style="margin-top:10px;font-size:10px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
+                `<div style="margin-top:10px;font-size:11px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:8px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
         function renderMyPage() {
@@ -10611,12 +10611,12 @@
                 const r = resolveNikkeChar(c);
                 if (!r) return '';
                 if (r.iconPath) {
-                    return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || r.raw)}" title="${escapeHtml(r.canonical || r.raw)}" style="width:${size}px;height:${size}px;border-radius:4px;vertical-align:middle;margin-right:3px;">`;
+                    return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || r.raw)}" title="${escapeHtml(r.canonical || r.raw)}" style="width:${size}px;height:${size}px;border-radius:${size < 24 ? 4 : 8}px;vertical-align:middle;margin-right:3px;">`;
                 }
                 // アイコン未学習の新キャラ: 名前全文だと狭い列で縦に折り返して行が伸びるため、
                 // 頭文字1文字の固定サイズチップにする (フルネームは title で確認可)
                 const name = String(r.canonical || r.raw || '?');
-                return `<span title="${escapeHtml(name)} (アイコン未学習)" style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:4px;background:var(--s2);color:var(--t-strong);font-size:${Math.max(9, Math.round(size * 0.5))}px;font-weight:800;vertical-align:middle;margin-right:3px;flex:none;">${escapeHtml(name.charAt(0))}</span>`;
+                return `<span title="${escapeHtml(name)} (アイコン未学習)" style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${size < 24 ? 4 : 8}px;background:var(--s2);color:var(--t-strong);font-size:${size >= 26 ? 12 : Math.max(9, Math.round(size * 0.5))}px;font-weight:800;vertical-align:middle;margin-right:3px;flex:none;">${escapeHtml(name.charAt(0))}</span>`;
             }).join('');
         }
 
@@ -18302,7 +18302,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 : '<span style="font-size:11px;color:var(--t-muted);">この凸の編成は記録されていません</span>';
             return `<div class="rr-det"><div class="rr-det-h">${esc(x.name)}<span class="lv">Lv${L.level}</span><b>${esc(_rrB(x.damage))}</b>`
                 + (x.isKill ? '<span class="k">締</span>' : '')
-                + `<button type="button" data-attr="${esc(r.attr)}" data-lv="${L.level}" data-i="${pick.i}"`
+                + `<button type="button" class="hit40" data-attr="${esc(r.attr)}" data-lv="${L.level}" data-i="${pick.i}"`
                 + ` onclick="_rrPickSlice(this.dataset.attr, Number(this.dataset.lv), Number(this.dataset.i))" aria-label="閉じる" title="閉じる">✕</button></div>`
                 + `<div class="rr-det-t">${team}</div>`
                 + `<div class="rr-det-p">このレベルのボスHPの <b>${(x.pctLevel ?? 0).toFixed(1)}%</b> · ${esc(jp)}PT の総HP (Lv1〜3) の <b>${(x.pctTotal ?? 0).toFixed(1)}%</b>`
@@ -18339,7 +18339,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const tip = `${jp}PT · ${r.attacks}凸 · 1凸平均 ${_rrB(r.avgB || 0)}${r.median != null ? ` · 中央 ${_rrAptFmt(r.median, apt.basis)}` : ''}`;
                 return `<div class="rr-bar" title="${esc(tip)}"><span class="lb">${renderAttrIcon(r.attr, 13, { title: `${jp}PT` })}${esc(jp)}PT</span>`
                     + `<span class="tr"><i style="width:${w.toFixed(1)}%;background:var(${tk}-solid);"></i>${mark}</span>`
-                    + `<span class="vl">${esc(_rrAptFmt(r.value, apt.basis))}<small style="display:block;font-size:9.5px;font-weight:800;color:var(--t-muted);">${r.attacks}凸</small></span></div>`;
+                    + `<span class="vl">${esc(_rrAptFmt(r.value, apt.basis))}<small style="display:block;font-size:11px;font-weight:800;color:var(--t-muted);">${r.attacks}凸</small></span></div>`;
             }).join('');
         }
         function _rrAptScatterHtml(apt) {
@@ -18408,7 +18408,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const esc = escapeHtml, ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
             if (!mm.rows.length) return '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>';
             const me = (typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null)?.name ?? null;
-            const head = `<tr><th style="text-align:left;">メンバー</th>${ATTRS.map(a => `<th>${renderAttrIcon(a, 14, { title: `${_rrAttrJp(a)}PT` })}<div style="font-size:9.5px;">${esc(_rrAttrJp(a))}</div></th>`).join('')}<th>合計</th></tr>`;
+            const head = `<tr><th style="text-align:left;">メンバー</th>${ATTRS.map(a => `<th>${renderAttrIcon(a, 14, { title: `${_rrAttrJp(a)}PT` })}<div style="font-size:10px;">${esc(_rrAttrJp(a))}</div></th>`).join('')}<th>合計</th></tr>`;
             const body = mm.rows.map(r => {
                 const cells = ATTRS.map(a => {
                     const c = r.cells[a];

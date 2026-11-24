@@ -2341,7 +2341,7 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
         return m[1] + ':' + (on ? on[1] : d ? d[1] : c[1].replace(/\s+/g, '.'));
     }).sort();
     //   ⚔️ 戦況 (2026-11-17): 📥 の行のボタン (✓ 凸の記録へ・確認する・📥 取り込む・📋 聞く・凸していない・戻す)・残 HP のチェック 2 つ (どちらか 1 つが出る)・凸していない / 🕐 の開閉。summary・label は 2 つ目の class で見分ける
-    assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
+    assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:_rrPickSlice', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
         'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:openFururiHelp', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
         'summary:hit40', 'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');   // summary:hit40 は 🧱「このブロックのみ」と 👑 🧬「メンバー一覧からまとめて読み取る」(2026-11-20)
     // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
@@ -2384,7 +2384,7 @@ test('★ 段階 2 の物差し (🧱 組む・2026-11-17): 練習の場面に�
     }
     assert.match(html, /\n\s*\.ob-sync-auto \{ display: inline-flex; align-items: center; gap: 5px; font-size: 11px;/, '「自動で反映する」の文字が物差しから外れた');   // .ob-sync.idle .ob-sync-auto もあるので直接見る
     // キャラのアイコン (共有の _charIconHtml): 24px 未満は 4・それ以上は 8
-    assert.equal((html.match(/border-radius:\$\{size < 24 \? 4 : 8\}px;/g) || []).length, 2, 'キャラのアイコンの角丸が大きさで分かれていない');
+    assert.equal((html.match(/border-radius:\$\{size < 24 \? 4 : 8\}px;/g) || []).length, 4, 'キャラのアイコンの角丸が大きさで分かれていない');   // _charIconHtml 2 + renderTeamSnippet 2 (2026-11-24: 全体分析の詳細の 26px)
 });
 test('★ 段階 2 の物差し (⚔️ 戦況・2026-11-17): 練習の場面に出ない部品も物差しどおり — ✏️ の編集パネル・Lv4 のバナー・候補 0 人・同属性 2 凸目・確認する / 凸していない の行・解析中の帯', () => {
     const html = _perfHtml;
@@ -2431,7 +2431,7 @@ test('★ 段階 2 の物差し (👑 マスター・2026-11-20): 1 人 1 行の
     // data-dense = 物差しの検査 (tests/ruler.mjs) が 9 / 10px と行の中の小さい部品を認める印。外れを黙らせるために足さないよう、付け先を固定する (どのタグでも・JS で付けない)
     //   通知状況の表 (1 人 1 行)・育成の識別子の一覧と ④ 取れなかった人の一覧 (どちらも .gr-rows)・選んだ人 (.gr-pick)・キャラマスタの一覧・アクティビティの記録 (1 件 1 行)
     const dense = [...html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bdata-dense\b[^>]*)>/g)].map(m => { const id = m[2].match(/\bid="([^"]+)"/); const c = m[2].match(/\bclass="([^"]+)"/); return m[1] + (id ? '#' + id[1] : c ? '.' + c[1].split(/\s+/)[0] : ''); }).sort();
-    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gr-pick', 'div.gr-rows', 'div.gr-rows'], 'data-dense の付け先が変わった');
+    assert.deepEqual(dense, ['div#setlogList', 'div#settingsCharList', 'div#settingsNotifyTable', 'div.gb-members', 'div.gr-pick', 'div.gr-rows', 'div.gr-rows'], 'data-dense の付け先が変わった');   // div.gb-members = 🌏 GB比較のメンバー% (1 人 1 行・2026-11-24)
     // ④ 取り込みの結果 (取り込んだあとだけ出る・練習の場面に無い): 取れなかった人の一覧は 1 人 1 行 (状態の札 10px を認める)・見出しの人数は 11px (Codex 監査 e27a25b)
     has('+ `<div class="gr-rows" data-dense>${badRows}</div>`', '取れなかった人の一覧に data-dense が無い');
     has('<span style="font-weight:800;color:var(--t-muted);font-size:11px;">取れた ${ok.length}人', '取り込みの結果の人数が 11px でない');
@@ -2497,6 +2497,26 @@ test('★ 段階 2 の物差し (分析 1 回目 = 実績・ふるり値・シ�
     const sim = parts[2];
     assert.equal((sim.match(/grid-template-columns: repeat\(auto-fit, minmax\(140px, 1fr\)\); gap: 16px;/g) || []).length, 3, 'シミュレータの欄が狭い幅で縦に積まれない');
     assert.ok(!/grid-template-columns: 1fr 1fr/.test(sim), 'シミュレータの欄を 2 列に固定した (320px で選択欄が潰れる)');
+});
+test('★ 段階 2 の物差し (分析 2 回目 = 🛡 全体分析・🌏 GB比較・2026-11-24): 練習の場面に出ない部品も物差しどおり', () => {
+    const html = _perfHtml;
+    const cut = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); assert.ok(i > 0 && j > i, a + ' の範囲が見つからない'); return html.slice(i, j); };
+    // ① 全体分析の HTML (説明カード〜誰がどの属性で) の文字と角丸は物差しの値だけ
+    const rv = cut('<!-- ===== 🛡 全体分析 (レイドの振り返り', '<div data-slv-view="growth" hidden>');
+    for (const m of rv.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(['11', '12', '14', '16', '20'].includes(m[1]), '全体分析の HTML に物差しの外の文字 ' + m[1] + 'px');
+    for (const m of rv.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(['4', '8', '14', '22', '999'].includes(m[1]), '全体分析の HTML に物差しの外の角丸 ' + m[1] + 'px');
+    // ② 帯の凸の詳細: 締 の札 (締め凸のときだけ) 11px・Lv 11px・✕ は hit40 (付け先は hit40 の節が固定)
+    assert.match(html, /\n\s*\.rr-det-h \.k \{ font-size: 11px;/, '帯の凸の詳細の 締 の札が 11px でない');
+    assert.match(html, /\n\s*\.rr-det-h \.lv \{ font-size: 11px;/, '帯の凸の詳細の Lv が 11px でない');
+    // ③ キャラのアイコンが無いときの頭文字 (renderTeamSnippet): 26px (全体分析の詳細) は 12px・ほかの大きさは今までどおり
+    assert.ok(html.includes('font-size:${size >= 26 ? 12 : Math.max(9, Math.round(size * 0.5))}px;'), 'アイコンが無いときの頭文字が 26px で 13px になる');
+    // ④ GB比較: 自分の SLv に戻す (SLv を手で変えたときだけ) は 40px・11px / 取り違えの知らせ (GB と本家のボスが合わないときだけ) 11px / 説明の箱 3 つ (11px・角丸 8)
+    assert.ok(html.includes('border-radius:999px;padding:5px 11px;min-height:40px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;">↩ 自分のSLvに戻す</button>'), '「↩ 自分のSLvに戻す」が 40px / 11px でない');
+    assert.ok(html.includes('${idx.dropped.length ? `<div style="margin-top:8px;font-size:11px;color:var(--warn-deep);">'), 'GB の取り違えの知らせが 11px でない');
+    assert.equal((html.match(/<div style="margin-top:10px;font-size:11px;color:var\(--t-muted\);line-height:1\.7;background:var\(--s1\);border-radius:8px;padding:8px 10px;">/g) || []).length, 3, 'GB比較の説明の箱が 11px / 角丸 8 でない');
+    assert.ok(!/<div style="margin-top:10px;font-size:10px;color:var\(--t-muted\);line-height:1\.7;background:var\(--s1\);border-radius:9px;/.test(html), 'GB比較の説明の箱に 10px / 角丸 9 が残っている');
+    // ⑤ GB比較の SLv の欄は 40px・14px・角丸 8
+    assert.ok(html.includes('style="width:82px;padding:6px 8px;min-height:40px;box-sizing:border-box;border:1.5px solid var(--line);border-radius:8px;font-size:14px;'), 'GB比較の SLv の欄が 40px / 14px / 角丸 8 でない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
