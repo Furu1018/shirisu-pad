@@ -347,9 +347,10 @@ const runScene = async (tab, scene) => {
                     const shown = await ev(`[...document.querySelectorAll(${JSON.stringify(q)})].some(e => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0)`);
                     if (shown) { active = '「' + q + '」が消えない'; break; }
                 } else if (a.startsWith('fit=')) {
-                    // 汎用: その部品が親の中に収まっていること (中身の幅が親の中身の幅を超えない = 隣にはみ出さない。物差しの検査では拾えない並び崩れ — 2026-11-24 Codex 監査: 320px の ⚔ の行)
+                    // 汎用: その部品が親の中に収まっていること (中身の幅が親の中身の幅を超えない = 隣にはみ出さない。物差しの検査では拾えない並び崩れ — 2026-11-24 Codex 監査: 320px の ⚔ の行)。
+                    //   親の行そのものの中身 (隣の点・間も含めた全部) も親の幅を超えないこと (部品だけ見ると、同じ行の点 7px + 間 5px のぶんのはみ出しを見逃す: 2026-11-24 Codex 監査)
                     const q = a.slice(4);
-                    const bad = await ev(`(() => { const els = [...document.querySelectorAll(${JSON.stringify(q)})].filter(e => e.getClientRects().length > 0); if (!els.length) return '見えない'; for (const e of els) { const p = e.parentElement; const cs = getComputedStyle(p); const inner = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); if (e.scrollWidth > inner + 0.5) return (e.textContent || '').trim().slice(0, 12) + ' が ' + Math.round(e.scrollWidth - inner) + 'px はみ出す'; } return ''; })()`);
+                    const bad = await ev(`(() => { const els = [...document.querySelectorAll(${JSON.stringify(q)})].filter(e => e.getClientRects().length > 0); if (!els.length) return '見えない'; for (const e of els) { const p = e.parentElement; const cs = getComputedStyle(p); const inner = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const t = (e.textContent || '').trim().slice(0, 12); if (e.scrollWidth > inner + 0.5) return t + ' が ' + Math.round(e.scrollWidth - inner) + 'px はみ出す'; if (p.scrollWidth > p.clientWidth + 0.5) return t + ' の行が ' + Math.round(p.scrollWidth - p.clientWidth) + 'px はみ出す'; } return ''; })()`);
                     if (bad) { active = '「' + q + '」' + bad; break; }
                 } else { active = '知らない動作: ' + a; break; }
             }

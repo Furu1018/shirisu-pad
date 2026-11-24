@@ -2564,8 +2564,8 @@ test('★ 段階 2 の物差し (設定・ヘルプ・2026-11-24): 練習の場�
     assert.match(html, /\n\s*\.tour-guide-launcher \{[^}]*min-height: 40px;/, '「ガイドを開始」が 40px 未満');
     // ④ 設定の 現在のプレイヤー (JS が描く) は 11px
     assert.ok(html.includes('<div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>'), '設定の「現在のプレイヤー」が 11px でない');
-    // ⑤ システム状態のチップは スマホ幅で 2 × 2 (横 1 列だとラベルが 11px で 390px でも はみ出す・検査の fit= も見る)
-    assert.ok(html.includes('<div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:7px;">'), 'システム状態のチップが横 1 列に戻った (ラベルがはみ出す)');
+    // ⑤ システム状態のチップは どの幅でも 2 × 2 (横 1 列だとラベルが 11px で 390px でも はみ出す / auto-fit だと PC のカード 約 480px で 3 + 1 になる: 2026-11-24 Codex 監査・検査の fit= も見る)
+    assert.ok(html.includes('<div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px;">'), 'システム状態のチップが 2 × 2 でない (横 1 列はラベルがはみ出す・auto-fit は PC のカード 約 480px で 3 + 1 になる)');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
