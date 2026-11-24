@@ -9,6 +9,7 @@
 #   deploy-pages v4 がアップロード済みの成果物を「Found 0 artifact(s)」で見つけられずに落ちることが続いた
 #   (11/24 だけで 7 回・時間をおいて起動し直すと通る回もあった)。同じ時期に「Node.js 20 向けの actions を Node.js 24 で
 #   強制的に動かしている」警告が出ていたので、まず版を揃えて切り分ける (原因だと確定したわけではない)。
+#   → 版を上げても同じく落ちた。原因は成果物の一覧への反映の遅れと見て、upload と deploy の間に「Wait for artifact」を足した。
 #   upload-pages-artifact v4 以降は隠しファイル (. で始まる) を成果物に入れない — このサイトに要る隠しファイルは無い (.nojekyll / .gitattributes / .gitignore は Actions の公開では使わない)
 # ============================================================================
 name: Deploy to GitHub Pages
@@ -22,6 +23,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read   # 成果物の一覧を読む (下の Wait for artifact)
 
 concurrency:
   group: pages
@@ -45,6 +47,21 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: .
+      - name: Wait for artifact
+        # 2026-11-24: v5 に上げても「Found 0 artifact(s)」で落ちた。ログでは upload の完了の 0.2 秒後に deploy-pages が
+        #   成果物の一覧を引いていて、同じ成果物はあとで一覧に出ていた (= 一覧への反映が遅れている)。一覧に出るまで待つ。
+        #   最大 2 分。出ないまま過ぎたら警告だけ出して deploy を試す (これまでと同じ動きに戻るだけ)。
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 24); do
+            n=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=github-pages" -q '.total_count' 2>/dev/null) || n=0
+            case "$n" in ''|*[!0-9]*) n=0 ;; esac   # 失敗したときの本文などは 0 と読む
+            echo "try ${i}: ${n}"
+            if [ "$n" -ge 1 ]; then sleep 5; exit 0; fi
+            sleep 5
+          done
+          echo "::warning::成果物 github-pages が 2 分たっても一覧に出ない — このまま deploy を試す"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
