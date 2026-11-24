@@ -10,7 +10,7 @@
 #   (11/24 だけで 7 回・時間をおいて起動し直すと通る回もあった)。同じ時期に「Node.js 20 向けの actions を Node.js 24 で
 #   強制的に動かしている」警告が出ていたので、まず版を揃えて切り分ける (原因だと確定したわけではない)。
 #   → 版を上げても同じく落ちた (upload の完了の 0.2 秒後に deploy-pages が成果物の一覧を引いて 0 件・その成果物はあとで一覧に出ていた)。
-#   成果物の一覧への反映が遅れていると見て、deploy-pages を間をおいて最大 2 回やり直す (下の retry)。
+#   成果物の一覧への反映が遅れていると見て、deploy の前に「同じ一覧で成果物が見えるか」を確かめる (下の probe)。
 #   upload-pages-artifact v4 以降は隠しファイル (. で始まる) を成果物に入れない — このサイトに要る隠しファイルは無い (.nojekyll / .gitattributes / .gitignore は Actions の公開では使わない)
 # ============================================================================
 name: Deploy to GitHub Pages
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.deployment2.outputs.page_url || steps.deployment3.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -47,35 +47,41 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: .
-      # ── deploy-pages のやり直し (2026-11-24) ──
-      # deploy-pages v5 は成果物を Results Service の一覧 (@actions/artifact の listArtifacts) で探し、見つからないと
-      # 公開を作る前に止まる (src/internal/deployment.js: getArtifactMetadata が createPagesDeployment より前)。
-      # page_url を出すのは公開を作れたあとだけなので、「失敗して page_url が空」= 公開をまだ作っていない ときだけやり直す
-      # (作ったあとの失敗 = 状態の確認の時間切れなど でやり直すと公開が二重になる)。同じ一覧を同じ道具で引き直すのがいちばん確か。
+      # ── 成果物が見えるかの確かめ (2026-11-24) ──
+      # deploy-pages v5 は成果物を Results Service の ListArtifacts (@actions/artifact の listArtifacts・この run の分) で探し、
+      # 0 件だとそこで止まる。download-artifact も名前で探すときは同じ ListArtifacts (名前で絞る) を引く。
+      # download-artifact は外に何も作らないので、何度やり直しても安全 (deploy-pages をやり直すと、要求が届いて返事だけ
+      # 失われたときに公開が二重になり得る: Codex 監査)。見えるまで 30 秒 → 90 秒おいて最大 3 回試し、deploy-pages は 1 回だけ動かす。
+      # 3 回とも見えなくても deploy-pages は試す (これまでと同じ動きに戻るだけ)。落とした写しは runner の一時置き場で、公開には使わない。
+      - name: Probe artifact (1)
+        id: probe1
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages-probe
+      - name: Wait before probe (2)
+        if: steps.probe1.outcome == 'failure'
+        run: sleep 30
+      - name: Probe artifact (2)
+        id: probe2
+        if: steps.probe1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages-probe
+      - name: Wait before probe (3)
+        if: steps.probe2.outcome == 'failure'
+        run: sleep 90
+      - name: Probe artifact (3)
+        id: probe3
+        if: steps.probe2.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages-probe
       - name: Deploy to GitHub Pages
         id: deployment
-        continue-on-error: true
         uses: actions/deploy-pages@v5
-      - name: Wait before retry (1)
-        if: steps.deployment.outcome == 'failure' && steps.deployment.outputs.page_url == ''
-        run: sleep 30
-      - name: Deploy to GitHub Pages (retry 1)
-        id: deployment2
-        if: steps.deployment.outcome == 'failure' && steps.deployment.outputs.page_url == ''
-        continue-on-error: true
-        uses: actions/deploy-pages@v5
-      - name: Wait before retry (2)
-        if: steps.deployment2.outcome == 'failure' && steps.deployment2.outputs.page_url == ''
-        run: sleep 90
-      - name: Deploy to GitHub Pages (retry 2)
-        id: deployment3
-        if: steps.deployment2.outcome == 'failure' && steps.deployment2.outputs.page_url == ''
-        uses: actions/deploy-pages@v5
-      - name: Fail if not deployed
-        # やり直しをしなかった失敗 (公開を作ったあとの失敗) と、やり直しても page_url が出なかったときに job を落とす
-        # (continue-on-error のままだと落ちた公開が緑に見える)
-        # 取り消し (concurrency の cancel-in-progress) のときは動かさない
-        if: ${{ !cancelled() && steps.deployment.outcome != 'success' && steps.deployment2.outcome != 'success' && steps.deployment3.outcome != 'success' }}
-        run: |
-          echo "::error::GitHub Pages への公開に失敗しました (deploy-pages: 1 回目 ${{ steps.deployment.outcome }} / 2 回目 ${{ steps.deployment2.outcome }} / 3 回目 ${{ steps.deployment3.outcome }})"
-          exit 1
