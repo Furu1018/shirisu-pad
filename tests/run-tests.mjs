@@ -2471,6 +2471,9 @@ test('★ 段階 2 の物差し (📅 レイド予定表・2026-11-21): 練習�
     //   札ごと次の行へ送る (inline-block)・ボタンからはみ出さない (max-width・nowrap にしない = 320px で「17:00 から」が 10px はみ出す)・日本語の字の間では切らない (keep-all)
     assert.match(html, /\n\s*\.mt-chip \{ display: inline-block; max-width: 100%; [^}]*word-break: keep-all;/, '「いま」の札が行の途中で 2 行に折れる / 長い札がボタンからはみ出す');   // 「.obb .nm .mt-chip {」もあるので直接見る
     assert.ok(!/\n\s*\.mt-chip \{[^}]*white-space: nowrap/.test(html), '札を nowrap にした (320px で「17:00 から」がブロックのボタンからはみ出す)');
+    // PC (サイドバーの幅) では本文の上限が 1080px — 📅 レイド予定表は運営タブと同じ 1500px まで広げる (盤とみんなの模擬の表は横に長い。1080px だとブラウザを広げても表の中で横に送る必要があった: 2026-11-25 ふるり)。
+    //   練習のデータは編成が少なく 1080px でも表が収まるので、物差しの検査では拾えない — ここで固定する (模擬に編成②を足した練習のデータで、2174px で 349px 足りなかった → 収まる、を確かめた)
+    assert.match(html, /\n\s*\.container \{ max-width: 1080px; \}\n\s*#tab-ops > \.container, #tab-raid > \.container \{ max-width: 1500px; \}/, '📅 レイド予定表の本文が PC で広がらない (1080px のまま = みんなの模擬の表を横に送る)');
 });
 test('★ 段階 2 の物差し (分析 1 回目 = 実績・ふるり値・シミュレータ・2026-11-24): 練習の場面に出ない部品も物差しどおり', () => {
     const html = _perfHtml;

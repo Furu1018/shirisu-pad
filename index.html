@@ -2129,9 +2129,10 @@
             }
             .tab-button:hover:not(.active) { background: var(--s2); }
             .tab-button.active::after { display: none; }   /* 下線の印は横タブのときだけ */
-            /* 本文はサイドバーぶん右へ寄る。戦況タブだけ広く使う (ブリーフィング用) */
+            /* 本文はサイドバーぶん右へ寄る。運営タブ (ブリーフィング用) と 📅 レイド予定表 は広く使う —
+               レイド予定表の盤とみんなの模擬の表は横に長く、1080px だとブラウザを広げても表の中で横に送る必要があった (2026-11-25 ふるり) */
             .container { max-width: 1080px; }
-            #tab-ops > .container { max-width: 1500px; }
+            #tab-ops > .container, #tab-raid > .container { max-width: 1500px; }
         }
         /* --- ③' スマホ横だけサイドバーを細く。232px だと本文が 620px になり、2列の1枚が縦持ち (366px) より狭くなる。
                PC (1180px〜) の 232px は触らない (実機確認済み) --- */
