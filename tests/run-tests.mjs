@@ -12,6 +12,7 @@ import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ 
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
 import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベル開放)
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
+import '../js/domain/slvLine.js';      // globalThis.slvLineDomain (分析 › 実績 の SLv 順のグラフの中央値の線・2026-11-25)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
@@ -3179,6 +3180,69 @@ test('完了凸が無い入力は従来どおり (回帰保証)', () => {
     assert.equal(plan.levels[0].bosses[0].attacks[0].memberName, 'A');
     assert.deepEqual(plan.membersUnknownCompletedTeam, [], '凸が無ければ要確認も空');
 });
+
+// ---- ドメイン: SLv 順のグラフの中央値の線 (js/domain/slvLine.js・2026-11-25 ふるり) --------------------------------
+console.log('\ndomain/slvLine:');
+{
+    const D = globalThis.slvLineDomain;
+    const RT = { 400: 0.5, 500: 1, 600: 2, 800: 4 };   // SLv の比率表 (検算しやすい値)
+    test('slvLine: ユニオンの 1 凸の中央値 = 属性ごとに「1 人 1 票のベスト (締め凸を除く・SLv の係数で割る)」の中央値 → 属性で平均', () => {
+        //   ★ 数字は「締め凸を数える」「ベストでなく最後の凸を使う」と中央値が動くように選んである (変異テストで、動かない数字だとすり抜けた)
+        const players = [
+            { slv: 500, attacks: [{ attr: 'FIRE', damage: 30 }, { attr: 'FIRE', damage: 10 }, { attr: 'WATER', damage: 8 }] },   // FIRE はベストの 30 / 1 = 30 (最後の 10 ではない)
+            { slv: 600, attacks: [{ attr: 'FIRE', damage: 40 }, { attr: 'WATER', damage: 12 }] },                              // 40 / 2 = 20・12 / 2 = 6
+            { slv: 400, attacks: [{ attr: 'FIRE', damage: 5 }, { attr: 'WATER', damage: 99, kill: true }, { attr: 'WATER', damage: 1 }] },   // 5 / 0.5 = 10・WATER は締め凸の 99 を除いた 1 / 0.5 = 2
+            { slv: 700, attacks: [{ attr: 'FIRE', damage: 999 }] },   // 比率表に無い SLv = 数えない
+        ];
+        const r = D.unionNorm({ players, ratioTable: RT, minN: 3 });
+        assert.deepEqual(r.attrs.FIRE, { median: 20, n: 3 }, 'FIRE は 30 / 20 / 10 の中央値 (最後の凸を使うと 10 / 20 / 10 → 10)');
+        assert.deepEqual(r.attrs.WATER, { median: 6, n: 3 }, 'WATER は 8 / 6 / 2 の中央値 (締め凸を数えると 8 / 6 / 198 → 8)');
+        assert.equal(r.norm, 13, '属性で平均 (20 + 6) / 2');
+        // 人数が足りない属性は平均に入れない
+        const r2 = D.unionNorm({ players, ratioTable: RT, minN: 4 });
+        assert.equal(r2, null, '属性ごと 4 人に届かなければ線を出さない');
+        // 偶数人の中央値は真ん中 2 つの平均
+        assert.equal(D.median([1, 9, 3, 7]), 5);
+        assert.equal(D.median([]), null);
+    });
+    test('slvLine: GB の 1 凸の中央値 = GB比較と同じ換算 (normFromFururi) → 属性で平均 / 線 = 3 凸 × norm × ratio(SLv)', () => {
+        const index = { attrs: { FIRE: { attackMedianFururi: 20, baseDamage: 1e9, attackN: 600 }, WATER: { attackMedianFururi: 10, baseDamage: 1e9, attackN: 300 }, IRON: { attackMedianFururi: null, baseDamage: 1e9 } } };
+        const g = D.gbNorm({ index, ratioTable: RT, baseSlv: 600, normFromFururi: globalThis.gbCompareDomain.normFromFururi });
+        assert.equal(g.attrs.FIRE.median, 20e9 / 2, 'FIRE = 20B ÷ ratio(600)');
+        assert.equal(g.attrs.WATER.median, 10e9 / 2);
+        assert.ok(!g.attrs.IRON, '中央値の無い属性は入れない');
+        assert.equal(g.norm, 7.5e9, '属性で平均');
+        assert.equal(D.gbNorm({ index, ratioTable: RT, baseSlv: 999, normFromFururi: globalThis.gbCompareDomain.normFromFururi }), null, '基準 SLv が比率表に無ければ出さない');
+        // 線: SLv 800 なら 3 × 7.5e9 × 4
+        assert.equal(D.lineAt(g.norm, RT, 800), 3 * 7.5e9 * 4);
+        assert.equal(D.lineAt(g.norm, RT, 700), null, '比率表に無い SLv は線を切る (null)');
+        assert.equal(D.lineAt(null, RT, 800), null);
+    });
+    test('★ 配線: 分析 › 実績 の SLv 順のグラフ (2026-11-25) — 2 つのグラフをいつも描く・切り替えと散布図は無い・線は棒に積まない・GB は世代を見てから足す', () => {
+        const html = _perfHtml;
+        const fn = html.slice(html.indexOf('function createSlvOrderChart() {'), html.indexOf('// ========== Stacked Bar Chart =========='));
+        assert.ok(fn.length > 500, 'createSlvOrderChart が無い');
+        // 並びは SLv の低い順 (同じ SLv はダメージの多い順)
+        assert.match(fn, /\.sort\(\(a, b\) => Number\(a\.syncLevel\) - Number\(b\.syncLevel\) \|\| b\.damage - a\.damage/, '横の並びが SLv の低い順でない');
+        // 線は stack を分ける (同じ stack だと棒の上に積まれる / 線どうしが積まれる)
+        assert.match(fn, /type: 'line', label, stack: 'line:' \+ label,/, '線の stack を分けていない (棒や別の線に積まれる)');
+        assert.match(fn, /type: 'bar', label: info\.attributeJP, stack: 'dmg'/, '棒の stack が無い');
+        // 線の計算はドメインが唯一 (画面で式を書き足さない)
+        assert.match(fn, /dom\.unionNorm\(/); assert.match(fn, /dom\.gbNorm\(/); assert.match(fn, /dom\.lineAt\(norm, slvRatioTable, Number\(p\.syncLevel\)\)/);
+        // ユニオンの線は締め凸を除く (true のときだけ締め凸 — 分からない (null) は締め凸にしない)
+        assert.match(fn, /kill: _attackIsKill\(a\) === true/, 'ユニオンの線に締め凸を混ぜている');
+        // GB は書き出しを読んでから足す — 待つ間に描き直した・月が変わったら捨てる
+        assert.match(fn, /if \(seq !== _slvOrderSeq \|\| slvOrderChartInstance !== chartRef \|\| month !== currentMonthKey\) return;/, 'GB の線を古いグラフ・別の月に足す');
+        // 切り替えと散布図は無い (同じことを見る部品を 2 つ置かない)
+        for (const gone of ['setRankChartMode', 'rankChartModeBtn', 'createSlvScatterChart', '_scatterIconCache', '_buildScatterIcon', 'shirisuko_rank_chart']) assert.ok(!html.includes(gone), gone + ' が残っている');
+        // 並び: PC は左の列 (.ana-left) に 属性別 + SLv 順・右に順位表 / スマホは 属性別 → 順位表 → SLv 順 (order)
+        const left = html.slice(html.indexOf('<div class="ana-left" data-span="7">'), html.indexOf('<div class="dc-card dc-card-tight" data-span="5" id="rankTableCard">'));
+        assert.ok(left.includes('id="rankChartAttrCard"') && left.includes('id="slvOrderCard"') && left.indexOf('id="rankChartAttrCard"') < left.indexOf('id="slvOrderCard"'), '左の列に 属性別 → SLv 順 で入っていない');
+        assert.match(html, /\.ana-left \{ display: contents; \}\n\s*@media \(max-width: 699px\) \{\n\s*#tab-ranking > \.container > \* \{ order: 4; \}\n\s*#tab-ranking > \.container > :first-child, #tab-ranking > \.container > \.ana-seg \{ order: 0; \}\n\s*#tab-ranking #rankChartAttrCard \{ order: 1; \}\n\s*#tab-ranking #rankTableCard \{ order: 2; \}\n\s*#tab-ranking #slvOrderCard \{ order: 3; \}/, 'スマホの並び (属性別 → 順位表 → SLv 順) が崩れる');
+        assert.match(html, /@media \(min-width: 700px\) \{\n\s*\.ana-left \{ display: flex; flex-direction: column; gap: 12px; min-width: 0; \}/, 'PC の左の列が縦並びでない');
+        assert.match(html, /<script defer src="\.\/js\/domain\/slvLine\.js"><\/script>/, 'ドメインを読み込んでいない');
+    });
+}
 
 // ---- ドメイン: GB比較 (js/domain/gbCompare.js) --------------------------------
 console.log('\ndomain/gbCompare:');
@@ -11050,7 +11114,8 @@ console.log('\ngrowthDomain:');
             const out = []; let d = 0, m;
             while ((m = re.exec(html))) {
                 if (m[0][1] === '/') { d--; if (d < 0) break; continue; }
-                if (d === 0 && /^<div class="dc-card/.test(m[0])) {
+                //   📊 実績の左の列 (.ana-left = グラフ 2 つの縦並び・2026-11-25) は列ごと 1 つの枠として数える (中のカードは列の中)
+                if (d === 0 && /^<div class="(?:dc-card|ana-left)/.test(m[0])) {
                     const chunk = html.slice(m.index, m.index + 600);
                     const t = chunk.match(/>([^<]{2,40})<\/div>/);
                     out.push({ tag: m[0], title: t ? t[1].trim() : '' });
@@ -11231,10 +11296,10 @@ console.log('\ngrowthDomain:');
         const hook = html.match(/window\.addEventListener\('padthemechange',[\s\S]*?\n        \}\);/)?.[0] || '';
         assert.ok(hook, '切り替えの合図を受け取っていない');
         assert.ok(/createRankingChart\(\)/.test(hook), 'ランキングのグラフを描き直していない');
-        assert.ok(/_scatterIconCache\.clear\(\)/.test(hook),
-            '散布図の点 (縁の色を焼き込んだ canvas) のキャッシュを捨てていない = 古い色のまま出る');
+        //   createRankingChart は 2 つとも描く (2026-11-25: 属性別 + SLv 順。散布図 (色を焼き込んだ点のキャッシュ) は外した)
+        assert.ok(/function createRankingChart\(\) \{\s*createAttributeStackedBarChart\(\);\s*createSlvOrderChart\(\);\s*\}/.test(html), 'ランキングのグラフ 2 つのうち片方しか描き直していない');
         // 描く直前に既定色を入れ直していること (Chart.js は生成時の値しか見ない)
-        for (const fn of ['createSlvScatterChart', 'createAttributeStackedBarChart']) {
+        for (const fn of ['createSlvOrderChart', 'createAttributeStackedBarChart']) {
             const body = html.match(new RegExp('function ' + fn + '\\(\\) \\{[\\s\\S]{0,200}'))?.[0] || '';
             assert.ok(/applyChartTheme\(\);/.test(body), `${fn} が描く前に既定色を入れ直していない`);
         }

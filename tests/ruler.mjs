@@ -43,7 +43,9 @@ const DONE = {
     //   🧪 シミュレータ = プレイヤーを選んで目標 SLv → 予測と順位表・逆引き (目標ダメージ → SLv) / ふるり値試算 (属性・ダメージ → 算出と順位表)。分析の画面は 'slv-ranking/<画面>' (セグメントのボタンで開く)
     //   汎用の動作 click= / pick= / type= / need= (選択子に : と + は使えない)。need= で、押した・選んだ結果が出ていることを確かめる (出ないまま外れ 0 で通さない)
     //   押した結果は押す前から見えている部品で確かめない (2026-11-24 Codex 監査): グラフの切り替え = 属性のトグルが消える (gone=) / ふるり値の属性・モード = 押したボタンが選ばれた (.active)
-    ranking: ['member:390', 'member:1366', 'member:320', 'member:390:click=#statsToggleInline+need=#statsGrid .stat-card', 'member:390:click=#rankChartModeBtnSlv+gone=#chartAttributeToggle',
+    //   2026-11-25: グラフの切り替え (属性内訳 ⇄ SLv×ダメージ散布図) を外し、SLv 順のグラフ (#slvOrderCard・中央値の線の凡例) をいつも出す → 出ていることを need= で見る
+    ranking: ['member:390', 'member:1366', 'member:320', 'member:390:click=#statsToggleInline+need=#statsGrid .stat-card', 'member:390:need=#slvOrderChart+need=#slvOrderLegend span',
+        'member:1366:need=#slvOrderChart+need=#slvOrderLegend span',
         'member:390:click=[onclick="toggleCharactersSection()"]+need=#teamCompositionsContainer .card'],
     'slv-ranking/fururi': ['member:390', 'member:1366', 'member:320', 'member:390:click=[data-fururi-boss="H.S.T.A."]+need=[data-fururi-boss="H.S.T.A."].active+need=#fururiRankingBody tr',
         'member:390:click=#fururiModeBtnMean+need=#fururiModeBtnMean.active+need=#fururiRankingBody tr'],

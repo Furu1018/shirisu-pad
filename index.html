@@ -106,6 +106,7 @@
     <script defer src="./js/domain/finish.js"></script>
     <script defer src="./js/domain/format.js"></script>
     <script defer src="./js/domain/gbCompare.js"></script>
+    <script defer src="./js/domain/slvLine.js"></script>         <!-- 分析 › 実績 の SLv 順のグラフの中央値の線 (2026-11-25) -->
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
@@ -2219,6 +2220,23 @@
         @media (max-width: 599px) {
             .chart-container { height: 240px; }
         }
+        /* 📊 実績 (2026-11-25 ふるり「左下が空いている」): PC (700px〜 の 2 列) は左の列に グラフ 2 つ (.ana-left = 縦並び)・右に順位表。
+           スマホ (〜699px) は .ana-left を display: contents にして、属性別 → 順位表 → SLv 順 に並べる (本文は flex の縦並びなので order が効く)。
+           ★ order の指定は ID 2 つぶんの強さで (本文の子ぜんぶに付ける order: 4 に負けないように) */
+        .ana-left { display: contents; }
+        @media (max-width: 699px) {
+            #tab-ranking > .container > * { order: 4; }
+            #tab-ranking > .container > :first-child, #tab-ranking > .container > .ana-seg { order: 0; }
+            #tab-ranking #rankChartAttrCard { order: 1; }
+            #tab-ranking #rankTableCard { order: 2; }
+            #tab-ranking #slvOrderCard { order: 3; }
+        }
+        @media (min-width: 700px) {
+            .ana-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        }
+        .slv-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; font-weight: 800; color: var(--t-body); margin: 0 0 6px; min-height: 16px; }
+        .slv-legend .sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; margin-right: 5px; }
+        .slv-legend .sw.dash { border-top-style: dashed; }
 
         /* ===== オンボーディングツアー (ClaudeDesign Tutorial.dc.html 準拠) ===== */
         @keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -3838,8 +3856,10 @@
                 <button type="button" onclick="_gotoSlvView('gb')"><span class="seg-ico">🌏 </span>GB比較</button>
             </div>
 
-            <!-- ① グラフ + 統計 -->
-            <div class="dc-card" data-span="7">
+            <!-- ① グラフ 2 つ (属性別ダメージ = ダメージ順 / SLv 順 + 中央値の線)・2026-11-25 ふるり:
+                 PC は左の列に 2 つ縦に・右に順位表 (左下が空いていた)。スマホは 属性別 → 順位表 → SLv 順 (.ana-left は display: contents + order) -->
+            <div class="ana-left" data-span="7">
+            <div class="dc-card" id="rankChartAttrCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:8px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">属性別ダメージ分析</div>
@@ -3851,12 +3871,7 @@
                 </div>
                 <!-- 統計 (折り畳み) -->
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
-                <!-- グラフモード切替: SLv×ダメージ散布図 (SLvの割に出てる人が分かる) ⇄ 属性内訳の積み上げ棒 -->
-                <div style="display:flex;gap:2px;margin-top:8px;background:var(--s2);border-radius:8px;padding:2px;width:fit-content;max-width:100%;">
-                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="padding:5px 11px;min-height:40px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;">📊 属性内訳</button>
-                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;min-height:40px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
-                </div>
-                <!-- 属性トグル (属性内訳モードのみ表示) -->
+                <!-- 属性トグル (上の属性別ダメージだけに効く) -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
                     <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;" title="灼熱">
                         <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
@@ -3880,8 +3895,23 @@
                 <p id="rankChartNote" style="margin:6px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;"></p>
             </div>
 
+            <!-- ①' SLv 順のダメージ (2026-11-25 ふるり): 属性別と同じ積み上げ棒・横の並びだけ SLv の低い順。線 = その SLv の“ふつう”(中央値) の人の 3 凸 (ユニオン / しりすこPAD GB)。
+                 計算は js/domain/slvLine.js・描くのは createSlvOrderChart。今までの SLv×ダメージ散布図 (切り替え) はこれに置き換えた -->
+            <div class="dc-card" id="slvOrderCard">
+                <div style="margin-bottom:10px;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">SLv 順のダメージ</div>
+                    <div style="font-size:11px;color:var(--t-muted);margin-top:2px;">左ほど SLv が低い。線 = その SLv の“ふつう”(中央値) の人の 3 凸</div>
+                </div>
+                <div id="slvOrderLegend" class="slv-legend"></div>
+                <div class="chart-container">
+                    <canvas id="slvOrderChart"></canvas>
+                </div>
+                <p id="slvOrderNote" style="margin:6px 0 0 0;font-size:11px;color:var(--t-muted);line-height:1.6;min-height:14px;"></p>
+            </div>
+            </div>
+
             <!-- ② ランキングテーブル -->
-            <div class="dc-card dc-card-tight" data-span="5">
+            <div class="dc-card dc-card-tight" data-span="5" id="rankTableCard">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ランキング</div>
                     <span style="font-size:11px;color:var(--t-muted);">前月比あり</span>
@@ -18455,7 +18485,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             updateTable();
             buildFururiBaseMap();
             analyzeTeamCompositions();
-            createRankingChart();   // モード (SLv散布図 / 属性内訳) に応じて振り分け
+            createRankingChart();   // 属性別ダメージ + SLv 順 (2026-11-25)
             updateStats();
             updateSimulatorPlayerList();
             updateFururiSimPlayerList();
@@ -18558,7 +18588,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
         // ========== Chart dataset toggle ==========
         function toggleChartDataset(index) {
-            if (!attributeChartInstance || _rankChartMode !== 'attr') return;   // 散布図モードでは属性トグル無効
+            if (!attributeChartInstance) return;   // 上の属性別ダメージだけ (SLv 順のグラフには効かない)
             const isVisible = attributeChartInstance.isDatasetVisible(index);
             attributeChartInstance.setDatasetVisibility(index, !isVisible);
             attributeChartInstance.update();
@@ -18566,223 +18596,120 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (btn) btn.classList.toggle('hidden', isVisible);
         }
 
-        // ===== グラフモード: SLv×ダメージ散布図 (既定) ⇄ 属性内訳の積み上げ棒 =====
-        // 既定は属性内訳 (通常モードで見やすい)。SLv×ダメージ散布図は明示的に選んだ時だけ。
-        // 旧既定は散布図(slv)で、それを保存済みの端末は既定変更だけでは切り替わらない。
-        // そのため一度だけ全端末を属性内訳へ寄せる移行を入れる (v2フラグ以降の手動選択は尊重)。
-        let _rankChartMode = 'attr';
-        try {
-            if (!localStorage.getItem('shirisuko_rank_chart_v2')) {
-                localStorage.removeItem('shirisuko_rank_chart');       // 旧保存値を破棄 → 新既定 attr に寄せる
-                localStorage.setItem('shirisuko_rank_chart_v2', '1');
-            } else {
-                _rankChartMode = localStorage.getItem('shirisuko_rank_chart') || 'attr';
-            }
-        } catch { /* noop */ }
-        if (!['slv', 'attr'].includes(_rankChartMode)) _rankChartMode = 'attr';
-        function setRankChartMode(mode) {
-            _rankChartMode = mode;
-            try { localStorage.setItem('shirisuko_rank_chart', mode); } catch { /* noop */ }
-            createRankingChart();
-        }
-        // モードに応じて描画を振り分け (renderAll から呼ばれる入口)
+        // ===== 📊 実績のグラフ 2 つ (2026-11-25 ふるり): 属性別ダメージ (ダメージ順) と SLv 順 (+ 中央値の線) を両方描く =====
+        // 以前は 1 つの枠を「属性内訳 ⇄ SLv×ダメージ散布図」で切り替えていた。散布図 (アバターの点・傾向線) と切り替えボタンは外した (同じことを見る部品を 2 つ置かない)
+        let slvOrderChartInstance = null;
+        let _slvOrderSeq = 0;   // 世代: GB の書き出しを待つ間に描き直した・月が変わったら、古い結果を捨てる
         function createRankingChart() {
-            const slv = _rankChartMode === 'slv';
-            // セグメント型の控えめトグル: 選択中だけ白く浮かせる
-            const styleModeBtn = (btn, on) => {
-                if (!btn) return;
-                btn.style.background = on ? 'var(--card)' : 'transparent';
-                btn.style.color = on ? 'var(--t-ink)' : 'var(--t-muted)';
-                btn.style.boxShadow = on ? '0 1px 3px rgba(20,22,26,0.12)' : 'none';
-            };
-            styleModeBtn(document.getElementById('rankChartModeBtnSlv'), slv);
-            styleModeBtn(document.getElementById('rankChartModeBtnAttr'), !slv);
-            const attrToggle = document.getElementById('chartAttributeToggle');
-            if (attrToggle) attrToggle.style.display = slv ? 'none' : 'flex';
-            const note = document.getElementById('rankChartNote');
-            if (note) note.textContent = '';
-            if (slv) createSlvScatterChart();
-            else createAttributeStackedBarChart();
+            createAttributeStackedBarChart();
+            createSlvOrderChart();
         }
 
-        // 散布図の各点をプレイヤーのアバターで描く。丸く切り抜いた canvas を Chart.js の pointStyle に使う。
-        const _scatterIconCache = new Map();     // key: `${url}|${me?1:0}` -> canvas | null(失敗/なし)
-        const _scatterIconPending = new Map();   // key -> [done, ...] 同一URLの多重ロードを1本に集約
-        let _scatterCachesTried = false;
-        function _buildScatterIcon(url, isMe, done) {
-            const key = `${url}|${isMe ? 1 : 0}`;
-            if (_scatterIconCache.has(key)) { done(_scatterIconCache.get(key)); return; }
-            if (_scatterIconPending.has(key)) { _scatterIconPending.get(key).push(done); return; }
-            _scatterIconPending.set(key, [done]);
-            const finish = (val) => {
-                if (_scatterIconCache.size >= 240) _scatterIconCache.clear();   // 上限: 署名URL更新等で無制限に増えるのを防ぐ
-                _scatterIconCache.set(key, val);
-                const cbs = _scatterIconPending.get(key) || [];
-                _scatterIconPending.delete(key);
-                cbs.forEach(cb => { try { cb(val); } catch { /* noop */ } });
-            };
-            const img = new Image();
-            img.crossOrigin = 'anonymous';   // canvas taint 回避 (CORS非対応画像は onerror→丸点)。src より前に指定
-            img.onload = () => {
-                try {
-                    // 小さめ + 白フチ: 密集して重なっても隣と分離して見える。自分は青フチで目立たせる。
-                    // ※ Chart.js は canvas を intrinsic サイズ=表示px で描くので、拡大せず実寸で作る。
-                    const S = isMe ? 32 : 22, ring = 2, r = S / 2;
-                    const cvs = document.createElement('canvas'); cvs.width = S; cvs.height = S;
-                    const cx = cvs.getContext('2d');
-                    cx.save();
-                    cx.beginPath(); cx.arc(r, r, r - ring, 0, Math.PI * 2); cx.closePath(); cx.clip();
-                    cx.drawImage(img, ring, ring, S - ring * 2, S - ring * 2);
-                    cx.restore();
-                    cx.beginPath(); cx.arc(r, r, r - ring / 2, 0, Math.PI * 2);
-                    const _ic = chartColors();   /* ★ 別関数なので、ここで読み直す */
-                    cx.lineWidth = ring; cx.strokeStyle = isMe ? _ic.ops : _ic.card; cx.stroke();
-                    finish(cvs);
-                } catch { finish(null); }
-            };
-            img.onerror = () => finish(null);
-            img.src = url;
-        }
-
-        // 📈 SLv×ダメージ散布図: 「SLvの割にダメージが出ている人」を可視化する。
-        // 破線はユニオン全体の傾向線 (最小二乗)。線より上 = SLv比で火力が出ている
-        function createSlvScatterChart() {
+        // 📈 SLv 順のダメージ: 見た目は属性別ダメージと同じ積み上げ棒・横の並びだけ SLv の低い順 (同じ SLv はダメージの多い順)。
+        //   線 = その SLv の“ふつう”(中央値) の人の 3 凸 (ユニオン = 今月の記録 / GB = しりすこPAD GB の同じ月の書き出し)。計算は js/domain/slvLine.js
+        function createSlvOrderChart() {
             applyChartTheme();
             const _cc = chartColors();
-            const canvas = document.getElementById('attributeStackedChart');
+            const seq = ++_slvOrderSeq;
+            const canvas = document.getElementById('slvOrderChart');
+            const note = document.getElementById('slvOrderNote');
+            const legend = document.getElementById('slvOrderLegend');
+            if (slvOrderChartInstance) { slvOrderChartInstance.destroy(); slvOrderChartInstance = null; }
+            if (note) note.textContent = '';
+            if (legend) legend.innerHTML = '';
             if (!canvas || currentData.length === 0) return;
-            if (attributeChartInstance) {
-                attributeChartInstance.destroy();
-                attributeChartInstance = null;
-            }
-            const pts = currentData
-                .filter(p => (Number(p.syncLevel) || 0) > 0)
-                .map(p => ({ x: Number(p.syncLevel), y: p.damage, name: p.player }));
-            const excluded = currentData.length - pts.length;
-            const note = document.getElementById('rankChartNote');
-            if (note) {
-                note.textContent = (excluded > 0 ? `SLv未登録のため非表示: ${excluded}名 · ` : '')
-                    + '破線=ユニオンの傾向線。線より上ほど「SLvの割にダメージが出ている」';
-            }
-            if (pts.length === 0) return;
-
-            // 傾向線 (最小二乗)。2点未満や SLv が全員同じ場合は引かない
-            let trend = null;
-            if (pts.length >= 2) {
-                const n = pts.length;
-                const sx = pts.reduce((s, p) => s + p.x, 0), sy = pts.reduce((s, p) => s + p.y, 0);
-                const sxx = pts.reduce((s, p) => s + p.x * p.x, 0), sxy = pts.reduce((s, p) => s + p.x * p.y, 0);
-                const den = n * sxx - sx * sx;
-                if (Math.abs(den) > 1e-9) {
-                    const b = (n * sxy - sx * sy) / den;
-                    const a = (sy - b * sx) / n;
-                    trend = { a, b };
-                }
-            }
-            const xs = pts.map(p => p.x);
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const pad = Math.max(2, Math.round((maxX - minX) * 0.06));
-
-            // 自分は黒フチ + 大きめの点
+            const players = currentData.filter(p => (Number(p.syncLevel) || 0) > 0)
+                .sort((a, b) => Number(a.syncLevel) - Number(b.syncLevel) || b.damage - a.damage || String(a.player).localeCompare(String(b.player), 'ja'));
+            const excluded = currentData.length - players.length;
+            if (players.length === 0) { if (note) note.textContent = 'SLv が登録されている人がいないので描けません'; return; }
+            const attributeKeys = ['FIRE', 'WATER', 'ELECTRIC', 'IRON', 'WIND'];
             const myName = (typeof getCurrentIdentity === 'function') ? (getCurrentIdentity()?.name || null) : null;
-            if (myName) pts.sort((a, b) => (a.name === myName ? 1 : 0) - (b.name === myName ? 1 : 0));   // 自分を最後=最前面に描く
-            // 各点のアバターURL (名前→プレイヤー) を引く。未ロードのキャッシュは丸点で先に描画し、揃い次第差し替える。
-            const urlByName = new Map();
-            pts.forEach(p => { const u = (typeof resolveAvatarUrlSync === 'function') ? resolveAvatarUrlSync(null, p.name) : null; if (u) urlByName.set(p.name, u); });
-            const iconFor = (p) => { const u = urlByName.get(p.name); if (!u) return null; return _scatterIconCache.get(`${u}|${p.name === myName ? 1 : 0}`) || null; };
-            const datasets = [{
-                type: 'scatter',
-                data: pts,
-                pointStyle: pts.map(p => iconFor(p) || 'circle'),   // アバター画像 (未ロードは丸)
-                pointRadius: pts.map(p => p.name === myName ? 7 : 4.5),
-                pointHoverRadius: pts.map(p => p.name === myName ? 9 : 7),
-                pointHitRadius: pts.map(p => p.name === myName ? 22 : 16),   // アイコンぶんタップ判定を広げる
-                backgroundColor: pts.map(p => p.name === myName ? '#6C42F0' : 'rgba(108,66,240,0.55)'),
-                borderColor: pts.map(p => p.name === myName ? _cc.ink : 'rgba(108,66,240,0.8)'),
-                borderWidth: pts.map(p => p.name === myName ? 2 : 1),
-                order: 1,
-            }];
-            if (trend) {
-                datasets.push({
-                    type: 'line',
-                    data: [
-                        { x: minX - pad, y: trend.a + trend.b * (minX - pad) },
-                        { x: maxX + pad, y: trend.a + trend.b * (maxX + pad) },
-                    ],
-                    borderColor: _cc.muted, borderWidth: 1.5, borderDash: [6, 5],
-                    pointRadius: 0, pointHitRadius: 0, fill: false, order: 2,
-                });
-            }
-            attributeChartInstance = new Chart(canvas.getContext('2d'), {
-                type: 'scatter',   // 混在チャート: 傾向線側の dataset だけ type:'line' で上書き
-                data: { datasets },
+            const meIndex = myName ? players.findIndex(p => p.player === myName) : -1;
+            const N = players.length;
+            const datasets = attributeKeys.map(attr => {
+                const sampleCode = Object.keys(BOSS_ATTRIBUTES).find(c => BOSS_ATTRIBUTES[c].attribute === attr);
+                const info = BOSS_ATTRIBUTES[sampleCode];
+                return {
+                    type: 'bar', label: info.attributeJP, stack: 'dmg', order: 2,
+                    data: players.map(p => (p.attacks || []).filter(a => BOSS_ATTRIBUTES[a.bossCode] && BOSS_ATTRIBUTES[a.bossCode].attribute === attr).reduce((s, a) => s + (a.damage || 0), 0)),
+                    backgroundColor: info.color,
+                    borderColor: meIndex !== -1 ? Array.from({ length: N }, (_, i) => i === meIndex ? _cc.ink : info.color) : info.color,
+                    borderWidth: meIndex !== -1 ? Array.from({ length: N }, (_, i) => i === meIndex ? 2 : 0) : 0,
+                };
+            });
+            // 中央値の線 (SLv の比率表が無い・材料が足りないときは引かない)。★ 線は stack を分ける — 同じ stack だと棒の上に積まれる / 2 本の線どうしが積まれる
+            const dom = window.slvLineDomain;
+            const canLine = !!(dom && slvRatioTable);
+            const lineDs = (label, norm, color, dash) => ({
+                type: 'line', label, stack: 'line:' + label, order: 0,
+                data: players.map(p => dom.lineAt(norm, slvRatioTable, Number(p.syncLevel))),
+                borderColor: color, backgroundColor: color, borderWidth: 2, borderDash: dash,
+                pointRadius: 0, pointHitRadius: 0, fill: false, tension: 0.25, spanGaps: true,
+            });
+            const attrOf = (a) => BOSS_ATTRIBUTES[a.bossCode]?.attribute || null;
+            const union = canLine ? dom.unionNorm({
+                players: currentData.map(p => ({ slv: Number(p.syncLevel), attacks: (p.attacks || []).map(a => ({ attr: attrOf(a), damage: a.damage, kill: _attackIsKill(a) === true })) })),
+                ratioTable: slvRatioTable,
+            }) : null;
+            if (union) datasets.push(lineDs('ユニオンの中央値', union.norm, _cc.ops, []));
+            slvOrderChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: { labels: players.map(p => p.player), datasets },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    animations: { colors: false, x: false, y: false },
-                    transitions: { active: { animation: { duration: 0 } } },
+                    responsive: true, maintainAspectRatio: false,
+                    animation: false, animations: { colors: false, x: false, y: false }, transitions: { active: { animation: { duration: 0 } } },
                     scales: {
-                        x: {
-                            type: 'linear', min: minX - pad, max: maxX + pad,
-                            title: { display: true, text: 'SLv', font: { size: 11, weight: 800 }, color: _cc.muted },
-                            ticks: { font: { size: 11 } }, grid: { color: _cc.line },
-                        },
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: _cc.line },
-                        },
+                        x: { stacked: true, ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
+                        y: { stacked: true, beginAtZero: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: _cc.line } },
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            displayColors: false,
+                            mode: 'index', intersect: false,
+                            filter: (i) => i.dataset.type === 'line' || i.parsed.y > 0,
                             callbacks: {
-                                label: (c) => {
-                                    const p = c.raw;
-                                    if (p?.name == null) return null;   // 傾向線は無言
-                                    const lines = [`${p.name} — SLv${p.x} · ${(p.y / 1e9).toFixed(2)}B`];
-                                    if (trend) {
-                                        const expect = trend.a + trend.b * p.x;
-                                        if (expect > 1e-9) {
-                                            const ratio = p.y / expect;
-                                            lines.push(`傾向比 ×${ratio.toFixed(2)} (${ratio >= 1 ? 'SLvの割に出てる↑' : '伸びしろあり↓'})`);
-                                        }
-                                    }
-                                    return lines;
-                                },
+                                title: (items) => { const p = players[items[0]?.dataIndex]; return p ? `${p.player} (SLv ${p.syncLevel})` : ''; },
+                                label: c => c.dataset.type === 'line' ? `${c.dataset.label} (この SLv): ${(c.parsed.y / 1e9).toFixed(2)}B` : `${c.dataset.label}: ${(c.parsed.y / 1e9).toFixed(2)}B`,
+                                footer: items => '合計: ' + (items.filter(i => i.dataset.type !== 'line').reduce((s, i) => s + i.parsed.y, 0) / 1e9).toFixed(2) + 'B',
                             },
                         },
                     },
                 },
             });
-
-            // アバター画像を非同期で丸く整形 → 揃い次第 pointStyle を差し替えて再描画。
-            // chart 参照を捕まえておき、コールバック時に「今もこのチャートか」を確認してから更新する
-            // (途中で属性内訳へ切替 → destroy されている / 別チャートに作り替わっている場合は捨てる)。
-            const chartRef = attributeChartInstance;
-            let _pend = 0;
-            pts.forEach(p => {
-                const u = urlByName.get(p.name); if (!u) return;
-                if (_scatterIconCache.has(`${u}|${p.name === myName ? 1 : 0}`)) return;   // 済み
-                _pend++;
-                _buildScatterIcon(u, p.name === myName, () => {
-                    _pend--;
-                    if (_pend === 0 && attributeChartInstance === chartRef && _rankChartMode === 'slv') {
-                        chartRef.data.datasets[0].pointStyle = pts.map(pp => iconFor(pp) || 'circle');
-                        chartRef.update('none');
-                    }
-                });
-            });
-            // アイコンに必要なキャッシュ (プレイヤー一覧 / キャラアイコン) が未ロードなら、取得後に一度だけ描き直す。
-            // _nikkeCharsByName は空 Map で常に truthy なので、配列キャッシュ _nikkeCharsCache の有無で判定する。
-            if (!_scatterCachesTried && (!_allPlayersCache || !_nikkeCharsCache)) {
-                _scatterCachesTried = true;
-                Promise.all([
-                    (typeof ensureAllPlayersLoaded === 'function') ? ensureAllPlayersLoaded() : null,
-                    (typeof getNikkeCharsCache === 'function') ? getNikkeCharsCache() : null,
-                ]).then(() => { if (_rankChartMode === 'slv') createSlvScatterChart(); }).catch(() => { /* noop */ });
-            }
+            const chartRef = slvOrderChartInstance;
+            const lo = players[0].syncLevel, hi = players[N - 1].syncLevel;
+            // 凡例 (HTML・色はトークンのまま = 見た目の切り替えに追随) と注記。GB は書き出しを読んでから足す
+            const paint = (gb, gbMonth, gbState) => {
+                if (legend) legend.innerHTML = [
+                    `<span style="color:var(--t-muted);">SLv ${escapeHtml(String(lo))} 〜 ${escapeHtml(String(hi))}</span>`,
+                    union ? `<span style="color:var(--ops-solid);"><span class="sw"></span>ユニオンの中央値</span>` : '',
+                    gb ? `<span style="color:var(--t-ink);"><span class="sw dash"></span>GB の中央値</span>` : '',
+                ].filter(Boolean).join('');
+                if (!note) return;
+                const parts = [];
+                if (union || gb) parts.push('線 = 締め凸を除く 1 凸の中央値 (属性ごと・1 人 1 票のベスト) を、ふるり値と同じ SLv の比率で各 SLv に戻して 3 凸ぶんにした値。棒が線より上なら「その SLv にしては出ている」(棒は締め凸も含む実際の合計)');
+                if (!canLine) parts.push('SLv の比率表が無いので線は出していません');
+                else if (!union) parts.push('ユニオンの線は、材料 (属性ごと 3 人以上) が足りないので出していません');
+                if (gb) parts.push(`GB = しりすこPAD GB ${gbMonth} の書き出し`);
+                else if (gbState === 'none') parts.push(`しりすこPAD GB の ${gbMonth || 'この月'} の書き出しが無いので、GB の線は出していません`);
+                if (excluded > 0) parts.push(`SLv 未登録 ${excluded} 名は除外`);
+                note.textContent = parts.join(' · ');
+            };
+            paint(null, null, 'wait');
+            const month = currentMonthKey;
+            if (!canLine || !month) { paint(null, month, 'none'); return; }
+            _loadGbExport(month).then(ex => {
+                if (seq !== _slvOrderSeq || slvOrderChartInstance !== chartRef || month !== currentMonthKey) return;
+                let gb = null;
+                if (ex && window.gbCompareDomain) {
+                    const codeMap = {};
+                    Object.keys(BOSS_ATTRIBUTES).forEach(c => { codeMap[BOSS_ATTRIBUTES[c].attribute] = c; });
+                    const idx = gbCompareDomain.buildIndex(ex, codeMap);
+                    gb = dom.gbNorm({ index: idx, ratioTable: slvRatioTable, baseSlv: Number(ex.base?.baseSlv), normFromFururi: gbCompareDomain.normFromFururi });
+                }
+                if (gb) { chartRef.data.datasets.push(lineDs('GB の中央値', gb.norm, _cc.ink, [6, 4])); chartRef.update('none'); }
+                paint(gb, month, gb ? 'ok' : 'none');
+            }).catch(() => { if (seq === _slvOrderSeq) paint(null, month, 'none'); });
         }
 
         // ========== Stacked Bar Chart ==========
@@ -20534,8 +20461,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         // ★ 見た目を切り替えたらグラフは描き直す (Chart.js は既定色を後から変えても反映されない)
         window.addEventListener('padthemechange', () => {
             try { applyChartTheme(); } catch (_) { /* Chart.js 未読込 */ }
-            // ★ 散布図の点は「縁の色を焼き込んだ canvas」を使い回すので、捨てないと古い色のまま出る
-            try { if (typeof _scatterIconCache !== 'undefined') _scatterIconCache.clear(); } catch (_) { /* noop */ }
             // ★ バーストのバッジは色を計算して innerHTML に焼き込むので、描き直しが要る
             try { if (typeof _gvPaint === 'function' && _gv && _gv.byPl) _gvPaint(); } catch (_) { /* 画面に無い */ }
             try { if (typeof createRankingChart === 'function') createRankingChart(); } catch (_) { /* 画面に無い */ }
