@@ -1135,7 +1135,7 @@
         .drawer.open { left: 0; }
 
         .drawer-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--t-ink);
             margin-bottom: 24px;
@@ -1151,7 +1151,7 @@
             border: none;
             background: transparent;
             color: var(--t-ink);
-            font-size: 15px;
+            font-size: 16px;
             text-align: left;
             border-radius: 8px;
             cursor: pointer;
@@ -1635,7 +1635,7 @@
         .boot-loading-box p { margin: 6px 0 0; font-size: 11.5px; font-weight: 800; color: var(--t-body)}
         .player-select-content {
             background: var(--card);
-            border-radius: 20px;
+            border-radius: 22px;
             padding: 22px;
             max-width: 480px;
             width: 100%;
@@ -1651,7 +1651,7 @@
             animation: dcSlideInUp .24s cubic-bezier(.2,.9,.2,1)}
         .player-select-content h2 {
             margin: 0;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 900;
             letter-spacing: 0.2px;
             color: var(--t-ink)}
@@ -1662,7 +1662,8 @@
             margin: 0}
         .player-select-search {
             padding: 10px 14px;
-            border-radius: 10px;
+            min-height: 40px;
+            border-radius: 8px;
             border: 1px solid rgba(var(--ink-rgb), 0.08);
             background: var(--s1);
             color: var(--t-ink);
@@ -1689,7 +1690,7 @@
             background: var(--card);
             color: var(--t-ink);
             text-align: center;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.3;
             cursor: pointer;
             transition: all 0.15s;
@@ -1708,6 +1709,8 @@
             border: none;
             cursor: default;
             padding: 24px}
+        /* シートの見出しの横の「閉じる」(2026-11-24 段階 2 のシート: 16 枚とも同じ形だったのを 1 つに・高さ 40px) */
+        .ps-close { flex: none; min-height: 40px; padding: 6px 14px; border-radius: 8px; border: none; background: var(--s2); color: var(--t-ink); font-size: 14px; font-weight: 700; cursor: pointer; }
         .player-select-footer {
             display: flex;
             justify-content: space-between;
@@ -1732,7 +1735,7 @@
 
         .player-modal-content {
             background: var(--card);
-            border-radius: 20px;
+            border-radius: 22px;
             width: 100%;
             max-width: 560px;
             margin: auto;
@@ -1750,7 +1753,7 @@
         }
 
         .player-modal-header h2 {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 900;
             letter-spacing: 0.2px;
             color: var(--t-ink);
@@ -1771,7 +1774,7 @@
         /* playerModal の × は ClaudeDesign の丸ボタンに */
         .player-modal .close-btn {
             width: 30px; height: 30px; flex: none;
-            border-radius: 50%; background: var(--s2); color: var(--t-muted); font-size: 15px}
+            border-radius: 50%; background: var(--s2); color: var(--t-muted); font-size: 16px}
         .player-modal .close-btn:hover { background: var(--line)}
 
         .player-modal-body { padding: 0 18px 20px; }
@@ -1780,7 +1783,7 @@
             padding: 14px 15px;
             background: linear-gradient(180deg, var(--s1), var(--s2));
             border: 1px solid rgba(var(--ink-rgb), 0.05);
-            border-radius: 15px;
+            border-radius: 14px;
             margin-bottom: 18px;
             display: flex;
             align-items: center;
@@ -1804,7 +1807,7 @@
 
         .comp-boss-header img { width: 18px; height: 18px; }
 
-        .comp-boss-title { font-weight: 900; font-size: 13px; color: var(--t-ink)}
+        .comp-boss-title { font-weight: 900; font-size: 14px; color: var(--t-ink)}
 
         .comp-row {
             display: grid;
@@ -1817,7 +1820,7 @@
         .comp-side {
             text-align: center;
             padding: 9px 8px;
-            border-radius: 11px;
+            border-radius: 14px;
             background: var(--s1);
             border: 1px solid rgba(var(--ink-rgb), 0.04)}
 
@@ -1827,7 +1830,7 @@
         }
 
         .comp-label {
-            font-size:10.5px;
+            font-size: 11px;
             color: var(--t-muted);
             margin-bottom: 7px;
             font-weight: 800;
@@ -1842,7 +1845,7 @@
         .comp-icon-img {
             width: 100%;
             aspect-ratio: 1/1;
-            border-radius: 6px;
+            border-radius: 8px;
             object-fit: cover;
             background: var(--t-ink);
             box-shadow: 0 1px 3px rgba(0,0,0,0.12)}
@@ -1850,12 +1853,12 @@
         .comp-icon-placeholder {
             width: 100%;
             aspect-ratio: 1/1;
-            border-radius: 6px;
+            border-radius: 8px;
             background: var(--s2);
             border: 1px dashed var(--track)}
 
         .comp-damage {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 900;
             margin-top: 8px;
             color: var(--t-ink);
@@ -1863,7 +1866,7 @@
 
         .comp-arrow {
             align-self: center;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 900;
             color: var(--t-muted)}
 
@@ -1879,7 +1882,7 @@
             font-size: 11px;
             font-weight: 700;
             background: var(--s1);
-            border-radius: 9px;
+            border-radius: 8px;
             border: 1px dashed var(--line)}
 
         /* ========== ふるり値 ========== */
@@ -1918,7 +1921,7 @@
             max-width: 520px;
             max-height: 85vh;
             background: var(--card);
-            border-radius: 20px;
+            border-radius: 22px;
             border: 1px solid rgba(var(--ink-rgb), 0.05);
             display: flex;
             flex-direction: column;
@@ -1932,13 +1935,13 @@
             align-items: center;
             justify-content: space-between;
         }
-        .fururi-help-header h2 { font-size: 17px !important; font-weight: 900 !important; letter-spacing: 0.2px; color: var(--t-ink) !important}
+        .fururi-help-header h2 { font-size: 16px !important; font-weight: 900 !important; letter-spacing: 0.2px; color: var(--t-ink) !important}
 
         .fururi-help-body {
             padding: 4px 20px 20px;
             overflow-y: auto;
             flex: 1;
-            font-size: 13.5px;
+            font-size: 14px;
             line-height: 1.7;
             color: var(--t-strong)}
 
@@ -3168,7 +3171,7 @@
         #myAvailModal .player-select-content,
         #myPushModal .player-select-content,
         #myStrongAttrsModal .player-select-content {
-            border-radius: 24px 24px 0 0 !important;
+            border-radius: 22px 22px 0 0 !important;
             max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
@@ -5131,7 +5134,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="bell" data-sp-size="17"></span> 通知の疎通確認</h2>
-                <button onclick="closeOpsPushCheckModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsPushCheckModal()">閉じる</button>
             </div>
             <p class="subtitle">レイドの 2 日前から。確認の通知を送り、届いた人がタップすると記録されます。届かない人には、当日までに Discord で声をかけられます。</p>
             <div id="opsPushCheckBody"></div>
@@ -5144,7 +5147,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="hexTarget" data-sp-size="17"></span> ボスHP更新</h2>
-                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsBossHpModal()">閉じる</button>
             </div>
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
 
@@ -5176,7 +5179,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>🧪 テストシーズンを終了</h2>
-                <button onclick="closeOpsTestEndModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsTestEndModal()">閉じる</button>
             </div>
             <p class="subtitle">終了すると何が復元され、何が消えるかを先に確認できます。キャラマスタは<strong>削除する行だけ</strong>にチェックを付けてください (テスト中に自動学習された行は既定ON、運営が手動登録した行は既定OFF)。</p>
             <div id="opsTestEndSummary" style="font-size:12.5px;line-height:1.7;color:var(--t-ink);background:var(--s1);border-radius:10px;padding:10px 12px;"></div>
@@ -5193,7 +5196,7 @@
         <div class="player-select-content" style="max-width:720px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📋 凸履歴・編集</h2>
-                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsAttacksEditModal()">閉じる</button>
             </div>
             <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -5212,7 +5215,7 @@
         <div class="player-select-content" style="max-width:500px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> Push通知 送信</h2>
-                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsPushSendModal()">閉じる</button>
             </div>
             <p class="subtitle">在籍の全員に Push 通知を送ります (時間帯に関係なく届きます)。</p>
 
@@ -5244,7 +5247,7 @@
         <div class="player-select-content" style="max-width:600px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> 通知送信の最終確認</h2>
-                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closePushPreview(false)">閉じる</button>
             </div>
             <p class="subtitle">以下の内容で Push 通知を送信します。受信者と本文を確認してから「送信する」を押してください。</p>
             <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
@@ -5261,7 +5264,7 @@
         <div class="player-select-content" style="max-width:620px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="calendar" data-sp-size="17"></span> 新シーズン作成</h2>
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsSeasonCreateModal()">閉じる</button>
             </div>
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
 
@@ -5320,7 +5323,7 @@
         <div class="player-select-content" style="max-width:620px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>✏️ シーズン確認・編集</h2>
-                <button onclick="closeOpsSeasonEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeOpsSeasonEditModal()">閉じる</button>
             </div>
             <p class="subtitle">走っているシーズンの基本情報を修正できます。属性 (ボスコード) を直すと記録済みの凸も追随します。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — 間違えた場合はシーズンを作り直してください。</p>
 
@@ -5355,7 +5358,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📚 キャラ正規化</h2>
-                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeCharMasterEditModal()">閉じる</button>
             </div>
             <p class="subtitle">OCRで誤って取り込まれた名前を修正、または別エントリへ統合できます。</p>
 
@@ -5421,7 +5424,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
                         <h2 id="myDmgPreviewTitle" style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
-                        <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeMyDmgPreviewModal()">閉じる</button>
                     </div>
                     <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
                     <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:10px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
@@ -5462,20 +5465,20 @@
                 <div class="player-select-content" style="max-width:480px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>🖼️ アバターを変更</h2>
-                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeAvatarEditModal()">閉じる</button>
                     </div>
                     <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
                     <div style="display:flex;flex-direction:column;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--s1);">
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:8px;background:var(--s1);">
                             <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),var(--card));box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
-                            <div style="flex:1;font-size:13px;color:var(--t-body);">現在のアバタープレビュー</div>
+                            <div style="flex:1;font-size:14px;color:var(--t-body);">現在のアバタープレビュー</div>
                         </div>
-                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid var(--t-ink);background:var(--card);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
-                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(var(--ink-rgb), 0.08);background:var(--s1);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;text-align:center;">
+                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:8px;border:1px solid var(--t-ink);background:var(--card);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
+                        <label style="padding:12px;border-radius:8px;border:1px dashed rgba(var(--ink-rgb), 0.08);background:var(--s1);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;text-align:center;">
                             📤 自分の画像をアップロード (最大5MB)
                             <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
                         </label>
-                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
+                        <button onclick="handleAvatarClear()" style="padding:10px;min-height:40px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:14px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
                         <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
                     </div>
                 </div>
@@ -5487,13 +5490,13 @@
                     <div style="font-size:16px;font-weight:900;color:var(--t-ink);letter-spacing:0.2px;">SLv (シンクロレベル)</div>
                     <div style="font-size:11px;color:var(--t-muted);margin-top:5px;line-height:1.5;">基本は前回の値を引き継ぎます。<br>前回のレイド以降に上げたら更新してください。</div>
                     <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;">
-                        <button onclick="adjustMySlv(-1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s2);color:var(--t-ink);font-size:22px;font-weight:900;cursor:pointer;">−</button>
-                        <input id="mySlvInput" type="number" min="0" max="999" inputmode="numeric" placeholder="—" style="width:108px;padding:8px 6px;border-radius:12px;border:1.5px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:30px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;outline:none;">
-                        <button onclick="adjustMySlv(1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s2);color:var(--t-ink);font-size:22px;font-weight:900;cursor:pointer;">＋</button>
+                        <button onclick="adjustMySlv(-1)" style="width:42px;height:42px;flex:none;border-radius:14px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s2);color:var(--t-ink);font-size:20px;font-weight:900;cursor:pointer;">−</button>
+                        <input id="mySlvInput" type="number" min="0" max="999" inputmode="numeric" placeholder="—" style="width:108px;padding:8px 6px;border-radius:14px;border:1.5px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-ink);font-size:30px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;outline:none;">
+                        <button onclick="adjustMySlv(1)" style="width:42px;height:42px;flex:none;border-radius:14px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s2);color:var(--t-ink);font-size:20px;font-weight:900;cursor:pointer;">＋</button>
                     </div>
                     <div style="display:flex;gap:8px;">
-                        <button onclick="closeMySlvModal()" style="flex:none;width:96px;padding:12px;border-radius:12px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--card);color:var(--t-body);font-size:13px;font-weight:800;cursor:pointer;">取消</button>
-                        <button onclick="handleMySlvSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--t-ink);color:var(--card);font-size:13px;font-weight:900;cursor:pointer;">保存</button>
+                        <button onclick="closeMySlvModal()" style="flex:none;width:96px;padding:12px;border-radius:14px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--card);color:var(--t-body);font-size:14px;font-weight:800;cursor:pointer;">取消</button>
+                        <button onclick="handleMySlvSave()" style="flex:1;padding:12px;border-radius:14px;border:none;background:var(--t-ink);color:var(--card);font-size:14px;font-weight:900;cursor:pointer;">保存</button>
                     </div>
                     <p id="mySlvMessage" style="margin:10px 0 0 0;font-size:11px;min-height:14px;color:var(--t-muted);"></p>
                 </div>
@@ -5504,7 +5507,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> ユニオンレイド参加可能時間</h2>
-                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeMyAvailModal()">閉じる</button>
                     </div>
                     <div id="myAvailForWho" style="display:none;margin:6px 0 2px;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:12px;font-weight:900;color:var(--ops-deep);line-height:1.5;"></div>
                     <p class="subtitle">🧱 ブロックで選びます。1 時間でも出られるブロックを ON に。ON にした時間帯は <strong>①凸プランの割当 ②締め凸の候補 (その時間に出られる人)</strong> に使われます。<br>※通知は時間帯で絞られません (あなた宛の連絡と、レイド当日のチームの状況が届きます)。</p>
@@ -5520,7 +5523,7 @@
                 <div class="player-select-content mkb-sheet">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2 id="opsMockBulkTitle">✏️ 模擬をまとめて入力</h2>
-                        <button onclick="closeOpsMockBulk()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeOpsMockBulk()">閉じる</button>
                     </div>
                     <!-- ⌨ 続けて入力 (2026-11-12): PC は左に人の一覧 (名前で探す)・右にその人の 5 属性。スマホは一覧を出さない (「次の人 →」で進む) -->
                     <div class="mkb-cols"><aside class="mkb-side" id="opsMockBulkSide" aria-label="模擬を入れる人"></aside><div id="opsMockBulkBody"></div></div>
@@ -5531,10 +5534,10 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 通知</h2>
-                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeMyPushModal()">閉じる</button>
                     </div>
                     <p class="subtitle"><strong>あなた宛の連絡</strong> (あなたの凸が決まった・変わった・参加可能時間の始まり) と、<strong>レイド当日のチームの状況</strong> (Lv 開放・残り 1 体・定時のまとめ) が届きます。<strong>iPhone</strong> は Safari で「ホーム画面に追加」してから設定してください。</p>
-                    <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
+                    <div id="mypagePushStatus" style="font-size:14px;margin-bottom:10px;">読み込み中...</div>
                     <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
                     <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
@@ -5544,7 +5547,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>⚔ 得意属性</h2>
-                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button class="ps-close" onclick="closeMyStrongAttrsModal()">閉じる</button>
                     </div>
                     <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
                     <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
@@ -5557,11 +5560,11 @@
         <div class="player-select-content" style="max-width:640px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="iconPickerTitle">📚 アイコンを選択</h2>
-                <button onclick="closeIconPicker()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.1);background:var(--s2);color:var(--t-ink);font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
+                <button class="ps-close" onclick="closeIconPicker()">閉じる</button>
             </div>
             <p class="subtitle">バーストで絞り込むか、名前で検索して選べます。画像をタップで選択。</p>
 
-            <input id="iconPickerSearch" type="text" placeholder="名前で絞り込み (例: ラピ)" oninput="renderIconPickerList()" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:14px;">
+            <input id="iconPickerSearch" type="text" placeholder="名前で絞り込み (例: ラピ)" oninput="renderIconPickerList()" style="width:100%;padding:8px 10px;min-height:40px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:14px;">
 
             <!-- バースト絞り込み (renderIconPickerList が中身を描く) -->
             <div id="iconPickerBurstFilter" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
@@ -5571,7 +5574,7 @@
 
             <div id="iconPickerNew" style="border-top:1px solid rgba(var(--ink-rgb), 0.08);padding-top:10px;">
                 <p style="margin:0 0 6px 0;font-size:11px;color:var(--t-muted);">候補に無い場合、入力中のテキストをそのまま新規キャラとしてマスタに登録できます。</p>
-                <button onclick="handleIconPickerNew()" style="padding:8px 14px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">＋ <span id="iconPickerNewLabel">この名前で新規登録</span></button>
+                <button onclick="handleIconPickerNew()" style="padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:12px;font-weight:800;cursor:pointer;">＋ <span id="iconPickerNewLabel">この名前で新規登録</span></button>
             </div>
         </div>
     </div>
@@ -5589,7 +5592,7 @@
             </div>
             <div class="player-select-footer">
                 <span style="font-size:11px;color:var(--t-body);">名前がない場合は運営に追加依頼してください</span>
-                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;min-height:40px;flex:none;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">キャンセル</button>
             </div>
         </div>
     </div>
@@ -5599,7 +5602,7 @@
         <div class="player-modal-content">
             <div class="player-modal-header">
                 <h2 id="playerModalTitle">編成比較</h2>
-                <button class="close-btn" onclick="hidePlayerDetails()">×</button>
+                <button class="close-btn hit40" onclick="hidePlayerDetails()" aria-label="閉じる">×</button>
             </div>
             <div class="player-modal-body">
                 <div class="modal-damage-summary" id="modalDamageSummary"></div>
@@ -5613,8 +5616,8 @@
         <div class="fururi-help-overlay" onclick="closeFururiHelp()"></div>
         <div class="fururi-help-content">
             <div class="fururi-help-header">
-                <h2 style="font-size: 18px; font-weight: 700; color: var(--t-ink);">新指標「ふるり値」について</h2>
-                <button class="close-btn" onclick="closeFururiHelp()">×</button>
+                <h2>新指標「ふるり値」について</h2>
+                <button class="close-btn hit40" onclick="closeFururiHelp()" aria-label="閉じる">×</button>
             </div>
             <div class="fururi-help-body">
                 <h3>❓ ふるり値とは？</h3>
@@ -5628,7 +5631,7 @@
                 <p>「もし基準プレイヤーがあなたと同じSLv.だったら、どれくらいダメージが出るか」を計算し、それと実際のダメージを比較してふるり値を算出しています。</p>
 
                 <div style="padding: 16px; background: var(--s1); border-radius: 8px; border-left: 4px solid var(--warn-solid); margin: 12px 0;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 700; color: var(--t-ink);">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
+                    <p style="margin: 0; font-size: 14px; font-weight: 700; color: var(--t-ink);">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
                 </div>
 
                 <h3>🎨 属性別ふるり値</h3>
@@ -8875,16 +8878,16 @@
         // バーストのピル (一覧カードで使う)
         function _burstBadgeHtml(entry) {
             if (!entry || !entry.burst) {
-                return `<span title="バースト未設定" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:var(--t-muted);background:var(--s2);">?</span>`;
+                return `<span title="バースト未設定" style="border-radius:999px;font-size:11px;font-weight:900;padding:2px 7px;color:var(--t-muted);background:var(--s2);">?</span>`;
             }
             // ★ 薄い地 (色の 10%) に置くので、文字と枠は濃く落とした色を使う
             const c1 = _BURST_COLOR[entry.burst] || '#7A7C81';
             const t1 = _burstOnBg(c1, _burstTint(c1));
-            let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
+            let html = `<span style="border-radius:999px;font-size:11px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
                 const c2 = _BURST_COLOR[entry.burst_alt] || '#7A7C81';
                 const t2 = _burstOnBg(c2, _burstBg());   // 枠だけ。地は透明なので、その下のいちばん暗い地で測る
-                html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
+                html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:11px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
             return html;
         }
@@ -8995,7 +8998,7 @@
             const useBadgeHtml = c => {
                 const n = usedBy(c);
                 if (!n) return '';
-                return `<span title="この属性の提出 ${usage.total}件のうち ${n}件がこのキャラを採用" style="font-size:10px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);border-radius:999px;padding:2px 6px;">${n}人</span>`;
+                return `<span title="この属性の提出 ${usage.total}件のうち ${n}件がこのキャラを採用" style="font-size:11px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);border-radius:999px;padding:2px 6px;">${n}人</span>`;
             };
             if (search) {
                 pool = pool.map(m => ({ m, score: _simBetween(search, m.canonical_name) }))
@@ -9024,7 +9027,7 @@
                     const on = bf === o.v;
                     const dim = o.n === 0 && !on;
                     return `<button type="button" onclick="setIconPickerBurst('${o.v}')"`
-                        + ` style="padding:5px 11px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
+                        + ` style="padding:5px 11px;min-height:40px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
                         + `font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;`
                         + (on ? `background:${o.color};color:${_burstInk(o.color)};`
                             : `background:${o.color}1A;color:${_burstOnBg(o.color, _burstTint(o.color))};`)
@@ -9039,21 +9042,21 @@
             }
 
             if (pool.length === 0) {
-                listEl.innerHTML = `<p style="color:var(--t-muted);font-size:13px;padding:14px 0;">該当キャラなし。下の「新規登録」で追加できます。</p>`;
+                listEl.innerHTML = `<p style="color:var(--t-muted);font-size:14px;padding:14px 0;">該当キャラなし。下の「新規登録」で追加できます。</p>`;
                 return;
             }
 
             const renderItem = c => {
                 const icon = (c.icon_paths && c.icon_paths[0])
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(c.icon_paths[0])}" style="width:100%;max-width:46px;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:var(--t-ink);">`
-                    : `<div style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:8px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--t-muted);">?</div>`;
+                    : `<div style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:8px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--t-muted);">?</div>`;
                 // 名前は data 属性で渡し、クリックは委譲で拾う (インライン onclick に名前を
                 // 埋めると escapeHtml 済みでも属性のHTMLデコード後に ' で脱出されXSSになる)
                 return `
-                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--card);min-width:0;" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background='var(--card)'">
+                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--card);min-width:0;" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background='var(--card)'">
                         ${icon}
                         <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}${useBadgeHtml(c)}</div>
-                        <div style="font-size:10px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
+                        <div style="font-size:11px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
                     </div>`;
             };
             // 最小幅を 110→76px に。モバイル(幅~300px)で 2列→4列前後に増え、PC はさらに横に並ぶ。
@@ -9068,19 +9071,19 @@
                 const rest = items.length - _ICON_PICKER_TOP;
                 return head(`${title} (${items.length}件)`)
                     + grid(items.slice(0, _ICON_PICKER_TOP))
-                    + `<button type="button" data-expand-key="${escapeHtml(key)}" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">他 ${rest}件を表示</button>`;
+                    + `<button type="button" data-expand-key="${escapeHtml(key)}" style="width:100%;margin-top:6px;padding:8px;min-height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-strong);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">他 ${rest}件を表示</button>`;
             };
 
             // 採用率で並んでいるかを見出しに出す (数字の出所が分からないと信用できないため)
             const srcNote = (!search && useCount)
-                ? `<div style="margin:2px 0 0 0;font-size:10.5px;color:var(--t-muted);">ユニオンの${PT_ATTRS.find(a => a.key === _iconPickerAttr)?.name || ''}PT提出 ${usage.total}件でよく使われている順</div>`
+                ? `<div style="margin:2px 0 0 0;font-size:11px;color:var(--t-muted);">ユニオンの${PT_ATTRS.find(a => a.key === _iconPickerAttr)?.name || ''}PT提出 ${usage.total}件でよく使われている順</div>`
                 : '';
             let html = srcNote;
             if (bf === '__none') {
                 const only = pool.filter(c => _burstsOf(c).length === 0);
                 html += only.length
                     ? section('none', 'バースト未設定', only)
-                    : `<p style="color:var(--t-muted);font-size:13px;padding:14px 0;">未設定のキャラはいません。</p>`;
+                    : `<p style="color:var(--t-muted);font-size:14px;padding:14px 0;">未設定のキャラはいません。</p>`;
             } else if (bf) {
                 // 主 or サブが一致するキャラが本命。BΛ (ワイルドカード) と 未設定 は
                 // 「その枠に置けるかもしれない」ので、混ぜずに下の別セクションへ逃がす。
@@ -9088,7 +9091,7 @@
                 const wild = bf === 'BΛ' ? [] : pool.filter(c => _isBurstWild(c) && !_burstsOf(c).includes(bf));
                 const unset = bf === 'BΛ' ? [] : pool.filter(c => _burstsOf(c).length === 0);
                 if (main.length) html += section(`b:${bf}`, bf, main);
-                else html += `<p style="color:var(--t-muted);font-size:13px;padding:14px 0 4px 0;">${bf} に該当するキャラがいません。</p>`;
+                else html += `<p style="color:var(--t-muted);font-size:14px;padding:14px 0 4px 0;">${bf} に該当するキャラがいません。</p>`;
                 html += section('wild', '🃏 BΛ ワイルドカード — どの枠でも可', wild);
                 html += section('unset', '❓ バースト未設定', unset);
             } else if (search) {
@@ -9415,7 +9418,7 @@
             ].filter(Boolean);
             if (targets.length === 0) return;
             if (!identity?.id) {
-                targets.forEach(t => t.innerHTML = '<p style="color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>');
+                targets.forEach(t => t.innerHTML = '<p style="color:var(--t-body);font-size:14px;">プレイヤーを選択してください。</p>');
                 return;
             }
             _allPlayersCache = null;
@@ -9427,7 +9430,7 @@
                 const style = on
                     ? `background:${a.color};color:var(--on-fill);border-color:${a.color};font-weight:700;`
                     : `background:var(--card);color:var(--t-ink);border-color:rgba(var(--ink-rgb), 0.08);`;
-                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid rgba(var(--ink-rgb), 0.08);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
+                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid rgba(var(--ink-rgb), 0.08);${style}font-size:14px;cursor:pointer;transition:all 0.18s ease;">
                     <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;">
                 </button>`;
             }).join('');
@@ -10181,7 +10184,7 @@
             if (!s.vapidConfigured) {
                 statusEl.innerHTML = '<span style="color:var(--warn);">⚠️ 運営側でVAPID公開鍵が未設定のため、まだ購読できません。</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;min-height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
                 `;
                 return;
             }
@@ -10203,9 +10206,9 @@
                 // 運営担当 (master / ops) にはテスト通知が常に届く (js/domain/notifyPolicy.js)。効かないスイッチを出さず、そう言う
                 const alwaysTest = String(_opsRole?.playerId) === String(identity?.id) && (_opsRole.role === 'master' || _opsRole.role === 'ops');
                 const testRow = testOn === undefined ? '' : alwaysTest
-                    ? '<p style="width:100%;margin:0;padding:10px 13px;border-radius:12px;background:var(--s1);font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;">🧪 運営担当には、開発中のテスト通知も届きます。</p>'
+                    ? '<p style="width:100%;margin:0;padding:10px 13px;border-radius:14px;background:var(--s1);font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;">🧪 運営担当には、開発中のテスト通知も届きます。</p>'
                     : `
-                    <label style="display:flex;align-items:flex-start;gap:10px;width:100%;padding:11px 13px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
+                    <label style="display:flex;align-items:flex-start;gap:10px;width:100%;padding:11px 13px;border-radius:14px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
                         <input type="checkbox" id="myNotifyTest" ${testOn ? 'checked' : ''} onchange="handleMyNotifyTestToggle(this)" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
                         <span style="flex:1;">
                             <span style="display:block;font-size:14px;font-weight:800;color:var(--t-ink);">🧪 開発中のテスト通知も受け取る</span>
@@ -10213,13 +10216,13 @@
                         </span>
                     </label>`;
                 actionsEl.innerHTML = `${testRow}
-                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">🔔 この端末で鳴るか試す</button>
+                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;min-height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">🔔 この端末で鳴るか試す</button>
                     <p style="width:100%;margin:2px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;">この端末で通知を止めるときは、端末 (ブラウザ) の通知設定から行ってください。</p>
                 `;
             } else {
                 statusEl.innerHTML = '<span style="color:var(--t-body);">未購読</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">🔔 通知を有効にする</button>
+                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;min-height:40px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">🔔 通知を有効にする</button>
                 `;
             }
         }
@@ -18875,16 +18878,16 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
             document.getElementById('modalDamageSummary').innerHTML = `
                 <div style="flex:1;min-width:130px;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:0.5px;color:var(--t-muted);">今月ダメージ</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:0.5px;color:var(--t-muted);">今月ダメージ</div>
                     <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;flex-wrap:wrap;">
-                        <span style="font-size:22px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;">${formatDamage(current.damage)}</span>
+                        <span style="font-size:20px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;">${formatDamage(current.damage)}</span>
                         ${diffPill}
                     </div>
-                    <div style="font-size:10.5px;font-weight:700;color:var(--t-muted);margin-top:4px;">${monthLabel}</div>
+                    <div style="font-size:11px;font-weight:700;color:var(--t-muted);margin-top:4px;">${monthLabel}</div>
                 </div>
                 <div style="text-align:right;flex:none;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:0.5px;color:var(--t-muted);">SLv</div>
-                    <div style="font-size:18px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;margin-top:1px;">${current.syncLevel}</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:0.5px;color:var(--t-muted);">SLv</div>
+                    <div style="font-size:20px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;margin-top:1px;">${current.syncLevel}</div>
                 </div>
             `;
 
@@ -18946,7 +18949,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     // グレー枠5個だと「バグで表示されない」ように見える (実機FB 2026-08-05)
                     // → 記録が無いことを明示する
                     // ⚠ 親 .comp-icons は5列グリッド — grid-column:1/-1 で全幅にしないと1列に潰れる
-                    return '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:34px;border-radius:8px;background:var(--card);border:1px dashed rgba(var(--ink-rgb), 0.12);font-size:10px;font-weight:700;color:var(--t-muted);">📷 編成の記録なし</div>';
+                    return '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:34px;border-radius:8px;background:var(--card);border:1px dashed rgba(var(--ink-rgb), 0.12);font-size:11px;font-weight:700;color:var(--t-muted);">📷 編成の記録なし</div>';
                 }
                 const slots = [];
                 for (let i = 0; i < 5; i++) {
@@ -18990,19 +18993,19 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                         const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
                         const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
                         const level = normLevel(currAtk?.level ?? prevAtk?.level) ?? '';
-                        const indexLabel = showIndex ? `<span style="font-size:10px;font-weight:800;color:var(--t-muted);margin-left:3px;">${i + 1}凸目</span>` : '';
+                        const indexLabel = showIndex ? `<span style="font-size:11px;font-weight:800;color:var(--t-muted);margin-left:3px;">${i + 1}凸目</span>` : '';
                         const diffBadge = diff !== null
-                            ? `<span class="${diffCls}" style="display:inline-block;font-size:10.5px;font-weight:900;margin-left:4px;">(${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>`
+                            ? `<span class="${diffCls}" style="display:inline-block;font-size:11px;font-weight:900;margin-left:4px;">(${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>`
                             : '';
 
                         html += `
                             <div class="comp-section" style="--comp-c:${accentC}40;--comp-bg:${accentC}12;">
                                 <div class="comp-boss-header">
                                     <img loading="lazy" decoding="async" src="${info.icon}" alt="${info.attributeJP}PT" title="${info.attributeJP}PT">
-                                    <span style="opacity:0.5; font-size:10px;">対</span>
+                                    <span style="opacity:0.5; font-size:11px;">対</span>
                                     <img loading="lazy" decoding="async" src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:15px; height:15px; opacity:0.85;">
                                     <span class="comp-boss-title">${bossName}</span>${indexLabel}
-                                    ${difficulty ? `<span style="margin-left:auto;font-size:10.5px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty}${level ? ` Lv.${level}` : ''}</span>` : ''}
+                                    ${difficulty ? `<span style="margin-left:auto;font-size:11px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty}${level ? ` Lv.${level}` : ''}</span>` : ''}
                                 </div>
                                 <div class="comp-row">
                                     <div class="comp-side">

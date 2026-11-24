@@ -71,6 +71,16 @@ const DONE = {
     //   システム状態のチップのラベル (Supabase・Edge Func・PADバージョン) は fit= で、チップからはみ出さないことも見る (4 枚を横 1 列に並べていた頃は 390px で 2px・320px で 17px はみ出していた → 2 × 2)
     settings: ['member:390:fit=.dc-status-label', 'member:1366:fit=.dc-status-label', 'member:320:fit=.dc-status-label', 'ops-eve:390', 'member:390:click=[onclick="toggleSettingsGuide()"]+need=#settingsGuideBody'],
     help: ['member:390', 'member:1366', 'member:320'],
+    // シート (2026-11-24〜・タブと別に数える): 本物の入口 (click=) を押して開き、そのシートだけを測る (sheet=#id)。'<タブ>@シート' の '@' から後ろは見出し。
+    //   練習モードで入口が隠れているもの (上の帯の 名乗りの切り替え・☰ ドロワー) だけ call= で入口の関数を呼ぶ (名乗りの切り替えは 1366px のサイドバーの足元から押す場面も)
+    //   1 回目 = メンバーも開くシート + シート共通の部品 (枠・見出し・閉じる): SLv・アバター・キャラの選択・得意属性・通知・名乗り・ドロワー / 編成比較 (分析の順位表) / ふるり値の説明
+    'mypage@シート': ['member:390:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal', 'member:320:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal',
+        'member:390:click=[onclick="openAvatarEditModal()"]+sheet=#avatarEditModal',
+        'member:390:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal', 'member:1366:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal',
+        'member:390:click=[onclick="openMyStrongAttrsModal()"]+sheet=#myStrongAttrsModal', 'member:390:click=[onclick="openMyPushModal()"]+sheet=#myPushModal',
+        'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer'],
+    'ranking@シート': ['member:390:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:320:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:1366:click=[onclick^="showPlayerDetails"]+sheet=#playerModal'],
+    'slv-ranking/fururi@シート': ['member:390:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal', 'member:1366:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -86,8 +96,9 @@ if (!CHROME) { console.log('スキップ: Chrome が見つかりません (CHROM
 if (typeof WebSocket !== 'function') { console.log('スキップ: この Node には WebSocket がありません (Node 22 以上で動きます)'); process.exit(0); }
 
 // ---- 物差し (ブラウザの中で動く)。docs/段階2_物差し_2026-11-14.md の検査と同じもの ----
-const CHECK = `(() => {
-    const roots = [document.querySelector('.tab-content.active'), document.querySelector('.header'), document.getElementById('bottomNav')].filter(Boolean);
+//   SHEET (2026-11-24〜): 動作 sheet=選択子 のときは、タブ・帯・下メニューではなく、開いているそのシート (モーダル) だけを測る
+const CHECK = (sheetSel) => `(() => {
+    const roots = ${sheetSel ? `[document.querySelector(${JSON.stringify(sheetSel)})]` : `[document.querySelector('.tab-content.active'), document.querySelector('.header'), document.getElementById('bottomNav')]`}.filter(Boolean);
     const els = []; for (const r of roots) { els.push(r); for (const e of r.querySelectorAll('*')) els.push(e); }
     // 縦に伸ばさない所 (表・1 人 1 行の一覧 = 👥 メンバー状況の行 .dc-mb-row・盤の駒と名前の札): 小さい文字 9 / 10px と、行の中の小さいボタンを認める
     //   ★ ただし ⚔️ ✓ 凸の記録の押す札 (button.db-tag) は高さだけ例外にしない = 40px (2026-11-17・当日いちばん押す・押し間違えると別の人に ✓)。札の中の文字は dense のまま (📅 の札は読むだけの span)
@@ -123,9 +134,13 @@ const CHECK = `(() => {
             // ③ 広げた範囲が、すぐ上下の別の押せる部品を取らない (2026-11-17 見直し: 「自動で反映する」のチェックの範囲が、カードの見出し (押すと畳む) の下 5px を取っていた)。
             //   見た目の外の帯 (上下に (範囲 − 高さ) / 2) の点で、いちばん上がこの部品なのに、その下に別の押せる部品 (button・a・summary・label・入力・onclick・cursor: pointer) があれば外れ。祖先と子は数えない
             const ext = Number.isFinite(hb) ? (hb - q.height) / 2 : 0; const steal = new Set();
+            //   取られる相手 = 広げた範囲が無かったら、その点で指が当たる部品 (重なりのいちばん上) と、その祖先のうち押せるもの (この部品の祖先 = 共通の親より手前まで)。
+            //   重なりの奥 (上の部品に覆われて押せない所) は数えない (2026-11-24 シート: ふるり値の説明の × の帯の奥に、白い面に覆われた幕 (押すと閉じる) があって外れになっていた)
+            const clickable = (n) => n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer';
+            const victimAt = (st) => { const under = st.find(n => n !== e && !e.contains(n)); for (let n = under; n && !n.contains(e); n = n.parentElement) if (clickable(n)) return n; return null; };
             if (ext > 1) for (const x of xs) for (const y of [q.top - 1, q.top - ext / 2, q.top - ext + 1, q.bottom + 1, q.bottom + ext / 2, q.bottom + ext - 1]) {
                 const st = document.elementsFromPoint(x, y); if (!st.length || !(st[0] === e || e.contains(st[0]))) continue;
-                const vic = st.find(n => n !== e && !e.contains(n) && !n.contains(e) && (n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer'));
+                const vic = victimAt(st);
                 if (vic) steal.add(where(vic) + ' ' + sig(vic));
             }
             //   左右も同じ (2026-11-20: 既定の hit40 は左右に 4px 広げる。⚔️ 📥 の行のボタンは 6px の間で並ぶので、広げると隣のボタンの端を取る — 行では left/right 0 にしてある)
@@ -133,7 +148,7 @@ const CHECK = `(() => {
             for (const [ex, side] of [[exL, -1], [exR, 1]]) if (ex > 0.5) for (const y of [cy - q.height / 4, cy, cy + q.height / 4]) for (const d of [0.5, ex / 2, ex - 0.5]) {
                 const x = side < 0 ? q.left - d : q.right + d;
                 const st = document.elementsFromPoint(x, y); if (!st.length || !(st[0] === e || e.contains(st[0]))) continue;
-                const vic = st.find(n => n !== e && !e.contains(n) && !n.contains(e) && (n.matches('button, a[href], summary, label, input, select, textarea, [onclick], [role="button"]') || getComputedStyle(n).cursor === 'pointer'));
+                const vic = victimAt(st);
                 if (vic) steal.add(where(vic) + ' ' + sig(vic));
             }
             if (steal.size) out.push(['高さ', 'hit40 の押せる範囲がほかの押せる部品にかかる (' + [...steal].join(' / ') + ')', where(e), sig(e), txt]);
@@ -182,7 +197,8 @@ let failed = 0, checked = 0;
 // 場面を 1 つ開いて検査する。返すのは { v: 外れの一覧 (検査できなければ null), label, openFail: タブを開けなかった・検査が動かなかった }
 const runScene = async (tab, scene) => {
         const [scenario, w, act] = scene.split(':'); const W = Number(w), H = W > 700 ? 800 : 844;
-        const [tabId, sub] = tab.split('/');   // 'ops/組む' = 運営タブの中の小タブ (名前の一部で指す)
+        const [tabId, sub] = tab.split('@')[0].split('/');   // 'ops/組む' = 運営タブの中の小タブ (名前の一部で指す)。'@' から後ろは見出しだけ (シートの組: 'mypage@シート')
+        let sheetSel = null;   // 動作 sheet= を通ったら、そのシートだけを測る
         const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
         const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
         const S = (method, params) => send(method, params, sessionId);
@@ -252,9 +268,10 @@ const runScene = async (tab, scene) => {
             // ★ 中身が落ち着くまで待つ (Codex 監査 fc127f8): タブの中の部品の数と文字の量が 3 回続けて同じになるまで (最長 20 秒)。非同期の描画の途中 (読み込み中・空) を検査して通さない
             //   「同じ」は 部品の数 + 文字の中身 (長さでなく中身 — 同じ長さの別の文に差し替わったのを見逃さない) + タブの高さ + 押せない・隠した・選んだ部品の数。早く揃っても 5 秒は見る (遅れて来る描画: 配信・通知・更新履歴)。
             //   ★ これは「描き終わったか」の目安で、証明ではない (5 秒より後に来る描画・見た目だけの変化は拾えない)。練習モードは端末の中の偽のサーバで動くので、通信待ちは無い
-            const SHAPE = `(() => { const t = document.querySelector('.tab-content.active'); if (!t) return ''; const s = t.innerText || ''; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return t.id + ':' + t.querySelectorAll('*').length + ':' + h + ':' + t.scrollHeight + ':' + t.querySelectorAll('[disabled], [hidden], [aria-pressed="true"]').length; })()`;
+            //   シートを開いたあと (sheet=) は、シートの中身で同じことを見る
+            const SHAPE = () => `(() => { const t = document.querySelector(${JSON.stringify(sheetSel || '.tab-content.active')}); if (!t) return ''; const s = t.innerText || ''; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return t.id + ':' + t.querySelectorAll('*').length + ':' + h + ':' + t.scrollHeight + ':' + t.querySelectorAll('[disabled], [hidden], [aria-pressed="true"]').length; })()`;
             let same = 0, last = '';
-            const settle = async () => { same = 0; last = ''; const t0 = Date.now(); for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE); same = (now && now === last) ? same + 1 : 0; last = now; } };
+            const settle = async () => { same = 0; last = ''; const t0 = Date.now(); for (let i = 0; i < 28 && (same < 3 || Date.now() - t0 < 5000); i++) { await wait(700); const now = await ev(SHAPE()); same = (now && now === last) ? same + 1 : 0; last = now; } };
             await settle();
             // 動作: ピースを押す (置けるピース = 赤くない・使っていない札)。押せなければ「押せない」と出して検査しない (黙って押す前の画面を見ない)。
             //   タブを開けていないときは押さない (開けなかった本当の理由を「ピースが無い」で上書きしない)。押したあとはピースとガイドが「見えている」か (DOM にあるだけでは通さない — 隠れたガイドは CHECK が飛ばすので、測らずに外れ 0 になる)
@@ -352,13 +369,31 @@ const runScene = async (tab, scene) => {
                     const q = a.slice(4);
                     const bad = await ev(`(() => { const els = [...document.querySelectorAll(${JSON.stringify(q)})].filter(e => e.getClientRects().length > 0); if (!els.length) return '見えない'; for (const e of els) { const p = e.parentElement; const cs = getComputedStyle(p); const inner = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const t = (e.textContent || '').trim().slice(0, 12); if (e.scrollWidth > inner + 0.5) return t + ' が ' + Math.round(e.scrollWidth - inner) + 'px はみ出す'; if (p.scrollWidth > p.clientWidth + 0.5) return t + ' の行が ' + Math.round(p.scrollWidth - p.clientWidth) + 'px はみ出す'; } return ''; })()`);
                     if (bad) { active = '「' + q + '」' + bad; break; }
+                } else if (a.startsWith('call=')) {
+                    // シートの入口が練習モードで隠れているときだけ使う (上の帯の 名乗りの切り替え・ドロワーの ☰ は練習中に出さない): 入口のボタンが呼ぶ関数を、引数なしで呼ぶ。
+                    //   ボタンを押せる所では click= を使う (入口が壊れたら落ちるように)
+                    const fn = a.slice(5);
+                    const ok = /^[A-Za-z_$][\w$]*$/.test(fn) && await ev(`(async () => { if (typeof window[${JSON.stringify(fn)}] !== 'function') return false; await window[${JSON.stringify(fn)}](); return true; })()`);
+                    if (!ok) { active = '関数「' + fn + '」を呼べない'; break; }
+                    await settle();
+                } else if (a.startsWith('sheet=')) {
+                    // シート (段階 2 の残り・2026-11-24): 手前の動作 (click= など本物の入口を押す) で開いたシートが開いていること → ここから後ろはそのシートの中身で落ち着くのを待ち、そのシートだけを測る。
+                    //   開いていなければ失敗 (開けないまま外れ 0 で通さない)。シートの外 (後ろのタブ) は測らない — タブは別の場面で測っている
+                    const q = a.slice(6);
+                    if (!/^#[\w-]+$/.test(q)) { active = 'sheet= はシートの #id で指定する (' + q + ')'; break; }
+                    const ok = await ev(`(() => { const e = document.querySelector(${JSON.stringify(q)}); return !!e && e.classList.contains('open') && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none'; })()`);
+                    if (!ok) { active = 'シート「' + q + '」が開かない'; break; }
+                    sheetSel = q;
+                    await settle();
                 } else { active = '知らない動作: ' + a; break; }
             }
-            const body = await ev(`(() => { const t = document.querySelector('.tab-content.active'); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
-            if (active !== 'tab-' + tabId || !last.startsWith('tab-' + tabId + ':')) { label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`; openFail = active === null || /^tab-/.test(active); }
+            const body = await ev(`(() => { const t = document.querySelector(${JSON.stringify(sheetSel || '.tab-content.active')}); const vis = t ? [...t.querySelectorAll('*')].filter(e => e.getClientRects().length && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())) : []; return { n: vis.length, loading: vis.filter(e => /^(読み込み中|Loading)/.test(e.textContent.trim())).length }; })()`);
+            //   シートを測るときは、落ち着いた中身がそのシートのもの (id が同じ) であること・文字のある部品は 3 個以上 (小さいシートがある)
+            const rootId = sheetSel ? sheetSel.slice(1) : 'tab-' + tabId;
+            if (active !== 'tab-' + tabId || !last.startsWith(rootId + ':')) { label += ` (開けない → ${active} / 検査のとき ${last.split(':')[0]})`; openFail = active === null || /^tab-/.test(active); }
             else if (same < 3) label += ' (20 秒待っても中身が落ち着かない)';
-            else if (body.n < 20 || body.loading) label += ` (中身が出ていない: 文字のある部品 ${body.n} 個・読み込み中 ${body.loading} 個)`;
-            else v = await ev(CHECK);
+            else if (body.n < (sheetSel ? 3 : 20) || body.loading) label += ` (中身が出ていない: 文字のある部品 ${body.n} 個・読み込み中 ${body.loading} 個)`;
+            else v = await ev(CHECK(sheetSel));
         } catch (e) { label += ' (検査が動かない: ' + String(e.message || e).slice(0, 120) + ')'; openFail = true; }
         await send('Target.closeTarget', { targetId });
         return { v, label, openFail };

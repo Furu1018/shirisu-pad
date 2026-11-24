@@ -2341,8 +2341,9 @@ test('★ 段階 2 の物差し: hit40 (見た目を変えずに押せる範囲�
         return m[1] + ':' + (on ? on[1] : d ? d[1] : c[1].replace(/\s+/g, '.'));
     }).sort();
     //   ⚔️ 戦況 (2026-11-17): 📥 の行のボタン (✓ 凸の記録へ・確認する・📥 取り込む・📋 聞く・凸していない・戻す)・残 HP のチェック 2 つ (どちらか 1 つが出る)・凸していない / 🕐 の開閉。summary・label は 2 つ目の class で見分ける
-    assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:_rrPickSlice', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
-        'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:openFururiHelp', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
+    //   シート (2026-11-24): ふるり値の説明・編成比較 の × (丸のまま押せる範囲だけ 40px)
+    assert.deepEqual(sites, ['button:_opsAtkAsk', 'button:_opsJump', 'button:_opsResultFromMissing', 'button:_rrPickSlice', 'button:closeFururiHelp', 'button:data-ob-drop', 'button:data-ob-unpin', 'button:handleOpsAtkSkip', 'button:handleOpsAtkSkip', 'button:handleOpsAttackConfirm',
+        'button:hidePlayerDetails', 'button:markAllMyNotificationsRead', 'button:markMyNotificationRead', 'button:openFururiHelp', 'button:toggleMyNotifShowRead', 'label:ob-same.hit40', 'label:ob-sync-auto.hit40', 'label:row.hit40.hp-abs', 'label:row.hit40.hp-dec',
         'summary:hit40', 'summary:hit40', 'summary:hit40.atk-skip-h', 'summary:hit40.fin-tl'], 'hit40 の付け先が変わった');   // summary:hit40 は 🧱「このブロックのみ」と 👑 🧬「メンバー一覧からまとめて読み取る」(2026-11-20)
     // JS で後から付ける (classList.add / className) と上の一覧に出ない — 付けない
     assert.equal((html.match(/classList\.(?:add|toggle)\(\s*['"]hit40['"]|className\s*\+?=\s*[^;\n]*\bhit40\b/g) || []).length, 0, 'hit40 を JS で付けている (付け先の一覧に出ない)');
@@ -2567,6 +2568,45 @@ test('★ 段階 2 の物差し (設定・ヘルプ・2026-11-24): 練習の場�
     assert.ok(!/font-size:10px;font-weight:800;color:var\(--t-muted\);letter-spacing:0\.3px;">現在のプレイヤー/.test(html), '設定の「現在のプレイヤー」に 10px が残っている');
     // ⑤ システム状態のチップは どの幅でも 2 × 2 (横 1 列だとラベルが 11px で 390px でも はみ出す / auto-fit だと PC のカード 約 480px で 3 + 1 になる: 2026-11-24 Codex 監査・検査の fit= も見る)
     assert.ok(html.includes('<div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px;">'), 'システム状態のチップが 2 × 2 でない (横 1 列はラベルがはみ出す・auto-fit は PC のカード 約 480px で 3 + 1 になる)');
+});
+
+test('★ 段階 2 の物差し (シート 1 回目 = メンバーも開くシート + シート共通の部品・2026-11-24): 練習の場面に出ない部品も物差しどおり', () => {
+    const html = _perfHtml;
+    const css = html.slice(0, html.indexOf('</style>'));
+    const FS = ['11', '12', '14', '16', '20', '24', '28', '30', '32'], RAD = ['4', '8', '14', '22', '50', '99', '999'];
+    const scan = (label, p) => {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(FS.includes(m[1]), label + ' に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(RAD.includes(m[1]), label + ' に物差しの外の角丸 ' + m[1] + 'px');
+    };
+    // ① シートの HTML (開くとすぐ見える所・状態で出し分ける所も): シートの頭から、次のシートの頭 (または台本) まで
+    const NEXT = /class="(?:player-select-modal|player-modal|fururi-help-modal)"|<script>/g;
+    const sheet = (id) => { const i = html.indexOf('id="' + id + '"'); assert.ok(i > 0, id + ' が無い'); NEXT.lastIndex = i + 10; const m = NEXT.exec(html); assert.ok(m, id + ' の終わりが無い'); return html.slice(i, m.index); };
+    for (const id of ['avatarEditModal', 'mySlvModal', 'myPushModal', 'myStrongAttrsModal', 'iconPickerModal', 'playerSelectModal', 'playerModal', 'fururiHelpModal']) scan(id + ' の HTML', sheet(id));
+    // ② 中身を描く関数 (練習モードでは出ない状態 = 通知の購読・拒否・VAPID 未設定・テスト通知のスイッチ / ピッカーの検索中・未設定・採用数 も含めて)
+    const fnBody = (name) => { const i = html.indexOf('function ' + name + '('); assert.ok(i > 0, name + ' が無い'); const j = html.indexOf('\n        }\n', i); return html.slice(i, j); };
+    for (const f of ['renderMyPushSettings', 'renderIconPickerList', '_burstBadgeHtml', 'showPlayerDetails', 'renderPlayerSelectList', 'renderMyStrongAttrs']) scan(f, fnBody(f));
+    //   通知の設定のボタン (購読・試す・ローカル通知) は 40px
+    const push = fnBody('renderMyPushSettings');
+    assert.equal((push.match(/<button [^>]*style="[^"]*min-height:40px;/g) || []).length, (push.match(/<button /g) || []).length, '通知の設定のボタンが 40px 未満');
+    const picker = fnBody('renderIconPickerList');
+    assert.ok(/onclick="setIconPickerBurst\('\$\{o\.v\}'\)"`\s*\+ ` style="padding:5px 11px;min-height:40px;/.test(picker), 'ピッカーのバーストの絞り込みが 40px 未満');
+    assert.ok(/data-expand-key="[^"]*" style="[^"]*min-height:40px;[^"]*">他 \$\{rest\}件を表示/.test(picker), 'ピッカーの「他 N 件を表示」が 40px 未満');
+    // ③ シート共通の CSS: その選択子だけの規則を全部たどり、最後に書いた値 (= 効く値) で比べる (同じ選択子の規則が 2 つある: .player-select-content は overscroll-behavior だけの規則が先にある)
+    const last = (sel, prop) => {
+        const re = new RegExp('\\n\\s*' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{([^}]*)\\}', 'g');
+        let v = null; for (const m of css.matchAll(re)) for (const d of m[1].matchAll(new RegExp('(?:^|[;\\s{])' + prop + ':\\s*([^;}]+)', 'g'))) v = d[1].trim();
+        assert.ok(v !== null, sel + ' の ' + prop + ' が無い'); return v;
+    };
+    for (const [sel, prop, want] of [['.player-select-content', 'border-radius', '22px'], ['.player-select-content h2', 'font-size', '16px'], ['.player-select-search', 'min-height', '40px'], ['.player-select-search', 'border-radius', '8px'],
+        ['.player-select-item', 'font-size', '14px'], ['.player-modal-content', 'border-radius', '22px'], ['.player-modal-header h2', 'font-size', '16px'], ['.fururi-help-content', 'border-radius', '22px'], ['.fururi-help-header h2', 'font-size', '16px !important'],
+        ['.fururi-help-body', 'font-size', '14px'], ['.comp-side', 'border-radius', '14px'], ['.comp-label', 'font-size', '11px'], ['.comp-icon-img', 'border-radius', '8px'], ['.comp-icon-placeholder', 'border-radius', '8px'], ['.comp-damage', 'font-size', '14px'],
+        ['.comp-arrow', 'font-size', '16px'], ['.comp-no-data', 'border-radius', '8px'], ['.comp-boss-title', 'font-size', '14px'], ['.modal-damage-summary', 'border-radius', '14px'], ['.drawer-title', 'font-size', '20px'], ['.drawer-menu-item', 'font-size', '16px'],
+        ['.ps-close', 'min-height', '40px'], ['.ps-close', 'font-size', '14px']]) assert.equal(last(sel, prop), want, sel + ' の ' + prop + ' が物差しから外れた');
+    assert.match(css, /border-radius: 22px 22px 0 0 !important;/, 'ホームのボトムシートの角丸が 22px でない');
+    assert.ok(!/border-radius: 24px 24px 0 0/.test(css), 'ホームのボトムシートに 24px が残っている');
+    // ④ 「閉じる」は 16 枚とも class ps-close (高さ 40px・14px)。1 枚だけ元の小さい形 (31px) に戻すと落ちる
+    assert.equal((html.match(/<button class="ps-close" onclick="close[A-Za-z]*\((?:false)?\)">閉じる<\/button>/g) || []).length, 16, '「閉じる」の数が 16 でない (ps-close を外した・足した)');
+    assert.equal((html.match(/<button onclick="close[A-Za-z]*\([^)]*\)" style="padding:6px 12px;[^"]*">閉じる<\/button>/g) || []).length, 0, '小さい「閉じる」(31px) が残っている');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
