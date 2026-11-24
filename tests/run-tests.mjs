@@ -2562,8 +2562,9 @@ test('★ 段階 2 の物差し (設定・ヘルプ・2026-11-24): 練習の場�
     // ③ 押すもの: 見た目の切り替え (.th-b)・ガイドを開始 (.tour-guide-launcher) は 40px
     assert.match(html, /\n\s*\.th-b \{[^}]*min-height:40px;/, '見た目の切り替えが 40px 未満');
     assert.match(html, /\n\s*\.tour-guide-launcher \{[^}]*min-height: 40px;/, '「ガイドを開始」が 40px 未満');
-    // ④ 設定の 現在のプレイヤー (JS が描く) は 11px
-    assert.ok(html.includes('<div style="font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>'), '設定の「現在のプレイヤー」が 11px でない');
+    // ④ 設定の 現在のプレイヤー は 11px — HTML の初期の中身と JS が描き直す中身の 2 つとも (同じ形の文字列なので、includes 1 回では片方を壊しても通る: 変異テストで発覚)
+    assert.equal((html.match(/<div style="font-size:11px;font-weight:800;color:var\(--t-muted\);letter-spacing:0\.3px;">現在のプレイヤー<\/div>/g) || []).length, 2, '設定の「現在のプレイヤー」が 11px でない (HTML の初期の中身・JS が描く中身の 2 つとも)');
+    assert.ok(!/font-size:10px;font-weight:800;color:var\(--t-muted\);letter-spacing:0\.3px;">現在のプレイヤー/.test(html), '設定の「現在のプレイヤー」に 10px が残っている');
     // ⑤ システム状態のチップは どの幅でも 2 × 2 (横 1 列だとラベルが 11px で 390px でも はみ出す / auto-fit だと PC のカード 約 480px で 3 + 1 になる: 2026-11-24 Codex 監査・検査の fit= も見る)
     assert.ok(html.includes('<div id="settingsStatusChips" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:7px;">'), 'システム状態のチップが 2 × 2 でない (横 1 列はラベルがはみ出す・auto-fit は PC のカード 約 480px で 3 + 1 になる)');
 });
