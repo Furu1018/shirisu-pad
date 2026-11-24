@@ -2521,7 +2521,8 @@ test('★ 段階 2 の物差し (分析 2 回目 = 🛡 全体分析・🌏 GB�
 });
 test('★ 段階 2 の物差し (分析 3 回目 = 🧬 育成・2026-11-24): 育成の CSS の値は物差しどおり (練習の場面に出ない 非公開の札・顔の無いときの頭文字 なども)', () => {
     const css = _perfHtml.slice(0, _perfHtml.indexOf('</style>'));
-    const rules = [...css.matchAll(/\n\s*(\.g[cv]-[^{]+)\{([^}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
+    //   選択子のどこかに .gc- / .gv- がある規則 (前に別の選択子が付く規則・複数の選択子の規則も拾う: 2026-11-24 Codex 監査)
+    const rules = [...css.matchAll(/\n[ \t]*([^{}\n]*\.g[cv]-[^{}]*)\{([^}]*)\}/g)].map(m => ({ sel: m[1].trim(), body: m[2] }));
     assert.ok(rules.length >= 60, '育成の CSS の規則が見つからない (' + rules.length + ')');
     // 9 / 10px を使ってよいのは data-dense の中 (顔のマス .gv-tile / その札 .gv-bg / 編成のアイコンの列 .gv-tm) だけ
     const dense = (sel) => /\.gv-(tile|bg|tm)\b/.test(sel);

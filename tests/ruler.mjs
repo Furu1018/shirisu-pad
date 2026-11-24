@@ -61,7 +61,9 @@ const DONE = {
     // 分析 3 回目 = 🧬 育成 (2026-11-24): 練習のシーズンに育成の行を入れて、この回の凸がいちばん多い人を名乗ってから開く (runScene の sub === 'growth')。当日の編 = 凸の記録がある (使った編成は凸の記録から作る)。
     //   相手 (ユニオン全体 / growth-them = 凸した人) × 見方 (使った編成 / キャラ別)・1 体ずつくらべる・全項目・取り込みの内訳。顔のマスと編成のアイコンの列は data-dense (盤の駒と同じ「縦に伸ばさない所」)
     'slv-ranking/growth': ['ops-day:390:need=.gv-pt', 'ops-day:320:need=.gv-pt', 'ops-day:1366:need=.gv-pt', 'ops-day:390:click=.gv-pt .gc-more+need=.gv-rk',
-        `ops-day:390:growth-them+click=[onclick="handleGrowthAnaBase('them')"]+need=.gv-pt`, 'ops-day:390:growth-them+click=.gv-pt .gc-more+click=.gc-char .gc-more+need=.gc-tbl',
+        //   相手が使った編成への切り替えは、押したボタンが選ばれたことも見る — 編成のカードは切り替える前から出ている (2026-11-24 Codex 監査)
+        `ops-day:390:growth-them+click=[onclick="handleGrowthAnaBase('them')"]+need=[onclick="handleGrowthAnaBase('them')"][aria-pressed="true"]+need=.gv-pt`,
+        'ops-day:390:growth-them+click=.gv-pt .gc-more+click=.gc-char .gc-more+need=.gc-tbl',
         `ops-day:390:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`, `ops-day:320:click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gv-rk`,
         `ops-day:1366:growth-them+click=[onclick="handleGrowthAnaView('char')"]+click=.gv-tile+need=.gc-char`, 'ops-day:390:click=.gc-more+need=.gc-mrow'],
 };
@@ -306,9 +308,11 @@ const runScene = async (tab, scene) => {
                     const ok = await ev(`(() => { const t = window.PAD_PRACTICE.db.tables; const me = String(getCurrentIdentity()?.id ?? ''); const sid = String(_gv.seasonId);
                         const cnt = new Map(); (t.attacks || []).filter(x => String(x.season_id) === sid && Array.isArray(x.characters) && x.characters.length && String(x.player_id) !== me).forEach(x => cnt.set(String(x.player_id), (cnt.get(String(x.player_id)) || 0) + 1));
                         const top = [...cnt.entries()].sort((x, y) => y[1] - x[1] || Number(x[0]) - Number(y[0]))[0]; if (!top) return false;
-                        const b = document.querySelector('.gv-who button[onclick="handleGrowthAnaWho(' + Number(top[0]) + ')"]'); if (!b) return false; b.click(); return true; })()`);
+                        const b = document.querySelector('.gv-who button[onclick="handleGrowthAnaWho(' + Number(top[0]) + ')"]'); if (!b) return false; b.click(); return Number(top[0]); })()`);
                     if (!ok) { active = 'くらべる相手 (凸した人) を選べない'; break; }
                     await settle();
+                    // 押したあと、その人のボタンが選ばれていること (描き直したあとの新しいボタンで見る)
+                    if (!(await ev(`!!document.querySelector('.gv-who button[onclick="handleGrowthAnaWho(${ok})"][aria-pressed="true"]')`))) { active = 'くらべる相手が選ばれない'; break; }
                 } else if (a.startsWith('click=')) {
                     // 汎用 (2026-11-21 分析から): 見えている最初の部品を押す (結果まとめ・グラフの切り替え・開閉・モードなど)。選択子に ':' と '+' は使えない (場面の区切り)
                     const q = a.slice(6);
