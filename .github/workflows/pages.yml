@@ -9,7 +9,8 @@
 #   deploy-pages v4 がアップロード済みの成果物を「Found 0 artifact(s)」で見つけられずに落ちることが続いた
 #   (11/24 だけで 7 回・時間をおいて起動し直すと通る回もあった)。同じ時期に「Node.js 20 向けの actions を Node.js 24 で
 #   強制的に動かしている」警告が出ていたので、まず版を揃えて切り分ける (原因だと確定したわけではない)。
-#   → 版を上げても同じく落ちた。原因は成果物の一覧への反映の遅れと見て、upload と deploy の間に「Wait for artifact」を足した。
+#   → 版を上げても同じく落ちた (upload の完了の 0.2 秒後に deploy-pages が成果物の一覧を引いて 0 件・その成果物はあとで一覧に出ていた)。
+#   成果物の一覧への反映が遅れていると見て、deploy-pages を間をおいて最大 2 回やり直す (下の retry)。
 #   upload-pages-artifact v4 以降は隠しファイル (. で始まる) を成果物に入れない — このサイトに要る隠しファイルは無い (.nojekyll / .gitattributes / .gitignore は Actions の公開では使わない)
 # ============================================================================
 name: Deploy to GitHub Pages
@@ -23,7 +24,6 @@ permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read   # 成果物の一覧を読む (下の Wait for artifact)
 
 concurrency:
   group: pages
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment2.outputs.page_url || steps.deployment3.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -47,21 +47,35 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: .
-      - name: Wait for artifact
-        # 2026-11-24: v5 に上げても「Found 0 artifact(s)」で落ちた。ログでは upload の完了の 0.2 秒後に deploy-pages が
-        #   成果物の一覧を引いていて、同じ成果物はあとで一覧に出ていた (= 一覧への反映が遅れている)。一覧に出るまで待つ。
-        #   最大 2 分。出ないまま過ぎたら警告だけ出して deploy を試す (これまでと同じ動きに戻るだけ)。
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for i in $(seq 1 24); do
-            n=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=github-pages" -q '.total_count' 2>/dev/null) || n=0
-            case "$n" in ''|*[!0-9]*) n=0 ;; esac   # 失敗したときの本文などは 0 と読む
-            echo "try ${i}: ${n}"
-            if [ "$n" -ge 1 ]; then sleep 5; exit 0; fi
-            sleep 5
-          done
-          echo "::warning::成果物 github-pages が 2 分たっても一覧に出ない — このまま deploy を試す"
+      # ── deploy-pages のやり直し (2026-11-24) ──
+      # deploy-pages v5 は成果物を Results Service の一覧 (@actions/artifact の listArtifacts) で探し、見つからないと
+      # 公開を作る前に止まる (src/internal/deployment.js: getArtifactMetadata が createPagesDeployment より前)。
+      # page_url を出すのは公開を作れたあとだけなので、「失敗して page_url が空」= 公開をまだ作っていない ときだけやり直す
+      # (作ったあとの失敗 = 状態の確認の時間切れなど でやり直すと公開が二重になる)。同じ一覧を同じ道具で引き直すのがいちばん確か。
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v5
+      - name: Wait before retry (1)
+        if: steps.deployment.outcome == 'failure' && steps.deployment.outputs.page_url == ''
+        run: sleep 30
+      - name: Deploy to GitHub Pages (retry 1)
+        id: deployment2
+        if: steps.deployment.outcome == 'failure' && steps.deployment.outputs.page_url == ''
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+      - name: Wait before retry (2)
+        if: steps.deployment2.outcome == 'failure' && steps.deployment2.outputs.page_url == ''
+        run: sleep 90
+      - name: Deploy to GitHub Pages (retry 2)
+        id: deployment3
+        if: steps.deployment2.outcome == 'failure' && steps.deployment2.outputs.page_url == ''
+        uses: actions/deploy-pages@v5
+      - name: Fail if not deployed
+        # やり直しをしなかった失敗 (公開を作ったあとの失敗) と、やり直しても page_url が出なかったときに job を落とす
+        # (continue-on-error のままだと落ちた公開が緑に見える)
+        # 取り消し (concurrency の cancel-in-progress) のときは動かさない
+        if: ${{ !cancelled() && steps.deployment.outcome != 'success' && steps.deployment2.outcome != 'success' && steps.deployment3.outcome != 'success' }}
+        run: |
+          echo "::error::GitHub Pages への公開に失敗しました (deploy-pages: 1 回目 ${{ steps.deployment.outcome }} / 2 回目 ${{ steps.deployment2.outcome }} / 3 回目 ${{ steps.deployment3.outcome }})"
+          exit 1
