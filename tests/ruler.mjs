@@ -77,6 +77,7 @@ const DONE = {
     'mypage@シート': ['member:390:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal', 'member:320:click=[onclick="openMySlvModal()"]+sheet=#mySlvModal',
         'member:390:click=[onclick="openAvatarEditModal()"]+sheet=#avatarEditModal',
         'member:390:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal', 'member:1366:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal',
+        'member:320:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal',   // 320px = バーストの絞り込み (40px のピル) が折り返す幅 (2026-11-24 Codex 監査)
         'member:390:click=[onclick="openMyStrongAttrsModal()"]+sheet=#myStrongAttrsModal', 'member:390:click=[onclick="openMyPushModal()"]+sheet=#myPushModal',
         'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer'],
     'ranking@シート': ['member:390:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:320:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:1366:click=[onclick^="showPlayerDetails"]+sheet=#playerModal'],
@@ -157,6 +158,11 @@ const CHECK = (sheetSel) => `(() => {
     return out;
 })()`;
 
+// 見えていて指で押せる部品か (ブラウザの中で動く・click= と sheet= が使う): 画面の真ん中に寄せて、その真ん中の点で指が当たるのが自分か自分の子 (= 覆われていない・pointer-events がある)、
+//   かつ当たった部品から上に 見えない (visibility: hidden / display: none)・透明 (opacity < 0.05) が無いこと。DOM にあるだけ・大きさがあるだけでは通さない (2026-11-24 Codex 監査: 透明・押せないシートや入口を通していた)
+const HITTABLE = `(e) => { if (!e || !e.getClientRects().length) return false; e.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); const r = e.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false;
+    const g = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); if (!g || !(g === e || e.contains(g))) return false;
+    for (let x = g; x; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.05) return false; } return true; }`;
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json',
     '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
@@ -336,9 +342,10 @@ const runScene = async (tab, scene) => {
                     // 押したあと、その人のボタンが選ばれていること (描き直したあとの新しいボタンで見る)
                     if (!(await ev(`!!document.querySelector('.gv-who button[onclick="handleGrowthAnaWho(${ok})"][aria-pressed="true"]')`))) { active = 'くらべる相手が選ばれない'; break; }
                 } else if (a.startsWith('click=')) {
-                    // 汎用 (2026-11-21 分析から): 見えている最初の部品を押す (結果まとめ・グラフの切り替え・開閉・モードなど)。選択子に ':' と '+' は使えない (場面の区切り)
+                    // 汎用 (2026-11-21 分析から): 見えていて指で押せる最初の部品を押す (結果まとめ・グラフの切り替え・開閉・モード・シートの入口など)。選択子に ':' と '+' は使えない (場面の区切り)
+                    //   押せる = HITTABLE (2026-11-24 Codex 監査: 見えない・押せない入口でもプログラムで押せて通っていた)
                     const q = a.slice(6);
-                    const ok = await ev(`(() => { const e = [...document.querySelectorAll(${JSON.stringify(q)})].find(x => x.getClientRects().length > 0); if (!e) return false; e.click(); return true; })()`);
+                    const ok = await ev(`(() => { const hittable = ${HITTABLE}; const e = [...document.querySelectorAll(${JSON.stringify(q)})].find(x => hittable(x)); if (!e) return false; e.click(); return true; })()`);
                     if (!ok) { active = '「' + q + '」を押せない'; break; }
                     await settle();
                 } else if (a.startsWith('pick=')) {
@@ -381,7 +388,8 @@ const runScene = async (tab, scene) => {
                     //   開いていなければ失敗 (開けないまま外れ 0 で通さない)。シートの外 (後ろのタブ) は測らない — タブは別の場面で測っている
                     const q = a.slice(6);
                     if (!/^#[\w-]+$/.test(q)) { active = 'sheet= はシートの #id で指定する (' + q + ')'; break; }
-                    const ok = await ev(`(() => { const e = document.querySelector(${JSON.stringify(q)}); return !!e && e.classList.contains('open') && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none'; })()`);
+                    //   開いている = class open + シートの面 (中身の箱・ドロワーはそのもの) が見えていて指で押せる (HITTABLE: 透明・見えない・pointer-events: none・覆われたシートを通さない)
+                    const ok = await ev(`(() => { const hittable = ${HITTABLE}; const e = document.querySelector(${JSON.stringify(q)}); if (!e || !e.classList.contains('open')) return false; const face = e.querySelector('.player-select-content, .player-modal-content, .fururi-help-content') || e; return hittable(face); })()`);
                     if (!ok) { active = 'シート「' + q + '」が開かない'; break; }
                     sheetSel = q;
                     await settle();
