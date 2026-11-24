@@ -52,8 +52,11 @@ const DONE = {
         'member:320:click=.sim-mode-btn[data-sim-mode="fururi"]+pick=#fsimPlayerSelect+click=[data-fsim-attr="FIRE"]+type=#fsimDamage=30+need=#fsimResult+need=#fsimTableBody tr+fit=.fsim-attr-vs'],
     // 分析 2 回目 (2026-11-24): 🛡 全体分析 = 進捗の帯・散布図 (SVG の中は見ない)・ヒートマップ (表) / ⚔ ランキング (押すと出る) / 帯の凸を押した詳細 (編成・✕ = hit40)。
     //   🌏 GB比較 = メンバー% (1 人 1 行の一覧 = data-dense) / 編成 (属性のチップ・人気 / 強い) / 最適3凸 (凸ごとの属性のチップ・SLv の欄・結果)
-    'slv-ranking/review': ['member:390', 'member:1366', 'member:320', 'member:390:click=#rrAptBarsBtn+need=.rr-bar', 'member:390:click=.rr-sl+need=.rr-det'],
+    //   320px の ⚔ ランキング・帯の凸の詳細・GB の編成 も見る (2026-11-24 Codex 監査: 狭い幅の状態が見張られていなかった)
+    'slv-ranking/review': ['member:390', 'member:1366', 'member:320', 'member:390:click=#rrAptBarsBtn+need=.rr-bar', 'member:390:click=.rr-sl+need=.rr-det',
+        'member:320:click=#rrAptBarsBtn+need=.rr-bar', 'member:320:click=.rr-sl+need=.rr-det'],
     'slv-ranking/gb': ['member:390', 'member:1366', 'member:320', `member:390:click=[onclick="_setGbView('comps')"]+need=#gbCompareCard [onclick^="_setGbMode"]`,
+        `member:320:click=[onclick="_setGbView('comps')"]+need=#gbCompareCard [onclick^="_setGbMode"]`,
         `member:390:click=[onclick="_setGbView('best')"]+need=#gbCompareCard [onclick^="_setGbPick"]`, `member:320:click=[onclick="_setGbView('best')"]+need=#gbCompareCard [onclick^="_setGbPick"]`],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
