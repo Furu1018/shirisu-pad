@@ -1640,8 +1640,10 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
 - ★ **push のあとは live の `app-build` が新しい commit になったかを必ず見る** (2026-11-16: 「Deploy to GitHub Pages」の段だけ GitHub 側の取りこぼしで落ちた —
   `No artifacts named "github-pages" were found` — push は通っているので、見なければ気づかない)。
   落ちたら **同じ実行をやり直さない** (`gh run rerun` は成果物が 2 つになって `Multiple artifacts named "github-pages"` でまた落ちる)。新しい実行として起動する: `gh workflow run pages.yml --ref main`
-- ★ **push したら `gh run list --limit 1` で success を確かめる** (2026-10-02 に deploy-pages が「artifact が見つからない」で落ち、公開サイトが前の版のままだった。
-  アップロードは成功していたので GitHub 側の一時的な不調。`gh run rerun <id>` で直る)。公開の版は `curl -s <公開URL>/index.html | grep app-build` で分かる
+- ★ **push したら `gh run list --workflow pages.yml --limit 1` で success を確かめる** (2026-10-02・11-16・11-24 に deploy-pages が「artifact が見つからない」で落ち、公開サイトが前の版のままだった)。公開の版は `curl -s <公開URL>/index.html | grep app-build` で分かる
+- ★ **「Found 0 artifact(s)」の正体と手当て** (2026-11-24・この日だけで 8 回): upload の 0.2 秒後に deploy-pages が成果物の一覧 (Results Service の ListArtifacts) を引くと、まだ反映されていない。
+  `pages.yml` は deploy の前に **download-artifact@v8 で成果物を名前で取ってみる** (同じ ListArtifacts・GitHub 側に成果物や公開を増やさない = runner の一時置き場に落とすだけ) → すぐ・30 秒後・さらに 90 秒後の**合計 3 回**まで → deploy-pages は 1 回だけ (3 回とも取れなくても試す)。
+  **deploy-pages をやり直す形にしない** (要求が届いて返事だけ失われたとき公開が二重になり得る)・**REST の runs/{id}/artifacts を待たない** (deploy-pages は REST を見ていない)。どちらも Codex 監査で外した案。actions の版を上げるだけでは直らなかった
 - ローカルでは Supabase データが無いと大半のタブが空になる → 実機確認はユーザーに依頼する
 - ★ **画面が変わる commit には `data/release-notes.json` に 1 項目足す** (2026-10-08 ユーザー決定)。上の「🆕 新しくなったこと」を参照。
   コードだけの変更 (テスト・監査対応・文言の微修正) には足さない
