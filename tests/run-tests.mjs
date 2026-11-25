@@ -2649,6 +2649,12 @@ test('★ 段階 2 の物差し (シート 2 回目 = 運営 › 👥 のシー�
     assert.match(dmg, /onclick="handleMyDmgPreviewPickAttr\('\$\{a\.key\}'\)" style="display:inline-flex;align-items:center;gap:5px;min-height:40px;/, '取り込みの確認の属性の選び直しが 40px でない');
     assert.match(fnBody('_renderMyDmgPreviewSlot'), /style="flex:1;min-height:40px;padding:8px 10px;/, '保存先 (編成①〜③) のボタンが 40px でない');
     assert.match(fnBody('_renderMyDmgPreviewSlot'), /<small style="display:block;font-size:11px;/, '保存先の「空き / 登録あり」が既定の小さい文字 (10px) に戻った');
+    //   一斉送信・送信の確認の下のボタン (キャンセル / 全員に送信 / キャンセル / 送信する) も 40px (2026-11-25 Codex 監査: 文字の大きさ次第で 34〜38px になる)
+    const pushSheets = sheet('opsPushSendModal') + sheet('pushPreviewModal');
+    assert.equal((pushSheets.match(/<button (?:id="pushPreviewSendBtn" )?onclick="(?:closeOpsPushSendModal\(\)|handleOpsPushSend\(\)|closePushPreview\((?:true|false)\))" style="padding:10px 1[68]px;min-height:40px;/g) || []).length, 4, '一斉送信・送信の確認の下のボタンが 40px でない');
+    //   PC のまとめて入力のプリセットは キー・顔・人数 の 3 列 — 後ろの基本の .mkb-preset (2 列) に負けないよう、シートで 1 段強くした規則で (同じ強さだと後ろが勝って 2 列のまま = キーが別の行に回る: Codex 監査)
+    const pcMkb = css.match(/@media \(min-width: 900px\) and \(hover: hover\) and \(pointer: fine\) \{([\s\S]*?)\n        \}/)?.[1] || '';
+    assert.match(pcMkb, /\n\s*\.mkb-sheet \.mkb-preset \{ grid-template-columns: auto minmax\(0, 1fr\) auto; \}/, 'PC のプリセットが 3 列にならない (基本の 2 列の規則に負ける)');
     // ④ 参加可能時間の状態の欄: 通知は参加可能時間で絞っていない (2026-10-07 から) — 「通知 受信中 / OFF」「Push通知は届きません」と言わない
     for (const gone of ['通知 受信中', '通知 OFF (時間帯外)', 'Push通知は届きません']) assert.ok(!html.includes(gone), '参加可能時間のシートが通知について誤ったことを言う: ' + gone);
     assert.ok(avail.includes("${isNowOn ? 'いまは参加可能時間' : 'いまは参加可能時間の外'}"), '状態の欄が「参加可能時間の中か外か」でない');

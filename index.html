@@ -3096,7 +3096,9 @@
             .mkb-side { display: block; position: sticky; top: 0; padding-top: 6px; min-width: 0; }
             .mkb-keys { display: flex; gap: 4px 12px; flex-wrap: wrap; margin: 6px 0 0; font-size: 11px; font-weight: 700; color: var(--t-muted); }
             .mkb-k { display: inline-block; }
-            .mkb-preset { grid-template-columns: auto minmax(0, 1fr) auto; }
+            /* PC はプリセットを キー (1〜9)・顔・人数 の 3 列に。★ 後ろの基本の .mkb-preset (同じ強さ・2 列) に負けないよう、シートで 1 段強くする
+               (2026-11-25 Codex 監査: 2 列のまま = キーが別の行に回り行が 69px に伸びていた・11/12 の ⌨ 続けて入力から) */
+            .mkb-sheet .mkb-preset { grid-template-columns: auto minmax(0, 1fr) auto; }
         }
         .mkb-keys kbd, .mkb-k { font: inherit; font-size: 11px; font-weight: 900; padding: 0 5px; border-radius: 4px; background: var(--s2); color: var(--t-body); border-bottom: 2px solid var(--line); white-space: nowrap; }
         .mkb-search { width: 100%; min-height: 40px; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); }
@@ -5268,8 +5270,8 @@
             <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;min-height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;min-height:40px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
             </div>
         </div>
     </div>
@@ -5285,8 +5287,8 @@
             <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
             <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
-                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:14px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
+                <button onclick="closePushPreview(false)" style="padding:10px 16px;min-height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;min-height:40px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:14px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
             </div>
         </div>
     </div>
