@@ -2706,6 +2706,56 @@ test('★ 段階 2 の物差し (シート 3 回目 = 運営 › ⚔️・👑 �
     assert.ok(sheet('opsSeasonCreateModal').includes('動いているシーズンがあるあいだは作れません'), 'シーズン作成のシートが「動いているシーズンがあると作れない」を言わない');
 });
 
+test('★ 段階 2 の後半: ブラウザの alert / confirm / prompt はアプリの確認 (padAlert / padConfirm / padPrompt) に — 残っているのは決めた所だけ (2026-11-25)', () => {
+    const html = _perfHtml;
+    const css = html.slice(0, html.indexOf('</style>'));
+    // ① シート 1 枚と見た目 (物差し: ボタン 40px・文字 14px・枠はシート共通の 22・ツアー 10000 と AI 解析中 10050 より上)
+    for (const id of ['padDialog', 'padDialogTitle', 'padDialogMsg', 'padDialogInput', 'padDialogOk', 'padDialogCancel']) assert.ok(html.includes(`id="${id}"`), id + ' が無い');
+    assert.match(html, /<div class="player-select-modal" id="padDialog" role="dialog" aria-modal="true"/, '確認のシートがシート (.player-select-modal = 画面の固定・戻る操作・ナビの隠し) でない');
+    assert.match(css, /\n\s*\.pad-dlg-btn \{ min-height: 40px;[^}]*font-size: 14px;/, '確認のボタンが 40px / 14px でない');
+    assert.match(css, /\n\s*\.pad-dlg-msg \{[^}]*font-size: 14px;[^}]*white-space: pre-wrap;/, '確認の文が 14px でない / 改行を保たない');
+    const z = Number((css.match(/\n\s*#padDialog \{ z-index: (\d+); \}/) || [])[1]);
+    assert.ok(z > 10050, '確認のシートが AI 解析中 (10050)・ツアー (10000) より下 (その上から呼ぶと隠れる): ' + z);
+    assert.match(css, /\n\s*\.pad-dlg-btn\.main \{ background: var\(--t-ink\); color: var\(--card\); \}/, '主ボタンの文字が --t-ink の塗りの上で反転しない');
+    // ② 残っているブラウザのダイアログ: 決めた所だけ。囲む関数 (function 宣言) で数える
+    //   - <head> の練習の起動の失敗 (アプリがまだ無い) / _padDlgNext (シートが無いときに倒す先)
+    //   - ROUND2 = 運営 › ⚔️・🧱・👑 シーズン制御 (2 回目で直す — 直したらここから消す。答えを待つ間に動くものの照合を 1 つずつ見る)
+    const ROUND2 = new Set(['handleOpsAtkSkip', '_opsAtkAsk', 'handleOpsResultSave', '_resvTransition', 'handleOpsQuickCreateTestSeason', 'handleOpsTestEndConfirm', 'handleOpsBossSummaryEditSave',
+        'handleOpsFinishPlanCopy', '_obDecide', '_obSelect', '_obReset', 'handleOpsUnpublishPlan', 'handleOpsBossHpSaveAll', '_opsTapMark', '_opsTapUndo', 'handleOpsAttackEditDmg', 'handleOpsAttackDelete',
+        '_obkRebuildSave', 'handleOpsSeasonEditSave', 'handleOpsSeasonCreateSave', 'handleOpsEndSeason', 'handleOpsResetDamages']);
+    const lines = html.split('\n');
+    const headEnd = lines.findIndex(l => l.includes('</head>'));
+    const bad = [], seenR2 = new Set();
+    lines.forEach((l, i) => {
+        if (/^\s*\/\//.test(l)) return;
+        for (const m of l.matchAll(/(^|[^.\w$])(window\.)?(alert|confirm|prompt)\(/g)) {
+            if (/\/\/[^'"`]*$/.test(l.slice(0, m.index))) continue;   // 行末のコメントの中
+            if (i < headEnd) { if (m[3] === 'alert' && /練習モードを始められませんでした/.test(l)) continue; bad.push(`<head> ${i + 1}: ${l.trim().slice(0, 80)}`); continue; }
+            let fn = null;
+            for (let j = i; j >= 0; j--) { const f = lines[j].match(/^        (?:async\s+)?function\s+([\w$]+)\s*\(/); if (f) { fn = f[1]; break; } }
+            if (fn === '_padDlgNext') continue;
+            if (ROUND2.has(fn)) { seenR2.add(fn); continue; }
+            bad.push(`${fn || '?'} ${i + 1}: ${l.trim().slice(0, 90)}`);
+        }
+    });
+    assert.deepEqual(bad, [], 'ブラウザの alert / confirm / prompt が残っている (padAlert / padConfirm / padPrompt を使う・答えは Promise):\n  ' + bad.join('\n  '));
+    //   ROUND2 の名前が古くなっていない (直したのに一覧に残ると、戻っても気づけない)
+    assert.deepEqual([...ROUND2].filter(f => !seenR2.has(f)), [], 'ROUND2 に、もうブラウザのダイアログを使っていない関数がある (一覧から消す)');
+    // ③ 練習の案内 (js/practice/guide.js) も同じシート (無ければブラウザのもの)
+    const guide = _fs2b.readFileSync(new URL('../js/practice/guide.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    assert.equal((guide.match(/window\.confirm\(/g) || []).length, 1, '練習の案内がブラウザの confirm を直に使っている (ask の倒す先の 1 つだけ)');
+    // ④ 答えを待つ間に画面が変わり得る所は、答えのあとに照合し直す (ブラウザの confirm はページを止めたが、アプリの確認は止めない)
+    const fnBody = (name) => { const i = html.indexOf('function ' + name + '('); assert.ok(i > 0, name + ' が無い'); return html.slice(i, html.indexOf('\n        }\n', i)); };
+    assert.match(fnBody('_mkbGoto'), /await padConfirm\([^\n]*\)\)\) return;\s*\n\s*if \(_mkb\.gen !== gen \|\| _mkb\.busy \|\| _mkb\.moving\) return;/, 'まとめて入力の「別の人へ」が答えのあとに世代を照合しない');
+    assert.match(fnBody('_mkbNext'), /await padConfirm\([^\n]*\)\)\) return;\s*\n\s*if \(_mkb\.gen !== gen \|\| _mkb\.busy \|\| _mkb\.moving\) return;/, 'まとめて入力の「次の人へ」が答えのあとに世代を照合しない');
+    assert.match(fnBody('closeOpsMockBulk'), /await padConfirm\([^\n]*\)\)\) return;\s*\n\s*if \(_mkb\.gen !== gen \|\| _mkb\.busy\) return;/, 'まとめて入力の「閉じる」が答えのあとに世代を照合しない');
+    assert.match(fnBody('_mkbSaveNext'), /await padConfirm\([^\n]*\)\)\) return;\s*\n\s*if \(_mkb\.busy \|\| _mkb\.playerId !== pid \|\| _mkb\.gen !== gen\) return;/, 'Ctrl+Enter の「次の人へ」が答えのあとに照合しない');
+    assert.match(fnBody('handleGrowthApplyRoster'), /if \(sigOf\(dom\.matchRoster\(entries, \(_growth\.players \|\| \[\]\)\.slice\(\)\)\) !== sigOf\(m\)\)/, '名簿のひも付けが、答えを待つ間に読み直された一覧で突き合わせ直さない');
+    for (const f of ['handleCharMasterDelete']) assert.match(fnBody(f), /if \(_charEditOriginal !== orig\) return;/, f + ' が答えのあとに開いているキャラを照合しない');
+    //   復元の注意は読み終わってから再読み込み (待たないと 1.2 秒で消える)
+    assert.match(fnBody('handleSettingsRestore'), /await padAlert\(`復元は完了しましたが注意があります/, '復元の注意を待たずに再読み込みする');
+});
+
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
     seasonStore.invalidate();
@@ -12640,7 +12690,7 @@ console.log('\ngrowthDomain:');
         // ★ 付け替えは先に外す (識別子は1人にしか付かない)。順番を逆にすると 23505 で落ちる
         assert.ok(ros.indexOf('for (const c of m.clear)') > 0, '先に外す処理が無い');
         assert.ok(ros.indexOf('for (const c of m.clear)') < ros.indexOf('for (const a of m.apply)'), '外すより先に付けている');
-        assert.ok(/confirm\(/.test(ros), '内訳を見せずにまとめて書き換えている');
+        assert.ok(/padConfirm\(summary, /.test(ros), '内訳を見せずにまとめて書き換えている (アプリの確認 padConfirm で内訳を出す)');
         assert.ok(/function handleGrowthCopyRosterSnippet\(\)/.test(html), '名簿のブックマークレットをコピーできない');
         // 押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)
         const paint = html.match(/function _growthPaint\(\)[\s\S]*?\n        \}\n/)?.[0] || '';

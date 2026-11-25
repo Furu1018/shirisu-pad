@@ -1712,6 +1712,16 @@
             padding: 24px}
         /* シートの見出しの横の「閉じる」(2026-11-24 段階 2 のシート: 16 枚とも同じ形だったのを 1 つに・高さ 40px) */
         .ps-close { flex: none; min-height: 40px; padding: 6px 14px; border-radius: 8px; border: none; background: var(--s2); color: var(--t-ink); font-size: 14px; font-weight: 700; cursor: pointer; }
+        /* アプリの確認 (ブラウザの alert / confirm / prompt の代わり・2026-11-25 段階 2 の後半)。見た目はほかのシートと同じ (枠 22・見出し 16px・ボタン 40px)。
+           ツアー (10000)・AI 解析中 (10050) より上 — その上から呼ばれる (ツアーの「スキップ」など) */
+        #padDialog { z-index: 10060; }
+        #padDialog .pad-dlg-box { max-width: 420px; gap: 14px; }
+        .pad-dlg-msg { margin: 0; font-size: 14px; line-height: 1.7; color: var(--t-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+        .pad-dlg-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+        .pad-dlg-btn { min-height: 40px; padding: 10px 18px; border-radius: 8px; border: none; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+        .pad-dlg-btn.sub { background: var(--s2); color: var(--t-ink); }
+        .pad-dlg-btn.main { background: var(--t-ink); color: var(--card); }
+        .pad-dlg-btn.main.danger { background: var(--bad-solid); color: var(--bad-ink); }   /* 赤い塗りの上の文字はその塗りの -ink (白は 3.8:1 で読みにくい) */
         .player-select-footer {
             display: flex;
             justify-content: space-between;
@@ -5615,6 +5625,19 @@
 
     <!-- ========== 編成編集モーダル (ホームの属性別ダメ行から開く) ========== -->
 
+    <!-- ========== アプリの確認 (alert / confirm / prompt の代わり・padAlert / padConfirm / padPrompt が使う 1 枚) ========== -->
+    <div class="player-select-modal" id="padDialog" role="dialog" aria-modal="true" aria-labelledby="padDialogTitle" aria-describedby="padDialogMsg">
+        <div class="player-select-content pad-dlg-box">
+            <h2 id="padDialogTitle" hidden></h2>
+            <p id="padDialogMsg" class="pad-dlg-msg"></p>
+            <input id="padDialogInput" class="player-select-search" type="text" autocomplete="off" hidden>
+            <div class="pad-dlg-btns">
+                <button type="button" id="padDialogCancel" class="pad-dlg-btn sub">キャンセル</button>
+                <button type="button" id="padDialogOk" class="pad-dlg-btn main">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== Player Select Modal (initial pick) ========== -->
     <div class="player-select-modal" id="playerSelectModal">
         <div class="player-select-content">
@@ -5886,20 +5909,20 @@
         // 🎮 練習モードに入る。印 (sessionStorage) を立てて読み込み直すだけ — 通信・時計・端末の記憶の差し替えは
         //   起動のいちばん最初に js/practice/boot.js が行う (途中から切り替えると、本番のデータを抱えた画面が残る)。
         //   印は sessionStorage なので、タブ (アプリ) を閉じれば本番に戻る
-        function startPractice(scenario, startAt) {
+        async function startPractice(scenario, startAt) {
             // 編の id (js/practice/guide.js の SCENARIOS と同じ一覧)。知らない値はメンバー編に倒す。
             // startAt = その編の課題の key (ツアーから入るとき。手前の課題は済んだ状態で始まる — js/practice/guide.js の fastForward)
             const r = /^(member|ops-eve|ops-day)$/.test(scenario || '') ? scenario : 'member';
             const at = /^[a-z]+$/.test(startAt || '') ? startAt : '';
             if (window.PAD_PRACTICE) {
-                if (confirm('練習を最初からやり直しますか？\n(ここまでの練習は消えます)')) window.PAD_PRACTICE.restart(r, at);
+                if (await padConfirm('練習を最初からやり直しますか？\n(ここまでの練習は消えます)', { ok: 'やり直す' })) window.PAD_PRACTICE.restart(r, at);
                 return;
             }
-            if (!confirm('練習を始めます。\n\n本番と同じ画面を、練習用のデータで触れます。\nここでの操作は本番には反映されません。上の「やめる」でいつでも戻れます。')) return;
+            if (!(await padConfirm('練習を始めます。\n\n本番と同じ画面を、練習用のデータで触れます。\nここでの操作は本番には反映されません。上の「やめる」でいつでも戻れます。', { ok: '練習を始める' }))) return;
             try {
                 sessionStorage.setItem('shirisuko_practice_v1', r);
                 if (at) sessionStorage.setItem('shirisuko_practice_v1:start', at); else sessionStorage.removeItem('shirisuko_practice_v1:start');
-            } catch (_) { alert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
+            } catch (_) { padAlert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
             location.reload();
         }
 
@@ -5998,8 +6021,9 @@
                 _showTourStep();
             }
         }
-        function _skipTour() {
-            if (!confirm('ガイドをスキップしますか？\n後で 設定タブ → ガイド/チュートリアル から再生できます。')) return;
+        async function _skipTour() {
+            if (!(await padConfirm('ガイドをスキップしますか？\n後で 設定タブ → ガイド/チュートリアル から再生できます。', { ok: 'スキップする' }))) return;
+            if (!document.getElementById('tourOverlay')) return;   // 答えを待つ間にツアーが閉じた
             _finishTour();
         }
         function _finishTour() {
@@ -6742,7 +6766,7 @@
 
         function openAvatarEditModal() {
             const id = getCurrentIdentity();
-            if (!id?.id) { alert('プレイヤーを選択してください'); return; }
+            if (!id?.id) { padAlert('プレイヤーを選択してください'); return; }
             document.getElementById('avatarEditModal').classList.add('open');
             document.getElementById('avatarEditMessage').textContent = '';
             applyMyAvatarToHeader(id.id);
@@ -6792,7 +6816,7 @@
         async function handleAvatarClear() {
             const id = getCurrentIdentity();
             if (!id?.id) return;
-            if (!confirm('アバターをデフォルトに戻しますか？')) return;
+            if (!(await padConfirm('アバターをデフォルトに戻しますか？', { ok: 'デフォルトに戻す' }))) return;
             try {
                 await window.supabaseUpdatePlayerAvatar(id.id, { url: null, character: null });
                 _invalidateAvatarCache(id.id);
@@ -8239,7 +8263,7 @@
             } catch (e) {
                 btn.disabled = false;
                 btn.textContent = '✅ 確認しました';
-                alert(`❌ ${e?.message || e}`);
+                padAlert(`❌ ${e?.message || e}`);
             }
         }
 
@@ -9150,7 +9174,7 @@
         // 「この名前で新規登録」: 入力テキストをマスタにアイコン無しで追加 → 自動的に枠にもセット
         async function handleIconPickerNew() {
             const name = document.getElementById('iconPickerSearch').value.trim();
-            if (!name) { alert('名前を入力してから新規登録してください'); return; }
+            if (!name) { padAlert('名前を入力してから新規登録してください'); return; }
             if (typeof _iconPickerCallback !== 'function') return;
             try {
                 const existing = (_nikkeCharsCache || []).find(c => c.canonical_name === name);
@@ -9161,7 +9185,7 @@
                 }
                 pickIconForTeam(name);
             } catch (e) {
-                alert(`新規登録失敗: ${e?.message || e}`);
+                padAlert(`新規登録失敗: ${e?.message || e}`);
             }
         }
 
@@ -10744,7 +10768,7 @@
                 if (typeof window._iconBootstrapRerender === 'function') window._iconBootstrapRerender();
                 renderSettingsCharMaster();
             } catch (e) {
-                alert(`登録失敗: ${e?.message || e}`);
+                padAlert(`登録失敗: ${e?.message || e}`);
             }
         }
 
@@ -10981,7 +11005,7 @@
                 const all = await window.supabaseLoadCharacterMaster();
                 entry = (all || []).find(r => r.canonical_name === canonicalName);
             } catch { /* noop */ }
-            if (!entry) { alert('該当エントリが見つかりません'); return; }
+            if (!entry) { padAlert('該当エントリが見つかりません'); return; }
             document.getElementById('charEditCanonical').value = entry.canonical_name || '';
             /* base_name は削除済み */
             document.getElementById('charEditAliases').value = (entry.aliases || []).join(', ');
@@ -11050,7 +11074,9 @@
             try {
                 // 統合モードが優先
                 if (mergeTarget) {
-                    if (!confirm(`「${_charEditOriginal}」を「${mergeTarget}」に統合します。\n統合先に sighting_count とエイリアスを合算してから、この行を削除します。`)) return;
+                    const orig = _charEditOriginal;
+                    if (!(await padConfirm(`「${orig}」を「${mergeTarget}」に統合します。\n統合先に sighting_count とエイリアスを合算してから、この行を削除します。`, { ok: '統合する' }))) return;
+                    if (_charEditOriginal !== orig) return;   // 答えを待つ間に別のキャラを開いた
                     await window.supabaseMergeCharacterMasterEntry(_charEditOriginal, mergeTarget);
                     setMsg('✅ 統合しました');
                 } else {
@@ -11076,7 +11102,9 @@
 
         async function handleCharMasterDelete() {
             if (!_charEditOriginal) return;
-            if (!confirm(`「${_charEditOriginal}」を完全削除しますか？\n統合せずに削除すると、過去にこの名前が記録された凸の整合性が崩れる可能性があります。\n基本は統合を推奨。`)) return;
+            const orig = _charEditOriginal;
+            if (!(await padConfirm(`「${orig}」を完全削除しますか？\n統合せずに削除すると、過去にこの名前が記録された凸の整合性が崩れる可能性があります。\n基本は統合を推奨。`, { ok: '完全削除する', danger: true }))) return;
+            if (_charEditOriginal !== orig) return;   // 答えを待つ間に別のキャラを開いた
             const msg = document.getElementById('charEditMessage');
             try {
                 await window.supabaseDeleteCharacterMasterEntry(_charEditOriginal);
@@ -11091,8 +11119,8 @@
             }
         }
 
-        function handleSettingsClearIdentity() {
-            if (!confirm('プレイヤー選択をリセットしますか？ (この端末のみ。データは消えません)')) return;
+        async function handleSettingsClearIdentity() {
+            if (!(await padConfirm('プレイヤー選択をリセットしますか？ (この端末のみ。データは消えません)', { ok: 'リセットする' }))) return;
             try { localStorage.removeItem(IDENTITY_KEY); } catch { /* noop */ }
             location.reload();
         }
@@ -11248,8 +11276,8 @@
                 `📦 合計 ${totalRows} 行 (メンバー ${pick('players')} 名 / 凸報告 ${pick('attacks')} 件 / シーズン ${pick('seasons')} 件)\n\n` +
                 `⚠️ この時点より後の凸報告・SLv更新・設定変更はすべて消えます。\n` +
                 `⚠️ 全メンバーに影響します。実行中は他の人の操作を止めてください。`;
-            if (!confirm(summary)) { setMsg('復元を中止しました'); return; }
-            if (prompt('確認のため「復元」と入力してください') !== '復元') {
+            if (!(await padConfirm(summary, { title: '⚠ 全データの復元', ok: '次へ', danger: true }))) { setMsg('復元を中止しました'); return; }
+            if ((await padPrompt('確認のため「復元」と入力してください', { placeholder: '復元', ok: '復元する', danger: true })) !== '復元') {
                 setMsg('入力が一致しなかったため中止しました');
                 return;
             }
@@ -11266,14 +11294,14 @@
                     setMsg(`${phase}中… ${table}`);
                 });
                 if (result.warnings.length) {
-                    alert(`復元は完了しましたが注意があります:\n\n${result.warnings.join('\n')}`);
+                    await padAlert(`復元は完了しましたが注意があります:\n\n${result.warnings.join('\n')}`);   // 読み終わってから再読み込み (待たないと 1.2 秒で消える)
                 }
                 setMsg(`✅ ${result.inserted} 行を復元しました。再読み込みします…`, '#18C26B');
                 showNotification('✅ バックアップから復元しました');
                 setTimeout(() => location.reload(), 1200);
             } catch (e) {
                 setMsg(`復元失敗: ${e?.message || e}`, '#FF3D44');
-                alert(`❌ 復元に失敗しました: ${e?.message || e}\n\n途中で失敗した場合、データが不完全な可能性があります。\n直前に自動ダウンロードされた before-restore ファイルで復元をやり直せます。`);
+                padAlert(`❌ 復元に失敗しました: ${e?.message || e}\n\n途中で失敗した場合、データが不完全な可能性があります。\n直前に自動ダウンロードされた before-restore ファイルで復元をやり直せます。`);
                 if (btn) { btn.disabled = false; btn.style.opacity = ''; }
             }
         }
@@ -11416,7 +11444,7 @@
 
         async function handleSettingsClearCache() {
             if (window.PAD_PRACTICE) { showNotification('🎮 練習モードでは使えません (端末のキャッシュは本番と共有です)'); return; }
-            if (!confirm('Service Worker のキャッシュをクリアします。次回再読み込みで再取得されます。続行しますか？')) return;
+            if (!(await padConfirm('Service Worker のキャッシュをクリアします。次回再読み込みで再取得されます。続行しますか？', { ok: 'クリアする' }))) return;
             try {
                 if ('caches' in window) {
                     const keys = await caches.keys();
@@ -12454,9 +12482,13 @@
             _mkb.loading = false;
             _mkbRender();
         }
-        function closeOpsMockBulk(force = false) {
+        async function closeOpsMockBulk(force = false) {
             if (_mkb.busy) { showNotification('保存中です — 終わるまで待ってください'); return; }
-            if (!force && _mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。閉じますか?')) return;
+            if (!force && _mkbFlatRows().some(r => r.dirty)) {
+                const gen = _mkb.gen;
+                if (!(await padConfirm('保存していない変更があります。閉じますか?', { ok: '保存せずに閉じる' }))) return;
+                if (_mkb.gen !== gen || _mkb.busy) return;   // 答えを待つ間に別の人を開いた・保存が始まった (その画面を閉じない)
+            }
             ++_mkb.gen; _mkb.req = (_mkb.req || 0) + 1;   // 開こうとしている途中の人も捨てる
             document.getElementById('opsMockBulkModal').classList.remove('open');
         }
@@ -12684,10 +12716,14 @@
                 + `<div class="mkb-plist" id="mkbSideList">${items}</div><p class="mkb-note">〆 の早い順。数字は登録済みの属性</p>`;
         }
         function _mkbSearch(v) { _mkb.q = String(v || ''); _mkbSideRender(true); }
-        function _mkbGoto(id) {
+        async function _mkbGoto(id) {
             if (_mkb.busy || _mkb.moving || id == null || !Number.isFinite(Number(id))) return;
             if (Number(id) === Number(_mkb.playerId)) { _mkb.q = ''; _mkbSideRender(); _mkbFocusFirst(); return; }
-            if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに別の人へ進みますか?')) return;
+            if (_mkbFlatRows().some(r => r.dirty)) {
+                const gen = _mkb.gen;
+                if (!(await padConfirm('保存していない変更があります。保存せずに別の人へ進みますか?', { ok: '保存せずに進む' }))) return;
+                if (_mkb.gen !== gen || _mkb.busy || _mkb.moving) return;   // 答えを待つ間に別の人を開いた・保存や切り替えが始まった
+            }
             _mkb.q = '';
             openOpsMockBulk(Number(id));
         }
@@ -12705,7 +12741,10 @@
                 const next = _mkbNextId();
                 if (next == null) { _mkb.msg = `${_mkb.msg ? _mkb.msg + ' — ' : ''}表の最後の人です`; _mkbRender(); return; }
                 // 保存されない変更 (編成だけ・ダメージ無し) が残っていれば、「次の人 →」と同じに確かめる
-                if (flat.some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに次の人へ進みますか?')) return;
+                if (flat.some(r => r.dirty)) {
+                    if (!(await padConfirm('保存していない変更があります。保存せずに次の人へ進みますか?', { ok: '保存せずに進む' }))) return;
+                    if (_mkb.busy || _mkb.playerId !== pid || _mkb.gen !== gen) return;   // 答えを待つ間に閉じた・別の人を開いた
+                }
                 if (_mkb.msg) showNotification(_mkb.msg);   // 次の人を開くと下の文が消えるので、保存の結果は知らせに出す
                 await openOpsMockBulk(next);
             } finally { _mkb.moving = false; }
@@ -12770,10 +12809,14 @@
             r.err = '';
             _mkbSyncFooter();
         }
-        function _mkbNext() {
+        async function _mkbNext() {
             if (_mkb.busy || _mkb.moving) return;   // Ctrl+Enter で次の人へ切り替えている最中は受けない (2 人進まない: Codex 監査 238a93a)
             const next = _mkbNextId(); if (next == null) return;
-            if (_mkbFlatRows().some(r => r.dirty) && !confirm('保存していない変更があります。保存せずに次の人へ進みますか?')) return;
+            if (_mkbFlatRows().some(r => r.dirty)) {
+                const gen = _mkb.gen;
+                if (!(await padConfirm('保存していない変更があります。保存せずに次の人へ進みますか?', { ok: '保存せずに進む' }))) return;
+                if (_mkb.gen !== gen || _mkb.busy || _mkb.moving) return;   // 答えを待つ間に別の人を開いた・保存や切り替えが始まった
+            }
             openOpsMockBulk(next);
         }
         async function handleOpsMockBulkSave() {
@@ -13099,7 +13142,7 @@
                 const res = await window.sendPushNotification({ title: msg.title, body: msg.body, url: msg.url, playerIds: [row.id], ignoreAvailability: true });
                 showNotification(`✅ ${row.name} に送信 (${res.sent}/${res.target} 端末)`);
             } catch (e) {
-                alert(`❌ ${e?.message || e}`);
+                padAlert(`❌ ${e?.message || e}`);
             }
         }
 
@@ -14036,7 +14079,11 @@
                 `・手で決めるもの: ${m.conflicts.length}件${few(m.conflicts, x => `${x.name || x.openid}: ${x.why}`)}`,
             ].join('\n');
             if (!m.apply.length) { _growthNote('warn', summary.replace(/\n+/g, ' ')); return; }
-            if (!confirm(`${summary}\n\n[OK] ひも付ける / [キャンセル] やめる`)) return;
+            if (!(await padConfirm(summary, { ok: `${m.apply.length}人をひも付ける`, cancel: 'やめる' }))) return;
+            if (_growth.busy) return;
+            //   答えを待つ間に 30 秒ごとの描き直しでメンバーの一覧が読み直され得る → 同じ名簿で突き合わせ直し、ひも付ける相手が変わっていたら止める (確認した内容と違うことをしない)
+            const sigOf = (mm) => JSON.stringify([mm.apply, mm.clear].map(l => l.map(x => [String(x.playerId), String(x.openid)])));
+            if (sigOf(dom.matchRoster(entries, (_growth.players || []).slice())) !== sigOf(m)) { _growthNote('warn', '確認している間にメンバーの一覧が変わりました。もう一度「ひも付ける」を押してください。'); return; }
             _growth.busy = true; _growth.msg = null; _growthPaint();
             let done = 0;
             const failed = [];              // 失敗した**人**の名前 (操作の回数ではない — Codex指摘)
@@ -17003,7 +17050,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     document.execCommand('copy');
                     showNotification('📋 コピーしました — Discordに貼り付けてください');
                 } catch {
-                    alert('コピーに失敗しました。ヘルプから手動でコピーしてください。');
+                    padAlert('コピーに失敗しました。ヘルプから手動でコピーしてください。');
                 }
                 ta.remove();
             }
@@ -18030,7 +18077,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
         }
         async function maHandleArchive(playerId, name) {
-            if (!confirm(`「${name}」を脱退扱いにしますか？\n(過去データは残り、選択リストや締め凸候補から非表示になります)`)) return;
+            if (!(await padConfirm(`「${name}」を脱退扱いにしますか？\n(過去データは残り、選択リストや締め凸候補から非表示になります)`, { ok: '脱退扱いにする', danger: true }))) return;
             try {
                 await window.supabaseArchivePlayer(playerId);
                 _maFlash(`✅ ${name} を脱退扱いにしました`, true);
@@ -18049,7 +18096,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
         }
         async function maHandleRename(playerId, name) {
-            const newName = prompt(`「${name}」の新しい名前を入力してください`, name);
+            const newName = await padPrompt(`「${name}」の新しい名前を入力してください`, { value: name, ok: '改名する' });
             if (!newName || newName.trim() === '' || newName.trim() === name) return;
             try {
                 await window.supabaseRenamePlayer(playerId, newName.trim());
@@ -18068,7 +18115,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (ids.length === 0) return;
             const cache = _memberAdmin.cache || [];
             const names = ids.map(id => cache.find(p => p.id === id)?.name || `ID:${id}`);
-            if (!confirm(`${ids.length}名を脱退扱いにしますか？\n対象: ${names.join(', ')}`)) return;
+            if (!(await padConfirm(`${ids.length}名を脱退扱いにしますか？\n対象: ${names.join(', ')}`, { ok: `${ids.length}名を脱退扱いにする`, danger: true }))) return;
             let ok = 0, ng = 0;
             for (const id of ids) {
                 try { await window.supabaseArchivePlayer(id); ok++; }
@@ -20199,9 +20246,9 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         async function handleSetClientGate(mode) {
             const me = getCurrentIdentity();
             if (mode === 'now') {
-                const ok = confirm(`版 ${CLIENT_BUILD} より古いアプリを止めます。\n\n`
+                const ok = await padConfirm(`版 ${CLIENT_BUILD} より古いアプリを止めます。\n\n`
                     + '⚠ まだ更新していない人は「凸プランの表示・凸の報告・プランの配信」ができなくなります。\n'
-                    + '全員が新しい版で開いたのを確認してから実行してください。\n\n[OK] 締める / [キャンセル] やめる');
+                    + '全員が新しい版で開いたのを確認してから実行してください。', { ok: '締める', cancel: 'やめる', danger: true });
                 if (!ok) return;
             }
             try {
@@ -20217,7 +20264,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 _gateFetchedAt = 0;        // 間引きを外して必ず取り直す
                 await _loadClientGate();   // 自分の判定も取り直す
             } catch (e) {
-                alert(`❌ ${e?.message || e}`);
+                padAlert(`❌ ${e?.message || e}`);
             }
         }
 
@@ -20499,6 +20546,83 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             r.addEventListener('animationend', () => r.remove(), { once: true });
             setTimeout(() => r.remove(), 700);   // animationend が来ない環境の保険
         }, { passive: true, capture: true });
+
+        // ===== アプリの確認 = ブラウザの alert / confirm / prompt の代わり (2026-11-25 段階 2 の後半・シート #padDialog 1 枚) =====
+        //   padAlert(文, { title, ok }) → Promise<void> / padConfirm(文, { title, ok, cancel, danger }) → Promise<boolean> / padPrompt(文, { title, value, placeholder, ok, cancel, danger }) → Promise<string|null>
+        //   ★ ブラウザのものと違い、開いている間もページは動く (見回り・描き直し・通信の返事)。確認の前に握った画面の状態 (選んでいる人・世代・一覧) は、
+        //     答えのあとに照合し直すこと (答えを待つ間に変わり得る)。
+        //   ★ 同時に呼ばれたら順に出す (列)。シートの open がほかの道で外れたら (Android の戻る = 履歴の仕組みがいちばん上のシートを閉じる) キャンセルとして返す。
+        //   ★ 文は textContent (HTML にしない)・改行はそのまま。Esc / 外を押す = キャンセル (alert は OK と同じ)。Esc は下のシートまで閉じないよう、開いている間は先に受けて止める
+        //   ★ <head> の練習の起動の失敗 (alert) だけはブラウザのまま (アプリがまだ読み込まれていない)
+        function _padDlgState() { return window._padDlgSt || (window._padDlgSt = { queue: [], cur: null, bound: false }); }
+        function _padDlgAsk(req) { return new Promise(resolve => { _padDlgState().queue.push({ ...req, resolve }); _padDlgNext(); }); }
+        function padAlert(message, opts = {}) { return _padDlgAsk({ ...opts, kind: 'alert', message }).then(() => undefined); }
+        function padConfirm(message, opts = {}) { return _padDlgAsk({ ...opts, kind: 'confirm', message }).then(v => v === true); }
+        function padPrompt(message, opts = {}) { return _padDlgAsk({ ...opts, kind: 'prompt', message }).then(v => (typeof v === 'string' ? v : null)); }
+        function _padDlgCancelValue(req) { return req.kind === 'alert' ? true : req.kind === 'confirm' ? false : null; }
+        function _padDlgNext() {
+            const st = _padDlgState();
+            if (st.cur || !st.queue.length) return;
+            const req = st.cur = st.queue.shift();
+            const modal = document.getElementById('padDialog');
+            if (!modal) {   // シートが無い (読み込みの途中など) → ブラウザのものに倒す (確認を飛ばして進めない)
+                st.cur = null;
+                const v = req.kind === 'alert' ? (window.alert(String(req.message ?? '')), true) : req.kind === 'confirm' ? window.confirm(String(req.message ?? '')) : window.prompt(String(req.message ?? ''), req.value ?? '');
+                req.resolve(v); _padDlgNext(); return;
+            }
+            _padDlgBind(modal);
+            const $ = (id) => document.getElementById(id);
+            const title = $('padDialogTitle'), msg = $('padDialogMsg'), input = $('padDialogInput'), ok = $('padDialogOk'), cancel = $('padDialogCancel');
+            title.textContent = req.title || ''; title.hidden = !req.title;
+            msg.textContent = String(req.message ?? '');
+            input.hidden = req.kind !== 'prompt';
+            input.value = req.kind === 'prompt' ? String(req.value ?? '') : '';
+            input.placeholder = req.placeholder || '';
+            ok.textContent = req.ok || 'OK';
+            ok.classList.toggle('danger', !!req.danger);
+            cancel.textContent = req.cancel || 'キャンセル';
+            cancel.hidden = req.kind === 'alert';
+            req.focusBack = document.activeElement;
+            modal.classList.add('open');
+            setTimeout(() => { if (_padDlgState().cur !== req) return; const f = req.kind === 'prompt' ? input : ok; try { f.focus({ preventScroll: true }); if (f === input) input.select(); } catch { /* noop */ } }, 30);
+        }
+        function _padDlgDone(value) {
+            const st = _padDlgState(), req = st.cur;
+            if (!req) return;
+            st.cur = null;   // 先に外す (open を外したときの見張りが「ほかの道で閉じた」と取り違えない)
+            const modal = document.getElementById('padDialog');
+            if (modal) modal.classList.remove('open');
+            const back = req.focusBack;
+            if (back && back.isConnected && typeof back.focus === 'function' && !st.queue.length) { try { back.focus({ preventScroll: true }); } catch { /* noop */ } }
+            req.resolve(value);
+            _padDlgNext();
+        }
+        function _padDlgBind(modal) {
+            const st = _padDlgState();
+            if (st.bound) return;
+            st.bound = true;
+            const $ = (id) => document.getElementById(id);
+            $('padDialogOk').addEventListener('click', () => { const req = _padDlgState().cur; if (req) _padDlgDone(req.kind === 'prompt' ? $('padDialogInput').value : true); });
+            $('padDialogCancel').addEventListener('click', () => { const req = _padDlgState().cur; if (req) _padDlgDone(_padDlgCancelValue(req)); });
+            modal.addEventListener('click', (e) => { const req = _padDlgState().cur; if (req && e.target === modal) _padDlgDone(_padDlgCancelValue(req)); });   // 外を押す
+            // Esc / Enter は document の捕捉で先に受ける (下のシートの「Esc で閉じる」まで届かせない)
+            document.addEventListener('keydown', (e) => {
+                const req = _padDlgState().cur;
+                if (!req || !modal.classList.contains('open')) return;
+                if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); _padDlgDone(_padDlgCancelValue(req)); return; }
+                if (e.key === 'Enter' && !e.isComposing && e.target === $('padDialogInput')) { e.preventDefault(); e.stopImmediatePropagation(); _padDlgDone($('padDialogInput').value); return; }
+                if (e.key === 'Tab') {   // 焦点はシートの中だけを回る (後ろの画面のボタンへ出ない)
+                    const fs = [...modal.querySelectorAll('input:not([hidden]), button:not([hidden])')];
+                    if (!fs.length) return;
+                    const i = fs.indexOf(document.activeElement);
+                    e.preventDefault();
+                    fs[(i + (e.shiftKey ? fs.length - 1 : 1) + fs.length) % fs.length].focus();
+                }
+            }, true);
+            // ほかの道で閉じられた (Android の戻る・ほかのコードが open を外した) → キャンセルとして返す
+            new MutationObserver(() => { const req = _padDlgState().cur; if (req && !modal.classList.contains('open')) _padDlgDone(_padDlgCancelValue(req)); })
+                .observe(modal, { attributes: true, attributeFilter: ['class'] });
+        }
 
         // ===== モーダルが開いている間は本体をスクロールさせない (実機FB 2026-09-08) =====
         // 開閉は各所で classList の 'open' を足し引きしているだけなので、監視して一箇所で固定する。

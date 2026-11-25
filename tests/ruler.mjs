@@ -82,7 +82,10 @@ const DONE = {
         //   320px = バーストの絞り込み (40px のピル) が折り返す幅。fit= で、ピルが行 (#iconPickerBurstFilter) からはみ出していないことも見る (折り返しが消えると、シートの overflow-x: hidden で右のピルが隠れるだけ = 物差しでは拾えない: 2026-11-24 Codex 監査)
         'member:320:click=[onclick="openAvatarEditModal()"]+click=[onclick="openIconPickerForAvatar()"]+sheet=#iconPickerModal+fit=#iconPickerBurstFilter button',
         'member:390:click=[onclick="openMyStrongAttrsModal()"]+sheet=#myStrongAttrsModal', 'member:390:click=[onclick="openMyPushModal()"]+sheet=#myPushModal',
-        'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer'],
+        'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer',
+        //   アプリの確認 (#padDialog・2026-11-25 = ブラウザの confirm の代わり): アバターの「デフォルトに戻す」(ほかのシートの上に重なる)・320px は下のボタンが行からはみ出さないことも
+        'member:390:click=[onclick="openAvatarEditModal()"]+click=[onclick="handleAvatarClear()"]+sheet=#padDialog',
+        'member:320:click=[onclick="openAvatarEditModal()"]+click=[onclick="handleAvatarClear()"]+sheet=#padDialog+fit=#padDialog .pad-dlg-btns'],
     'ranking@シート': ['member:390:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:320:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:1366:click=[onclick^="showPlayerDetails"]+sheet=#playerModal'],
     'slv-ranking/fururi@シート': ['member:390:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal', 'member:1366:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal'],
     //   2 回目 (2026-11-25) = 運営 › 👥 のシート: 疎通確認・一斉送信・送信の確認 (一斉送信に文を入れて送る → 確認のシート)・参加可能時間 (運営の登録)・まとめて入力 (PC は左に人の一覧)・手で入力。
@@ -104,7 +107,10 @@ const DONE = {
     'ops/マスター@シート': ['ops-day:390:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal', 'ops-day:320:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal+fit=#opsSeasonEditBossRows > div',
         'ops-day:390:prep+click=[onclick="openOpsSeasonCreateModal()"]+sheet=#opsSeasonCreateModal', 'ops-day:320:prep+click=[onclick="openOpsSeasonCreateModal()"]+sheet=#opsSeasonCreateModal+fit=#opsSeasonBossRows > div',
         'ops-day:390:maint+click=[onclick^="openCharMasterEditModal"]+sheet=#charMasterEditModal', 'ops-day:390:maint+charreg+click=[onclick^="openCharMasterEditModal"]+sheet=#charMasterEditModal+need=#charEditVerifyBtn',
-        'ops-day:390:testend+sheet=#opsTestEndModal+need=.ops-test-end-char', 'ops-day:320:testend+sheet=#opsTestEndModal+need=.ops-test-end-char'],
+        'ops-day:390:testend+sheet=#opsTestEndModal+need=.ops-test-end-char', 'ops-day:320:testend+sheet=#opsTestEndModal+need=.ops-test-end-char',
+        //   アプリの確認の赤いボタン (danger = 完全削除) と 文字を入れる形 (askprompt = 本物の padPrompt を復元の確認の文で)
+        'ops-day:390:maint+click=[onclick^="openCharMasterEditModal"]+click=[onclick="handleCharMasterDelete()"]+sheet=#padDialog+need=#padDialogOk.danger',
+        'ops-day:320:askprompt+sheet=#padDialog+need=#padDialogInput+fit=#padDialog .pad-dlg-btns'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -357,6 +363,11 @@ const runScene = async (tab, scene) => {
                         const tall = await ev(`[...document.querySelectorAll('#opsBossHpList > div[data-boss-num] strong')].map(e => Math.round(e.getBoundingClientRect().height)).filter(h => h > 46)`);
                         if (tall.length) active = 'ボスの名前が潰れて縦に伸びる (' + tall.join(', ') + 'px)';
                     }
+                } else if (a === 'askprompt') {
+                    // アプリの確認の「文字を入れる」形 (padPrompt)。round 1 で直した入口 (復元 = ファイルが要る / 改名 = 👑 › メンバー管理のページ) は練習の場面から押せない → 本物の padPrompt を復元の確認と同じ文で呼ぶ (答えは待たない)
+                    const ok = await ev(`(() => { if (typeof padPrompt !== 'function') return false; padPrompt('確認のため「復元」と入力してください', { placeholder: '復元', ok: '復元する', danger: true }); return true; })()`);
+                    if (!ok) active = 'padPrompt を呼べない';
+                    else await settle();
                 } else if (a === 'testend') {
                     // 🧪 テストの終了のシートは、テストのシーズンが動いているときだけ開ける (練習のシーズンは本番の扱い = 入口の「🧪 ✕ 終了」が出ない)。
                     //   → 中身を読む関数 (supabasePreviewTestSeasonEnd = 偽のサーバでも本番の DB を見る形) だけを、テスト中の本物に近い答えに差し替えて、入口の関数を呼ぶ (描くのは本物の openOpsTestEndModal)。

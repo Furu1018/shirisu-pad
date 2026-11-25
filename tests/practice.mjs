@@ -905,10 +905,11 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     assert.ok(!/<script[^>]*src="[^"]*practice\//.test(HTML.replace(first[0], '')), '練習のファイルを本番でも読み込んでいる (印を見るスクリプト以外から)');
     assert.ok(!/practice/.test(rd('sw.js')), 'Service Worker が練習のファイルを扱っている');
     // 入口: 同じ印を立てて読み込み直す
-    const sp = HTML.match(/function startPractice\(scenario, startAt\) \{[\s\S]*?\n        \}/)[0];
+    const sp = HTML.replace(/\r\n/g, '\n').match(/async function startPractice\(scenario, startAt\) \{[\s\S]*?\n        \}/)[0];
     assert.match(sp, /sessionStorage\.setItem\('shirisuko_practice_v1', r\);[\s\S]*location\.reload\(\);/);
     assert.match(sp, /const at = \/\^\[a-z\]\+\$\/\.test\(startAt \|\| ''\) \? startAt : '';/, '途中の課題の指定を素通しで受けている');
-    assert.match(sp, /if \(window\.PAD_PRACTICE\) \{\s*if \(confirm\('練習を最初からやり直しますか？[^']*'\)\) window\.PAD_PRACTICE\.restart\(r, at\);\s*return;\s*\}/, '練習中にもう一度入ると、確かめずにやり直す / 練習の中で印を立て直すだけになる');
+    assert.match(sp, /if \(window\.PAD_PRACTICE\) \{\s*if \(await padConfirm\('練習を最初からやり直しますか？[^']*', \{ ok: 'やり直す' \}\)\) window\.PAD_PRACTICE\.restart\(r, at\);\s*return;\s*\}/, '練習中にもう一度入ると、確かめずにやり直す / 練習の中で印を立て直すだけになる');
+    assert.match(sp, /if \(!\(await padConfirm\('練習を始めます。/, '練習を始める前に確かめていない (アプリの確認 padConfirm)');
     assert.match(HTML, /onclick="startPractice\('member'\)">メンバー編<\/button>\s*<button class="tour-guide-launcher" onclick="startPractice\('ops-eve'\)">運営編・前日<\/button>/, 'ヘルプに入口 (メンバー編・運営編・前日) が無い');
     assert.equal((HTML.match(/onclick="startPractice\('member'\)"/g) || []).length, 2, 'メンバー編の入口は ヘルプ と 設定 › ガイド の 2 つ');
     assert.equal((HTML.match(/onclick="startPractice\('ops-eve'\)"/g) || []).length, 2, '運営編・前日の入口は ヘルプ と 設定 › ガイド の 2 つ');
@@ -1114,7 +1115,8 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(GUIDE, /html\[data-practice\] #appUpdateBanner,html\[data-practice\] #clientGateBanner\{top:calc\(env\(safe-area-inset-top,8px\) \+ 8px \+ var\(--pm-top,0px\)\) !important\}/);
     assert.match(HTML, /\.notification \{\s*position: fixed;\s*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\);/);
     assert.match(code, /function trackStep\(i\) \{\s*if \(i === stepIdx\) return;\s*if \(i > stepIdx && !hasSnap\(i\)\) saveSnap\(i\);/);
-    assert.match(code, /if \(k === 'back'\) \{[\s\S]*?if \(!window\.confirm\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？/);
+    assert.match(code, /if \(k === 'back'\) \{[\s\S]*?ask\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？[^']*', '戻る'\)\.then\(function \(yes\) \{\s*if \(!yes \|\| P\.closed\) return;/, '「1つ前に戻る」を確かめずに戻す / 答えを待つ間にやめたのに戻す');
+    assert.match(code, /function ask\(msg, ok\) \{ return typeof window\.padConfirm === 'function' \? window\.padConfirm\(msg, \{ ok: ok \}\) : Promise\.resolve\(window\.confirm\(msg\)\); \}/, '練習の案内の確認がアプリの確認 (padConfirm) を使っていない');
     assert.match(rd('js/practice/boot.js'), /set: function \(k, v\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE && window\.PAD_PRACTICE\.closed\) return;/);
     // 案内の文が「」で引いている画面の言葉は、画面に実在する
     // text は文字列の連結 (' + 名前 + ') や三項のこともある (Codex 9c/9f E) → 次の鍵 (real/target/assume/where) か閉じ括弧までを式として取り、連結の差し込みは … に畳んでから 「」 を拾う (… を含む言葉は差し込みなので見ない)

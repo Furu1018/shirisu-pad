@@ -737,19 +737,23 @@
         } else ring.style.display = 'none';
         requestAnimationFrame(frame);
     }
+    // 確認はアプリのシート (index.html の padConfirm = 本番と同じ見た目)。無ければブラウザのもの。答えは Promise
+    function ask(msg, ok) { return typeof window.padConfirm === 'function' ? window.padConfirm(msg, { ok: ok }) : Promise.resolve(window.confirm(msg)); }
     function onDockClick(ev) {
         var b = ev.target.closest('[data-pm]');
         if (!b) return;
         var k = b.getAttribute('data-pm');
-        if (k === 'quit') { if (window.confirm('練習をやめて、本番の画面に戻りますか？\n(練習でやったことは残りません)')) P.exit(); return; }
+        if (k === 'quit') { ask('練習をやめて、本番の画面に戻りますか？\n(練習でやったことは残りません)', 'やめる').then(function (yes) { if (yes && !P.closed) P.exit(); }); return; }
         if (k === 'restart') { P.restart(SC); return; }
         if (k === 'goto') { P.restart(b.getAttribute('data-sc')); return; }
         if (k === 'back') {
             var to = Number(b.getAttribute('data-to')), st = (STEPS[SC] || [])[to];
             if (!st) return;
-            if (!window.confirm('課題 ' + (to + 1) + '「' + st.title + '」の最初に戻りますか？\n(そのあとにやったことは消えます)')) return;
-            if (!goBack(to)) note('assume', '戻れませんでした', '控えが無いか、壊れています');
-            lastSig = ''; update();
+            ask('課題 ' + (to + 1) + '「' + st.title + '」の最初に戻りますか？\n(そのあとにやったことは消えます)', '戻る').then(function (yes) {
+                if (!yes || P.closed) return;   // 答えを待つ間に「やめる」「やり直す」を押した (上の帯はシートより上にあるので押せる)
+                if (!goBack(to)) note('assume', '戻れませんでした', '控えが無いか、壊れています');
+                lastSig = ''; update();
+            });
             return;
         }
         if (k === 'fold') { folded = !folded; try { store.set('fold', folded ? '1' : '0'); } catch (_) { /* 覚えられなくても畳める */ } lastSig = ''; update(); return; }

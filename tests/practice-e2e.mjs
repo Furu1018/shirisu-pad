@@ -74,6 +74,11 @@ async function openPage({ width, height, mobile }) {
     const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
     const S = (method, params) => send(method, params, sessionId);
     await S('Page.enable'); await S('Runtime.enable'); await S('Network.enable');
+    // アプリの確認 (#padDialog = padAlert / padConfirm / padPrompt・2026-11-25 からブラウザの confirm の代わり) も「はい」で進める — 上のブラウザのダイアログと同じ扱い。
+    //   読み込み直し (練習の始め・やり直し) のたびに入るよう、新しい文書ごとに仕込む。出た文は window.__padDialogs に残す (失敗の切り分け用)
+    await S('Page.addScriptToEvaluateOnNewDocument', { source: `setInterval(() => { const d = document.getElementById('padDialog'); if (!d || !d.classList.contains('open') || d.__e2e) return; d.__e2e = true;
+        (window.__padDialogs = window.__padDialogs || []).push((document.getElementById('padDialogMsg') || {}).textContent || '');
+        setTimeout(() => { d.__e2e = false; const ok = document.getElementById('padDialogOk'); if (ok && d.classList.contains('open')) ok.click(); }, 80); }, 100);` });
     await S('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile });
     page.S = S;
     page.goto = async (url, ms) => { await S('Page.navigate', { url }); await wait(ms); };

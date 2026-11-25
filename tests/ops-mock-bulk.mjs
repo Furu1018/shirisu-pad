@@ -83,7 +83,8 @@ function makeEnv(o = {}) {
         _mockIntake: { order: [1, 2], players },
         opsStore: { get: () => (o.noBoard ? null : { season: { id: 46, metadata: {} }, players, bosses }), load: async () => { throw new Error('no'); }, invalidate: () => { env.invalidated++; } },
         showNotification: (m) => { toasts.push(m); },
-        confirm: () => env._confirm,
+        // アプリの確認 (padConfirm) は Promise を返す。_confirmGate があれば答えを手で返す (待つ間に画面を動かす試験)
+        padConfirm: async (msg) => { env.asked.push(String(msg)); return env._confirmGate ? env._confirmGate() : env._confirm; },
         getCurrentIdentity: () => ({ id: 7, name: '運営A' }),
         _loadTeamSubs: (force) => { loads.push(force); return env._loadGate ? env._loadGate() : Promise.resolve([]); },
         _teamHistCache: [
@@ -116,11 +117,11 @@ function makeEnv(o = {}) {
         },
         console,
         handlers: {}, active: null, fine: !!o.fine, caret: null,
-        saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, _confirm: true, _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
+        saved, reg, toasts, loads, reloads, inputs, els, focused: [], invalidated: 0, _confirm: true, _confirmGate: null, asked: [], _failAttr: null, _loadGate: null, _saveGate: null, _redirectTo: null, _redirectAttr: null,
         body: () => bodyHtml, isOpen: () => open,
     };
     const names = ['_opsMode', 'PT_ATTRS', 'SLOT_JP', 'MY_TEAM_SLOTS', '_MK_ATTR_CSS', 'escapeHtml', '_charIconHtml', 'resolveNikkeChar', 'fuzzyResolveCharacter', '_mockIntake', 'opsStore',
-        'showNotification', 'confirm', 'getCurrentIdentity', '_loadTeamSubs', '_teamHistCache', '_teamGroupsFor', 'openIconPicker', '_opsReloadBoardCards', 'document', 'window', 'console'];
+        'showNotification', 'padConfirm', 'getCurrentIdentity', '_loadTeamSubs', '_teamHistCache', '_teamGroupsFor', 'openIconPicker', '_opsReloadBoardCards', 'document', 'window', 'console'];
     const fns = new Function(...names, SRC + '\nreturn { _mkb, openOpsMockBulk, closeOpsMockBulk, _mkbRender, _mkbPick, _mkbPickChar, _mkbSetDmg, _mkbAddRow, _mkbNext, _mkbNextId, handleOpsMockBulkSave, _mkbFlatRows, _mkbPresetsOf, _mkbEnter, _mkbChooseKey, _mkbFixDmg, _mkbSearch, _mkbGoto, _mkbSaveNext, _mkbSideRender, _mkbFocusFirst };')(...names.map(n => env[n]));
     return { env, ...fns };
 }
@@ -300,6 +301,29 @@ await t('④ 保存中は閉じられない・二重に押せない・開き直�
     n.env._confirm = true; n._mkbNext(); await tick(); assert.equal(n._mkb.playerId, 2, '次の人に進まない');
     assert.ok(!/次の人 →/.test(n.env.body()), '最後の人なのに「次の人」が出る');
     n.closeOpsMockBulk(); assert.ok(!n.env.isOpen(), '変更が無いのに閉じない');
+    // ⑥' アプリの確認は開いている間もページが動く (ブラウザの confirm と違う) — 答えを待つ間に画面が変わったら、その答えで動かない
+    {
+        const w = makeEnv();
+        await w.openOpsMockBulk(1);
+        w._mkbSetDmg('electric', 0, '15');
+        let answer = null; w.env._confirmGate = () => new Promise(r => { answer = r; });
+        const pending = w._mkbGoto(2); await tick();
+        assert.ok(typeof answer === 'function' && /保存せずに別の人へ/.test(w.env.asked.at(-1)), '別の人へ進む前に確かめていない');
+        await w.closeOpsMockBulk(true);   // 答えを待つ間に閉じた (保存しないで閉じる = 世代が進む)
+        answer(true); await pending; await tick(); await tick();
+        assert.ok(!w.env.isOpen(), '答えを待つ間に閉じたのに、あとから「はい」で開き直した');
+        // 閉じる (未保存あり) も同じ: 待つ間に別の人を開いたら、その画面を閉じない
+        const c2 = makeEnv();
+        await c2.openOpsMockBulk(1);
+        c2._mkbSetDmg('electric', 0, '15');
+        let ans2 = null; c2.env._confirmGate = () => new Promise(r => { ans2 = r; });
+        const closing = c2.closeOpsMockBulk(); await tick();
+        assert.ok(typeof ans2 === 'function' && /閉じますか/.test(c2.env.asked.at(-1)), '未保存のまま閉じる前に確かめていない');
+        c2.env._confirmGate = null; c2.env._confirm = true;
+        await c2.openOpsMockBulk(2);   // 待つ間に別の人を開いた
+        ans2(true); await closing; await tick();
+        assert.ok(c2.env.isOpen() && c2._mkb.playerId === 2, '答えを待つ間に開いた別の人の画面を、前の「閉じますか」の答えで閉じた');
+    }
     // 盤面が無い / 運営OFF / 書庫の人
     const z = makeEnv({ noBoard: true }); await z.openOpsMockBulk(1); assert.ok(!z.env.isOpen() && z.env.toasts.some(m => /盤面/.test(m)));
     const y = makeEnv(); await y.openOpsMockBulk(3); assert.ok(!y.env.isOpen() && y.env.toasts.some(m => /見つかりません/.test(m)));
