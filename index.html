@@ -5186,21 +5186,21 @@
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
 
             <!-- BlaBlaLINK 画像一括取り込み -->
-            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(var(--ink-rgb), 0.14);background:var(--s1);">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <div style="padding:10px 12px;border-radius:14px;border:1.5px dashed rgba(var(--ink-rgb), 0.14);background:var(--s1);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
                     <input type="file" id="opsBossHpOcrInput" accept="image/*" onchange="handleOpsBossHpOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;">画像を選ぶ</span>
+                    <span style="flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;">画像を選ぶ</span>
                 </label>
                 <p id="opsBossHpOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--t-body);min-height:14px;">&nbsp;</p>
             </div>
 
             <div id="opsBossHpList">
-                <p style="color:var(--t-body);font-size:13px;">読み込み中...</p>
+                <p style="color:var(--t-body);font-size:14px;">読み込み中...</p>
             </div>
             <div style="display:flex;justify-content:flex-end;">
-                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;">⏬ 全ボスを一括保存</button>
+                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="min-height:40px;padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">⏬ 全ボスを一括保存</button>
             </div>
             <p id="opsBossHpMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -5216,11 +5216,11 @@
                 <button class="ps-close" onclick="closeOpsTestEndModal()">閉じる</button>
             </div>
             <p class="subtitle">終了すると何が復元され、何が消えるかを先に確認できます。キャラマスタは<strong>削除する行だけ</strong>にチェックを付けてください (テスト中に自動学習された行は既定ON、運営が手動登録した行は既定OFF)。</p>
-            <div id="opsTestEndSummary" style="font-size:12.5px;line-height:1.7;color:var(--t-ink);background:var(--s1);border-radius:10px;padding:10px 12px;"></div>
+            <div id="opsTestEndSummary" style="font-size:12px;line-height:1.7;color:var(--t-ink);background:var(--s1);border-radius:8px;padding:10px 12px;"></div>
             <div id="opsTestEndChars" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsTestEndActions" style="display:none;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsTestEndModal()" style="padding:10px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;cursor:pointer;">キャンセル</button>
-                <button id="opsTestEndConfirmBtn" onclick="handleOpsTestEndConfirm()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--bad-solid),var(--bad-solid));color:var(--on-fill);font-size:13px;font-weight:800;cursor:pointer;">終了して復元</button>
+                <button onclick="closeOpsTestEndModal()" style="min-height:40px;flex:none;white-space:nowrap;padding:10px 16px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">キャンセル</button>
+                <button id="opsTestEndConfirmBtn" onclick="handleOpsTestEndConfirm()" style="min-height:40px;padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--bad-solid),var(--bad-solid));color:var(--on-fill);font-size:14px;font-weight:800;cursor:pointer;">終了して復元</button>
             </div>
         </div>
     </div>
@@ -5235,10 +5235,10 @@
             <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="opsAttacksFilter" placeholder="🔍 メンバー名で絞り込み" class="player-select-search" style="flex:1;" oninput="renderOpsAttacksList()">
-                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
+                <button onclick="reloadOpsAttacksList()" style="min-height:40px;padding:8px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
             </div>
             <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid rgba(var(--ink-rgb), 0.08);border-radius:8px;padding:4px;">
-                <div style="text-align:center;color:var(--t-body);padding:24px;font-size:13px;">読み込み中...</div>
+                <div style="text-align:center;color:var(--t-body);padding:24px;font-size:14px;">読み込み中...</div>
             </div>
             <p id="opsAttacksMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -5300,15 +5300,15 @@
                 <h2><span data-sp-icon="calendar" data-sp-size="17"></span> 新シーズン作成</h2>
                 <button class="ps-close" onclick="closeOpsSeasonCreateModal()">閉じる</button>
             </div>
-            <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
+            <p class="subtitle">次回シーズンの情報を登録します。動いているシーズンがあるあいだは作れません (先に「シーズン終了」か「🧪 ✕ 終了」で終えてから)。</p>
 
             <!-- 公式アナウンス画像取り込み -->
-            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(var(--ink-rgb), 0.14);background:var(--s1);">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <div style="padding:10px 12px;border-radius:14px;border:1.5px dashed rgba(var(--ink-rgb), 0.14);background:var(--s1);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
                     <input type="file" id="opsSeasonOcrInput" accept="image/*" onchange="handleOpsSeasonOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;">画像を選ぶ</span>
+                    <span style="flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;">画像を選ぶ</span>
                 </label>
                 <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--t-body);min-height:14px;">&nbsp;</p>
             </div>
@@ -5316,11 +5316,11 @@
             <div class="season-meta-grid">
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:38px;">
+                    <input type="date" id="opsSeasonHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:40px;">
                 </div>
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">月キー (YYYY-MM・同じ月の 2 回目は 2026-10b)</label>
-                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:38px;">
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:40px;">
                 </div>
             </div>
 
@@ -5329,16 +5329,16 @@
                 <div id="opsSeasonBossRows"></div>
             </div>
 
-            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:var(--s1);">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:14px;background:var(--s1);">
                 <div style="font-size:12px;color:var(--t-body);line-height:1.5;">
                     🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
                     新シーズンの最適プランや締め凸候補は、提出された模擬に基づいて算出されます。
                 </div>
-                <label id="opsSeasonResetAvailRow" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+                <label id="opsSeasonResetAvailRow" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:14px;">
                     <input type="checkbox" id="opsSeasonResetAvail" checked style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
                     <span>⏰ 全員の参加可能時間を空にする<br><span style="font-size:11px;color:var(--t-body);">前のシーズンの時間を持ち越さない (運営が Discord の報告から 👥 › ⏰ で登録し直す)。🧪 テストでは空にしません。</span></span>
                 </label>
-                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:14px;">
                     <input type="checkbox" id="opsSeasonIsTest" onchange="_opsSeasonIsTestChanged()" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
                     <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--t-body);">ポスターのボスでリハーサルします。模擬・編成・参加可能時間は いまの本物のまま使い、「🧪 ✕ 終了」でテスト中の変更を元に戻します。運営担当の端末にだけ出ます。</span></span>
                 </label>
@@ -5346,8 +5346,8 @@
 
             <p id="opsSeasonMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;">作成</button>
+                <button onclick="closeOpsSeasonCreateModal()" style="min-height:40px;padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonCreateSave()" style="min-height:40px;padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;">作成</button>
             </div>
         </div>
     </div>
@@ -5364,11 +5364,11 @@
             <div class="season-meta-grid">
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonEditHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:38px;">
+                    <input type="date" id="opsSeasonEditHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:40px;">
                 </div>
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">月キー (YYYY-MM・同じ月の 2 回目は 2026-10b)</label>
-                    <input type="text" id="opsSeasonEditMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:38px;">
+                    <input type="text" id="opsSeasonEditMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;min-height:40px;">
                 </div>
             </div>
 
@@ -5377,12 +5377,12 @@
                 <div id="opsSeasonEditBossRows"></div>
             </div>
 
-            <p style="margin:0;font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;">🧱 時間のブロック (A・B・C…) は 運営 › 👑 マスター › <b>🧱 ブロックの設定</b> で決めます。</p>
+            <p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.6;">🧱 時間のブロック (A・B・C…) は 運営 › 👑 マスター › <b>🧱 ブロックの設定</b> で決めます。</p>
 
             <p id="opsSeasonEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsSeasonEditModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsSeasonEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                <button onclick="closeOpsSeasonEditModal()" style="min-height:40px;padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonEditSave()" style="min-height:40px;padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -5398,12 +5398,12 @@
 
             <div>
                 <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--t-body);">正式名 (canonical)</label>
-                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
+                <input id="charEditCanonical" type="text" style="width:100%;min-height:40px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
                 <p style="margin:4px 0 0 0;font-size:11px;color:var(--t-body);">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
             </div>
             <div>
                 <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--t-body);">エイリアス (カンマ区切り)</label>
-                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
+                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;min-height:40px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
             </div>
             <div>
                 <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--t-body);">バースト</label>
@@ -5415,17 +5415,17 @@
                 <div id="charEditBurstAltSlot"></div>
                 <p id="charEditBurstAltHint" style="margin:4px 0 0 0;font-size:11px;color:var(--t-muted);">主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)</p>
             </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;min-height:40px;font-size:14px;cursor:pointer;">
                 <input id="charEditConfirmed" type="checkbox" style="width:18px;height:18px;">
                 <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
             </label>
 
             <!-- 運営改修 #6: 手動登録の二者確認 (registered_by がある行だけ表示) -->
-            <div id="charEditVerifyBox" style="display:none;border:1px solid rgba(108,66,240,0.35);background:rgba(108,66,240,0.06);border-radius:10px;padding:10px 12px;font-size:12px;">
+            <div id="charEditVerifyBox" style="display:none;border:1px solid rgba(108,66,240,0.35);background:rgba(108,66,240,0.06);border-radius:8px;padding:10px 12px;font-size:12px;">
                 <div id="charEditVerifyTitle" style="font-weight:800;color:var(--ops);margin-bottom:4px;">🔍 要確認 — 登録者とは別の運営が根拠を見て確定してください</div>
                 <div id="charEditVerifyInfo" style="color:var(--t-ink);line-height:1.7;word-break:break-all;"></div>
                 <div id="charEditVerifyActions" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-                    <button id="charEditVerifyBtn" onclick="handleCharMasterVerify()" style="padding:8px 14px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));color:var(--on-fill);font-size:12.5px;font-weight:800;cursor:pointer;">確認済みにする</button>
+                    <button id="charEditVerifyBtn" onclick="handleCharMasterVerify()" style="min-height:40px;padding:8px 14px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));color:var(--on-fill);font-size:12px;font-weight:800;cursor:pointer;">確認済みにする</button>
                     <span id="charEditVerifyHint" style="font-size:11px;color:var(--t-body);"></span>
                 </div>
             </div>
@@ -5434,16 +5434,16 @@
 
             <div>
                 <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--t-body);">📦 別エントリへ統合 (オプション)</label>
-                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
+                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;min-height:40px;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
                 <p style="margin:4px 0 0 0;font-size:11px;color:var(--t-body);">指定すると、この行を統合先に吸収（sighting_count とエイリアスを合算してこの行を削除）</p>
             </div>
 
             <p id="charEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;">
-                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
+                <button onclick="handleCharMasterDelete()" style="min-height:40px;padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:14px;font-weight:700;cursor:pointer;">🗑️ 完全削除</button>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
-                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                    <button onclick="closeCharMasterEditModal()" style="min-height:40px;padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;font-weight:700;cursor:pointer;">キャンセル</button>
+                    <button onclick="handleCharMasterSave()" style="min-height:40px;padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
                 </div>
             </div>
         </div>
@@ -14245,9 +14245,9 @@
                 } else {
                     listEl.innerHTML = '<div style="font-size:12px;font-weight:800;color:var(--t-body);">キャラマスタ — 削除する行にチェック</div>' +
                         p.chars.map(c => `
-                        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${c.defaultDelete ? 'rgba(239,68,68,0.35)' : '#E3E5E8'};border-radius:10px;background:${c.defaultDelete ? 'rgba(239,68,68,0.05)' : 'var(--card)'};cursor:pointer;">
-                            <input type="checkbox" class="ops-test-end-char" data-name="${escapeHtml(c.canonical_name)}" ${c.defaultDelete ? 'checked' : ''} onchange="_syncOpsTestEndBtn()" style="margin-top:3px;">
-                            <span style="min-width:0;"><span style="font-weight:800;font-size:13px;">${escapeHtml(c.canonical_name)}</span><br><span style="font-size:11px;color:var(--t-body);">${escapeHtml(c.reason)}</span></span>
+                        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${c.defaultDelete ? 'rgba(239,68,68,0.35)' : 'var(--line)'};border-radius:8px;background:${c.defaultDelete ? 'rgba(239,68,68,0.05)' : 'var(--card)'};cursor:pointer;">
+                            <input type="checkbox" class="ops-test-end-char" data-name="${escapeHtml(c.canonical_name)}" ${c.defaultDelete ? 'checked' : ''} onchange="_syncOpsTestEndBtn()" style="width:18px;height:18px;margin-top:1px;flex:none;">
+                            <span style="min-width:0;"><span style="font-weight:800;font-size:14px;">${escapeHtml(c.canonical_name)}</span><br><span style="font-size:11px;color:var(--t-body);">${escapeHtml(c.reason)}</span></span>
                         </label>`).join('');
                 }
                 actEl.style.display = 'flex';
@@ -16254,7 +16254,7 @@
             const ocrInput = document.getElementById('opsBossHpOcrInput');
             if (ocrInput) ocrInput.disabled = true;   // 行を描き終えるまで受け口は閉じる (開き直した直後の読み取りが、行の無い所に入って描画で消えない: Codex 9e C・5 回目)。前の読み取りの結果は世代で捨てる
             const listEl = document.getElementById('opsBossHpList');
-            listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
+            listEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">読み込み中...</p>';
             let fresh;
             try {
                 await ensureActiveSeasonLoaded();
@@ -16265,11 +16265,11 @@
             } catch (e) {
                 if (gen !== _opsBossHpGen) return;
                 // 行が描けなかった = 受け口は閉じたまま (読み取っても入れる行が無い)。読み込み直しの導線を出す (Codex 9e C・6 回目)
-                listEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">❌ 読み込めませんでした (${escapeHtml(e?.message || String(e))}) `
-                    + `<button type="button" onclick="openOpsBossHpModal()" style="margin-left:6px;padding:4px 10px;border-radius:6px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">もう一度読み込む</button></p>`;
+                listEl.innerHTML = `<p style="color:var(--bad);font-size:14px;">❌ 読み込めませんでした (${escapeHtml(e?.message || String(e))}) `
+                    + `<button type="button" onclick="openOpsBossHpModal()" style="margin-left:6px;min-height:40px;padding:4px 12px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;">もう一度読み込む</button></p>`;
                 return;
             }
-            if (!fresh.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:13px;">アクティブシーズン無し</p>'; return; }
+            if (!fresh.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:14px;">アクティブシーズン無し</p>'; return; }
             const saveAll = document.getElementById('opsBossHpSaveAllBtn');
             if (saveAll) saveAll.textContent = '⏬ 全ボスを一括保存';   // 🗣 9e: 読み取りのあとの文を戻す
             listEl.innerHTML = fresh.bosses.map(b => {
@@ -16281,18 +16281,18 @@
                 return `
                     <div data-boss-num="${b.boss_number}" data-cur-rem="${remB}" data-cur-total="${totalB}" style="padding:10px 6px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                            <strong style="font-size:13px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
+                            <strong style="font-size:14px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
                             <span class="ops-hp-diff" style="font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;"></span>
                             ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
                             <span style="font-size:11px;color:var(--t-body);">tier: ${b.tier}</span>
+                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="flex:none;min-height:40px;padding:6px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;cursor:pointer;">保存</button>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <label style="font-size:12px;color:var(--t-body);">残HP</label>
-                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:13px;text-align:right;">
+                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;min-height:40px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;text-align:right;">
                             <span style="font-size:12px;color:var(--t-body);">B / 総HP</span>
-                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:13px;text-align:right;">
+                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;min-height:40px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;text-align:right;">
                             <span style="font-size:12px;color:var(--t-body);">B</span>
-                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;cursor:pointer;">保存</button>
                         </div>
                     </div>`;
             }).join('');
@@ -16466,14 +16466,14 @@
         }
         async function reloadOpsAttacksList() {
             const listEl = document.getElementById('opsAttacksList');
-            listEl.innerHTML = '<div style="text-align:center;color:var(--t-body);padding:24px;font-size:13px;">読み込み中...</div>';
+            listEl.innerHTML = '<div style="text-align:center;color:var(--t-body);padding:24px;font-size:14px;">読み込み中...</div>';
             const ctx = await ensureActiveSeasonLoaded();
-            if (!ctx?.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:13px;padding:8px;">アクティブシーズン無し</p>'; return; }
+            if (!ctx?.season) { listEl.innerHTML = '<p style="color:var(--bad);font-size:14px;padding:8px;">アクティブシーズン無し</p>'; return; }
             try {
                 _opsAttacksCache = await window.supabaseLoadAllAttacksForSeason(ctx.season.id, ctx.season.hard_date);
                 renderOpsAttacksList();
             } catch (e) {
-                listEl.innerHTML = `<p style="color:var(--bad);font-size:13px;padding:8px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                listEl.innerHTML = `<p style="color:var(--bad);font-size:14px;padding:8px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
             }
         }
         // 決定のプランを凸報告の確認に渡す形に: 割当の時刻をそのブロックの終わりに寄せる (blockEnd)。決定の約束はブロックだけ (S4 レビュー [21])
@@ -16698,7 +16698,7 @@
                 ? _opsAttacksCache.filter(a => (a.players?.name || '').toLowerCase().includes(q))
                 : _opsAttacksCache;
             if (filtered.length === 0) {
-                listEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;padding:12px;text-align:center;">該当する凸記録はありません</p>';
+                listEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;padding:12px;text-align:center;">該当する凸記録はありません</p>';
                 return;
             }
             listEl.innerHTML = filtered.map(a => {
@@ -16713,13 +16713,17 @@
                 return `
                     <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);">
                         ${renderAvatarHtml(a.player_id, playerName, 24)}
-                        <strong style="font-size:13px;min-width:74px;">${escapeHtml(playerName)}</strong>
-                        <span style="font-weight:700;color:var(--t-ink);font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
-                        ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
-                        <span style="flex:1;font-size:12px;color:var(--t-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
-                        <span style="font-size:13px;font-weight:700;white-space:nowrap;">${tapOnly ? '<span style="font-size:11px;color:var(--ok-deep);">✓ 数字なし</span>' : `${dmgB} B`}</span>
-                        ${tapOnly ? '' : `<button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:none;background:var(--s2);color:var(--t-ink);font-size:11px;cursor:pointer;">編集</button>`}
-                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:11px;cursor:pointer;">削除</button>
+                        <div style="flex:1;min-width:0;">
+                            <strong style="display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(playerName)}</strong>
+                            <div style="display:flex;align-items:center;gap:4px;min-width:0;font-size:12px;color:var(--t-ink);">
+                                <span style="flex:none;font-weight:700;">${a.attack_number}凸目</span>
+                                ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="flex:none;width:14px;height:14px;" title="${pt.name}PT">` : ''}
+                                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
+                            </div>
+                        </div>
+                        <span style="flex:none;font-size:14px;font-weight:700;white-space:nowrap;">${tapOnly ? '<span style="font-size:11px;color:var(--ok-deep);">✓ 数字なし</span>' : `${dmgB} B`}</span>
+                        ${tapOnly ? '' : `<button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="flex:none;min-height:40px;padding:4px 10px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:12px;font-weight:700;cursor:pointer;">編集</button>`}
+                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="flex:none;min-height:40px;padding:4px 10px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:12px;font-weight:700;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
         }
@@ -17084,7 +17088,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             document.getElementById('opsSeasonEditHardDate').value = season.hard_date || '';
             document.getElementById('opsSeasonEditMonthKey').value = season.month_key || '';
             const TIER_LABEL = { tyrant: 'タイラント級', lord: 'ロード級' };
-            const field = 'width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12.5px;';
+            const field = 'width:100%;min-width:0;box-sizing:border-box;min-height:40px;padding:8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;';
             document.getElementById('opsSeasonEditBossRows').innerHTML = bosses.map(b => {
                 const v = ATTR_VISUAL[b.attribute] || { color: '#7A7C81', name: '?' };
                 // 属性 (=ボスコード) はセレクトで修正可能 (実機FB 2026-07-28)。表示は
@@ -17096,7 +17100,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 }).join('');
                 return `
                 <div data-pos="${b.boss_number}" style="display:grid;grid-template-columns:36px minmax(0,1.25fr) minmax(0,1fr);gap:5px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(var(--ink-rgb), 0.06);">
-                    <span class="ops-se-pill" style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${v.color};background:${v.color}1A;border-radius:9px;">B${b.boss_number}</span>
+                    <span class="ops-se-pill" style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${v.color};background:${v.color}1A;border-radius:8px;">B${b.boss_number}</span>
                     <select class="ops-season-edit-code" onchange="_opsSeasonEditCodeChanged(this)" style="${field}font-weight:700;">${opts}</select>
                     <div style="min-width:0;font-size:11px;font-weight:700;color:var(--t-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TIER_LABEL[b.tier] || escapeHtml(b.tier || '?')}</div>
                     <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="grid-column:2/-1;${field}">
@@ -17448,13 +17452,13 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             // 旧レイアウト (32px 1fr 80px 1.4fr の1行4列) はスマホのモーダル内幅 (~300px) に
             // 収まらず select がはみ出して枠ズレしていた → 「コード+級 / ボス名」の2段構成に。
             // select/input は min-width:0 必須 (グリッド内の暗黙 min-width:auto で潰れなくなる)
-            const field = 'width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12.5px;';
+            const field = 'width:100%;min-width:0;box-sizing:border-box;min-height:40px;padding:8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;';
             el.innerHTML = `
-                <div style="display:grid;grid-template-columns:36px minmax(0,1.1fr) minmax(0,1fr);gap:0 8px;padding:0 0 3px;font-size:10px;font-weight:800;color:var(--t-muted);">
+                <div style="display:grid;grid-template-columns:36px minmax(0,1.1fr) minmax(0,1fr);gap:0 8px;padding:0 0 3px;font-size:11px;font-weight:800;color:var(--t-muted);">
                     <span></span><span>ボスコード</span><span>級 (HP規模)</span>
                 </div>` + rows.map(r => `
                 <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:36px minmax(0,1.1fr) minmax(0,1fr);gap:6px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(var(--ink-rgb), 0.06);">
-                    <span style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);border-radius:9px;">B${r.bossNumber}</span>
+                    <span style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);border-radius:8px;">B${r.bossNumber}</span>
                     <select class="ops-season-code" style="${field}font-weight:700;">
                         ${BOSS_CODES.map(c => `<option value="${c}" ${c === r.bossCode ? 'selected' : ''}>${c}</option>`).join('')}
                     </select>
@@ -20017,12 +20021,12 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             o.id = 'aiSpinOverlay';
             o.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(20,22,26,0.45);display:flex;align-items:center;justify-content:center;animation:dcFadeIn .15s ease;';
             o.innerHTML = `
-                <div style="display:flex;align-items:center;gap:12px;background:var(--t-ink);border-radius:16px;padding:16px 20px;box-shadow:0 12px 36px rgba(0,0,0,0.4);">
+                <div style="display:flex;align-items:center;gap:12px;background:var(--t-ink);border-radius:14px;padding:16px 20px;box-shadow:0 12px 36px rgba(0,0,0,0.4);">
                     <div style="width:22px;height:22px;border:3px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
                     <div>
-                        <div style="font-size:13px;font-weight:900;color:var(--card);letter-spacing:0.2px;">${spIcon('camera', 13)} AI解析中…</div>
-                        <div style="font-size:10.5px;font-weight:700;color:var(--on-ink-soft);margin-top:2px;">1枚あたり10〜20秒かかります</div>
-                        ${usageLine ? `<div style="font-size:10px;font-weight:700;color:var(--on-ink-soft);margin-top:4px;">${escapeHtml(usageLine)}</div>` : ''}
+                        <div style="font-size:14px;font-weight:900;color:var(--card);letter-spacing:0.2px;">${spIcon('camera', 13)} AI解析中…</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--on-ink-soft);margin-top:2px;">1枚あたり10〜20秒かかります</div>
+                        ${usageLine ? `<div style="font-size:11px;font-weight:700;color:var(--on-ink-soft);margin-top:4px;">${escapeHtml(usageLine)}</div>` : ''}
                     </div>
                 </div>`;
             document.body.appendChild(o);

@@ -2660,6 +2660,48 @@ test('★ 段階 2 の物差し (シート 2 回目 = 運営 › 👥 のシー�
     assert.ok(avail.includes("${isNowOn ? 'いまは参加可能時間' : 'いまは参加可能時間の外'}"), '状態の欄が「参加可能時間の中か外か」でない');
 });
 
+test('★ 段階 2 の物差し (シート 3 回目 = 運営 › ⚔️・👑 のシート・2026-11-25): 練習の場面に出ない部品も物差しどおり — ボス HP・凸履歴・シーズン作成・シーズン編集・キャラ正規化・🧪 テストの終了・AI 解析中', () => {
+    const html = _perfHtml;
+    const FS = ['11', '12', '14', '16', '20', '24', '28', '30', '32'], RAD = ['4', '8', '14', '22', '50', '99', '999'];
+    const scan = (label, p) => {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(FS.includes(m[1]), label + ' に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(RAD.includes(m[1]), label + ' に物差しの外の角丸 ' + m[1] + 'px');
+    };
+    // ① シートの HTML と中身を描く関数 (読み込みの失敗・アクティブシーズン無し・手で登録したキャラの要確認・テストの終了の行 など、練習で出ない状態も)
+    const NEXT = /class="(?:player-select-modal|player-modal|fururi-help-modal)"|<script>/g;
+    const sheet = (id) => { const i = html.indexOf('id="' + id + '"'); assert.ok(i > 0, id + ' が無い'); NEXT.lastIndex = i + 10; const m = NEXT.exec(html); return html.slice(i, m.index); };
+    for (const id of ['opsBossHpModal', 'opsAttacksEditModal', 'opsSeasonCreateModal', 'opsSeasonEditModal', 'charMasterEditModal', 'opsTestEndModal']) scan(id + ' の HTML', sheet(id));
+    const fnBody = (name) => { const i = html.indexOf('function ' + name + '('); assert.ok(i > 0, name + ' が無い'); return html.slice(i, html.indexOf('\n        }\n', i)); };
+    for (const f of ['openOpsBossHpModal', 'reloadOpsAttacksList', 'renderOpsAttacksList', 'openOpsSeasonEditModal', 'renderOpsSeasonBossRows', 'openOpsTestEndModal', '_aiSpinShow']) scan(f, fnBody(f));
+    // ② 押すもの・欄は 40px (練習では 1 種類しか出ない行・失敗のときだけ出るボタンも)
+    const hp = fnBody('openOpsBossHpModal');
+    assert.equal((hp.match(/<input class="ops-hp-(?:rem|total)" [^>]*style="width:90px;min-height:40px;/g) || []).length, 2, 'ボス HP の 残HP / 総HP の欄が 40px でない');
+    assert.match(hp, /onclick="handleOpsBossHpSave\([^"]*\)" style="flex:none;min-height:40px;/, 'ボス HP の行の「保存」が 40px でない');
+    //   「保存」はボスの名前の行の右 (欄の行に置くと 390px でも折り返して独りの行になり、40px にしたぶん 1 体ごとに縦に伸びる)
+    assert.ok(hp.indexOf('handleOpsBossHpSave(') > 0 && hp.indexOf('handleOpsBossHpSave(') < hp.indexOf('<input class="ops-hp-rem"'), 'ボス HP の「保存」が名前の行に無い (欄の行で折り返して縦に伸びる)');
+    assert.match(hp, /onclick="openOpsBossHpModal\(\)" style="margin-left:6px;min-height:40px;/, '読み込めなかったときの「もう一度読み込む」が 40px でない');
+    const atk = fnBody('renderOpsAttacksList');
+    assert.match(atk, /onclick="handleOpsAttackEditDmg\([^"]*\)" style="flex:none;min-height:40px;/, '凸履歴の「編集」が 40px でない (数字のある凸だけに出る = 練習の ✓ の凸では出ない)');
+    assert.match(atk, /onclick="handleOpsAttackDelete\([^"]*\)" style="flex:none;min-height:40px;/, '凸履歴の「削除」が 40px でない');
+    //   凸履歴の行は 名前 (上) と 何凸目・ボス (下) を 1 つの縮む列に入れる — 1 行に並べると 320px で 70px はみ出した (以前からの崩れ・検査の fit= も見る)
+    assert.match(atk, /<div style="flex:1;min-width:0;">\s*<strong style="display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\$\{escapeHtml\(playerName\)\}<\/strong>/, '凸履歴の行の名前が縮む列に入っていない (320px ではみ出す)');
+    assert.match(sheet('opsAttacksEditModal'), /<button onclick="reloadOpsAttacksList\(\)" style="min-height:40px;/, '凸履歴の「更新」が 40px でない');
+    for (const f of ['renderOpsSeasonBossRows', 'openOpsSeasonEditModal']) assert.match(fnBody(f), /const field = 'width:100%;min-width:0;box-sizing:border-box;min-height:40px;/, f + ' のボスの行の欄 (ボスコード・級・ボス名) が 40px でない');
+    const seasonSheets = sheet('opsSeasonCreateModal') + sheet('opsSeasonEditModal');
+    assert.equal((seasonSheets.match(/<input type="(?:date|text)" id="opsSeason(?:Edit)?(?:HardDate|MonthKey)" [^>]*min-height:40px;">/g) || []).length, 4, 'シーズン作成・編集の ハード日 / 月キー の欄が 40px でない');
+    assert.equal((seasonSheets.match(/<button onclick="(?:closeOpsSeasonCreateModal|handleOpsSeasonCreateSave|closeOpsSeasonEditModal|handleOpsSeasonEditSave)\(\)" style="min-height:40px;/g) || []).length, 4, 'シーズン作成・編集の下のボタンが 40px でない');
+    assert.equal((html.match(/<span style="flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;[^"]*">画像を選ぶ<\/span>/g) || []).length, 2, 'ボス HP・シーズン作成の「画像を選ぶ」が 40px でない');
+    const ch = sheet('charMasterEditModal');
+    assert.equal((ch.match(/<input id="charEdit(?:Canonical|Aliases|MergeTarget)" [^>]*style="width:100%;min-height:40px;/g) || []).length, 3, 'キャラ正規化の欄が 40px でない');
+    assert.match(ch, /onclick="handleCharMasterVerify\(\)" style="min-height:40px;/, '「確認済みにする」が 40px でない (手で登録した行を開いたときだけ出る)');
+    assert.equal((ch.match(/<button onclick="(?:handleCharMasterDelete|closeCharMasterEditModal|handleCharMasterSave)\(\)" style="min-height:40px;/g) || []).length, 3, 'キャラ正規化の下のボタンが 40px でない');
+    assert.equal((sheet('opsTestEndModal').match(/<button (?:id="opsTestEndConfirmBtn" )?onclick="(?:closeOpsTestEndModal|handleOpsTestEndConfirm)\(\)" style="min-height:40px;/g) || []).length, 2, 'テストの終了のボタン (キャンセル / 終了して復元) が 40px でない');
+    assert.ok(!fnBody('openOpsTestEndModal').includes('#E3E5E8'), 'テストの終了の行の枠が白の直書き (ダークで浮く) に戻った');
+    // ③ シーズン作成の説明: 動いているシーズンがあれば作れない (57・_assertNoActiveSeason) — 「自動的に非アクティブ化」と言わない
+    assert.ok(!html.includes('確定すると既存のアクティブシーズンは自動的に非アクティブ化されます'), 'シーズン作成のシートが、動いているシーズンを自動で止めると言う (57 から作成は断る)');
+    assert.ok(sheet('opsSeasonCreateModal').includes('動いているシーズンがあるあいだは作れません'), 'シーズン作成のシートが「動いているシーズンがあると作れない」を言わない');
+});
+
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
     seasonStore.invalidate();

@@ -93,6 +93,16 @@ const DONE = {
         'ops-eve:390:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal', 'ops-eve:1366:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal',
         'ops-eve:320:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal+fit=#opsMockBulkBody .mkb-slots',
         'ops-eve:390:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal', 'ops-eve:320:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal+fit=#myDmgPreviewChars'],
+    //   3 回目 (2026-11-25) = 運営 › ⚔️・👑 のシート: 🎯 ボス HP・📋 凸履歴 (結果の取り込みのカードを開いて「登録された凸」の横から)・✏️ シーズン編集・新シーズン作成 (段階を準備にして)・📚 キャラ正規化 (メンテナンスのキャラマスタの行から)・🧪 テストの終了。
+    //   320px = 凸履歴の行 (名前・何凸目・ボス・ダメージ・編集・削除 — 1 行に並べていたころは 70px はみ出した)・ボスの行 (ボスコード・級・ボス名) が詰まる幅 — fit= で行からはみ出していないことも見る
+    //   :charreg = 練習のキャラ表を「別の運営が手で登録した・未確定」にしてから開く (🔍 要確認 と「確認済みにする」が出る) / :testend = テストの終了の中身を読む関数だけ差し替えて開く (練習ではテストのシーズンを作れない)
+    'ops/戦況@シート': ['ops-day:390:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal', 'ops-day:320:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal', 'ops-day:1366:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal',
+        'ops-day:390:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal', 'ops-day:320:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal+fit=#opsAttacksList > div',
+        'ops-day:1366:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal'],
+    'ops/マスター@シート': ['ops-day:390:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal', 'ops-day:320:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal+fit=#opsSeasonEditBossRows > div',
+        'ops-day:390:prep+click=[onclick="openOpsSeasonCreateModal()"]+sheet=#opsSeasonCreateModal', 'ops-day:320:prep+click=[onclick="openOpsSeasonCreateModal()"]+sheet=#opsSeasonCreateModal+fit=#opsSeasonBossRows > div',
+        'ops-day:390:maint+click=[onclick^="openCharMasterEditModal"]+sheet=#charMasterEditModal', 'ops-day:390:maint+charreg+click=[onclick^="openCharMasterEditModal"]+sheet=#charMasterEditModal+need=#charEditVerifyBtn',
+        'ops-day:390:testend+sheet=#opsTestEndModal+need=.ops-test-end-char', 'ops-day:320:testend+sheet=#opsTestEndModal+need=.ops-test-end-char'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う
@@ -327,6 +337,20 @@ const runScene = async (tab, scene) => {
                     await ev(`(() => { for (const [id, fn] of [['settingsActivityBody', 'toggleSettingsActivity'], ['settingsMasterBody', 'toggleSettingsMaster']]) { const b = document.getElementById(id); const h = document.querySelector('#tab-ops [onclick="' + fn + '()"]'); if (b && h && getComputedStyle(b).display === 'none') h.click(); } return 1; })()`);
                     await settle();
                     if (!(await ev(`['settingsActivityBody', 'settingsMasterBody'].every(id => { const b = document.getElementById(id); return !!b && b.getClientRects().length > 0; })`))) active = 'アクティビティ・キャラマスタが開かない';
+                } else if (a === 'charreg') {
+                    // 📚 キャラ正規化の「🔍 要確認 — 確認済みにする」は、運営が手で登録した行 (registered_by あり・34) を開いたときだけ出る。練習のキャラ表は CDN の写しで手で登録した行が無い
+                    //   → 練習の偽のサーバのキャラ表 (このページのメモリだけ) を「別の運営が 2 日前に手で登録した・未確定」にしてから、本物の入口 (click=) で開く。シートは開くたびにキャラ表を読み直すのでそのまま映る
+                    const n = await ev(`(() => { const P = window.PAD_PRACTICE; const t = P && P.db && P.db.tables.nikke_characters; if (!Array.isArray(t) || !t.length) return 0; const at = new Date(Date.now() - 2 * 864e5).toISOString(); t.forEach(r => { r.registered_by = '練習の別の運営'; r.verification_source = 'https://example.com/char'; r.is_confirmed = false; r.first_seen = at; }); return t.length; })()`);
+                    if (!n) active = '練習のキャラ表を書き換えられない';
+                } else if (a === 'testend') {
+                    // 🧪 テストの終了のシートは、テストのシーズンが動いているときだけ開ける (練習のシーズンは本番の扱い = 入口の「🧪 ✕ 終了」が出ない)。
+                    //   → 中身を読む関数 (supabasePreviewTestSeasonEnd = 偽のサーバでも本番の DB を見る形) だけを、テスト中の本物に近い答えに差し替えて、入口の関数を呼ぶ (描くのは本物の openOpsTestEndModal)。
+                    //   キャラは 既定で消す (テスト中に自動学習) と 残す (手で登録) の両方 = 行の 2 つの見た目
+                    const ok = await ev(`(async () => { if (typeof openOpsTestEndModal !== 'function') return false; window.supabasePreviewTestSeasonEnd = async () => ({ season: { id: 9001, month_key: '2026-12' }, restoreRows: 124, restoreAvailRows: 31, changed: { mocks: 3, availPlayers: 2 }, rehearsal: { from: '2026-11' }, attacks: 12, restoredKey: null,
+                        chars: [{ canonical_name: 'テストで覚えた名前', origin: 'test', defaultDelete: true, reason: 'テスト中に自動学習 (観測3回)' }, { canonical_name: '手で登録したキャラ', origin: 'manual', defaultDelete: false, reason: '運営の手動登録 (観測0・確定) — 残す' }] });
+                        await openOpsTestEndModal(); return true; })()`);
+                    if (!ok) active = 'テストの終了のシートを開けない';
+                    else await settle();
                 } else if (a === 'details') {
                     // 畳んである開閉 (details) を全部開く (👑 マスター の 名簿の読み取り・メンテナンスなど)。開いたあとに見えている閉じた details が残れば失敗
                     const n = await ev(`(() => { let n = 0; for (let k = 0; k < 5; k++) { const ds = [...document.querySelectorAll('.tab-content.active details:not([open])')].filter(d => d.getClientRects().length); if (!ds.length) break; ds.forEach(d => { d.open = true; }); n += ds.length; } return n; })()`);   // 中の details は親を開くと見えるので、なくなるまで (5 段まで)
