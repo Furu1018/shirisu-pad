@@ -24,7 +24,7 @@ function makeEnv({ noModal = false } = {}) {
         const el = {
             id, tagName: tag.toUpperCase(), textContent: '', value: '', hidden: false, placeholder: '', isConnected: true, focused: 0, selected: 0, listeners: {}, attrs: {},
             classList: null,
-            setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; },
+            setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; }, removeAttribute(k) { delete this.attrs[k]; },
             contains(x) { return x === this || (this.id === 'padDialog' && !!x && /^padDialog/.test(x.id || '')); },
             addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
             focus() { env.document.activeElement = this; this.focused++; },
@@ -144,6 +144,7 @@ test('焦点は閉じたあと押した元のボタンへ戻る — 列の 2 つ
     t.env.document.activeElement = btn;
     const p1 = t.padConfirm('1 つ目'), p2 = t.padConfirm('2 つ目');
     assert.equal(t.env.els.padDialog.getAttribute('aria-labelledby'), 'padDialogMsg', '題が無いのに、空で隠れた見出しを名前にしている');
+    assert.equal(t.env.els.padDialog.getAttribute('aria-describedby'), null, '題が無いのに、文を名前と説明の両方にしている (2 度読まれる)');
     t.env.els.padDialogOk.click(); await p1;
     assert.equal(btn.focused, 0, '列がまだあるのに元のボタンへ戻した (2 つ目の上で焦点が外へ出る)');
     assert.equal(t.env.document.activeElement.id, 'padDialogOk', '2 つ目のシートに焦点が無い');
@@ -151,6 +152,7 @@ test('焦点は閉じたあと押した元のボタンへ戻る — 列の 2 つ
     assert.equal(btn.focused, 1, '列の最後を閉じても、押した元のボタンへ焦点が戻らない');
     const p3 = t.padAlert('題あり', { title: 'お知らせ' });
     assert.equal(t.env.els.padDialog.getAttribute('aria-labelledby'), 'padDialogTitle', '題があるのに題を名前にしない');
+    assert.equal(t.env.els.padDialog.getAttribute('aria-describedby'), 'padDialogMsg', '題があるのに文を説明にしない');
     t.env.els.padDialogOk.click(); await p3;
     assert.ok(/<input id="padDialogInput"[^>]*aria-labelledby="padDialogMsg"/.test(HTML), '文字を入れる欄に読み上げのラベルが無い');
 });

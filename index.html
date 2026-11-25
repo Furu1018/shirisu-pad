@@ -20584,6 +20584,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             cancel.hidden = req.kind === 'alert';
             // 読み上げの名前: 題があれば題・無ければ文 (空で hidden の見出しを名前にしない)
             modal.setAttribute('aria-labelledby', req.title ? 'padDialogTitle' : 'padDialogMsg');
+            if (req.title) modal.setAttribute('aria-describedby', 'padDialogMsg'); else modal.removeAttribute('aria-describedby');   // 題が無いとき文を名前と説明の両方にしない (2 度読まれる: Codex 監査)
             // 閉じたあとに焦点を戻す先: 列の 2 つ目以降は 1 つ目の戻り先を引き継ぐ (いまの焦点はシートの中の OK = 閉じると消える: Codex 監査)
             const act = document.activeElement;
             req.focusBack = req.focusBack0 || (act && modal.contains(act) ? null : act);
