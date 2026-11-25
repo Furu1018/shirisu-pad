@@ -2457,10 +2457,10 @@
         .ma-row:hover { background: var(--card)}
         .ma-grad-btn {
             position:relative; overflow:hidden; border:none; cursor:pointer;
-            padding:11px 16px; border-radius:11px;
+            padding:11px 16px; border-radius:8px;
             background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));
             box-shadow:0 4px 12px rgba(108,66,240,0.26);
-            color:var(--on-fill); font-size:12.5px; font-weight:900; letter-spacing:0.3px;
+            color:var(--on-fill); font-size:12px; font-weight:900; letter-spacing:0.3px;
             font-family:inherit; text-shadow:0 1px 2px rgba(0,40,90,0.4)}
         .ma-grad-btn::before {
             content:''; position:absolute; inset:0;
@@ -2474,7 +2474,7 @@
         }
         .ma-grad-btn span { position:relative; z-index:1; }
         .ma-input {
-            box-sizing:border-box; border-radius:11px;
+            box-sizing:border-box; border-radius:8px;
             border:1px solid rgba(var(--ink-rgb), 0.08);
             background:var(--s1); color:var(--t-ink);
             font-size:14px; font-family:inherit; outline:none;
@@ -4824,7 +4824,7 @@
                 </div>
                 <div style="position:relative;">
                     <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t-muted);pointer-events:none;" data-sp-icon="search" data-sp-size="14"></span>
-                    <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--s1);color:var(--t-ink);font-size:14px;font-family:inherit;outline:none;">
+                    <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;min-height:40px;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:8px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--s1);color:var(--t-ink);font-size:14px;font-family:inherit;outline:none;">
                 </div>
             </div>
 
@@ -17806,11 +17806,11 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 { label: '脱退済み',  value: archived,  unit: '名' },
             ];
             row.innerHTML = cells.map(c => `
-                <div style="flex:1;min-width:0;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:11px;padding:11px 8px;text-align:center;">
-                    <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">${c.label}</div>
+                <div style="flex:1;min-width:0;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:14px;padding:11px 8px;text-align:center;">
+                    <div style="font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">${c.label}</div>
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:3px;margin-top:5px;">
                         <span style="font-size:20px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1;">${c.value}</span>
-                        <span style="font-size:10px;font-weight:800;color:var(--t-muted);">${c.unit}</span>
+                        <span style="font-size:11px;font-weight:800;color:var(--t-muted);">${c.unit}</span>
                     </div>
                 </div>`).join('');
         }
@@ -17833,9 +17833,9 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const fg = on ? 'var(--card)' : 'var(--t-body)';
                 const bgChip = on ? 'rgba(var(--paper-rgb), 0.18)' : 'rgba(var(--ink-rgb), 0.06)';
                 const fgChip = on ? 'var(--card)' : 'var(--t-muted)';
-                return `<div onclick="maSetFilter('${it.key}')" style="flex:1;min-width:0;height:38px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:900;letter-spacing:0.2px;color:${fg};background:${bg};transition:all .15s;">
+                return `<div onclick="maSetFilter('${it.key}')" style="flex:1;min-width:0;height:40px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:900;letter-spacing:0.2px;color:${fg};background:${bg};transition:all .15s;">
                     <span>${it.label}</span>
-                    <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:${bgChip};color:${fgChip};font-variant-numeric:tabular-nums;">${it.count}</span>
+                    <span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;background:${bgChip};color:${fgChip};font-variant-numeric:tabular-nums;">${it.count}</span>
                 </div>`;
             }).join('');
         }
@@ -17898,7 +17898,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 selTog.style.border = '1px solid ' + (sm ? 'var(--attr-water-solid)' : 'rgba(var(--ink-rgb), 0.06)');
             }
             if (filtered.length === 0) {
-                if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:32px 12px;font-size:12.5px;color:var(--t-muted);">${isActive ? 'アクティブメンバーはいません' : '脱退済みメンバーはいません'}</div>`;
+                if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:32px 12px;font-size:12px;color:var(--t-muted);">${isActive ? 'アクティブメンバーはいません' : '脱退済みメンバーはいません'}</div>`;
             } else if (listEl) {
                 listEl.innerHTML = filtered.map((p, i) => _maRenderRow(p, i)).join('');
             }
@@ -17917,55 +17917,55 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const isMe = (() => { const me = getCurrentIdentity?.(); return me?.id === p.id; })();
             const meta = isArchived ? '脱退済み' : (isMe ? 'あなた' : '');
 
-            const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(p, 36) : `<div style="width:36px;height:36px;border-radius:50%;background:${baseColor};color:var(--on-fill);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;">${escapeHtml((p.name || '?').charAt(0))}</div>`;
+            const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(p, 36) : `<div style="width:36px;height:36px;border-radius:50%;background:${baseColor};color:var(--on-fill);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;">${escapeHtml((p.name || '?').charAt(0))}</div>`;
             const avatarWrap = `<div onclick="maToggleExpand(${p.id})" style="position:relative;width:36px;height:36px;flex:none;border-radius:50%;cursor:pointer;${isArchived ? 'filter:grayscale(0.55);' : ''}">${avatar}</div>`;
 
             const checkbox = selectable ? `
-                <div onclick="maToggleSelect(${p.id})" style="width:22px;height:22px;flex:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--on-fill);background:${isSelected ? 'var(--attr-water-solid)' : 'var(--card)'};border:2px solid ${isSelected ? '#2E8BFF' : 'rgba(var(--ink-rgb), 0.16)'};transition:all .12s;">${isSelected ? '✓' : ''}</div>` : '';
+                <div onclick="maToggleSelect(${p.id})" style="width:22px;height:22px;flex:none;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--on-fill);background:${isSelected ? 'var(--attr-water-solid)' : 'var(--card)'};border:2px solid ${isSelected ? '#2E8BFF' : 'rgba(var(--ink-rgb), 0.16)'};transition:all .12s;">${isSelected ? '✓' : ''}</div>` : '';
 
-            const attrChips = attrs.map(a => `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:5px;flex:none;font-size:10px;font-weight:900;color:var(--on-fill);background:${_MA_ATTR_COLOR[a]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);">${_MA_ATTR_CHAR[a]}</span>`).join('');
+            const attrChips = attrs.map(a => `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:4px;flex:none;font-size:11px;font-weight:900;color:var(--on-fill);background:${_MA_ATTR_COLOR[a]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);">${_MA_ATTR_CHAR[a]}</span>`).join('');
 
-            const caret = `<span style="font-size:10px;color:var(--t-muted);flex:none;margin-left:1px;">${isExpanded ? '▲' : '▼'}</span>`;
+            const caret = `<span style="font-size:11px;color:var(--t-muted);flex:none;margin-left:1px;">${isExpanded ? '▲' : '▼'}</span>`;
 
             // アクションボタン
             let actionsHtml;
             if (isConfirming) {
                 actionsHtml = `
                     <div style="display:flex;align-items:center;gap:6px;flex:none;animation:dcFadeIn .15s ease;">
-                        <div onclick="maCancelDelete()" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:var(--s2);color:var(--t-body);border:1px solid rgba(var(--ink-rgb), 0.06);white-space:nowrap;">取消</div>
-                        <div onclick="maConfirmDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 13px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:900;background:var(--attr-fire-solid);color:var(--attr-fire-ink);border:1px solid var(--attr-fire-solid);box-shadow:0 4px 12px rgba(255,61,68,0.4);white-space:nowrap;animation:maDangerPulse 1.4s ease infinite;">削除する</div>
+                        <div onclick="maCancelDelete()" style="padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;background:var(--s2);color:var(--t-body);border:1px solid rgba(var(--ink-rgb), 0.06);white-space:nowrap;">取消</div>
+                        <div onclick="maConfirmDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:900;background:var(--attr-fire-solid);color:var(--attr-fire-ink);border:1px solid var(--attr-fire-solid);box-shadow:0 4px 12px rgba(255,61,68,0.4);white-space:nowrap;animation:maDangerPulse 1.4s ease infinite;">削除する</div>
                     </div>`;
             } else if (isArchived) {
                 actionsHtml = `
                     <div style="display:flex;align-items:center;gap:6px;flex:none;">
-                        <div onclick="maHandleUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:var(--ok-solid);color:var(--ok-ink);border:1px solid var(--ok-solid);white-space:nowrap;">復活</div>
-                        <div onclick="maRequestDelete(${p.id})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:rgba(255,61,68,0.10);color:var(--bad-deep);border:1px solid var(--attr-fire-solid);white-space:nowrap;">🗑 完全削除</div>
+                        <div onclick="maHandleUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;background:var(--ok-solid);color:var(--ok-ink);border:1px solid var(--ok-solid);white-space:nowrap;">復活</div>
+                        <div onclick="maRequestDelete(${p.id})" style="padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;background:rgba(255,61,68,0.10);color:var(--bad-deep);border:1px solid var(--attr-fire-solid);white-space:nowrap;">🗑 完全削除</div>
                     </div>`;
             } else {
                 actionsHtml = `
                     <div style="display:flex;align-items:center;gap:6px;flex:none;">
-                        <div onclick="maHandleRename(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:var(--s2);color:var(--t-body);border:1px solid rgba(var(--ink-rgb), 0.06);white-space:nowrap;">改名</div>
-                        <div onclick="maHandleArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:rgba(245,158,11,0.10);color:var(--warn-deep);border:1px solid var(--warn-solid);white-space:nowrap;">脱退</div>
+                        <div onclick="maHandleRename(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;background:var(--s2);color:var(--t-body);border:1px solid rgba(var(--ink-rgb), 0.06);white-space:nowrap;">改名</div>
+                        <div onclick="maHandleArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:800;background:rgba(245,158,11,0.10);color:var(--warn-deep);border:1px solid var(--warn-solid);white-space:nowrap;">脱退</div>
                     </div>`;
             }
 
             const detail = isExpanded ? `
-                <div style="margin:0 6px 10px 53px;padding:13px 14px;border-radius:13px;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);animation:maExpand .2s ease;">
+                <div style="margin:0 6px 10px 53px;padding:13px 14px;border-radius:14px;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);animation:maExpand .2s ease;">
                     <div style="display:flex;gap:7px;">
-                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:10px;padding:9px 6px;">
-                            <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">得意属性</div>
+                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:8px;padding:9px 6px;">
+                            <div style="font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">得意属性</div>
                             <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:5px;">${attrs.length || '—'}</div>
                         </div>
-                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:10px;padding:9px 6px;">
-                            <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">アバター</div>
+                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:8px;padding:9px 6px;">
+                            <div style="font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">アバター</div>
                             <div style="font-size:11px;font-weight:800;color:var(--t-ink);margin-top:5px;">${escapeHtml(p.avatar_character || (p.avatar_url ? 'アップ済' : '未設定'))}</div>
                         </div>
-                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:10px;padding:9px 6px;">
-                            <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">状態</div>
+                        <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:8px;padding:9px 6px;">
+                            <div style="font-size:11px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">状態</div>
                             <div style="font-size:11px;font-weight:800;color:${isArchived ? 'var(--warn-deep)' : 'var(--ok-deep)'};margin-top:5px;">${isArchived ? '脱退済' : 'アクティブ'}</div>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 2px;font-size:10.5px;color:var(--t-muted);font-weight:700;">
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 2px;font-size:11px;color:var(--t-muted);font-weight:700;">
                         <span style="flex:none;">ℹ️</span>
                         <span>詳細なダメージ履歴・凸記録はホームから確認できます。</span>
                     </div>
@@ -17984,7 +17984,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                                 ${attrChips}
                                 ${caret}
                             </div>
-                            ${meta ? `<div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:10.5px;color:var(--t-muted);font-weight:700;letter-spacing:0.2px;"><span>${meta}</span></div>` : ''}
+                            ${meta ? `<div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:11px;color:var(--t-muted);font-weight:700;letter-spacing:0.2px;"><span>${meta}</span></div>` : ''}
                         </div>
                         ${actionsHtml}
                     </div>

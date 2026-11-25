@@ -2706,6 +2706,23 @@ test('★ 段階 2 の物差し (シート 3 回目 = 運営 › ⚔️・👑 �
     assert.ok(sheet('opsSeasonCreateModal').includes('動いているシーズンがあるあいだは作れません'), 'シーズン作成のシートが「動いているシーズンがあると作れない」を言わない');
 });
 
+test('★ 段階 2 の物差し (👑 › メンバー管理のページ・2026-11-25 = タブを揃えたときに漏れていた): 練習で出ない状態 (脱退した人・完全削除の確認・選ぶモード) も物差しどおり', () => {
+    const html = _perfHtml;
+    const css = html.slice(0, html.indexOf('</style>'));
+    const FS = ['11', '12', '14', '16', '20', '24', '28', '30', '32'], RAD = ['4', '8', '14', '22', '50', '99', '999'];
+    const scan = (label, p) => {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(FS.includes(m[1]), label + ' に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(RAD.includes(m[1]), label + ' に物差しの外の角丸 ' + m[1] + 'px');
+    };
+    const a = html.indexOf('<div id="tab-member-admin"'); assert.ok(a > 0, 'メンバー管理のページが無い');
+    scan('メンバー管理のページの HTML', html.slice(a, html.indexOf('class="tab-content', a + 40)));
+    const s = html.indexOf('        function _maRenderAll() {'), e = html.indexOf('        function maSetFilter(key) {');
+    assert.ok(s > 0 && e > s, 'メンバー管理の描画の関数を切り出せない');
+    scan('メンバー管理の描画 (_maRender*)', html.slice(s, e));
+    for (const sel of ['.ma-grad-btn', '.ma-input']) { const m = css.match(new RegExp('\\n\\s*' + sel.replace('.', '\\.') + ' \\{([^}]*)\\}')); assert.ok(m, sel + ' が無い'); scan(sel, m[1]); }
+    assert.match(html, /<input id="maSearchInput"[^>]*style="width:100%;min-height:40px;/, 'メンバー管理の名前で絞り込む欄が 40px でない');
+});
+
 test('★ 段階 2 の後半: ブラウザの alert / confirm / prompt はアプリの確認 (padAlert / padConfirm / padPrompt) に — 残っているのは決めた所だけ (2026-11-25)', () => {
     const html = _perfHtml;
     const css = html.slice(0, html.indexOf('</style>'));

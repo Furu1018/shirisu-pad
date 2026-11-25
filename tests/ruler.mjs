@@ -73,6 +73,9 @@ const DONE = {
     //   システム状態のチップのラベル (Supabase・Edge Func・PADバージョン) は fit= で、チップからはみ出さないことも見る (4 枚を横 1 列に並べていた頃は 390px で 2px・320px で 17px はみ出していた → 2 × 2)
     settings: ['member:390:fit=.dc-status-label', 'member:1366:fit=.dc-status-label', 'member:320:fit=.dc-status-label', 'ops-eve:390', 'member:390:click=[onclick="toggleSettingsGuide()"]+need=#settingsGuideBody'],
     help: ['member:390', 'member:1366', 'member:320'],
+    // 👑 › メンバー管理のページ (2026-11-25・tab-member-admin = 👑 マスターの「メンバー管理」から switchTab('member-admin')): タブを揃えたときに数えていなかった。行を開いた所・脱退した人の一覧も
+    'member-admin': ['ops-day:390', 'ops-day:320', 'ops-day:1366', 'ops-day:390:click=[onclick^="maToggleExpand"]+need=#maList [style*="maExpand"]',
+        'ops-day:320:click=[onclick^="maToggleExpand"]+need=#maList [style*="maExpand"]+fit=#maList .ma-row', `ops-day:390:click=[onclick="maSetFilter('archived')"]`],
     // シート (2026-11-24〜・タブと別に数える): 本物の入口 (click=) を押して開き、そのシートだけを測る (sheet=#id)。'<タブ>@シート' の '@' から後ろは見出し。
     //   練習モードで入口が隠れているもの (上の帯の 名乗りの切り替え・☰ ドロワー) だけ call= で入口の関数を呼ぶ (名乗りの切り替えは 1366px のサイドバーの足元から押す場面も)
     //   1 回目 = メンバーも開くシート + シート共通の部品 (枠・見出し・閉じる): SLv・アバター・キャラの選択・得意属性・通知・名乗り・ドロワー / 編成比較 (分析の順位表) / ふるり値の説明
