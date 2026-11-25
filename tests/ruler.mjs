@@ -72,7 +72,8 @@ const DONE = {
     //   ヘルプ = 目次・各章 (本文・手順・注意の箱)・更新履歴・ガイドを開始
     //   システム状態のチップのラベル (Supabase・Edge Func・PADバージョン) は fit= で、チップからはみ出さないことも見る (4 枚を横 1 列に並べていた頃は 390px で 2px・320px で 17px はみ出していた → 2 × 2)
     settings: ['member:390:fit=.dc-status-label', 'member:1366:fit=.dc-status-label', 'member:320:fit=.dc-status-label', 'ops-eve:390', 'member:390:click=[onclick="toggleSettingsGuide()"]+need=#settingsGuideBody'],
-    help: ['member:390', 'member:1366', 'member:320'],
+    //   ヘルプ (段階 3・2026-11-26): 章は閉じて並ぶ → :helpopen で全部の章を見出しから開いて本文も測る
+    help: ['member:390', 'member:1366', 'member:320', 'member:390:helpopen', 'member:1366:helpopen', 'member:320:helpopen'],
     // 👑 › メンバー管理のページ (2026-11-25・tab-member-admin = 👑 マスターの「メンバー管理」から switchTab('member-admin')): タブを揃えたときに数えていなかった。行を開いた所・脱退した人の一覧も
     'member-admin': ['ops-day:390', 'ops-day:320', 'ops-day:1366', 'ops-day:390:click=[onclick^="maToggleExpand"]+need=#maList [style*="maExpand"]',
         'ops-day:320:click=[onclick^="maToggleExpand"]+need=#maList [style*="maExpand"]+fit=#maList .ma-row', `ops-day:390:click=[onclick="maSetFilter('archived')"]`],
@@ -366,6 +367,12 @@ const runScene = async (tab, scene) => {
                         const tall = await ev(`[...document.querySelectorAll('#opsBossHpList > div[data-boss-num] strong')].map(e => Math.round(e.getBoundingClientRect().height)).filter(h => h > 46)`);
                         if (tall.length) active = 'ボスの名前が潰れて縦に伸びる (' + tall.join(', ') + 'px)';
                     }
+                } else if (a === 'helpopen') {
+                    // ヘルプの章を全部開く (見出しのボタンを押す = 読む人が開くのと同じ)。開いたあとに閉じた章が残れば失敗
+                    const n = await ev(`(() => { const hs = [...document.querySelectorAll('#tab-help section.help-section.closed > h2 > .help-head')]; hs.forEach(b => b.click()); return hs.length; })()`);
+                    await settle();
+                    if (!n) active = '閉じた章が無い (畳んでいない)';
+                    else if (await ev(`!!document.querySelector('#tab-help section.help-section.closed')`)) active = '章が開かない (' + n + ' 個押した)';
                 } else if (a === 'askprompt') {
                     // アプリの確認の「文字を入れる」形 (padPrompt)。round 1 で直した入口 (復元 = ファイルが要る / 改名 = 👑 › メンバー管理のページ) は練習の場面から押せない → 本物の padPrompt を復元の確認と同じ文で呼ぶ (答えは待たない)
                     const ok = await ev(`(() => { if (typeof padPrompt !== 'function') return false; padPrompt('確認のため「復元」と入力してください', { placeholder: '復元', ok: '復元する', danger: true }); return true; })()`);

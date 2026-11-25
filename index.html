@@ -1505,14 +1505,31 @@
             color: var(--t-ink); text-decoration: none;
             border-radius: 8px; line-height: 1.4}
         .help-toc a:hover { background: var(--card)}
+        .help-toc-grp { font-size: 11px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); padding: 10px 10px 2px; }
+        /* スマホの幅: 章の並びそのものが目次 (章は閉じて並ぶ) — 18 行の目次は出さない (段階 3・2026-11-26) */
+        @media (max-width: 900px) { .help-toc { display: none; } }
+        /* 使い方を体験する (ガイド・練習の入口。1 章の頭から出した) と 章の組の見出し */
+        .help-try { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 2px; border-radius: 14px; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.05); margin-bottom: 14px; }
+        .help-try-t { font-size: 14px; font-weight: 900; color: var(--t-ink); }
+        .help-grp { font-size: 12px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); margin: 18px 4px 8px; }
+        .help-try + .help-grp { margin-top: 4px; }
+        /* 章の開け閉め: 見出しがボタン (章の名前 + 1 行の要約 + ▸ / ▾)。閉じた章は本文を出さない */
+        .help-head { all: unset; box-sizing: border-box; width: 100%; min-height: 40px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 14px 16px; cursor: pointer; border-radius: 14px; }
+        .help-head::after { content: '▾'; grid-column: 2; grid-row: 1 / span 2; font-size: 14px; color: var(--t-muted); }
+        .help-section.closed .help-head::after { content: '▸'; }
+        .help-head:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+        .help-head-t { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 16px; font-weight: 900; color: var(--t-ink); }
+        .help-head-s { grid-column: 1; font-size: 12px; font-weight: 700; color: var(--t-muted); }
+        .help-body { padding: 0 22px 22px; }
+        .help-section.closed > .help-body { display: none; }
         .help-section {
-            padding: 22px; border-radius: 14px; font-size: 14px;
+            padding: 0; border-radius: 14px; font-size: 14px;   /* 余白は見出しのボタン (.help-head) と本文 (.help-body) が持つ (段階 3 で章を畳んだ) */
             border: 1px solid rgba(var(--ink-rgb), 0.05);
             background: var(--card); margin-bottom: 14px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.03);
             scroll-margin-top: 16px}
         .help-section h2 {
-            margin: 0 0 12px 0; font-size: 20px; font-weight: 900; letter-spacing: 0.2px;
+            margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 0.2px;
             color: var(--t-ink);
             display: flex; align-items: center; gap: 8px}
         .help-section h3 {
@@ -4352,29 +4369,33 @@
             <div class="help-layout">
                 <aside class="help-toc" id="helpToc">
                     <div class="help-toc-title">目次</div>
+                    <div class="help-toc-grp">はじめに</div>
                     <a href="#help-overview">1. しりすこPAD とは</a>
                     <a href="#help-raid-rules">2. ユニオンレイドの基本</a>
+                    <div class="help-toc-grp">メンバー</div>
                     <a href="#help-mypage">3. ホームの使い方</a>
                     <a href="#help-mock">4. 模擬 (Discord に貼る)</a>
                     <a href="#help-reserve">5. 凸先の希望 (予約) 🔒</a>
                     <a href="#help-real">6. 凸したら Discord へ</a>
                     <a href="#help-finisher">7. 締め凸</a>
-                    <a href="#help-fururi">8. ふるり値の見方</a>
                     <a href="#help-plan">9. あなたの凸はこう決まる</a>
+                    <div class="help-toc-grp">運営</div>
                     <a href="#help-plan-ops">10. 凸プランを組む (運営)</a>
                     <a href="#help-remaining">11. ✓ 凸の記録 (運営)</a>
                     <a href="#help-finish-call">12. 締め凸検索 (運営)</a>
+                    <a href="#help-ops">15. 運営タブと運営担当</a>
+                    <div class="help-toc-grp">そのほか</div>
+                    <a href="#help-fururi">8. ふるり値の見方</a>
                     <a href="#help-notify">13. 通知を受け取る</a>
                     <a href="#help-analysis">14. 分析タブ</a>
-                    <a href="#help-ops">15. 運営タブと運営担当</a>
                     <a href="#help-data">16. データの流れ</a>
                     <a href="#help-updates">17. 更新履歴</a>
                     <a href="#help-faq">18. よくある質問</a>
                 </aside>
 
                 <div>
-                    <section id="help-overview" class="help-section">
-                        <h2>📘 1. しりすこPAD とは</h2>
+                    <div class="help-try">
+                        <div class="help-try-t">使い方を体験する</div>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
                             <span style="font-size:20px;">🎓</span>
                             <span style="flex:1;font-size:14px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります (2026-10 の 🧱 ブロック制の画面に合わせて更新)</span>
@@ -4391,6 +4412,10 @@
                                 <button class="tour-guide-launcher" onclick="startPractice('ops-day')">運営編・当日</button>
                             </span>
                         </div>
+                    </div>
+                    <div class="help-grp">はじめに</div>
+                    <section id="help-overview" class="help-section" data-sum="できることと、タブ・画面のつくり">
+                        <h2>📘 1. しりすこPAD とは</h2>
                         <p>NIKKE のユニオンレイドを<strong>メンバーと運営の両方</strong>から支えるアプリ (PWA) です。
                             狙いはひとつ、<strong>「計画した凸が計画どおりに消化され、いちど決めた約束があとから覆らない」</strong>こと。
                             順位や総与ダメを最大化することより、約束を守ることを優先して作られています。</p>
@@ -4411,8 +4436,7 @@
                             <li><strong>見た目</strong>: 設定タブで ライト / ダーク / 端末に合わせる を選べます</li>
                         </ul>
                     </section>
-
-                    <section id="help-raid-rules" class="help-section">
+                    <section id="help-raid-rules" class="help-section" data-sum="5 体のボス・レベル・1 日 3 凸のルール">
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> 2. ユニオンレイドの基本</h2>
                         <p>PAD が前提にしているルールです。</p>
                         <ul>
@@ -4427,8 +4451,8 @@
                             <p>だから<strong>同じ属性に3凸するより、キャラの被らない3編成で3属性</strong>のほうが総火力が伸びます。最適凸プランはこれを前提に組まれます。</p>
                         </div>
                     </section>
-
-                    <section id="help-mypage" class="help-section">
+                    <div class="help-grp">メンバー</div>
+                    <section id="help-mypage" class="help-section" data-sum="次にやること・参加可能時間・きょうの凸・登録された模擬・通知">
                         <h2>🏠 3. ホームの使い方 <span class="help-pill">メンバー</span></h2>
                         <p>ホームは「自分のことは全部ここ」の場所です。上から順に、いま必要なものが並びます。</p>
                         <h3>⓪ 📌 次にやること</h3>
@@ -4459,8 +4483,7 @@
                             <li>📨 受け取った通知 — 自分あて・全員あての通知が新しい順に残ります</li>
                         </ul>
                     </section>
-
-                    <section id="help-mock" class="help-section">
+                    <section id="help-mock" class="help-section" data-sum="模擬のスクショを Discord へ → 運営が登録">
                         <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬 (Discord に貼る) <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
                         <p>模擬戦 = 本戦と同じ条件で出せる「あなたの最高ダメージ」。<strong>1編成 = ダメージ1つ</strong>で、どのレベルにも使われます。</p>
                         <div class="help-flow-step">
@@ -4489,11 +4512,9 @@
                             <li>「誰の模擬か」を選んでスクショを選ぶ / カードに落とす → 読み取った属性・ダメージ・5 キャラを確かめて登録</li>
                             <li><strong>保存先 (編成① / ② / ③)</strong> を選べます。既定は「同じ編成ならその枠 / 空いている枠の若いほう (① → ② → ③) / 全部埋まっていればダメージの低い枠」。ボス 5 の 2 編成目は空いている枠へ</li>
                             <li>「届いていない人」に、5 属性そろっていない人と、18 時以降に出られるのにボス 5 の 2 編成目が無い人が並びます (〆 = その人が最初に出られるブロックの前。前のブロックに再編成時間があれば、その始まり = 例「〆 8:40 (B 午前の前)」)</li>
-                            <li>⚠ 運営除外 — 「この模擬は使わない」の印。その属性を登録し直すと自動で解除されます</li>
                         </ul>
                     </section>
-
-                    <section id="help-reserve" class="help-section">
+                    <section id="help-reserve" class="help-section" data-sum="凸先の希望は Discord で運営へ">
                         <h2>🔒 5. 凸先の希望 (予約) <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
                         <p>「このブロックに・この PT で凸したい」希望は <strong>Discord で運営に伝えます</strong>。<strong>希望がある人だけ</strong>で大丈夫です。無ければ運営が参加可能時間と凸数から割り当てます。2026-10-27 から、PAD の予約の画面はありません (運営が組むときに先に置く形になりました)。</p>
                         <h3>希望は Discord へ (メンバー)</h3>
@@ -4507,8 +4528,7 @@
                             <li>PAD から予約を出す・承認する画面はありません (希望は上のとおり 📌 で)</li>
                         </ul>
                     </section>
-
-                    <section id="help-real" class="help-section">
+                    <section id="help-real" class="help-section" data-sum="凸したら結果のスクショを Discord へ (✓ は運営が付ける)">
                         <h2>🗡️ 6. 凸したら Discord へ <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
                         <p>本番の凸が終わったら、<strong>結果の画面のスクショを Discord に貼る</strong>だけです。PAD では何も押しません。<strong>運営が Discord を見て ✓ を付けると</strong>、📅 レイド予定表 と ホームの凸に ✓ が出ます。</p>
                         <ul>
@@ -4524,8 +4544,7 @@
                             <li>数字を入れたいときだけ、下に畳んである <strong>📥 結果の取り込み</strong> (スクショからボス・ダメージ・使ったキャラを読み取って登録・<strong>⏰ 結果がまだの凸</strong> の一覧) を使います</li>
                         </ul>
                     </section>
-
-                    <section id="help-finisher" class="help-section">
+                    <section id="help-finisher" class="help-section" data-sum="締め凸の記録と「締」の印">
                         <h2>7. 締め凸 <span class="help-pill">メンバー</span></h2>
                         <p>締め凸 = ボスを倒し切る最後の凸。ゲームは残HPを超えたダメージを記録しないので、本来の出力より低い値が残ります。</p>
                         <ul>
@@ -4538,28 +4557,7 @@
                             <p>締め凸は<strong>運営が Discord で声をかけて</strong>決めます。声がかかったら Discord で返事をしてください。決まった凸は運営が盤に置き、配信と通知で届きます。</p>
                         </div>
                     </section>
-
-                    <section id="help-fururi" class="help-section">
-                        <h2>📐 8. ふるり値の見方</h2>
-                        <p>ふるり値は「同じ SLv に換算したとき、基準者 (ふるり) と比べてどれくらいダメージを出せるか」の指標です。</p>
-                        <ul>
-                            <li><strong>1.00</strong> = 同 SLv 換算で基準者と同等 / <strong>1.20</strong> = 約20%高い / <strong>0.80</strong> = 約20%低い</li>
-                        </ul>
-                        <h3>基準データ</h3>
-                        <p>直近に終わった本戦の凸3つ + 本戦で凸しなかった2属性の模擬戦。次のレイドが終わるまで<strong>基準は固定</strong>なので、月の途中で誰かが模擬を更新しても比較は公平なままです。</p>
-                        <h3>3つの基準モード (分析 › ふるり値)</h3>
-                        <ul>
-                            <li><strong>対ふるり (既定)</strong>: 基準者本人の各属性と直接比較</li>
-                            <li><strong>均整 (ふるり平均)</strong>: 基準者の5属性平均を共通の基準に。育成バランスの指針に</li>
-                            <li><strong>上位10名平均 (ユニオン)</strong>: 各属性で SLv 正規化済みダメージの上位10名平均を基準に。現実的な到達点が分かります</li>
-                        </ul>
-                        <div class="help-callout tip">
-                            <span class="ico">📏</span>
-                            <p>ふるり値は育成効率を見るための参考指標です。属性担当・締め凸・戦闘時間の差は考慮されません。過去の自分と比べるのに向いています。</p>
-                        </div>
-                    </section>
-
-                    <section id="help-plan" class="help-section">
+                    <section id="help-plan" class="help-section" data-sum="ブロック・凸数・模擬から、あなたの凸が組まれるしくみ">
                         <h2>9. あなたの凸はこう決まる <span class="help-pill">メンバー</span></h2>
                         <p>運営はレイドの日を<strong>ブロック</strong> (朝 / 午前 / 午後 / 夕方 / 夜 / 深夜) に分け、<strong>見通しのつくブロックまで</strong>を組んで決定します。レベルはブロックの頭でしか変わりません (朝で Lv1 の 5 体を倒したら、Lv2 は午前から。再編成時間に 5 体目が倒れたときも、次のブロックから)。先のブロックは見通しがついたら決定し直します。</p>
                         <p>算出は AI ではなく決まった手順の計算です。あなたに関係する材料は5つ:</p>
@@ -4577,8 +4575,8 @@
                             <li>⏱ 律速 — そのレベルの中でいちばん遅い時刻に置かれた凸の目印。その凸が終わるまで次のレベルに進めません</li>
                         </ul>
                     </section>
-
-                    <section id="help-plan-ops" class="help-section">
+                    <div class="help-grp">運営</div>
+                    <section id="help-plan-ops" class="help-section" data-sum="ブロックを押して置く → 残りを自動で → ✅ 決定">
                         <h2>🧮 10. 凸プランを組む <span class="help-pill">運営</span></h2>
                         <p>🧱 組む のタブの <strong>凸プランを組む</strong>。6 つのブロックの大きなボタン (何時〜何時・Lv・置いた凸の数・ボスの HP の帯) が並びます。</p>
                         <h3>① ブロックを押す → 置く → 自動</h3>
@@ -4597,8 +4595,7 @@
                             <li>決定は前の配信を消しません。「配信中止」は削除ではなく凍結 (メンバーには前の割当と「組み直し中」の帯)</li>
                         </ul>
                     </section>
-
-                    <section id="help-remaining" class="help-section">
+                    <section id="help-remaining" class="help-section" data-sum="Discord の結果を見て、盤の名前の札に ✓">
                         <h2>11. ✓ 凸の記録 <span class="help-pill">運営</span></h2>
                         <p>⚔️ 戦況の <strong>✓ 凸の記録</strong>。Discord に貼られた凸の結果を見て、決定の盤の名前の札を押して ✓ を付けます (<a href="#help-real">§6</a>)。</p>
                         <ul>
@@ -4608,8 +4605,7 @@
                             <li>⚔️ のタブの横の数字 = 確認していない凸 + 結果がまだの凸 (✓ を付けた凸は確認済みに数えます)</li>
                         </ul>
                     </section>
-
-                    <section id="help-finish-call" class="help-section">
+                    <section id="help-finish-call" class="help-section" data-sum="今打てる手と、待って打てる手を探す">
                         <h2>12. 締め凸検索 <span class="help-pill">運営</span></h2>
                         <p>⚔️ 戦況の <strong>締め凸検索</strong>。残 HP に対して「今打てる手」と「待って打てる手」を並べます。</p>
                         <ul>
@@ -4618,8 +4614,72 @@
                             <li>手詰まり (今も待つも無い) なら 🧱 組む で組み直します</li>
                         </ul>
                     </section>
-
-                    <section id="help-notify" class="help-section">
+                    <section id="help-ops" class="help-section" data-sum="運営担当・小タブ・当日の手順・👑 マスター">
+                        <h2>15. 運営タブと運営担当 <span class="help-pill">運営</span></h2>
+                        <h3>👑 運営担当</h3>
+                        <ul>
+                            <li>マスター運営 (ふるり) だけが、👑 マスターのタブで運営担当を任命できます</li>
+                            <li>任命された人は名乗った時点で常に運営画面。マスターだけ ホームの「👤 メンバーの見え方で見る」で行き来できます</li>
+                            <li>運営の自分の参加可能時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録します (ホームの ⏰ のカードは見るだけ)</li>
+                        </ul>
+                        <h3>運営タブの中のタブ (カードはいつも同じ場所)</h3>
+                        <ul>
+                            <li><strong>👥 メンバー</strong>: メンバー状況 (模擬 / SLv / 時間帯・凸数 / 通知 / B5×2) と催促 ・ 📸 模擬の取り込み ・ 一斉通知</li>
+                            <li><strong>🧱 組む</strong>: 凸プランを組む (ブロックのボタン・ピース・自動・✅ 決定)</li>
+                            <li><strong>⚔️ 戦況</strong>: ボス状況 (HP の更新) ・ 締め凸検索 ・ ✓ 凸の記録 ・ 📥 結果の取り込み (畳んである)</li>
+                            <li><strong>👑 マスター</strong> (ふるりだけ): シーズン制御・育成データ・バックアップ・任命・復元・版のしめ切り</li>
+                        </ul>
+                        <p>日によって変わるのは<strong>開いたときのタブ</strong> (前日まで 👥 / 当日 ⚔️) と、いちばん上の「いちばん急ぐこと」だけです。タブの横の数字は手を打つべき件数。</p>
+                        <h3>🗓 当日の 1 ブロックの手順</h3>
+                        <p><strong>⏱ 再編成時間</strong> (各ブロックの最後の数分・👑 🧱 ブロックの設定で決める) にやります。いちばん上に「⏱ 再編成時間 — B を組む」が出て、済んでいない手順へ案内します。再編成時間に入ると 🧱 組む は次のブロックになり、凸の時間が終わったブロックは「⏱ 再編成中」(済んでいない凸は次のブロックのピースに出ます)。⚔️ の結果がまだの凸もこの時間から並びます。</p>
+                        <ol>
+                            <li>⚔️ ボスの HP をゲームの画面と合わせる — BlaBlaLINK のボス一覧のスクショを 選ぶ / 落とす / 貼り付け (PC) → いまの値との差分が行に出る → 「⏬ 読み取った値を保存」</li>
+                            <li>✓ 凸の記録 — Discord に結果のスクショを貼った人の名前の札を押して ✓ (凸しなかった人は ⚔️ 結果の取り込みで「凸していない」に)</li>
+                            <li>🧱 いまのブロックを組み直す・先のブロックを組む (📌 → 🧮 残りを自動で組む)。過ぎたブロックに残った 📌 (仮置き) は、ピースを押すと確かめて外せます (凸したかは ✓ 凸の記録で)</li>
+                            <li>✅ 決定し直す (変わった人に通知) — Discord の運営スレに 1 行</li>
+                            <li>🏁 倒し切れないボスがあれば締め凸検索で探して Discord で声をかける</li>
+                        </ol>
+                        <p>練習: ヘルプの先頭の 🎮 練習する の「運営編・前日 / 当日」で、本物の画面のまま手順を通せます。</p>
+                        <ul>
+                            <li><strong>決めたことは守る</strong> — 組み直しても 📌 と済んだ ✓ は動きません。決定し直すと変わった人に通知が届くので、動かすときは本人にも Discord で一言</li>
+                            <li><strong>障害時</strong> — 📸 共有画像と Discord で手動運用へ。復旧後に ✓ 凸の記録でまとめて ✓</li>
+                            <li><strong>凍結</strong> — レイド当日はアプリを改修しない。「シーズン作成」も当日は触らない</li>
+                        </ul>
+                        <h3>👑 マスターのタブ</h3>
+                        <ul>
+                            <li><strong>アプリの版のしめ切り</strong> (互換ゲート) — 古い版のアプリに 凸プランの表示・凸の登録・配信 をさせない。全員に行き渡ってから締めます</li>
+                            <li><strong>👑 運営担当</strong> の任命 / <strong>メンバー管理</strong> (改名・脱退・復活) / <strong>復元 (巻き戻し)</strong> — 全員を巻き戻す最高危険操作</li>
+                            <li>メンテナンス: 通知状況 ・ アクティビティ ・ キャラマスタ ・ バックアップ保存</li>
+                            <li><strong>🧱 ブロックの設定</strong> — 区切り (A・B・C…) と <strong>⏱ 再編成時間</strong> (なし / 10 / 15 / 20 / 30 分・押すとすぐ保存。新しい本番シーズンは 20 分から)。区切りは凸数・予約・決定があると変えられませんが、再編成時間はいつでも変えられます (当日は確かめてから)</li>
+                        </ul>
+                        <h3>🧬 育成データの取り込み (👑)</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">0</div><div><strong>どのレイドの育成か</strong>を選ぶ (既定は凸記録のある最新)。レイドのあとに入った人のぶんも、そのレイドの記録として取り込めます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>識別子のひも付け</strong>: BlaBlaLINK のリンク (?uid=…) をそのまま貼る。入れ替えが多いときは <strong>📋 名簿を読み取るブックマークレット</strong> — BlaBlaLINK にログインした状態で実行し、出てきた「名前 と ID」を貼って名前で突き合わせます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>相手を絞る</strong>: 全員 / 未取り込みの人だけ (準備段階の既定) / 選んだ人 → 取り込み用のブックマークレットをコピー → BlaBlaLINK で開発者ツールを閉じたまま実行。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>出てきた <code>SPG1-</code> の文字列を貼って<strong>取り込む</strong>。保存は追加・更新だけ (消しません)。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>取れなかった人と理由。非公開の人には <strong>📣 公開をお願いする</strong> で本人に届きます。</div></div>
+                    </section>
+                    <div class="help-grp">そのほか</div>
+                    <section id="help-fururi" class="help-section" data-sum="同じ SLv に換算した強さの物差し">
+                        <h2>📐 8. ふるり値の見方</h2>
+                        <p>ふるり値は「同じ SLv に換算したとき、基準者 (ふるり) と比べてどれくらいダメージを出せるか」の指標です。</p>
+                        <ul>
+                            <li><strong>1.00</strong> = 同 SLv 換算で基準者と同等 / <strong>1.20</strong> = 約20%高い / <strong>0.80</strong> = 約20%低い</li>
+                        </ul>
+                        <h3>基準データ</h3>
+                        <p>直近に終わった本戦の凸3つ + 本戦で凸しなかった2属性の模擬戦。次のレイドが終わるまで<strong>基準は固定</strong>なので、月の途中で誰かが模擬を更新しても比較は公平なままです。</p>
+                        <h3>3つの基準モード (分析 › ふるり値)</h3>
+                        <ul>
+                            <li><strong>対ふるり (既定)</strong>: 基準者本人の各属性と直接比較</li>
+                            <li><strong>均整 (ふるり平均)</strong>: 基準者の5属性平均を共通の基準に。育成バランスの指針に</li>
+                            <li><strong>上位10名平均 (ユニオン)</strong>: 各属性で SLv 正規化済みダメージの上位10名平均を基準に。現実的な到達点が分かります</li>
+                        </ul>
+                        <div class="help-callout tip">
+                            <span class="ico">📏</span>
+                            <p>ふるり値は育成効率を見るための参考指標です。属性担当・締め凸・戦闘時間の差は考慮されません。過去の自分と比べるのに向いています。</p>
+                        </div>
+                    </section>
+                    <section id="help-notify" class="help-section" data-sum="端末ごとの設定・届く通知・来ないとき">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
                         <p>運営が決定した「あなたの凸」(決まりました / 変わりました / 外れました)・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
@@ -4669,8 +4729,7 @@
                         </ol>
                         <p>届いた通知は ホームの <strong>📨 受け取った通知</strong> で読み返せます。</p>
                     </section>
-
-                    <section id="help-analysis" class="help-section">
+                    <section id="help-analysis" class="help-section" data-sum="実績・ふるり値・育成・シミュレータ・GB比較">
                         <h2><span data-sp-icon="flask" data-sp-size="17"></span> 14. 分析タブ</h2>
                         <p>上のセグメントで 📊 実績 / ⚡ ふるり値 / 🧬 育成 / 🧪 シミュレータ / 🌏 GB比較 を切り替えます。</p>
                         <h3>📊 実績</h3>
@@ -4697,57 +4756,10 @@
                         <h3>🌏 GB比較</h3>
                         <p>グローバル版のふるり値チェッカーに集まった同じ月・同じボスのデータと、うちのユニオンを属性ごとに比べます。</p>
                     </section>
-
-                    <section id="help-ops" class="help-section">
-                        <h2>15. 運営タブと運営担当 <span class="help-pill">運営</span></h2>
-                        <h3>👑 運営担当</h3>
-                        <ul>
-                            <li>マスター運営 (ふるり) だけが、👑 マスターのタブで運営担当を任命できます</li>
-                            <li>任命された人は名乗った時点で常に運営画面。マスターだけ ホームの「👤 メンバーの見え方で見る」で行き来できます</li>
-                            <li>運営の自分の参加可能時間も、ほかのメンバーと同じく 👥 メンバー状況の自分の行の ⏰ から登録します (ホームの ⏰ のカードは見るだけ)</li>
-                        </ul>
-                        <h3>運営タブの中のタブ (カードはいつも同じ場所)</h3>
-                        <ul>
-                            <li><strong>👥 メンバー</strong>: メンバー状況 (模擬 / SLv / 時間帯・凸数 / 通知 / B5×2) と催促 ・ 📸 模擬の取り込み ・ 一斉通知</li>
-                            <li><strong>🧱 組む</strong>: 凸プランを組む (ブロックのボタン・ピース・自動・✅ 決定)</li>
-                            <li><strong>⚔️ 戦況</strong>: ボス状況 (HP の更新) ・ 締め凸検索 ・ ✓ 凸の記録 ・ 📥 結果の取り込み (畳んである)</li>
-                            <li><strong>👑 マスター</strong> (ふるりだけ): シーズン制御・育成データ・バックアップ・任命・復元・版のしめ切り</li>
-                        </ul>
-                        <p>日によって変わるのは<strong>開いたときのタブ</strong> (前日まで 👥 / 当日 ⚔️) と、いちばん上の「いちばん急ぐこと」だけです。タブの横の数字は手を打つべき件数。</p>
-                        <h3>🗓 当日の 1 ブロックの手順</h3>
-                        <p><strong>⏱ 再編成時間</strong> (各ブロックの最後の数分・👑 🧱 ブロックの設定で決める) にやります。いちばん上に「⏱ 再編成時間 — B を組む」が出て、済んでいない手順へ案内します。再編成時間に入ると 🧱 組む は次のブロックになり、凸の時間が終わったブロックは「⏱ 再編成中」(済んでいない凸は次のブロックのピースに出ます)。⚔️ の結果がまだの凸もこの時間から並びます。</p>
-                        <ol>
-                            <li>⚔️ ボスの HP をゲームの画面と合わせる — BlaBlaLINK のボス一覧のスクショを 選ぶ / 落とす / 貼り付け (PC) → いまの値との差分が行に出る → 「⏬ 読み取った値を保存」</li>
-                            <li>✓ 凸の記録 — Discord に結果のスクショを貼った人の名前の札を押して ✓ (凸しなかった人は ⚔️ 結果の取り込みで「凸していない」に)</li>
-                            <li>🧱 いまのブロックを組み直す・先のブロックを組む (📌 → 🧮 残りを自動で組む)。過ぎたブロックに残った 📌 (仮置き) は、ピースを押すと確かめて外せます (凸したかは ✓ 凸の記録で)</li>
-                            <li>✅ 決定し直す (変わった人に通知) — Discord の運営スレに 1 行</li>
-                            <li>🏁 倒し切れないボスがあれば締め凸検索で探して Discord で声をかける</li>
-                        </ol>
-                        <p>練習: ヘルプの先頭の 🎮 練習する の「運営編・前日 / 当日」で、本物の画面のまま手順を通せます。</p>
-                        <ul>
-                            <li><strong>決めたことは守る</strong> — 組み直しても 📌 と済んだ ✓ は動きません。決定し直すと変わった人に通知が届くので、動かすときは本人にも Discord で一言</li>
-                            <li><strong>障害時</strong> — 📸 共有画像と Discord で手動運用へ。復旧後に ✓ 凸の記録でまとめて ✓</li>
-                            <li><strong>凍結</strong> — レイド当日はアプリを改修しない。「シーズン作成」も当日は触らない</li>
-                        </ul>
-                        <h3>👑 マスターのタブ</h3>
-                        <ul>
-                            <li><strong>アプリの版のしめ切り</strong> (互換ゲート) — 古い版のアプリに 凸プランの表示・凸の登録・配信 をさせない。全員に行き渡ってから締めます</li>
-                            <li><strong>👑 運営担当</strong> の任命 / <strong>メンバー管理</strong> (改名・脱退・復活) / <strong>復元 (巻き戻し)</strong> — 全員を巻き戻す最高危険操作</li>
-                            <li>メンテナンス: 通知状況 ・ アクティビティ ・ キャラマスタ ・ バックアップ保存</li>
-                            <li><strong>🧱 ブロックの設定</strong> — 区切り (A・B・C…) と <strong>⏱ 再編成時間</strong> (なし / 10 / 15 / 20 / 30 分・押すとすぐ保存。新しい本番シーズンは 20 分から)。区切りは凸数・予約・決定があると変えられませんが、再編成時間はいつでも変えられます (当日は確かめてから)</li>
-                        </ul>
-                        <h3>🧬 育成データの取り込み (👑)</h3>
-                        <div class="help-flow-step"><div class="help-flow-num">0</div><div><strong>どのレイドの育成か</strong>を選ぶ (既定は凸記録のある最新)。レイドのあとに入った人のぶんも、そのレイドの記録として取り込めます。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>識別子のひも付け</strong>: BlaBlaLINK のリンク (?uid=…) をそのまま貼る。入れ替えが多いときは <strong>📋 名簿を読み取るブックマークレット</strong> — BlaBlaLINK にログインした状態で実行し、出てきた「名前 と ID」を貼って名前で突き合わせます。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>相手を絞る</strong>: 全員 / 未取り込みの人だけ (準備段階の既定) / 選んだ人 → 取り込み用のブックマークレットをコピー → BlaBlaLINK で開発者ツールを閉じたまま実行。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>出てきた <code>SPG1-</code> の文字列を貼って<strong>取り込む</strong>。保存は追加・更新だけ (消しません)。</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>取れなかった人と理由。非公開の人には <strong>📣 公開をお願いする</strong> で本人に届きます。</div></div>
-                    </section>
-
-                    <section id="help-data" class="help-section">
+                    <section id="help-data" class="help-section" data-sum="どこで入れたものが、どこに出るか">
                         <h2>16. データの流れ</h2>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div>⏰ 参加可能時間 + 凸数 (Discord の報告を運営が登録・今期の確認) → 運営の算出 (ブロックの人・凸数の上限)・催促の対象</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>模擬 (Discord) → 運営の 📸 模擬の取り込み → 算出・締め凸検索・ふるり値レーダー・ホームの 📘 登録された模擬</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>模擬 (Discord) → 運営の 📸 模擬の取り込み → 算出・締め凸検索・ホームの 📘 登録された模擬</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div>凸先の希望 (Discord) → 🧱 凸プランを組む (📌 → 残りを自動) → ✅ 決定 (割当のある人に通知) → 各自の 📅 レイド予定表 (✅ 確認しました)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div>凸の結果 (Discord) → 運営の ✓ 凸の記録 (残り凸と使ったキャラが減る) + 🎯 BlaBlaLINK の画像で HP を合わせる → 撃破やレベル開放の通知 → 次のブロックを組む</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>レイド終了 → 月次の JSON にスナップショット (次のふるり値の基準・確定 SLv の同期) → 🧬 育成データの取り込み → 育成くらべ</div></div>
@@ -4756,14 +4768,12 @@
                             <p>ふるり値の基準は月の途中で変わりません。誰かが模擬を更新しても、その人のふるり値だけ動きます。</p>
                         </div>
                     </section>
-
-                    <section id="help-updates" class="help-section">
+                    <section id="help-updates" class="help-section" data-sum="画面や仕組みが変わった記録">
                         <h2>🆕 17. 更新履歴</h2>
                         <p>画面や仕組みが変わったときの記録です (新しい順)。新しい項目があるときは、ホームに「🆕 新しくなったこと」として出ます。</p>
                         <div id="helpReleaseNotes"><p>読み込み中…</p></div>
                     </section>
-
-                    <section id="help-faq" class="help-section">
+                    <section id="help-faq" class="help-section" data-sum="困ったときの答え">
                         <h2>❓ 18. よくある質問</h2>
                         <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを貼る？</h3>
                         <p>いちばん高いダメージのスクショを Discord に貼ってください。キャラの被らない別編成なら 2 つ目の編成として登録できます (<a href="#help-mock">§4</a>)。</p>
@@ -4776,7 +4786,7 @@
                         <h3>Q. 通知が来ません</h3>
                         <p>あなた宛ての通知は時間帯に関係なく届きます。届かないなら端末側の設定です。<a href="#help-notify">§13</a> のチェックリストを上から。</p>
                         <h3>Q. 参加可能時間を毎回入れ直すのですか？</h3>
-                        <p>出られる時間は残ります。シーズンごとの <strong>今期の確認</strong> (この時間で参加します / 今回は難しい) は、Discord の報告を見た運営が登録します — 変わるときだけ Discord で一言。PAD から入れる設定 (従来の画面) の人は、自分で今期の確認を押してください (<a href="#help-mypage">§3</a>)。</p>
+                        <p>出られる時間は残ります。シーズンごとの <strong>今期の確認</strong> (この時間で参加します / 今回は難しい) は、Discord の報告を見た運営が登録します — 変わるときだけ Discord で一言。</p>
                         <h3>Q. 最適プランで Lv3 まで届きません</h3>
                         <p>いまの模擬のダメージでは火力不足という判定です。届かないレベルではオーバーキルの出ない配り方に切り替わります。模擬や SLv を最新にすると届くことがあります。</p>
                         <h3>Q. 「⏱ 律速」って？</h3>
@@ -10459,7 +10469,7 @@
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🆕 新しくなったこと</div>
                     <button type="button" onclick="handleReleaseNotesDismiss()" style="border:none;border-radius:999px;padding:6px 12px;font:inherit;font-size:11px;font-weight:800;background:var(--s2);color:var(--t-ink);cursor:pointer;">読んだ</button>
                 </div>${show.map(item).join('')}
-                <p style="margin:10px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);">これまでの更新は <a href="#help-updates" onclick="switchTab('help'); setTimeout(() => document.getElementById('help-updates')?.scrollIntoView({ behavior: 'smooth' }), 80); return false;" style="color:var(--ops);font-weight:800;">ヘルプ › 更新履歴</a> に。</p>`;
+                <p style="margin:10px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);">これまでの更新は <a href="#help-updates" onclick="openHelpSection('help-updates'); return false;" style="color:var(--ops);font-weight:800;">ヘルプ › 更新履歴</a> に。</p>`;
             card.style.display = '';
         }
         function handleReleaseNotesDismiss() {
@@ -11406,7 +11416,57 @@
         }
 
         // ヘルプタブへジャンプ + 任意のセクション ID へスムーススクロール
-        function openHelpFromSettings(sectionId) {
+        // ===== ヘルプの章の開け閉め (段階 3・2026-11-26 ふるり「ヘルプを章ごとに畳む」・見本 https://claude.ai/artifact/DMs2NK9zgDBvDDUwVn1DNN の ②) =====
+        //   章 (section.help-section) の見出しを開け閉めのボタンにし、本文を .help-body に包む。最初は全部閉じる・いくつでも開ける (閉じるのは自分で)。
+        //   ★ 章へ飛ぶ所 (目次・本文の「§5」・設定 / 更新履歴のカードからの入口) は openHelpSection が開いてから寄せる (閉じたままの章へは飛べない)
+        function _initHelpChapters() {
+            document.querySelectorAll('#tab-help section.help-section').forEach(sec => {
+                if (sec.querySelector(':scope > .help-body')) return;   // 1 回だけ
+                const h2 = sec.querySelector(':scope > h2');
+                if (!h2) return;
+                const body = document.createElement('div');
+                body.className = 'help-body';
+                body.id = sec.id + '-body';
+                while (h2.nextSibling) body.appendChild(h2.nextSibling);
+                sec.appendChild(body);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'help-head';
+                btn.setAttribute('aria-expanded', 'false');
+                btn.setAttribute('aria-controls', body.id);
+                const t = document.createElement('span'); t.className = 'help-head-t';
+                while (h2.firstChild) t.appendChild(h2.firstChild);   // 見出しの中身 (絵・番号・名前・メンバー / 運営の札) はそのまま
+                btn.appendChild(t);
+                if (sec.dataset.sum) { const sm = document.createElement('span'); sm.className = 'help-head-s'; sm.textContent = sec.dataset.sum; btn.appendChild(sm); }
+                btn.addEventListener('click', () => _helpSetOpen(sec, sec.classList.contains('closed')));
+                h2.appendChild(btn);
+                sec.classList.add('closed');
+            });
+        }
+        function _helpSetOpen(sec, open) {
+            if (!sec) return;
+            sec.classList.toggle('closed', !open);
+            sec.querySelector(':scope > h2 > .help-head')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        // 章を開いて、そこまで寄せる (ヘルプのタブでなければ切り替える)
+        function openHelpSection(sectionId) {
+            if (!sectionId) { if (typeof switchTab === 'function') switchTab('help'); return; }
+            if (typeof switchTab === 'function' && !document.getElementById('tab-help')?.classList.contains('active')) switchTab('help');
+            _initHelpChapters();
+            _helpSetOpen(document.getElementById(sectionId), true);
+            openHelpFromSettings(sectionId, { opened: true });
+        }
+        // 目次・本文の「§5」などのリンク (#help-…) は、ブラウザに任せず章を開いてから寄せる
+        document.addEventListener('click', (e) => {
+            const a = e.target && e.target.closest ? e.target.closest('a[href^="#help-"]') : null;
+            if (!a) return;
+            const id = a.getAttribute('href').slice(1);
+            if (!document.getElementById(id)?.classList.contains('help-section')) return;
+            e.preventDefault();
+            openHelpSection(id);
+        });
+        function openHelpFromSettings(sectionId, o = {}) {
+            if (!o.opened && sectionId) { openHelpSection(sectionId); return; }   // 章を開いてから (下の寄せる処理は openHelpSection から戻ってくる)
             if (typeof switchTab === 'function') switchTab('help');
             if (!sectionId) return;
             // ヘルプタブの DOM が描画されてからスクロール
@@ -20435,6 +20495,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
+            _initHelpChapters();   // ヘルプの章を畳む (段階 3)
             initSpIcons();   // data-sp-icon の SVG 流し込み
             _watchSpIcons();  // 以後の動的描画分も自動適用
             _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示

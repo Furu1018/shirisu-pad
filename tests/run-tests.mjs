@@ -11688,9 +11688,25 @@ console.log('\ngrowthDomain:');
         // 目次のリンク先が全部ある / 章のぶんだけ目次がある (章を足したら目次も足す)
         const toc = html.match(/<aside class="help-toc" id="helpToc">[\s\S]*?<\/aside>/)?.[0] || '';
         const links = [...toc.matchAll(/href="#(help-[a-z-]+)"/g)].map(m => m[1]);
-        const ids = [...html.matchAll(/<section id="(help-[a-z-]+)" class="help-section">/g)].map(m => m[1]);
+        const ids = [...html.matchAll(/<section id="(help-[a-z-]+)" class="help-section"[^>]*>/g)].map(m => m[1]);
         assert.deepEqual(links, ids, '目次と章の並びが一致していない');
         assert.equal(ids.length, 18, '章の数が 18 でない');
+        // 段階 3 (2026-11-26 ふるり「ヘルプを章ごとに畳む」): 章は はじめに / メンバー / 運営 / そのほか の 4 組 (番号は今のまま)・どの章にも 1 行の要約・練習とガイドの入口は上の「使い方を体験する」
+        const grps = [...html.matchAll(/<div class="help-grp">([^<]+)<\/div>/g)].map(m => m[1]);
+        assert.deepEqual(grps, ['はじめに', 'メンバー', '運営', 'そのほか'], 'ヘルプの組が はじめに / メンバー / 運営 / そのほか でない');
+        assert.deepEqual([...toc.matchAll(/<div class="help-toc-grp">([^<]+)<\/div>/g)].map(m => m[1]), grps, '目次の組が章の組と合わない');
+        assert.equal((html.match(/<section id="help-[a-z-]+" class="help-section" data-sum="[^"]+">/g) || []).length, 18, '1 行の要約 (data-sum) の無い章がある');
+        assert.ok(/<div class="help-try">\s*<div class="help-try-t">使い方を体験する<\/div>[\s\S]*?onclick="startTour\(\)"[\s\S]*?onclick="startPractice\('member'\)"[\s\S]*?<div class="help-grp">はじめに<\/div>/.test(html), '練習とガイドの入口が章の上 (使い方を体験する) に無い');
+        const initH = html.match(/function _initHelpChapters\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/btn\.setAttribute\('aria-expanded', 'false'\);/.test(initH) && /sec\.classList\.add\('closed'\);/.test(initH) && /btn\.addEventListener\('click', \(\) => _helpSetOpen\(sec, sec\.classList\.contains\('closed'\)\)\);/.test(initH), '章を閉じて並べ、見出しで開け閉めしていない');
+        assert.ok(/\.help-section\.closed > \.help-body \{ display: none; \}/.test(html), '閉じた章の本文を隠していない');
+        assert.ok(/_initSheetSwipeDismiss\(\);\s*\n\s*_initHelpChapters\(\);/.test(html), '起動で章を畳んでいない');
+        //   章へ飛ぶ所は開いてから: 目次・本文の「§5」(#help-… のリンク)・設定の入口 (openHelpFromSettings)・更新履歴のカード
+        assert.ok(/closest\('a\[href\^="#help-"\]'\)/.test(html) && /e\.preventDefault\(\);\s*\n\s*openHelpSection\(id\);/.test(html), '#help- のリンクで章を開いていない (閉じた章へ飛べない)');
+        assert.ok(/if \(!o\.opened && sectionId\) \{ openHelpSection\(sectionId\); return; \}/.test(html), '設定からの入口で章を開いていない');
+        assert.ok(/onclick="openHelpSection\('help-updates'\); return false;"/.test(html), '更新履歴のカードからの入口で章を開いていない');
+        //   古くなった言い方 (撤去した機能) を残さない
+        for (const gone of ['⚠ 運営除外', 'ふるり値レーダー', '(従来の画面) の人は']) assert.ok(!html.includes(gone), 'ヘルプに撤去した機能の言い方が残っている: ' + gone);
         // 2026-09 に入ったものが章になっている (予約 / 本人向けのプランの読み方 / 運営向けの算出 / 分析)
         for (const id of ['help-reserve', 'help-plan', 'help-plan-ops', 'help-analysis', 'help-ops']) assert.ok(ids.includes(id), id + ' が無い');
         // 本文中の #help- リンクも切れていない (FAQ からの参照など)
