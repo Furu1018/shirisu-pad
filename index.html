@@ -5630,7 +5630,7 @@
         <div class="player-select-content pad-dlg-box">
             <h2 id="padDialogTitle" hidden></h2>
             <p id="padDialogMsg" class="pad-dlg-msg"></p>
-            <input id="padDialogInput" class="player-select-search" type="text" autocomplete="off" hidden>
+            <input id="padDialogInput" class="player-select-search" type="text" autocomplete="off" aria-labelledby="padDialogMsg" hidden>
             <div class="pad-dlg-btns">
                 <button type="button" id="padDialogCancel" class="pad-dlg-btn sub">キャンセル</button>
                 <button type="button" id="padDialogOk" class="pad-dlg-btn main">OK</button>
@@ -20582,7 +20582,11 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             ok.classList.toggle('danger', !!req.danger);
             cancel.textContent = req.cancel || 'キャンセル';
             cancel.hidden = req.kind === 'alert';
-            req.focusBack = document.activeElement;
+            // 読み上げの名前: 題があれば題・無ければ文 (空で hidden の見出しを名前にしない)
+            modal.setAttribute('aria-labelledby', req.title ? 'padDialogTitle' : 'padDialogMsg');
+            // 閉じたあとに焦点を戻す先: 列の 2 つ目以降は 1 つ目の戻り先を引き継ぐ (いまの焦点はシートの中の OK = 閉じると消える: Codex 監査)
+            const act = document.activeElement;
+            req.focusBack = req.focusBack0 || (act && modal.contains(act) ? null : act);
             modal.classList.add('open');
             setTimeout(() => { if (_padDlgState().cur !== req) return; const f = req.kind === 'prompt' ? input : ok; try { f.focus({ preventScroll: true }); if (f === input) input.select(); } catch { /* noop */ } }, 30);
         }
@@ -20593,7 +20597,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const modal = document.getElementById('padDialog');
             if (modal) modal.classList.remove('open');
             const back = req.focusBack;
-            if (back && back.isConnected && typeof back.focus === 'function' && !st.queue.length) { try { back.focus({ preventScroll: true }); } catch { /* noop */ } }
+            if (st.queue.length) { if (back && !st.queue[0].focusBack0) st.queue[0].focusBack0 = back; }   // 列の次へ戻り先を渡す (最後に閉じたとき元のボタンへ)
+            else if (back && back.isConnected && typeof back.focus === 'function') { try { back.focus({ preventScroll: true }); } catch { /* noop */ } }
             req.resolve(value);
             _padDlgNext();
         }

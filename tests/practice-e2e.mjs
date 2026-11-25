@@ -64,6 +64,7 @@ async function openPage({ width, height, mobile }) {
         if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') page.errors.push('console.error: ' + m.params.args.map(a => a.value ?? a.description ?? '').join(' '));
         if (m.method === 'Network.requestWillBeSent') page.net.push({ method: m.params.request.method, url: m.params.request.url });
         if (m.method === 'Page.frameNavigated' && !m.params.frame.parentId) page.navs.push(`${new Date().toISOString().slice(11, 23)} → ${m.params.frame.url.replace(/^https?:\/\/[^/]+/, '')}`);
+        if (m.method === 'Runtime.bindingCalled' && m.params.name === '__e2eDialog') page.dialogs.push(m.params.payload);   // アプリの確認 (#padDialog) の文 — 下の仕込みが送る (ページの外に残す = 読み込み直しで消えない)
         if (m.method === 'Page.javascriptDialogOpening') {   // 画面の confirm / alert は「はい」で進める (本物の画面が出す確認)
             page.dialogs.push(m.params.message);
             ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: true }, sessionId: m.sessionId }));
@@ -75,9 +76,11 @@ async function openPage({ width, height, mobile }) {
     const S = (method, params) => send(method, params, sessionId);
     await S('Page.enable'); await S('Runtime.enable'); await S('Network.enable');
     // アプリの確認 (#padDialog = padAlert / padConfirm / padPrompt・2026-11-25 からブラウザの confirm の代わり) も「はい」で進める — 上のブラウザのダイアログと同じ扱い。
-    //   読み込み直し (練習の始め・やり直し) のたびに入るよう、新しい文書ごとに仕込む。出た文は window.__padDialogs に残す (失敗の切り分け用)
+    //   読み込み直し (練習の始め・やり直し) のたびに入るよう、新しい文書ごとに仕込む。出た文はバインディングでテストへ送り、ブラウザのダイアログと同じ page.dialogs に積む
+    //   (「やめる前に確かめた」の見張りが読む。ページの中に残すと、やめて読み込み直した時点で消える)
+    await S('Runtime.addBinding', { name: '__e2eDialog' });
     await S('Page.addScriptToEvaluateOnNewDocument', { source: `setInterval(() => { const d = document.getElementById('padDialog'); if (!d || !d.classList.contains('open') || d.__e2e) return; d.__e2e = true;
-        (window.__padDialogs = window.__padDialogs || []).push((document.getElementById('padDialogMsg') || {}).textContent || '');
+        try { window.__e2eDialog(String((document.getElementById('padDialogMsg') || {}).textContent || '')); } catch (_) { /* バインディングが無い */ }
         setTimeout(() => { d.__e2e = false; const ok = document.getElementById('padDialogOk'); if (ok && d.classList.contains('open')) ok.click(); }, 80); }, 100);` });
     await S('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile });
     page.S = S;
