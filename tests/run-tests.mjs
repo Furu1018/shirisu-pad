@@ -4648,7 +4648,12 @@ console.log('\nopsStageDomain:');
     test('★ 配線: 運営タブは段階で出し分ける (段階ヘッダ・ヒーロー・チェックリスト・その他・設定タブの運営ブロックの移動)', () => {
         assert.ok(html.includes('<script defer src="./js/domain/opsStage.js"></script>'), 'opsStage.js を読み込んでいない');
         const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/id="opsStageBar"/.test(init) && /id="opsStageHero"/.test(init) && /id="opsStageList"/.test(init), '段階ヘッダ・ヒーロー・チェックリストの置き場が無い');
+        assert.ok(/id="opsStageHero"/.test(init) && /id="opsStageList"/.test(init), 'ヒーロー・チェックリストの置き場が無い');
+        //   段階の札と 🛠 は見出し (#opsHead) の 2 行目 / 右 (段階 3・2026-11-26 ふるり「運営タブの頭を詰める」)。手で切り替える所は 👑 › シーズン制御 (#opsStageOverride・マスターだけ)
+        assert.ok(/<div id="opsHead"[\s\S]{0,900}?<span id="opsStageBar" data-ops-only><\/span>[\s\S]{0,300}?<button class="dc-nav-chip" id="opsModeBtn"/.test(html), '段階の札・🛠 が見出しに無い');
+        assert.ok(!/id="opsStageBar"/.test(init) && !/id="opsModeBtn"/.test(init), '段階の札・🛠 を見出しの下 (#opsTopBar) にも作っている (二重)');
+        assert.ok(/<div id="opsStageOverride" data-ops-only data-master-only><\/div>/.test(html), '段階を手で切り替える所が 👑 › シーズン制御 に無い (マスターだけ)');
+        assert.ok(!/<div class="ops-stage-sub">/.test(html) && !/自動判定 · \$\{esc\(dom\.STAGE_SUB\[st\.stage\]\)\}<\/span>/.test(html), '見出しに「自動判定 …」の行が残っている');
         assert.ok(/_initOpsEtc\(\);/.test(init) && /_renderOpsStage\(\);/.test(init), '初期化で その他 と段階を描いていない');
         const etc = html.match(/function _initOpsEtc\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/#tab-settings \.dc-card\[data-ops-only\]/.test(etc), '設定タブの運営ブロックを その他 へ移していない');
@@ -9564,7 +9569,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/const seq = \+\+_todayBlocksSeq;\s*\n\s*if \(!identity\?\.id \|\| !rbd\) \{ card\.style\.display = 'none'; return; \}/.test(fn), '名乗りなしの経路で世代を進めていない (前の人の遅れた描画が出る)');
         assert.ok(/if \(seq !== _todayBlocksSeq \|\| String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(fn), '完了時に名乗っている人を照合していない');
         assert.ok(/renderMyNextAction\(identity\);\s*\n\s*\}\s*\n\s*renderMyTodayBlocks\(null\); renderMyMocksReadonly\(null\);   \/\/ 📅 古い指示を残さない/.test(pub), '互換ゲートで読めない配信のときに消していない (きょうの凸 + 登録された模擬)');
-        assert.ok(/まだ決まっていません \(運営がこのブロックの前に配信します\)/.test(fn) && /このブロックに割当はありません/.test(fn) && /凸なし/.test(fn), '3 つの空の言い方が無い');
+        assert.ok(/このブロックに割当はありません/.test(fn) && /凸なし/.test(fn), '空の言い方 (済んだ = 凸なし / 割当なし) が無い');
+        //   まだ決まっていないブロックは 1 行にまとめる (段階 3・2026-11-26 ふるり): 決定のあとと同じ「まだ決まっていない: A 朝〜F 深夜 (運営が組んで決定します)」・いまの印は上に残す
+        assert.ok(!/まだ決まっていません \(運営がこのブロックの前に配信します\)/.test(fn), 'まだ決まっていないブロックを 1 行ずつ並べている (段階 3 で 1 行にまとめた)');
+        assert.ok(/if \(!r\.done\.length && !r\.planned\.length && r\.state !== 'past' && !r\.covered\) \{ und\.push\(r\); return ''; \}/.test(fn) && /まだ決まっていない: \$\{label\} \(運営が組んで決定します\)/.test(fn) && /\+ html \+ undHtml \+/.test(fn), 'まだ決まっていないブロックを 1 行にまとめていない');
+        assert.ok(/if \(last && last\.to\.idx === r\.idx - 1\) last\.to = r; else runs\.push/.test(fn) && /`\$\{nm\(x\.from\)\}〜\$\{nm\(x\.to\)\}`/.test(fn), '続くブロックを「A 朝〜F 深夜」にまとめていない');
+        assert.ok(/いま \$\{nm\(nowR\)\}/.test(fn), 'まとめた行に いまのブロックの印が無い');
         assert.ok(/outline:2px solid var\(--ops-solid\)/.test(fn), 'いまのブロックの枠が無い');
         assert.ok(/時刻の分からない凸 \$\{t\.unknownTime\.length\} 件は行に出ません/.test(fn), '時刻の分からない凸を黙って消している');
         assert.ok(!/#[0-9A-Fa-f]{6}/.test(fn.replace(/'#7A7C81'/g, '')), '色の直値 (灰色の既定以外) がある');

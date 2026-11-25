@@ -35,13 +35,13 @@ function cut(marker) {
     }
     console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
 }
-const SRC = [cut('        function _opsStageBarHtml('), cut('        function _opsStageHeroHtml('), cut('        function _opsStageListHtml(')].join('\n');
+const SRC = [cut('        function _opsStageBarHtml('), cut('        function _opsStageOverrideHtml('), cut('        function _opsStageHeroHtml('), cut('        function _opsStageListHtml(')].join('\n');
 const env = {
     window: { opsStageDomain: dom },
     escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
 };
 const keys = Object.keys(env);
-const fns = new Function(...keys, `${SRC}\nreturn { bar: _opsStageBarHtml, hero: _opsStageHeroHtml, list: _opsStageListHtml };`)(...keys.map(k => env[k]));
+const fns = new Function(...keys, `${SRC}\nreturn { bar: _opsStageBarHtml, ov: _opsStageOverrideHtml, hero: _opsStageHeroHtml, list: _opsStageListHtml };`)(...keys.map(k => env[k]));
 
 let pass = 0, fail = 0;
 function test(name, f) {
@@ -53,26 +53,37 @@ const noUndef = (out) => assert.ok(!/undefined|NaN|\[object/.test(out), `未定�
 console.log('運営タブの段階 (ヘッダ・ヒーロー・チェックリスト):\n');
 const season = { id: 7, is_active: true, hard_date: '2026-09-11', month_key: '2026-09' };
 
-test('★ 段階ヘッダ: シーズン名・ハード日・4つのセグメント (いまの段階が押された状態)・自動判定の注記', () => {
+test('★ 段階ヘッダ (段階 3・2026-11-26): 見出しの 2 行目に「· 9/11(金) [前日]」だけ — 切り替えのボタンは置かない (👑 マスターへ移した)・意味は札の title', () => {
     const st = dom.detect({ season, now: Date.parse('2026-09-10T12:00:00+09:00') });
     const out = fns.bar(st, season);
-    assert.ok(out.includes('2026-09 · 9/11(金)'), `シーズン名とハード日が無い: ${out.slice(0, 160)}`);
-    assert.equal((out.match(/handleOpsStageOverride\('(prep|pre|day|end)'\)/g) || []).length, 4, 'セグメントが4つでない');
-    assert.equal((out.match(/aria-pressed="true"/g) || []).length, 1);
-    assert.ok(/aria-pressed="true"[^>]*onclick="handleOpsStageOverride\('pre'\)"/.test(out), '前日が押された状態でない');
-    assert.ok(out.includes('自動判定'), '自動判定の注記が無い');
+    assert.ok(out.includes(' · 9/11(金)'), `ハード日が無い: ${out.slice(0, 160)}`);
+    assert.ok(!out.includes('2026-09'), 'シーズン名を二重に書いている (前の #opsSeasonLabel が出す)');
+    assert.ok(/<span class="ops-stage-pill pre" title="自動判定 · [^"]+">前日<\/span>/.test(out), `段階の札が無い: ${out}`);
+    assert.equal((out.match(/handleOpsStageOverride\(/g) || []).length, 0, '見出しに段階の切り替えのボタンが残っている (👑 マスターへ移した)');
     assert.ok(!out.includes('に戻す'), '上書きしていないのに「戻す」が出ている');
     noUndef(out);
 });
 
-test('段階ヘッダ: 手動で上書き中は「自動 (○○) に戻す」ボタン / シーズン無しは「未作成」', () => {
+test('段階ヘッダ: 手で切り替え中は黄色い札「○○ (手で切り替え中) · 自動に戻す」(押すと自動に戻る) / シーズン無しは札だけ', () => {
     const st = dom.detect({ season, now: Date.parse('2026-09-10T12:00:00+09:00'), override: 'day' });
     const out = fns.bar(st, season);
-    assert.ok(/手動で「当日」にしています · 自動 \(前日\) に戻す/.test(out), `戻す導線が無い: ${out.slice(-300)}`);
-    assert.ok(/onclick="handleOpsStageOverride\(null\)"/.test(out));
+    assert.ok(/<button type="button" class="ops-stage-pill warn" onclick="handleOpsStageOverride\(null\)" title="自動なら「前日」。押すと自動に戻す">当日 \(手で切り替え中\) · 自動に戻す<\/button>/.test(out), `戻す導線が無い: ${out}`);
     const none = fns.bar(dom.detect({ season: null }), null);
-    assert.ok(none.includes('シーズン未作成'));
+    assert.ok(/^<span class="ops-stage-pill prep"[^>]*>準備<\/span>$/.test(none), `シーズン無しの札: ${none}`);
     noUndef(none);
+});
+
+test('★ 👑 マスター › シーズン制御 の「段階を手で切り替える」: 自動 (○○) + 準備 / 前日 / 当日 / 終了・押されているのは 1 つ (手で切り替え中ならその段階、でなければ自動)', () => {
+    const st = dom.detect({ season, now: Date.parse('2026-09-10T12:00:00+09:00') });
+    const out = fns.ov(st);
+    assert.equal((out.match(/handleOpsStageOverride\('(prep|pre|day|end)'\)/g) || []).length, 4, '段階のボタンが 4 つでない');
+    assert.ok(/aria-pressed="true" onclick="handleOpsStageOverride\(null\)">自動 \(前日\)<\/button>/.test(out), '手で切り替えていないのに「自動」が押された状態でない');
+    assert.equal((out.match(/aria-pressed="true"/g) || []).length, 1);
+    assert.ok(out.includes('テスト用') && out.includes('この端末だけ'), 'テスト用・この端末だけ と言っていない');
+    const ov = fns.ov(dom.detect({ season, now: Date.parse('2026-09-10T12:00:00+09:00'), override: 'day' }));
+    assert.ok(/aria-pressed="true" onclick="handleOpsStageOverride\('day'\)"/.test(ov) && /aria-pressed="false" onclick="handleOpsStageOverride\(null\)"/.test(ov), '手で切り替え中の段階が押された状態でない');
+    assert.equal(fns.ov(null), '');
+    noUndef(out); noUndef(ov);
 });
 
 test('★ ヒーロー: 文言・理由・導線 (onclick に action) / 無ければ空', () => {

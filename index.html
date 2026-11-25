@@ -682,7 +682,18 @@
         .ops-card.ops-closed > .ops-card-head { margin-bottom: 0 !important; }
         .ops-group-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
         #opsTopBar { margin: 0 0 8px; }
-        .ops-topbar-row { display: flex; justify-content: flex-end; padding: 4px 2px; }
+        /* 見出しの 2 行目: シーズン (Lv) · ハード日 [段階の札] (段階 3・2026-11-26) */
+        .ops-head-sub { font-size: 12px; color: var(--t-muted); margin-top: 3px; display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+        #opsStageBar { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        #opsStageBar:empty { display: none; }
+        .ops-stage-pill { font: inherit; font-size: 11px; font-weight: 900; border-radius: 999px; padding: 1px 8px; background: var(--ops-bg); color: var(--ops-on); border: none; }
+        .ops-stage-pill.day { background: var(--ops-solid); color: var(--ops-ink); }
+        button.ops-stage-pill.warn { background: var(--warn-bg); color: var(--warn-deep); min-height: 40px; padding: 4px 12px; cursor: pointer; }
+        .ops-stage-ov { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border-radius: 14px; background: var(--s1); }
+        .ops-stage-ov .tt { font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .ops-stage-ov .tt span { font-size: 11px; font-weight: 800; color: var(--t-muted); }
+        .ops-stage-ov p { margin: 0; font-size: 11px; color: var(--t-muted); line-height: 1.6; }
+        .ops-stage-ov .ops-stage-seg { flex-wrap: wrap; }
         /* ---- 運営モードの段階 (準備/前日/当日/終了) — 運営UI再設計 2026-09-08 ---- */
         body.ops-mode .ops-group-label { display: none; }   /* グループ見出しは段階の出し分けに置き換えた */
 /* 🧱 ブロックの設定 (👑 マスター・2026-10-30)。時計 3 つ = 朝 5〜12 / 昼〜夜 12〜翌0 / 深夜 翌0〜翌5 */
@@ -752,12 +763,8 @@
         .obk-c9 { fill: var(--blk-9); } .obk-bg9 { background: var(--blk-9); }
         .obk-c10 { fill: var(--blk-10); } .obk-bg10 { background: var(--blk-10); }
         .obk-c11 { fill: var(--blk-11); } .obk-bg11 { background: var(--blk-11); }
-        .ops-stage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 2px 2px 4px; }
-        .ops-stage-name { font-size: 14px; font-weight: 900; color: var(--t-ink)}
+        .ops-stage-name { font-size: 12px; font-weight: 800; color: var(--t-strong); font-variant-numeric: tabular-nums; }
         .ops-stage-seg button { padding: 4px 9px; font-size: 11px; min-height: 40px; }
-        .ops-stage-sub { font-size: 11px; font-weight: 800; color: var(--t-muted); margin: 0 2px 8px}
-        .ops-stage-auto { font: inherit; font-size: 11px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer}
-        .ops-stage-auto.muted { color: var(--t-muted); background: transparent; padding: 0}
         .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b)); color: var(--on-fill); margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22)}
         .ops-stage-hero.day { background: linear-gradient(135deg,var(--grad-dark-a),var(--grad-dark-b)); box-shadow: 0 8px 22px rgba(0,0,0,0.22)}
         .ops-stage-hero.end { background: linear-gradient(135deg,var(--grad-ok-a),var(--grad-ok-b)); box-shadow: 0 8px 22px rgba(14,148,85,0.22)}
@@ -1071,6 +1078,15 @@
         .ops-subtabs button[aria-selected="true"] .n:not(.bad) { background: rgba(var(--paper-rgb), .2); color: inherit; }
         .ops-subtabs button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
         .ops-tab-line { font-size: 12px; font-weight: 700; color: var(--t-muted); margin: 0 0 8px; }
+        .ops-tab-line:empty { display: none; }
+        .ops-subtabs .ic { line-height: 1; }
+        .ops-subtabs .tx { display: inline-flex; align-items: center; gap: 6px; }
+        /* スマホの幅: 絵を上・名前を下にして 4 つを 1 行に (段階 3・2026-11-26 ふるり「運営タブの頭を詰める」) */
+        @media (max-width: 699px) {
+            .ops-subtabs { flex-wrap: nowrap; gap: 4px; }
+            .ops-subtabs button { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 2px; border-radius: 14px; font-size: 12px; }
+            .ops-subtabs .tx { gap: 4px; white-space: nowrap; }
+        }
         #opsTabHold { display: none !important; }
         /* 👑 マスターのタブでは「その他」を見出しなしで開いたまま (メンテナンスだけ) */
         #opsEtc.as-master .ops-etc-head, #opsEtc.as-master .ops-etc-label:first-child, #opsEtc.as-master #opsEtcCards { display: none !important; }
@@ -3624,12 +3640,13 @@
 
     <div id="tab-ops" class="tab-content tab-page">
         <div class="container">
-            <!-- ヘッダー: アクティブシーズン + 同期インジ -->
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
-                <div>
+            <!-- ヘッダー: 見出し + シーズン・ハード日・段階の札 (1 行) + 🛠 (マスターだけ)。段階 3 (2026-11-26 ふるり): 段階の手動の切り替えは 👑 › シーズン制御 へ移した -->
+            <div id="opsHead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:0 2px 2px;">
+                <div style="min-width:0;">
                     <div id="opsPageTitle" style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:var(--t-ink);">戦況</div>
-                    <div style="font-size:11px;color:var(--t-muted);margin-top:3px;letter-spacing:0.2px;">アクティブ: <strong id="opsSeasonLabel" style="font-weight:800;color:var(--t-ink);">読み込み中...</strong></div>
+                    <div class="ops-head-sub"><strong id="opsSeasonLabel" style="font-weight:800;color:var(--t-ink);">読み込み中...</strong><span id="opsStageBar" data-ops-only></span></div>
                 </div>
+                <button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()" style="flex:none;"></button>
             </div>
 
             <!-- テストシーズンバナー (細ピル, JS で中身を描画) -->
@@ -3798,6 +3815,8 @@
                 <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
                 <!-- 走っているシーズンのサマリー + 確認・編集 (renderOpsSeasonCtlSummary が描画) -->
                 <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
+                <!-- 段階を手で切り替える (テスト用・段階 3 で見出しから移した)。描くのは _renderOpsStage → _opsStageOverrideHtml -->
+                <div id="opsStageOverride" data-ops-only data-master-only></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:var(--t-ink);color:var(--card);"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
                     <button onclick="handleOpsQuickCreateTestSeason('eve')" class="dc-ops-testlink" data-stage="prep">🧪 リハーサル (前日として)</button>
@@ -7883,7 +7902,11 @@
                     : r.state === 'now' ? '<span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
                     : r.state === 'next' ? '<span style="font-size:11px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">次</span>'
                     : r.state === 'past' ? '<span style="font-size:11px;font-weight:900;color:var(--t-muted);">済</span>' : '';
+                // まだ決まっていないブロック (配信の無い・これからのブロック) は 1 行にまとめる (段階 3・2026-11-26 ふるり) — 決定のあとの表示 (_renderMyDecided) の
+                //   「まだ決まっていない: F 深夜」と同じ言い方。続くブロックは「A 朝〜F 深夜」、飛んでいれば「・」でつなぐ。いまのブロックの印 (いま / ○○ から) は上に残す
+                const und = [];
                 const html = t.rows.map(r => {
+                    if (!r.done.length && !r.planned.length && r.state !== 'past' && !r.covered) { und.push(r); return ''; }
                     const doneHtml = r.done.map(d => `<div style="font-size:12px;font-weight:800;color:var(--ok-deep);">✓ ${esc(bossName(d.bossNumber))}${d.level ? ` Lv${d.level}` : ''}${d.damageB ? ` · ${d.damageB.toFixed(1)}B` : ''}</div>`).join('');
                     const planHtml = r.planned.map(pz => {
                         const c = DC_ATTR_COLORS[pz.weakness] || '#7A7C81';
@@ -7896,8 +7919,7 @@
                     let bodyHtml = doneHtml + planHtml;
                     if (!bodyHtml) {
                         bodyHtml = r.state === 'past' ? '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">凸なし</div>'
-                            : r.covered ? '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>'
-                            : '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">まだ決まっていません (運営がこのブロックの前に配信します)</div>';
+                            : '<div style="font-size:12px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>';
                     }
                     const frame = (r.state === 'now' && !rbNext(r)) ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
                     return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:8px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
@@ -7905,8 +7927,19 @@
                         <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">${bodyHtml}</div>
                     </div>`;
                 }).join('');
+                let undHtml = '';
+                if (und.length) {
+                    const nm = (r) => esc(r.short || r.name);
+                    const runs = [];
+                    for (const r of und) { const last = runs[runs.length - 1]; if (last && last.to.idx === r.idx - 1) last.to = r; else runs.push({ from: r, to: r }); }
+                    const label = runs.map(x => x.from === x.to ? nm(x.from) : `${nm(x.from)}〜${nm(x.to)}`).join('・');
+                    const nowR = und.find(r => r.state === 'now' && !rbNext(r)), nextR = und.find(r => rbNext(r));
+                    const pill = nowR ? `<span style="align-self:flex-start;font-size:11px;font-weight:900;padding:1px 8px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま ${nm(nowR)} ${esc(nowR.attackRange || nowR.range || '')}</span>`
+                        : nextR ? `<span style="align-self:flex-start;font-size:11px;font-weight:900;padding:1px 8px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">${esc(rbNow.to)} から ${nm(nextR)}</span>` : '';
+                    undHtml = `<div data-today-und style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;">${pill}<p class="mt-none" style="margin:0;">まだ決まっていない: ${label} (運営が組んで決定します)</p></div>`;
+                }
                 body.innerHTML = (rbNow ? `<p class="mt-rebuild">⏱ いまは再編成時間 (${esc(rbNow.label)}・凸しない時間)。${esc(blocks[rbNow.idx].short)} の凸の時間は ${esc(rbNow.from)} で終わりました。この時間に凸した分は ${esc(blocks[rbNow.next].short)} の凸になります</p>` : '')
-                    + html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:11px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
+                    + html + undHtml + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:11px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
                 body.insertAdjacentHTML('beforeend', '<p data-member-input-lite style="margin:8px 0 0;font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。運営が登録すると ✓ になります (ボスの残り HP は運営が見ています)</p>');
                 if (meta) meta.textContent = `${t.total} / 3 凸 済み${Array.isArray(st?.pubs) && st.pubs.length ? ` · 配信あり: ${st.pubs.map(x => (x.block.short || x.block.name)).join('・')}` : (st?.plan?.blockScope ? ` · 配信は ${(st.plan.blockScope.short || st.plan.blockScope.name)} のぶん` : '')}`;
                 card.style.display = '';
@@ -21701,6 +21734,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 document.body.classList.remove('ops-stage-overridden');
                 if (_opsStageApplied !== null) { _opsStageApplied = null; _applyOpsStageCards(null); }
                 bar.innerHTML = ''; heroEl.innerHTML = ''; listEl.innerHTML = '';
+                const ovEl = document.getElementById('opsStageOverride'); if (ovEl) ovEl.innerHTML = '';
                 return;
             }
             const st = _opsCurrentStage();
@@ -21733,6 +21767,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 decided: !(Array.isArray(_opsPublishedRows) && season?.id != null) || !!(window.decidePlanDomain && window.decidePlanDomain.latestDecided(_opsPublishedRows.filter(r => r && Number(r.season_id) === Number(season.id)))),
             });
             bar.innerHTML = _opsStageBarHtml(st, season);
+            const ovEl = document.getElementById('opsStageOverride');
+            if (ovEl) ovEl.innerHTML = _opsStageOverrideHtml(st);
             heroEl.innerHTML = _opsStageHeroHtml(h, st.stage);
             listEl.innerHTML = _opsStageListHtml(rows, st.stage);
             // 🧱 段階 2.5: カードは段階ではなくタブで出し入れする (いつも同じタブ)。開いたときのタブだけ段階で決める
@@ -21756,18 +21792,26 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         }
         function _opsStageBarHtml(st, season) {
             const dom = window.opsStageDomain, esc = escapeHtml;
-            const name = season ? `${season.month_key || '?'}${season.is_test ? ' 🧪' : ''}` : 'シーズン未作成';
             let hd = '';
             if (season?.hard_date) {
                 const d = new Date(String(season.hard_date).slice(0, 10) + 'T00:00:00');
                 if (!isNaN(d)) hd = ` · ${d.getMonth() + 1}/${d.getDate()}(${'日月火水木金土'[d.getDay()]})`;
             }
-            const seg = dom.STAGES.map(s =>
-                `<button type="button" aria-pressed="${s === st.stage ? 'true' : 'false'}" onclick="handleOpsStageOverride('${s}')" title="${esc(dom.STAGE_SUB[s])}">${esc(dom.STAGE_JP[s])}</button>`).join('');
-            const sub = st.overridden
-                ? `<button type="button" class="ops-stage-auto" onclick="handleOpsStageOverride(null)">手動で「${esc(dom.STAGE_JP[st.stage])}」にしています · 自動 (${esc(dom.STAGE_JP[st.auto])}) に戻す</button>`
-                : `<span class="ops-stage-auto muted">自動判定 · ${esc(dom.STAGE_SUB[st.stage])}</span>`;
-            return `<div class="ops-stage-row"><div class="ops-stage-name">${esc(name)}${esc(hd)}</div><div class="dc-mb-seg ops-stage-seg" role="group" aria-label="段階">${seg}</div></div><div class="ops-stage-sub">${sub}</div>`;
+            // 段階 3 (2026-11-26 ふるり): 見出しの 2 行目に「· 11/27(金) [当日]」だけ。段階は日付から自動で決まる (札の title に意味)。
+            //   手で切り替える所 (テスト用) は 👑 マスター › シーズン制御 (_opsStageOverrideHtml)。手で切り替えている間は札を黄色にして「自動に戻す」を出す (忘れないように)
+            const pill = st.overridden
+                ? `<button type="button" class="ops-stage-pill warn" onclick="handleOpsStageOverride(null)" title="自動なら「${esc(dom.STAGE_JP[st.auto])}」。押すと自動に戻す">${esc(dom.STAGE_JP[st.stage])} (手で切り替え中) · 自動に戻す</button>`
+                : `<span class="ops-stage-pill ${esc(st.stage)}" title="自動判定 · ${esc(dom.STAGE_SUB[st.stage])}">${esc(dom.STAGE_JP[st.stage])}</span>`;
+            return (hd ? `<span class="ops-stage-name">${esc(hd)}</span>` : '') + pill;   // シーズン名と Lv は前の #opsSeasonLabel が出す (二重に書かない)
+        }
+        // 👑 マスター › シーズン制御 の中: 段階を手で切り替える (テスト用・この端末だけ)。「自動」は上書きを消す (handleOpsStageOverride(null))
+        function _opsStageOverrideHtml(st) {
+            const dom = window.opsStageDomain, esc = escapeHtml;
+            if (!dom || !st) return '';
+            const seg = [`<button type="button" aria-pressed="${st.overridden ? 'false' : 'true'}" onclick="handleOpsStageOverride(null)">自動 (${esc(dom.STAGE_JP[st.auto])})</button>`]
+                .concat(dom.STAGES.map(s => `<button type="button" aria-pressed="${st.overridden && s === st.stage ? 'true' : 'false'}" onclick="handleOpsStageOverride('${s}')" title="${esc(dom.STAGE_SUB[s])}">${esc(dom.STAGE_JP[s])}</button>`)).join('');
+            return `<div class="ops-stage-ov"><div class="tt">段階を手で切り替える <span>テスト用</span></div><div class="dc-mb-seg ops-stage-seg" role="group" aria-label="段階">${seg}</div>`
+                + `<p>ふだんは「自動」のまま (準備 / 前日 / 当日 / 終了 は日付から決まります)。🧪 リハーサルや確かめのときだけ使います。この端末だけに効きます。</p></div>`;
         }
         function _opsStageHeroHtml(h, stage) {
             if (!h || !h.lead) return '';
@@ -21861,11 +21905,14 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             el.innerHTML = lay.TABS.filter(t => !t.masterOnly || isMaster).map(t => {
                 const n = counts[t.key];
                 const badge = n == null ? '' : `<span class="n${n > 0 ? ' bad' : ''}">${n}</span>`;
-                return `<button type="button" role="tab" data-ops-tab="${t.key}" aria-selected="${t.key === tab}" onclick="setOpsTab('${t.key}')" title="${escapeHtml(t.sub)}">${escapeHtml(t.label)}${badge}</button>`;
+                // 絵と名前を分けて持つ (スマホの幅では絵を上・名前を下にして 4 つを 1 行に: 段階 3・2026-11-26)
+                const parts = String(t.label).split(' ');
+                const ic = parts.length > 1 ? parts[0] : '', tx = parts.length > 1 ? parts.slice(1).join(' ') : String(t.label);
+                return `<button type="button" role="tab" data-ops-tab="${t.key}" aria-selected="${t.key === tab}" onclick="setOpsTab('${t.key}')" title="${escapeHtml(t.sub)}"><span class="ic">${escapeHtml(ic)}</span><span class="tx">${escapeHtml(tx)}${badge}</span></button>`;
             }).join('');
             if (line) {
-                const def = lay.TABS.find(t => t.key === tab);
-                let txt = def ? def.sub : '';
+                // 小タブの説明の 1 行は出さない (段階 3・2026-11-26 ふるり)。⚔️ 戦況だけ、説明ではなく状況の要約 (Lv · 残り · HP 更新 · 使った凸) を出す
+                let txt = '';
                 if (tab === 'battle') {
                     // 見出しの 1 行: Lv · 残り · HP 更新 · 使った凸
                     const snap = opsStore.get();
@@ -22164,10 +22211,9 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (container && !document.getElementById('opsTopBar')) {
                 const top = document.createElement('div');
                 top.id = 'opsTopBar';
-                // 運営ON: 🛠トグル → 段階ヘッダ → サブタブ → ヒーロー (いちばん急ぐ1つ) → チェックリスト (CSS でいつも隠す)
-                top.innerHTML = `<div class="ops-topbar-row"><button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()"></button></div>
-                    <div id="opsStageBar" data-ops-only></div>
-                    <div id="opsSubTabs" class="ops-subtabs" data-ops-only role="tablist" aria-label="運営のタブ"></div>
+                // 運営ON: サブタブ → (⚔️ 戦況だけ) 見出しの 1 行 → ヒーロー (いちばん急ぐ1つ) → チェックリスト (CSS でいつも隠す)。
+                //   🛠 と段階の札は上の見出し (#opsHead) に置く (段階 3・2026-11-26: 本文までを詰めた)
+                top.innerHTML = `<div id="opsSubTabs" class="ops-subtabs" data-ops-only role="tablist" aria-label="運営のタブ"></div>
                     <div id="opsTabLine" class="ops-tab-line" data-ops-only></div>
                     <div id="opsStageHero" data-ops-only></div>
                     <div id="opsStageList" data-ops-only></div>`;
