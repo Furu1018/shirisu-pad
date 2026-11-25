@@ -11993,8 +11993,11 @@
             const sid = _atkCheck.seasonId;
             if (!_opsMode || !m || !m.key || !sid || _atkCheck.skipBusy) return;
             const name = _opsResultPlayer(m.memberId)?.name || String(m.memberId);
-            if (on && !confirm(`${name} さんの ${m.hourLabel} B${m.bossNumber} を「凸していない」にします。\n\n`
-                + 'この凸は登録しません (残り凸のまま、次のブロックで組み直します)。\n本人が凸していたら、あとで結果を取り込めば一覧から消えます。')) return;
+            if (on) {
+                if (!(await padConfirm(`${name} さんの ${m.hourLabel} B${m.bossNumber} を「凸していない」にします。\n\n`
+                    + 'この凸は登録しません (残り凸のまま、次のブロックで組み直します)。\n本人が凸していたら、あとで結果を取り込めば一覧から消えます。', { ok: '凸していないにする' }))) return;
+                if (!_opsMode || _atkCheck.skipBusy || _atkCheck.seasonId !== sid) return;   // 答えを待つ間に運営 OFF・ほかの印の操作・シーズンの切り替え
+            }
             _atkCheck.skipBusy = true;
             try {
                 await window.supabaseSetAttackSkip(sid, m.key, !!on, getCurrentIdentity()?.id || null);
@@ -12015,7 +12018,7 @@
             const text = window.resultIntakeDomain.askText({ name: _opsResultPlayer(m.memberId)?.name || '', hourLabel: m.hourLabel, bossNumber: m.bossNumber,
                 ptName: PT_ATTRS.find(x => x.key === boss?.weakness)?.name || '' });
             try { await navigator.clipboard.writeText(text); showNotification('📋 コピーしました (Discord に貼って聞いてください)'); }
-            catch { prompt('コピーして Discord に貼ってください', text); }
+            catch { padPrompt('コピーして Discord に貼ってください', { value: text, ok: '閉じる' }); }
         }
 
         // ========== 📥 結果の取り込み (🧱 ブロック制 段階 4・運営ONのみ・2026-10-23) ==========
@@ -12265,7 +12268,7 @@
                 const stop = ws.find(w => w.blocking);
                 if (stop) { _opsResultStatus(`⛔ ${stop.text}`, 'bad'); return; }
                 const dup = ws.find(w => w.key === 'dup');
-                if (dup && !confirm(`⚠️ ${base?.name || ''} さん: ${dup.text}\n\n[OK] 別の凸として登録する\n[キャンセル] やめる`)) { _opsResultStatus('登録をやめました'); return; }
+                if (dup && !(await padConfirm(`⚠️ ${base?.name || ''} さん: ${dup.text}`, { ok: '別の凸として登録する', cancel: 'やめる' }))) { _opsResultStatus('登録をやめました'); return; }
                 const me = getCurrentIdentity();
                 const team = cur ? cur.team.slice() : [];
                 const hpAbs = (d.hpAbs && d.useHpAbs && Number(d.ocrBossNumber) === Number(boss.boss_number)) ? d.hpAbs : null;
@@ -13099,7 +13102,7 @@
                 ok = true;
             } catch (e) {
                 // quiet (まとめて外す) のときは 1 件ごとに alert を出さない — 呼び出し側が件数をまとめて知らせる
-                if (o.quiet) console.warn('[reservation] 失敗 (quiet):', e?.message || e); else alert(`❌ ${e?.message || e}`);
+                if (o.quiet) console.warn('[reservation] 失敗 (quiet):', e?.message || e); else padAlert(`❌ ${e?.message || e}`);
             } finally {
                 _resv.busy.delete(rid);
             }
@@ -14241,7 +14244,8 @@
                 + '・通知は運営担当と「テスト通知も受け取る」の人にだけ届きます\n'
                 + '・「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻り、テスト中の凸・決定・予約は消えます\n\n'
                 + '※ テストの間に届いた本物の模擬や時間は、終了のあとに登録してください (テスト中に入れると終了で消えます)';
-            if (!confirm(msg)) return;
+            if (!(await padConfirm(msg, { ok: 'リハーサルを始める' }))) return;
+            if (_opsRehearsalBusy) return;   // 答えを待つ間にもう一方の「始める」が走った
             _opsRehearsalBusy = true;
             try {
                 const r = await window.supabaseQuickCreateTestSeason({ start: day ? 'day' : 'eve' });
@@ -14250,7 +14254,7 @@
                 showNotification(`✅ 🧪 リハーサルを始めました — ${_opsRehearsalSrcNote(r)}・模擬 ${r.kept?.mocks ?? 0} 件と参加可能時間はそのまま${_opsRehearsalConfirmNote(r)}`);
                 renderOpsDashboard();
             } catch (e) {
-                alert(`❌ リハーサルを始められませんでした: ${e?.message || e}`);
+                padAlert(`❌ リハーサルを始められませんでした: ${e?.message || e}`);
             } finally {
                 _opsRehearsalBusy = false;
             }
@@ -14321,7 +14325,7 @@
                 showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}${extra}`);
                 await renderOpsDashboard();
             } catch (e) {
-                alert(`❌ ${e?.message || e}`);
+                padAlert(`❌ ${e?.message || e}`);
             } finally {
                 btn.disabled = false;
             }
@@ -14576,8 +14580,8 @@
             const nameEl = document.getElementById(`opsBossEditName-${bossNumber}`);
             const remB = parseFloat(remEl.value);
             const totalB = parseFloat(totalEl.value);
-            if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB < 0) { alert('数値で入力してください'); return; }
-            if (remB > totalB) { alert('残HPが総HPを超えています'); return; }
+            if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB < 0) { padAlert('数値で入力してください'); return; }
+            if (remB > totalB) { padAlert('残HPが総HPを超えています'); return; }
             try {
                 const ctx = await window.supabaseLoadActiveSeasonWithBosses();
                 if (!ctx?.season) throw new Error('アクティブシーズン無し');
@@ -14595,7 +14599,7 @@
                 seasonStore.invalidate();
                 await renderOpsDashboard();
                 showNotification('ボス情報を更新しました');
-            } catch (e) { alert(`更新失敗: ${e?.message || e}`); }
+            } catch (e) { padAlert(`更新失敗: ${e?.message || e}`); }
         }
 
         function handleOpsFinishAttrPick(attrKey) {
@@ -14992,7 +14996,7 @@
             const names = plan.members.map(m => `${m.name} (${Number(m.dmg).toFixed(1)}B)`).join('、');
             const text = `🏁 ${ctx.boss.name || ctx.boss.boss_code} の締め凸 (${ctx.ptInfo?.name || ''}PT・残HP ${ctx.remHpB.toFixed(2)}B): ${names} さん、お願いできますか🙏`;
             try { await navigator.clipboard.writeText(text); showNotification('📋 コピーしました (Discord に貼って声をかけてください)'); }
-            catch { prompt('コピーして Discord に貼ってください', text); }
+            catch { padPrompt('コピーして Discord に貼ってください', { value: text, ok: '閉じる' }); }
         }
 
         // ========== Phase 5: 最適凸プラン算出 (Lv1-3 通し) ==========
@@ -15689,7 +15693,7 @@
                     _ob.seededFrom = null;   // 次の描画でブロックごとに読み戻す (この端末の組みかけのあるブロックは残す)
                     const keepMine = [..._ob.plans].filter(([, p]) => p.fromDecided == null).map(([k]) => k).sort((a, b) => a - b);
                     const names = window.raidBlocksDomain ? keepMine.map(i => window.raidBlocksDomain.blocksOfSeason(snap.season)[i]?.short).filter(Boolean) : [];
-                    alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。'
+                    padAlert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。'
                         + (names.length ? `\nただし、あなたが組みかけていた ${names.join('・')} はそのまま残しています (このまま決定すると、相手の決定のそのブロックを置き換えます)。` : '')
                         + '\n\n確かめてから、もう一度決定してください。');
                     return;
@@ -15752,19 +15756,19 @@
                         : !notifySame ? '\n\n変わった人はいないので、通知は送りません (「変更なしでも通知する」に印を付けると送れます)。'
                         : sameTo.length ? `\n\n「変更なしでも通知する」に印があるので、これから凸のある ${sameTo.length} 人に「変わりません」の通知を送ります。`
                         : '\n\n「変更なしでも通知する」に印がありますが、これから凸のある人がいないので通知は送りません。');
-                if (!confirm(msg)) return;
+                if (!(await padConfirm(msg, { ok: '決定して配信する' }))) return;
                 if (!_obSame(epoch, sid)) return;
                 // ⏱ 確認の間に「いま」のブロックが進んだ (再編成時間に入った・ブロックの時間が過ぎた) なら止める — 確認で言った範囲と決める範囲がずれる (⑥)
-                if (_obFirstIdx(snap2.season, blocks) !== first) { alert('⏱ 確認している間に「いま」のブロックが進みました (再編成時間に入った・時間が過ぎた)。\n\n画面を合わせます。確かめてから、もう一度決定してください'); return; }
+                if (_obFirstIdx(snap2.season, blocks) !== first) { padAlert('⏱ 確認している間に「いま」のブロックが進みました (再編成時間に入った・時間が過ぎた)。\n\n画面を合わせます。確かめてから、もう一度決定してください'); return; }
                 // 2. 確認の間に別の運営が決定していないか・駒が変わっていないか、もう一度
                 let pubs2 = null, rows2 = null;
                 try { [pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)]); } catch (_) { /* 下で止める */ }
                 if (!_obSame(epoch, sid)) return;
                 const latest2 = Array.isArray(pubs2) ? dp.latestDecided(pubs2.filter(r => Number(r.season_id) === Number(sid))) : undefined;
-                if (latest2 === undefined || Number(latest2?.id || 0) !== basis0) { alert('⚠️ 確認している間に別の運営が決定したか、配信を読めませんでした。もう一度お試しください'); _ob.dec = null; _ob.decTriedAt = 0; return; }
+                if (latest2 === undefined || Number(latest2?.id || 0) !== basis0) { padAlert('⚠️ 確認している間に別の運営が決定したか、配信を読めませんでした。もう一度お試しください'); _ob.dec = null; _ob.decTriedAt = 0; return; }
                 if (!Array.isArray(rows2) || fpSig(rows2) !== sig0) {
                     if (Array.isArray(rows2)) { _ob.pins = rows2; _ob.pinsErr = null; }
-                    alert('⚠️ 確認している間に駒 (📌・予約) が変わったか、読めませんでした。組み直しが要るか確かめてから、もう一度決定してください');
+                    padAlert('⚠️ 確認している間に駒 (📌・予約) が変わったか、読めませんでした。組み直しが要るか確かめてから、もう一度決定してください');
                     return;
                 }
                 const me = getCurrentIdentity();
@@ -15772,8 +15776,8 @@
                 let pub = null;
                 try { pub = await window.supabasePublishDecidedPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan), basis0); }
                 catch (e) {
-                    if (e?.code === 'CONFLICT') { alert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。確かめてから、もう一度決定してください。'); _ob.dec = null; _ob.decTriedAt = 0; _ob.seededFrom = null; return; }
-                    if (e?.code === 'NO_RPC') { alert(`⚠️ ${e.message}`); return; }
+                    if (e?.code === 'CONFLICT') { padAlert('⚠️ 別の運営が先に決定しました。\n\n画面をその決定に合わせます。確かめてから、もう一度決定してください。'); _ob.dec = null; _ob.decTriedAt = 0; _ob.seededFrom = null; return; }
+                    if (e?.code === 'NO_RPC') { padAlert(`⚠️ ${e.message}`); return; }
                     throw e;
                 }
                 if (!pub?.id) throw new Error('配信の行を作れませんでした');
@@ -15798,7 +15802,7 @@
                 await _obNotifyDecide({ pub, plan, prev, seasonId: sid, me, blocks, pubRows: Array.isArray(pubs2) ? pubs2.filter(r => Number(r.season_id) === Number(sid)) : [], sameTo, fromIdx: first });
                 try { await _syncOpsUnpublishBtn(); } catch (_) { /* 従来の配信の表示の取り直し — 次の描画で */ }
             } catch (e) {
-                alert(`❌ 決定できませんでした: ${e?.message || e}`);
+                padAlert(`❌ 決定できませんでした: ${e?.message || e}`);
             } finally {
                 _ob.busy = false;
                 renderOpsBuild();
@@ -15969,7 +15973,7 @@
                     const msg = used ? `${p.name} のこの駒 (${at} の仮置き) は、凸が済んでいます (📥 で登録)。\n\n外すと残り凸の押さえが外れます (キャラを使ったので、ここには置けません)。外しますか？`
                         : (rbNow && rbNow.idx === p.placedIdx) ? `${p.name} のこの駒は ${at} の仮置きで、まだ ✓ が付いていません。\n\n凸したかは ⚔️ ✓ 凸の記録 で確かめてください (✓ を付けると外れます)。凸していないなら、外して ${here} で使えるようにしますか？`
                         : `${p.name} のこの駒は、過ぎた ${at} に置いたままです (✓ も結果も無い仮置き)。\n\n外して、${here} で使えるようにしますか？`;
-                    if (confirm(msg)) _obReleasePast(Number(pinRow.id));
+                    padConfirm(msg, { ok: '外す' }).then(yes => { if (yes) _obReleasePast(Number(pinRow.id)); });   // 外すのは仮置きのままのときだけ (_resvTransition の expectFrom) — 答えを待つ間に ✓ で外れていても二重に外さない
                     return;
                 }
                 // 過ぎたブロックは開けない — 「開いて ✕」と案内しない (Codex・再レビュー 2026-11-02)
@@ -16179,7 +16183,10 @@
             if (_ob.idx != null && ctx.idx !== _ob.idx) { _ob.sel = null; renderOpsBuild(); showNotification('⏱ いまのブロックが進みました (再編成時間に入った・時間が過ぎた)。画面を合わせたので、もう一度押してください'); return; }   // 再レビュー flow-1
             const blk = ctx.blocks[ctx.idx];
             const mine = ctx.pins.filter(r => r.status === 'pinned' && window.blockBuildDomain.pinBlockIdx(r, ctx.blocks) === ctx.idx);   // 約束 (承認済み) は外さない
-            if (!confirm(`${blk.short} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`)) return;
+            if (!(await padConfirm(`${blk.short} をやり直しますか？\n\n・手で置いた駒 ${mine.length} 件を外します\n・自動で組んだ結果を捨てます (後ろのブロックは組み直しが要ります)`, { ok: 'やり直す', danger: true }))) return;
+            // 答えを待つ間に、ほかの操作が始まった・シーズンや「いま」のブロックが変わった → 確認した範囲と違うので止める (外すのは確認で言った駒だけ)
+            if (_ob.busy) return;
+            { const s2 = opsStore.get(), c2 = s2 ? _obCtx(s2) : null; if (!c2 || String(s2.season?.id) !== String(snap.season.id) || c2.idx !== ctx.idx) { _ob.sel = null; renderOpsBuild(); showNotification('⏱ 確認している間にブロックかシーズンが変わりました。画面を合わせたので、もう一度押してください'); return; } }
             _ob.busy = true;
             try {
                 const epoch = _ob.epoch, sid = snap.season.id;
@@ -16219,12 +16226,12 @@
                 seasonId = ctx?.season?.id || null;
             } catch (e) { console.warn('[freeze] シーズン取得skip:', e?.message || e); }
             if (!seasonId) {
-                alert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
+                padAlert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
                 return;
             }
             let pub = null;
             try { pub = (await _loadOpsPublished()).pub; }   // 🧱 段階 7: 選んでいるブロックに効いている配信を凍結する
-            catch (e) { alert(`❌ 配信の状況を取得できませんでした: ${e?.message || e}`); return; }
+            catch (e) { padAlert(`❌ 配信の状況を取得できませんでした: ${e?.message || e}`); return; }
             if (!pub || Number(pub.season_id) !== Number(seasonId)) {
                 showNotification('配信中のプランはありません');
                 _syncOpsUnpublishBtn();
@@ -16233,20 +16240,20 @@
             const nowFrozen = !!pub.frozen_at;
             const me = getCurrentIdentity();
             if (nowFrozen) {
-                if (!confirm('▶️ 組み直し中を解除して、このプランを有効に戻しますか？')) return;
+                if (!(await padConfirm('▶️ 組み直し中を解除して、このプランを有効に戻しますか？', { ok: '解除する' }))) return;
             } else {
                 // 組み直すだけなら 📤 で上書きすれば足りる。凍結は「今のプランで動かないでほしい」ときだけ
-                if (!confirm('⏳ このプランを「組み直し中」にしますか？\n\n'
+                if (!(await padConfirm('⏳ このプランを「組み直し中」にしますか？\n\n'
                     + '・メンバーの画面にはプランが残ったまま「運営が組み直し中です」と出ます\n'
                     + '・「確認しました」の記録は消えません\n'
                     + '・新しいプランを ✅ 決定 (または 📤 配信) すると自動で解除されます\n\n'
-                    + '※ 組み直すだけなら、この操作は不要です (そのまま ✅ 決定し直せば上書きされます)')) return;
+                    + '※ 組み直すだけなら、この操作は不要です (そのまま ✅ 決定し直せば上書きされます)', { ok: '組み直し中にする' }))) return;
             }
             try {
                 const r = await window.supabaseSetPlanFrozen(pub.id, !nowFrozen, me?.name || null);
                 if (r && r.stale) {
                     // 操作の直前に別の運営が配信していた = いまメンバーが見ているのは別のプラン
-                    alert('⚠️ 操作中に別の運営が新しいプランを配信しました。\n\n'
+                    padAlert('⚠️ 操作中に別の運営が新しいプランを配信しました。\n\n'
                         + 'いまメンバーに出ているのは新しいプランで、組み直し中にはなっていません。\n'
                         + '画面を更新して、必要ならもう一度操作してください。');
                 } else {
@@ -16254,7 +16261,7 @@
                 }
                 if (typeof renderMyPublishedPlan === 'function') await renderMyPublishedPlan(me);
             } catch (e) {
-                alert(`❌ ${e?.message || e}`);
+                padAlert(`❌ ${e?.message || e}`);
             }
             _syncOpsUnpublishBtn();
         }
@@ -16441,7 +16448,7 @@
         async function handleOpsBossHpSaveAll() {
             const ctx = await ensureActiveSeasonLoaded();
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
-            if (!fresh.season) { alert('アクティブシーズン無し'); return; }
+            if (!fresh.season) { padAlert('アクティブシーズン無し'); return; }
             const rows = document.querySelectorAll('#opsBossHpList > div[data-boss-num]');
             const msg = document.getElementById('opsBossHpMessage');
             let ok = 0, fail = 0;
@@ -16690,7 +16697,8 @@
                 if (fresh.some(x => x.plan_key === planKey)) { showNotification('この凸はもう ✓ が付いています'); return; }
                 const lvOk = (x) => Number(x.level || 1) === Number(e.level) || (Number(e.level) >= 4 && Number(e.bossNumber) === 5 && Number(x.level || 1) === 3);
                 if (fresh.some(x => !x.plan_key && Number(x.boss_number) === Number(e.bossNumber) && lvOk(x))
-                    && !confirm(`${e.memberName || ''} さんは B${e.bossNumber} (Lv${e.level >= 4 ? 4 : e.level}) をもう数字で報告しています。\n\n別の凸として ✓ を付けますか？ (同じ凸なら「キャンセル」)`)) return;
+                    && !(await padConfirm(`${e.memberName || ''} さんは B${e.bossNumber} (Lv${e.level >= 4 ? 4 : e.level}) をもう数字で報告しています。\n\n別の凸として ✓ を付けますか？ (同じ凸なら「キャンセル」)`, { ok: '別の凸として ✓' }))) return;
+                if (gen !== _atkTap.gen || !_opsMode) return;   // 答えを待つ間に運営 OFF・シーズンの切り替え
                 const r = await window.supabaseMarkAttackDone({ seasonId: season.id, playerId: e.memberId, attackDate: season.hard_date, bossNumber: e.bossNumber, bossCode: b?.boss_code || null,
                     level: e.level, characters: e.team || [], plannedDamageRaw: e.dmgB * 1e9, planKey, reservationId: e.reservationId }, { byOps: true, actorName: me?.name || null });
                 if (typeof _myTodayAttacksCache !== 'undefined') _myTodayAttacksCache = null;   // 自分の凸ならヒーローの「残り N 凸」を数え直す
@@ -16718,7 +16726,8 @@
             const ent = planKey && _atkTap.view ? _atkTap.view.byKey.get(planKey) : null;
             const what = ent ? `${ent.memberName || ''} さん B${Number(ent.bossNumber)} (Lv${Number(ent.level) >= 4 ? 4 : Number(ent.level) || 1}・編成${SLOT_JP[ent.loadoutSlot] || '①'}) の `
                 : (row ? `B${Number(row.boss_number)} (Lv${Number(row.level) || 1}) の ` : 'この ');
-            if (!confirm(`${what}✓ を取り消しますか？\n\n・その人の凸の数が 1 つ戻ります\n・手で置いた駒 (📌) は戻りません — 必要なら置き直します`)) return;
+            if (!(await padConfirm(`${what}✓ を取り消しますか？\n\n・その人の凸の数が 1 つ戻ります\n・手で置いた駒 (📌) は戻りません — 必要なら置き直します`, { ok: '✓ を取り消す', danger: true }))) return;
+            if (!_opsMode || _atkTap.busy.has(`undo:${attackId}`)) return;   // 答えを待つ間に運営 OFF・同じ取り消しが走った
             const me = getCurrentIdentity();
             _atkTap.busy.add(`undo:${attackId}`);
             if (btn) btn.disabled = true;
@@ -16780,10 +16789,10 @@
         }
         async function handleOpsAttackEditDmg(attackId, currentDamageRaw) {
             const currentB = (Number(currentDamageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
-            const input = prompt(`新しいダメージ (B単位) を入力\n現在: ${currentB} B`, currentB);
+            const input = await padPrompt(`新しいダメージ (B単位) を入力\n現在: ${currentB} B`, { value: currentB, ok: '保存する' });
             if (input == null) return;
             const newB = parseFloat(input);
-            if (isNaN(newB) || newB < 0) { alert('数値が不正です'); return; }
+            if (isNaN(newB) || newB < 0) { padAlert('数値が不正です'); return; }
             const msg = document.getElementById('opsAttacksMessage');
             try {
                 await window.supabaseUpdateAttackDamage(attackId, Math.round(newB * 1e9));
@@ -16800,7 +16809,7 @@
             }
         }
         async function handleOpsAttackDelete(attackId, attackNumber, playerName) {
-            if (!confirm(`${playerName} の ${attackNumber}凸目 を削除しますか？`)) return;
+            if (!(await padConfirm(`${playerName} の ${attackNumber}凸目 を削除しますか？`, { ok: '削除する', danger: true }))) return;
             const msg = document.getElementById('opsAttacksMessage');
             try {
                 await window.supabaseDeleteAttack(attackId);
@@ -17248,9 +17257,9 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 const blk = a.bl[a.p.idx];
                 return `⏱ いまは ${blk.short} の${a.p.inRebuild ? '再編成時間' : '凸の時間'}です。${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると「いま」のブロックが ${a.bl[a.p.attackIdx]?.short || ''} から ${b.bl[b.p.attackIdx]?.short || ''} に変わるので、きょうのいまは変えられません。\n\n${blk.short} が終わってから (${rb.clockOfMinute((blk.toIdx + 1) * 60)} 以降) 変えてください。`;
             };
-            if (day) { const why = shift(); if (why) { alert(why); return; } }
-            if (day && !confirm(`きょうはレイド当日です。再編成時間を ${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると、この端末と再編成の通知はすぐ変わります。ほかの端末 (メンバーの画面・ほかの運営) は取り直すまで (30 秒の見回り・開き直す・下に引く) 前の時刻のままです。変えますか？`)) return;
-            if (day) { const why = shift(); if (why) { alert(why); return; } }   // 確認の間に境目をまたいだ
+            if (day) { const why = shift(); if (why) { padAlert(why); return; } }
+            if (day && !(await padConfirm(`きょうはレイド当日です。再編成時間を ${cur ? `${cur} 分` : 'なし'} → ${n ? `${n} 分` : 'なし'} にすると、この端末と再編成の通知はすぐ変わります。ほかの端末 (メンバーの画面・ほかの運営) は取り直すまで (30 秒の見回り・開き直す・下に引く) 前の時刻のままです。変えますか？`, { ok: '変える' }))) return;
+            if (day) { const why = shift(); if (why) { padAlert(why); return; } }   // 確認の間に境目をまたいだ
             const sid = season.id;
             _obkRb.busy = true; _obkRb.msg = '保存しています…';
             _obkRebuildPaint();
@@ -17478,7 +17487,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                     const an = ATTR_VISUAL[e.attribute]?.name || e.attribute;
                     return `B${e.bossNumber} → ${e.bossCode} (${an})`;
                 }).join('\n');
-                if (!confirm(`⚠️ ボスの属性を変更します:\n${lines}\n\n記録済みの凸データも新しいコードに追随します。\n配信済みの凸プランには自動反映されないため、変更後はプランを再算出・再配信してください。\nよろしいですか？`)) return;
+                if (!(await padConfirm(`⚠️ ボスの属性を変更します:\n${lines}\n\n記録済みの凸データも新しいコードに追随します。\n配信済みの凸プランには自動反映されないため、変更後はプランを再算出・再配信してください。`, { ok: '変更する' }))) return;
             }
             set('保存中...');
             try {
@@ -17651,8 +17660,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             }
             const confirmMsg = isTest
                 ? `🧪 テストシーズン (${monthKey}) を作成しますか？\nボスはこのシートのもの、ブロックの区切り・再編成時間は直前の本番シーズンと同じにします。\n模擬・編成・参加可能時間は、いま登録されている本物をそのまま使います (作り物は入れません)。\n「🧪 ✕ 終了」で、テスト中に変えた模擬と参加可能時間は始める前に戻ります。\nテストのシーズンは運営担当の端末にだけ出ます。`
-                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}${availWarn}`;
-            if (!confirm(confirmMsg)) return;
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n模擬はメンバーに Discord へ貼ってもらい、運営が 👥 で登録します (前回の引き継ぎはありません)。${mockWarn}${availWarn}`;
+            if (!(await padConfirm(confirmMsg, { ok: isTest ? 'テストシーズンを作る' : 'シーズンを作る' }))) return;
 
             try {
                 set('作成中...'); msg.style.color = 'var(--t-body)';
@@ -17672,7 +17681,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
 
         async function handleOpsEndSeason() {
             const ctx = await ensureActiveSeasonLoaded();
-            if (!ctx?.season) { alert('アクティブなシーズンがありません'); return; }
+            if (!ctx?.season) { padAlert('アクティブなシーズンがありません'); return; }
             // テストは止めずに消して元に戻す (🧪 ✕ 終了 と同じシート)。ボタンはテスト中に出していないが、段階の切り替えの合間に押せても止めない
             if (ctx.season.is_test) { await openOpsTestEndModal(); return; }
             // ★ レイド当日 (自動判定が「当日」) は終了させない (Codex指摘 2026-09-08)。
@@ -17680,12 +17689,13 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             //   凸報告も締め凸も止まる。翌日5時以降に「終了」の段階で行う
             const stNow = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
             if (stNow && stNow.auto === 'day') {
-                alert('レイド当日はシーズンを終了できません。\n翌日 5 時以降に「終了」の段階で終了してください。');
+                padAlert('レイド当日はシーズンを終了できません。\n翌日 5 時以降に「終了」の段階で終了してください。');
                 return;
             }
-            const ur = prompt(`シーズン ${ctx.season.month_key} を終了します。\nユニオン順位 (%) を入力してください (例: 0.41、不明なら空欄)`, '');
+            const ur = await padPrompt(`シーズン ${ctx.season.month_key} を終了します。\nユニオン順位 (%) を入力してください (例: 0.41、不明なら空欄)`, { value: '', placeholder: '0.41', ok: '次へ' });
             if (ur === null) return;
-            if (!confirm(`シーズン ${ctx.season.month_key} を終了して非アクティブ化します。\nよろしいですか？`)) return;
+            if (!(await padConfirm(`シーズン ${ctx.season.month_key} を終了して非アクティブ化します。`, { ok: 'シーズンを終了する', danger: true }))) return;
+            { const st2 = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null; if (st2 && st2.auto === 'day') { padAlert('レイド当日はシーズンを終了できません。\n翌日 5 時以降に「終了」の段階で終了してください。'); return; } }   // 答えを待つ間に当日になった
             try {
                 await window.supabaseEndActiveSeason(ur);
                 seasonStore.invalidate();
@@ -17693,23 +17703,24 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 showNotification(`シーズン ${ctx.season.month_key} を終了しました`);
                 renderOpsDashboard();
             } catch (e) {
-                alert(`シーズン終了失敗: ${e?.message || e}`);
+                padAlert(`シーズン終了失敗: ${e?.message || e}`);
             }
         }
 
         async function handleOpsResetDamages() {
             // シーズン終了と同じく、レイド当日 (自動判定) は止める — 段階を手で「終了」にするとボタンが出る (2026-10-29 ボタンの監査)
             const stNow = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
-            if (stNow && stNow.auto === 'day') { alert('レイド当日は模擬のダメージをリセットできません。\n翌日 5 時以降に行ってください。'); return; }
-            if (!confirm('⚠️ 全メンバーの属性別ダメージ登録を一括リセットします。\nこの操作は取り消せません。よろしいですか？')) return;
-            if (!confirm('本当によろしいですか？次のシーズンの模擬は、運営が 📸 模擬の取り込み で登録し直します。')) return;
+            if (stNow && stNow.auto === 'day') { padAlert('レイド当日は模擬のダメージをリセットできません。\n翌日 5 時以降に行ってください。'); return; }
+            if (!(await padConfirm('⚠️ 全メンバーの属性別ダメージ登録を一括リセットします。\nこの操作は取り消せません。', { ok: '次へ', danger: true }))) return;
+            if (!(await padConfirm('本当によろしいですか？次のシーズンの模擬は、運営が 👥 で登録し直します。', { ok: 'リセットする', danger: true }))) return;
+            { const st2 = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null; if (st2 && st2.auto === 'day') { padAlert('レイド当日は模擬のダメージをリセットできません。\n翌日 5 時以降に行ってください。'); return; } }   // 答えを待つ間に当日になった
             try {
                 await window.supabaseResetAllDamages();
                 opsStore.invalidate();
                 showNotification('ダメージ登録を全件リセットしました');
                 renderOpsDashboard();
             } catch (e) {
-                alert(`リセット失敗: ${e?.message || e}`);
+                padAlert(`リセット失敗: ${e?.message || e}`);
             }
         }
 

@@ -2719,10 +2719,8 @@ test('★ 段階 2 の後半: ブラウザの alert / confirm / prompt はアプ
     assert.match(css, /\n\s*\.pad-dlg-btn\.main \{ background: var\(--t-ink\); color: var\(--card\); \}/, '主ボタンの文字が --t-ink の塗りの上で反転しない');
     // ② 残っているブラウザのダイアログ: 決めた所だけ。囲む関数 (function 宣言) で数える
     //   - <head> の練習の起動の失敗 (アプリがまだ無い) / _padDlgNext (シートが無いときに倒す先)
-    //   - ROUND2 = 運営 › ⚔️・🧱・👑 シーズン制御 (2 回目で直す — 直したらここから消す。答えを待つ間に動くものの照合を 1 つずつ見る)
-    const ROUND2 = new Set(['handleOpsAtkSkip', '_opsAtkAsk', 'handleOpsResultSave', '_resvTransition', 'handleOpsQuickCreateTestSeason', 'handleOpsTestEndConfirm', 'handleOpsBossSummaryEditSave',
-        'handleOpsFinishPlanCopy', '_obDecide', '_obSelect', '_obReset', 'handleOpsUnpublishPlan', 'handleOpsBossHpSaveAll', '_opsTapMark', '_opsTapUndo', 'handleOpsAttackEditDmg', 'handleOpsAttackDelete',
-        '_obkRebuildSave', 'handleOpsSeasonEditSave', 'handleOpsSeasonCreateSave', 'handleOpsEndSeason', 'handleOpsResetDamages']);
+    //   - ROUND2 = 1 回目のあとに残した 運営 › ⚔️・🧱・👑 シーズン制御 — 2 回目 (2026-11-25) で全部直したので空。新しく残すなら名前を足し、理由を書く
+    const ROUND2 = new Set([]);
     const lines = html.split('\n');
     const headEnd = lines.findIndex(l => l.includes('</head>'));
     const bad = [], seenR2 = new Set();
@@ -2752,6 +2750,14 @@ test('★ 段階 2 の後半: ブラウザの alert / confirm / prompt はアプ
     assert.match(fnBody('_mkbSaveNext'), /await padConfirm\([^\n]*\)\)\) return;\s*\n\s*if \(_mkb\.busy \|\| _mkb\.playerId !== pid \|\| _mkb\.gen !== gen\) return;/, 'Ctrl+Enter の「次の人へ」が答えのあとに照合しない');
     assert.match(fnBody('handleGrowthApplyRoster'), /if \(sigOf\(dom\.matchRoster\(entries, \(_growth\.players \|\| \[\]\)\.slice\(\)\)\) !== sigOf\(m\)\)/, '名簿のひも付けが、答えを待つ間に読み直された一覧で突き合わせ直さない');
     for (const f of ['handleCharMasterDelete']) assert.match(fnBody(f), /if \(_charEditOriginal !== orig\) return;/, f + ' が答えのあとに開いているキャラを照合しない');
+    //   2 回目 (運営 › ⚔️・🧱・👑): 答えを待つ間に変わるもの — 「凸していない」の印 (運営 OFF・ほかの印の操作・シーズン) / やり直す (ほかの操作・シーズン・「いま」のブロック) / ✓ の取り消し (同じ取り消し) /
+    //   ✓ (世代) / リハーサル (もう一方の「始める」) / シーズン終了・模擬のリセット (答えを待つ間に当日になった)
+    assert.match(fnBody('handleOpsAtkSkip'), /\{ ok: '凸していないにする' \}\)\)\) return;\s*\n\s*if \(!_opsMode \|\| _atkCheck\.skipBusy \|\| _atkCheck\.seasonId !== sid\) return;/, '「凸していない」が答えのあとに照合しない');
+    assert.match(fnBody('_obReset'), /\{ ok: 'やり直す', danger: true \}\)\)\) return;[\s\S]{0,200}?if \(_ob\.busy\) return;\s*\n\s*\{ const s2 = opsStore\.get\(\), c2 = s2 \? _obCtx\(s2\) : null; if \(!c2 \|\| String\(s2\.season\?\.id\) !== String\(snap\.season\.id\) \|\| c2\.idx !== ctx\.idx\)/, '「やり直す」が答えのあとにブロック・シーズンを照合しない');
+    assert.match(fnBody('_opsTapUndo'), /\{ ok: '✓ を取り消す', danger: true \}\)\)\) return;\s*\n\s*if \(!_opsMode \|\| _atkTap\.busy\.has\(`undo:\$\{attackId\}`\)\) return;/, '✓ の取り消しが答えのあとに照合しない');
+    assert.match(fnBody('handleOpsQuickCreateTestSeason'), /\{ ok: 'リハーサルを始める' \}\)\)\) return;\s*\n\s*if \(_opsRehearsalBusy\) return;/, 'リハーサルが答えのあとに二重の始めを止めない');
+    for (const f of ['handleOpsEndSeason', 'handleOpsResetDamages']) assert.match(fnBody(f), /\{ const st2 = \(typeof _opsCurrentStage === 'function'\) \? _opsCurrentStage\(\) : null; if \(st2 && st2\.auto === 'day'\)/, f + ' が答えを待つ間に当日になっても止めない');
+    assert.ok(!/模擬戦の提出は期間中に各メンバーが個別に/.test(html), 'シーズン作成の確認が「メンバーが個別に提出」と言う (9c から運営が 👥 で登録)');
     //   復元の注意は読み終わってから再読み込み (待たないと 1.2 秒で消える)
     assert.match(fnBody('handleSettingsRestore'), /await padAlert\(`復元は完了しましたが注意があります/, '復元の注意を待たずに再読み込みする');
 });
@@ -13586,7 +13592,7 @@ console.log('\n🧪 シーズンの決まり (2026-10-30: アクティブは 1 �
         assert.ok(/if \(season && season\.is_test\) document\.querySelectorAll\('#tab-ops \[data-prod-only\]'\)\.forEach\(el => \{ el\.style\.display = 'none'; \}\);/.test(html), 'テスト中にシーズン終了が出る');
         const end = fnOf(html, 'async function handleOpsEndSeason()', 'async function handleOpsResetDamages()');
         const ti = end.indexOf('if (ctx.season.is_test) { await openOpsTestEndModal(); return; }');
-        assert.ok(ti > 0 && ti < end.indexOf('prompt(') && ti < end.indexOf('supabaseEndActiveSeason'), 'テストを止める道が残っている');
+        assert.ok(ti > 0 && ti < end.indexOf('padPrompt(') && ti < end.indexOf('supabaseEndActiveSeason'), 'テストを止める道が残っている');
         assert.ok(!/既存のアクティブシーズンは非アクティブ化されます/.test(html));
     });
     test('★ PC で「シーズン作成」が出ない: 段階のシーズンは運営の盤面を先に信じる (盤面がシーズン無しなら軽い写しを見ない) / 盤面と違う写しは捨てる', () => {
@@ -14625,10 +14631,10 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
     test('★ 決定 (S4) の配線: 押した時点の DB で 駒と決定を読み直す → 別の運営の決定なら止める → 組めた範囲 → 確認 → もう一度照合 → 版 4 で 1 行 → 通知 (decide|)', () => {
         const d = fn('async function _obDecide()', 'async function _obNotifyDecide(');
         const order = ['await Promise.all([window.supabaseLoadReservations(sid), window.supabaseGetPublishedPlans(), Promise.resolve(window.supabaseLoadAttackSkips?.(sid)).catch(() => null)])', 'if (Number(latest?.id || 0) !== Number(_ob.dec?.basisId || 0))',
-            'const ctx = _obCtx(', '_obDecideRange(first, blocks.length, ov)', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', 'if (!confirm(msg)) return;', '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
+            'const ctx = _obCtx(', '_obDecideRange(first, blocks.length, ov)', 'const fresh = _obFreshOf(range, prev);', 'const sig0 = fpSig(rows);', 'dp.build(', "if (!(await padConfirm(msg, { ok: '決定して配信する' }))) return;", '[pubs2, rows2] = await Promise.all([window.supabaseGetPublishedPlans(), window.supabaseLoadReservations(sid)])',
             'Number(latest2?.id || 0) !== basis0', 'fpSig(rows2) !== sig0', 'window.supabasePublishDecidedPlan(plan, me?.id || null, me?.name || null, sid, _planSchemaOf(plan), basis0)', 'await _obNotifyDecide('];
         // S4 Codex 監査 A・B: 決定はサーバでも前提 (basis0) を照合して入れる (シーズンごとに直列化)。食い違い・56 未適用は通知の前に止める
-        assert.ok(/if \(e\?\.code === 'CONFLICT'\) \{ alert\(/.test(d) && /if \(e\?\.code === 'NO_RPC'\) \{ alert\(/.test(d) && !/window\.supabasePublishPlan\(/.test(d), '決定を素の insert で入れている / 食い違いで止めない');
+        assert.ok(/if \(e\?\.code === 'CONFLICT'\) \{ padAlert\(/.test(d) && /if \(e\?\.code === 'NO_RPC'\) \{ padAlert\(/.test(d) && !/window\.supabasePublishPlan\(/.test(d), '決定を素の insert で入れている / 食い違いで止めない');
         const cl = _fsA.readFileSync('js/supabase-client.js', 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/supabase\.rpc\('publish_decided_plan', \{/.test(cl) && /p_expected_decision_id: Number\(expectedDecisionId\) \|\| null,/.test(cl) && /e\.code = 'CONFLICT'/.test(cl) && /await _gateGuard\('publish'\);\s*\/\/ 互換ゲート \(L2 ⑦\)\s*\n\s*const \{ data, error \} = await supabase\.rpc\('publish_decided_plan'/.test(cl), 'クライアントの決定の配信');
         const s56 = _fsA.readFileSync('supabase/56_attack_done_tap.sql', 'utf8').replace(/\r\n/g, '\n');
@@ -14697,7 +14703,7 @@ console.log('\n▶︎ 凸プランを組む 画面の配線 (シンプル化 S2)
         assert.ok(/const same = !fresh\.length;\s*\n\s*if \(same && !prev\) \{/.test(d), '前の決定が無いのに変更なしにする');
         assert.ok(/dp\.build\(\{ blocks, ov, newIdxs: fresh, prevPlan: prev \? prev\.plan : null,/.test(d), 'build に fresh 以外を渡している (変更なしで range を渡すと、いまの盤面で作り直す: S4 レビュー [2])');
         assert.ok(/const sameTo = same && notifySame \? dp\.sameNotices\(\{ plan, blocks, fromIdx: first, done: _obDoneKeys\(snap2, blocks\),/.test(d), '変更なしの宛先を確認の前に決めていない');
-        assert.ok(d.indexOf('const sameTo = ') < d.indexOf('if (!confirm(msg)) return;') && /sameTo\.length \? `\\n\\n「変更なしでも通知する」に印があるので、これから凸のある \$\{sameTo\.length\} 人に/.test(d), '確認で人数を言っていない');
+        assert.ok(d.indexOf('const sameTo = ') < d.indexOf("if (!(await padConfirm(msg, { ok: '決定して配信する' }))) return;") && /sameTo\.length \? `\\n\\n「変更なしでも通知する」に印があるので、これから凸のある \$\{sameTo\.length\} 人に/.test(d), '確認で人数を言っていない');
         assert.ok(/pubRows: Array\.isArray\(pubs2\) \? pubs2\.filter\(r => Number\(r\.season_id\) === Number\(sid\)\) : \[\], sameTo, fromIdx: first \}\);/.test(d), '確認で言った相手を通知に渡していない / 通知の行をいまのブロックから絞らない (⑥)');
         assert.ok(/\(kept\.length && !same \?/.test(d), '変更なしで「前の決定のまま残します」を重ねて言う');
         // レビュー (2026-11-02): スイッチの印・押せなさ・説明文はスイッチに合わせる / 切り替えたら描き直す / 決定のあと OFF に戻す (隠れたまま次の決定に効かせない)
@@ -15147,7 +15153,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         // TP-3: 押した時点の決定で確かめる
         assert.ok(/rowsNow = await window\.supabaseGetPublishedPlans\(\)/.test(m) && /if \(Number\(decNow\.id\) !== Number\(pubId\)\) \{[\s\S]*?if \(!eNow\) \{ showNotification\('別の運営が決定し直し/.test(m), '押した時点の決定を確かめていない');
         // TP-8: await のあとに世代を照合する (OFF にしたら書かない)
-        assert.equal((m.match(/if \(gen !== _atkTap\.gen \|\| !_opsMode\) return;/g) || []).length, 3, 'await のあとに世代を照合していない');
+        assert.equal((m.match(/if \(gen !== _atkTap\.gen \|\| !_opsMode\) return;/g) || []).length, 4, 'await のあとに世代を照合していない (アプリの確認の答えのあとも)');
         assert.ok(!/\+\+_atkTap\.gen/.test(r), '描くたびに世代を進めている (押している途中の ✓ が毎回止まる)');
         // TP-9: ✓ と取り消しで同じ役割の判定・読み込み前は待ってもらう
         assert.ok(/if \(!_opsTapRoleOk\(\)\) return;/.test(m) && /if \(!_opsTapRoleOk\(\)\) return;/.test(u), '✓ と取り消しで役割の判定が違う');
@@ -15439,7 +15445,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
     });
     test('★ ✓ 凸の記録 の盤 (盤のレビュー OP-3 / GP-1): 取り消しの確認に誰の・どの凸か / 取り直しの最中のブロックの切り替えは控えから描く (札は押せない)', () => {
         const u = fnS5('async function _opsTapUndo(', 'function renderOpsAttacksList()');
-        assert.ok(/const ent = planKey && _atkTap\.view \? _atkTap\.view\.byKey\.get\(planKey\) : null;/.test(u) && /if \(!confirm\(`\$\{what\}✓ を取り消しますか？/.test(u), '取り消しの確認に名前・ボスを出していない (OP-3)');
+        assert.ok(/const ent = planKey && _atkTap\.view \? _atkTap\.view\.byKey\.get\(planKey\) : null;/.test(u) && /if \(!\(await padConfirm\(`\$\{what\}✓ を取り消しますか？/.test(u), '取り消しの確認に名前・ボスを出していない (OP-3)');
         assert.ok(/if \(u\) _opsTapUndo\(Number\(u\.dataset\.tapUndo\), u, u\.dataset\.planKey \|\| null\);/.test(html), '押した札の凸の鍵を取り消しに渡していない');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
         assert.ok(/if \(!snap\) \{[\s\S]{0,400}const L = _atkTap\.last;[\s\S]{0,300}body\.innerHTML = _decidedBoardHtml\(L\.board, \{ sel: _atkTap\.blk\.idx, blocks: L\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L\.tapRow, busy: _atkTap\.busy, frozen: true \}\);/.test(r), '取り直しの最中にブロックが切り替わらない (GP-1)');
@@ -15495,7 +15501,7 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
         assert.ok(html.includes('${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset"'), 'やり直すものが無くても「このブロックをやり直す」を出す');
         assert.ok(/if \(!_opsMode && typeof _memberLite === 'function' && _memberLite\(\) && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) switchTab\('mypage'\);/.test(html), '運営タブで 🛠 OFF にしてもメンバーに無いページに残る');
         const rd = fnB('        async function handleOpsResetDamages() {', '            try {');
-        assert.ok(/if \(stNow && stNow\.auto === 'day'\) \{ alert\(/.test(rd), 'レイド当日に模擬のダメージをリセットできる');
+        assert.ok(/if \(stNow && stNow\.auto === 'day'\) \{ padAlert\(/.test(rd), 'レイド当日に模擬のダメージをリセットできる');
     });
     test('★ 互換ゲートの「更新する」は、上の更新の帯が出ていればカードに置かない (同じ _reloadFresh)', () => {
         assert.equal((html.match(/_gateReloadHtml\('/g) || []).length, 3, 'カードの「更新する」が帯と 2 つになる所がある');
@@ -15956,7 +15962,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(!/_obkRebuild/.test(fnR('function _obkPaint() {', 'function _obkEdit(next) {')) && !/_obkLockReason|_obkCanEdit/.test(paint), '区切りのロックに巻き込んでいる');
         const save = fnR('async function _obkRebuildSave(n) {', '\n        }\n');
         assert.ok(/if \(!_opsIsMasterNow\(\)\) \{ showNotification\(/.test(save) && /await window\.supabaseUpdateSeasonRebuildMinutes\(sid, n \? n : null\);/.test(save) && /seasonStore\.invalidate\(\);\s*\n\s*opsStore\.invalidate\(\);\s*\n\s*renderOpsDashboard\(\);/.test(save), '保存の流れが無い');
-        assert.ok(/raidDayKey\(Date\.now\(\)\) === String\(season\.hard_date\)\.slice\(0, 10\);[\s\S]*?if \(day && !confirm\(/.test(save), '当日に確かめずに変えている');
+        assert.ok(/raidDayKey\(Date\.now\(\)\) === String\(season\.hard_date\)\.slice\(0, 10\);[\s\S]*?if \(day && !\(await padConfirm\(/.test(save), '当日に確かめずに変えている');
         assert.ok(/<div id="opsBlocksBody"><p class="obk-note">読み込み中…<\/p><\/div>\s*\n\s*<!--[^\n]*-->\s*\n\s*<div id="opsRebuildBody"><\/div>/.test(html), 'カードに欄が無い');
         // 新しい本番シーズンは 20 分から・テストシーズンは 0 分
         assert.ok(/let metadata = isTest \? \{\} : \{ rebuild_minutes: rbDefault \};/.test(rd('js/supabase-client.js')), '新しい本番シーズンに既定の分数を入れていない');
@@ -15968,10 +15974,10 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(/host\.innerHTML = `\$\{rbHtml\}<div id="obSync">\$\{_obSyncHtml\(\)\}<\/div><div class="obb-grid"/.test(r), '再編成時間の帯が無い');
         assert.ok(/return `\$\{_raidNowIdx\(season, blocks\)\}\|\$\{rb \? rb\.idx : -1\}`;/.test(fnOf('function _obPhaseKey(season, blocks)')), '段の鍵が無い');
         assert.ok(/if \(_opsMode && typeof _ob !== 'undefined' && _ob\.phaseKey != null && !_ob\.busy\n/.test(html) && /if \(s && _obPhaseKey\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\) !== _ob\.phaseKey\) \{\s*\n[^\n]*\n\s*if \(_ob\.sel && Number\.isInteger\(_ob\.idx\) && _ob\.idx < _obFirstIdx\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\)\) \{ _ob\.sel = null; showNotification\(/.test(html), '段が変わっても描き直さない / 組んでいる最中に描き直す / 選んだピースを残す (⑥ レビュー now-4) / 再編成が終わっただけで外す (再レビュー ui-3)');
-        assert.ok(/if \(!confirm\(msg\)\) return;\s*\n\s*if \(!_obSame\(epoch, sid\)\) return;\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== first\) \{ alert\(/.test(html), '確認の間に「いま」が進んでも決定している');
+        assert.ok(/if \(!\(await padConfirm\(msg, \{ ok: '決定して配信する' \}\)\)\) return;\s*\n\s*if \(!_obSame\(epoch, sid\)\) return;\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== first\) \{ padAlert\(/.test(html), '確認の間に「いま」が進んでも決定している');
         assert.ok(/const _obHours = \(b\) => \(b && \(b\.attackRange \|\| b\.range\)\)/.test(html), '盤・組む・きょうの凸 の時刻が凸の時間でない');
         const s0 = fnR('function _obSelect(key)', '// ⏱ 過ぎたブロックの 📌 を外す');
-        assert.ok(/if \(ctx\.ov\[p\.placedIdx\]\?\.past && pinRow && pinRow\.status === 'pinned'\) \{[\s\S]*?if \(confirm\([^\n]*\)\) _obReleasePast\(Number\(pinRow\.id\)\);\s*\n\s*return;/.test(s0), '過ぎたブロックの 📌 を外す入口が無い');
+        assert.ok(/if \(ctx\.ov\[p\.placedIdx\]\?\.past && pinRow && pinRow\.status === 'pinned'\) \{[\s\S]*?padConfirm\(msg, \{ ok: '外す' \}\)\.then\(yes => \{ if \(yes\) _obReleasePast\(Number\(pinRow\.id\)\); \}\);[^\n]*\n\s*return;/.test(s0), '過ぎたブロックの 📌 を外す入口が無い');
         const rp = fnR('async function _obReleasePast(resId) {', '// 置いたら / 外したら');
         assert.ok(/await _resvTransition\(Number\(resId\), 'released', \{ expectFrom: 'pinned', reason: 'ops'/.test(rp) && /await _opsReloadBoardCards\(\);/.test(rp), '外し方が違う');
         assert.ok(!/_obAfterChange|_obRemoveFromPlan|_ob\.plans/.test(rp), '過ぎたブロックの 📌 を外すと、組んでいる結果を捨てる');
@@ -16009,8 +16015,8 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
             const log = { alert: [], confirm: [], saved: [] };
             const season = { id: 47, hard_date: o.hd || '2026-11-28', metadata: { rebuild_minutes: cur } };
             const w = { raidBlocksDomain: rb, opsStageDomain: globalThis.opsStageDomain, supabaseUpdateSeasonRebuildMinutes: async (sid, v) => { log.saved.push(v); }, supabaseLogActivity: () => {} };
-            const f = new Function('window', 'Date', '_obk', '_obkRb', '_opsIsMasterNow', 'showNotification', 'alert', 'confirm', '_obkRebuildPaint', 'seasonStore', 'opsStore', 'renderOpsDashboard',
-                `${save}\nreturn _obkRebuildSave;`)(w, FD, { season }, { busy: false, msg: '' }, () => true, () => {}, (m) => log.alert.push(m), (m) => { log.confirm.push(m); if (o.confirmAt) clock.t = Date.parse(o.confirmAt); return true; }, () => {},
+            const f = new Function('window', 'Date', '_obk', '_obkRb', '_opsIsMasterNow', 'showNotification', 'padAlert', 'padConfirm', '_obkRebuildPaint', 'seasonStore', 'opsStore', 'renderOpsDashboard',
+                `${save}\nreturn _obkRebuildSave;`)(w, FD, { season }, { busy: false, msg: '' }, () => true, () => {}, async (m) => { log.alert.push(m); }, async (m) => { log.confirm.push(m); if (o.confirmAt) clock.t = Date.parse(o.confirmAt); return true; }, () => {},
                 { invalidate() {} }, { invalidate() {} }, () => {});
             await f(n);
             return log;
