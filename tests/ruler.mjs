@@ -85,6 +85,14 @@ const DONE = {
         'member:1366:click=.side-me+sheet=#playerSelectModal', 'member:390:call=openPlayerSelectModal+sheet=#playerSelectModal', 'member:390:call=openDrawer+sheet=#drawer'],
     'ranking@シート': ['member:390:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:320:click=[onclick^="showPlayerDetails"]+sheet=#playerModal', 'member:1366:click=[onclick^="showPlayerDetails"]+sheet=#playerModal'],
     'slv-ranking/fururi@シート': ['member:390:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal', 'member:1366:click=[onclick="openFururiHelp()"]+sheet=#fururiHelpModal'],
+    //   2 回目 (2026-11-25) = 運営 › 👥 のシート: 疎通確認・一斉送信・送信の確認 (一斉送信に文を入れて送る → 確認のシート)・参加可能時間 (運営の登録)・まとめて入力 (PC は左に人の一覧)・手で入力。
+    //   320px = まとめて入力の顔 (40px × 5) とダメージの欄・参加可能時間の数のステッパー (40px) が詰まる幅 — fit= で行からはみ出していないことも見る
+    'ops/メンバー@シート': ['ops-eve:390:click=[onclick="openOpsPushCheckModal()"]+sheet=#opsPushCheckModal', 'ops-eve:390:click=[onclick="openOpsPushSendModal()"]+sheet=#opsPushSendModal',
+        'ops-eve:390:click=[onclick="openOpsPushSendModal()"]+type=#opsPushTitle=テスト+type=#opsPushBody=本文+click=[onclick="handleOpsPushSend()"]+sheet=#pushPreviewModal',
+        'ops-eve:390:click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal', 'ops-eve:320:click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal+fit=#mypageAvailGroup .avail-blocks',
+        'ops-eve:390:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal', 'ops-eve:1366:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal',
+        'ops-eve:320:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal+fit=#opsMockBulkBody .mkb-slots',
+        'ops-eve:390:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal', 'ops-eve:320:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal+fit=#myDmgPreviewChars'],
 };
 const ONLY = (process.env.TABS || '').split(',').filter(Boolean);
 // TABS=ops/戦況 SCENES=ops-day:390:open,ops-day:1366 で、そのタブの場面を差し替えて下調べできる (落ちない・一覧だけ・ALL=1 で外れを全部出す)。SCENES は TABS といっしょに使う

@@ -3094,58 +3094,59 @@
             #opsMockBulkModal .mkb-sheet { max-width: 900px; }
             .mkb-cols { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 14px; align-items: start; }
             .mkb-side { display: block; position: sticky; top: 0; padding-top: 6px; min-width: 0; }
-            .mkb-keys { display: flex; gap: 4px 12px; flex-wrap: wrap; margin: 6px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+            .mkb-keys { display: flex; gap: 4px 12px; flex-wrap: wrap; margin: 6px 0 0; font-size: 11px; font-weight: 700; color: var(--t-muted); }
             .mkb-k { display: inline-block; }
             .mkb-preset { grid-template-columns: auto minmax(0, 1fr) auto; }
         }
-        .mkb-keys kbd, .mkb-k { font: inherit; font-size: 10px; font-weight: 900; padding: 0 5px; border-radius: 5px; background: var(--s2); color: var(--t-body); border-bottom: 2px solid var(--line); white-space: nowrap; }
-        .mkb-search { width: 100%; font: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 9px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); }
+        .mkb-keys kbd, .mkb-k { font: inherit; font-size: 11px; font-weight: 900; padding: 0 5px; border-radius: 4px; background: var(--s2); color: var(--t-body); border-bottom: 2px solid var(--line); white-space: nowrap; }
+        .mkb-search { width: 100%; min-height: 40px; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); }
         .mkb-plist { display: grid; gap: 3px; margin-top: 7px; max-height: 56vh; overflow-y: auto; overflow-x: hidden; }
-        .mkb-p { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; border: 1.5px solid transparent; background: var(--s1); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; text-align: left; min-width: 0; }
+        .mkb-p { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 8px; border-radius: 8px; border: 1.5px solid transparent; background: var(--s1); color: var(--t-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; text-align: left; min-width: 0; }
         .mkb-p.on { border-color: var(--ops); background: var(--ops-bg); } .mkb-p:disabled { opacity: .5; cursor: default; }
-        .mkb-p .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; } .mkb-p .n { font-size: 10.5px; font-weight: 900; color: var(--t-muted); font-variant-numeric: tabular-nums; } .mkb-p .n.full { color: var(--ok-deep); }
-        .mkb-presets.choosing { outline: 2px solid var(--ops); outline-offset: 3px; border-radius: 10px; }
+        .mkb-p .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; } .mkb-p .n { font-size: 11px; font-weight: 900; color: var(--t-muted); font-variant-numeric: tabular-nums; } .mkb-p .n.full { color: var(--ok-deep); }
+        .mkb-presets.choosing { outline: 2px solid var(--ops); outline-offset: 3px; border-radius: 8px; }
         .mkb-choose { margin: 6px 0 0; font-size: 11px; font-weight: 900; color: var(--ops-deep); }
         .mkb-head { margin: 2px 0 4px; }
         .mkb-pills { display: flex; gap: 5px; flex-wrap: wrap; }
-        .mkb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--t-body); background: var(--s1); }
+        #opsMockBulkModal .mk-only { font-size: 11px; }   /* 「A 朝 のみ」の札: 👥 の模擬ダメージ表 (表の中 = 10px) と共有の CSS — シートの中は表でないので 11px (2026-11-25) */
+        .mkb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; color: var(--t-body); background: var(--s1); }
         .mkb-note { margin: 6px 0 0; font-size: 11px; color: var(--t-muted); line-height: 1.55; }
         .mkb-note b { color: var(--t-ink); }
         .mkb-loading { color: var(--ops-deep); font-weight: 800; }
-        .mkb-attr { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; padding: 9px 10px; margin-top: 8px; background: var(--card); }
-        .mkb-ah { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; font-weight: 900; color: var(--t-ink); }
-        .mkb-ah small { font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .mkb-attr { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 14px; padding: 9px 10px; margin-top: 8px; background: var(--card); }
+        .mkb-ah { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .mkb-ah small { font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .mkb-done { margin-left: auto; font-size: 11px; font-weight: 900; color: var(--ok-deep); }
         .mkb-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
-        .mkb-rl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .mkb-rl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 800; color: var(--t-muted); }
         .mkb-rl .st { font-weight: 900; } .mkb-rl .st.dirty { color: var(--warn-deep); } .mkb-rl .st.ok { color: var(--ok-deep); } .mkb-rl .st.err { color: var(--bad); }
         .mkb-presets { display: grid; gap: 4px; margin-top: 5px; }
-        .mkb-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 7px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; cursor: pointer; text-align: left; }
+        .mkb-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 40px; padding: 4px 7px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; cursor: pointer; text-align: left; }
         .mkb-preset.on { border-color: var(--ops); background: var(--ops-bg); }
         .mkb-preset.ng { opacity: 0.55; cursor: not-allowed; border-style: dashed; }
         .mkb-preset.warn { border-color: var(--warn-solid); }
         .mkb-preset .pm .warn, .mkb-rl .st.warn { color: var(--warn-deep); }
         .mkb-preset .faces { display: flex; gap: 3px; min-width: 0; overflow: hidden; }
-        .mkb-preset .pm { font-size: 10px; font-weight: 800; color: var(--t-muted); text-align: right; white-space: nowrap; line-height: 1.35; }
+        .mkb-preset .pm { font-size: 11px; font-weight: 800; color: var(--t-muted); text-align: right; white-space: nowrap; line-height: 1.35; }
         .mkb-preset .pm b { color: var(--t-ink); }
         .mkb-preset .pm .mine { color: var(--ops-deep); }
         .mkb-slots { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
         .mkb-faces { display: flex; gap: 4px; }
-        .mkb-face { width: 36px; height: 36px; border-radius: 8px; border: 1.5px dashed var(--line); background: var(--s1); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: var(--t-muted); cursor: pointer; padding: 0; overflow: hidden; }
+        .mkb-face { width: 40px; height: 40px; border-radius: 8px; border: 1.5px dashed var(--line); background: var(--s1); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: var(--t-muted); cursor: pointer; padding: 0; overflow: hidden; }
         .mkb-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .mkb-face.has { border-style: solid; }
         .mkb-face.dup { border-color: var(--bad); border-width: 2px; }
         .mkb-dmg { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-        .mkb-dmg input { width: 96px; font: inherit; font-size: 17px; font-weight: 900; text-align: right; padding: 5px 7px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .mkb-dmg input { width: 96px; min-height: 40px; font: inherit; font-size: 16px; font-weight: 900; text-align: right; padding: 5px 7px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .mkb-dmg span { font-size: 11px; font-weight: 800; color: var(--t-muted); }
         .mkb-dmg input.bad { border-color: var(--bad); background: var(--bad-bg); }
-        .mkb-add { margin-top: 7px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--line); background: transparent; color: var(--t-body); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .mkb-add { margin-top: 7px; min-height: 40px; padding: 4px 12px; border-radius: 999px; border: 1px dashed var(--line); background: transparent; color: var(--t-body); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .mkb-foot { position: sticky; bottom: 0; background: var(--card); padding: 10px 0 2px; margin-top: 10px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .mkb-foot .cnt { flex: 1 1 100%; min-width: 0; font-size: 11px; font-weight: 800; color: var(--t-muted); }
-        .mkb-btn { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--s2); color: var(--t-body); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-        .mkb-btn.main { flex: 1; border: none; background: var(--t-ink); color: var(--card); font-size: 13px; font-weight: 900; }
+        .mkb-btn { min-height: 40px; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--s2); color: var(--t-body); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+        .mkb-btn.main { flex: 1; border: none; background: var(--t-ink); color: var(--card); font-size: 14px; font-weight: 900; }
         .mkb-btn:disabled { opacity: 0.5; cursor: default; }
-        .mkb-msg { flex: 1 1 100%; margin: 0; font-size: 11.5px; font-weight: 800; color: var(--t-body); min-height: 14px; }
+        .mkb-msg { flex: 1 1 100%; margin: 0; font-size: 12px; font-weight: 800; color: var(--t-body); min-height: 14px; }
 
         /* MY設定 行 */
         .dc-setting-row {
@@ -3217,12 +3218,12 @@
         .avail-blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
         .avail-blk {
             display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
-            padding: 9px 10px; border-radius: 12px; cursor: pointer; text-align: left; font: inherit;
+            padding: 9px 10px; border-radius: 14px; cursor: pointer; text-align: left; font: inherit;
             background: var(--s1); color: var(--t-body); border: 1.5px solid rgba(var(--ink-rgb), 0.08);
             -webkit-tap-highlight-color: transparent; transition: background .12s, border-color .12s; }
-        .avail-blk .nm { font-size: 13px; font-weight: 900; color: var(--t-ink); }
-        .avail-blk .hr { font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
-        .avail-blk .st { font-size: 10.5px; font-weight: 800; color: var(--t-muted); margin-top: 2px; }
+        .avail-blk .nm { font-size: 14px; font-weight: 900; color: var(--t-ink); }
+        .avail-blk .hr { font-size: 11px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .avail-blk .st { font-size: 11px; font-weight: 800; color: var(--t-muted); margin-top: 2px; }
         .avail-blk[data-state="on"] { background: var(--ok-bg); border-color: var(--ok-solid); }
         .avail-blk[data-state="on"] .nm, .avail-blk[data-state="on"] .st { color: var(--ok-deep); }
         .avail-blk[data-state="partial"] { border-style: dashed; border-color: var(--warn-solid); }
@@ -3230,7 +3231,7 @@
         .avail-blk[data-now="1"] { box-shadow: 0 0 0 2px var(--ops-solid); }
         .avail-blk:disabled { opacity: 0.55; cursor: not-allowed; }
         .avail-preset-pill {
-            padding: 7px 11px; border-radius: 999px; cursor: pointer; font: inherit;
+            padding: 7px 11px; min-height: 40px; border-radius: 999px; cursor: pointer; font: inherit;
             font-size: 11px; font-weight: 800; letter-spacing: 0.2px;
             background: var(--s2); color: var(--t-body);
             border: 1px solid rgba(var(--ink-rgb), 0.06); white-space: nowrap;
@@ -5251,15 +5252,15 @@
             <p class="subtitle">在籍の全員に Push 通知を送ります (時間帯に関係なく届きます)。</p>
 
             <div>
-                <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">タイトル</label>
-                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
+                <label style="display:block;font-size:14px;font-weight:700;margin-bottom:4px;">タイトル</label>
+                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;min-height:40px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;">
             </div>
             <div>
-                <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">本文</label>
+                <label style="display:block;font-size:14px;font-weight:700;margin-bottom:4px;">本文</label>
                 <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;resize:vertical;"></textarea>
             </div>
 
-            <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;background:var(--s1);cursor:pointer;">
+            <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:14px;background:var(--s1);cursor:pointer;">
                 <input type="checkbox" id="opsPushAsTest" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
                 <span style="flex:1;font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;"><b style="color:var(--t-ink);">🧪 テストとして送る</b><br>運営担当と、「テスト通知を受け取る」を ON にしている人だけに届きます (開発中の確認用)</span>
             </label>
@@ -5267,8 +5268,8 @@
             <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:800;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
             </div>
         </div>
     </div>
@@ -5284,8 +5285,8 @@
             <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
             <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:13px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
+                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:14px;cursor:pointer;">キャンセル</button>
+                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:14px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
             </div>
         </div>
     </div>
@@ -5458,7 +5459,7 @@
                         <button class="ps-close" onclick="closeMyDmgPreviewModal()">閉じる</button>
                     </div>
                     <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
-                    <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:10px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
+                    <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:8px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
                     <!-- 📸 運営の取り込み: 保存先 (編成① / ② / ③)。既定は mockIntakeDomain.defaultSlot (ボス 5 の 2 編成目を取り込めるように・段階 5) -->
                     <div id="myDmgPreviewSlot" style="display:none;margin:-4px 0 12px 0;"></div>
                     <!-- 認識した属性 + ダメージ -->
@@ -5471,7 +5472,7 @@
                         <div id="myDmgPreviewChars" style="display:flex;gap:6px;"></div>
                     </div>
                     <!-- 警告 (属性未判定など) -->
-                    <div id="myDmgPreviewWarn" style="display:none;align-items:center;gap:7px;margin-top:12px;background:rgba(245,180,0,0.1);border:1px solid rgba(245,180,0,0.35);border-radius:10px;padding:8px 11px;">
+                    <div id="myDmgPreviewWarn" style="display:none;align-items:center;gap:7px;margin-top:12px;background:rgba(245,180,0,0.1);border:1px solid rgba(245,180,0,0.35);border-radius:8px;padding:8px 11px;">
                         <span style="width:9px;height:9px;border-radius:50%;background:var(--warn-solid);flex:none;"></span>
                         <span id="myDmgPreviewWarnText" style="font-size:11px;font-weight:700;color:var(--warn-deep);line-height:1.5;"></span>
                     </div>
@@ -5482,8 +5483,8 @@
                     </div>
                     <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
                     <div style="display:flex;gap:8px;margin-top:18px;">
-                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
-                        <button onclick="handleMyDmgPreviewRetry()" id="myDmgPreviewRetryBtn" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
+                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:14px;border:none;background:var(--t-ink);color:var(--card);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                        <button onclick="handleMyDmgPreviewRetry()" id="myDmgPreviewRetryBtn" style="flex:none;width:90px;height:50px;border-radius:14px;border:none;background:var(--s2);color:var(--t-body);font-size:14px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
                     </div>
                     <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
@@ -5540,11 +5541,11 @@
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> ユニオンレイド参加可能時間</h2>
                         <button class="ps-close" onclick="closeMyAvailModal()">閉じる</button>
                     </div>
-                    <div id="myAvailForWho" style="display:none;margin:6px 0 2px;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:12px;font-weight:900;color:var(--ops-deep);line-height:1.5;"></div>
+                    <div id="myAvailForWho" style="display:none;margin:6px 0 2px;padding:8px 12px;border-radius:8px;background:var(--ops-bg);font-size:12px;font-weight:900;color:var(--ops-deep);line-height:1.5;"></div>
                     <p class="subtitle">🧱 ブロックで選びます。1 時間でも出られるブロックを ON に。ON にした時間帯は <strong>①凸プランの割当 ②締め凸の候補 (その時間に出られる人)</strong> に使われます。<br>※通知は時間帯で絞られません (あなた宛の連絡と、レイド当日のチームの状況が届きます)。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
                     <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
-                    <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
+                    <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:14px;"></div>
                     <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
@@ -8555,8 +8556,8 @@
                 box.style.background = 'var(--s2)';
                 box.style.border = '1px solid rgba(var(--ink-rgb), 0.08)';
                 box.innerHTML = `
-                    <div style="font-size:12.5px;font-weight:900;color:var(--t-body);">確認の状態を取得できませんでした</div>
-                    <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
+                    <div style="font-size:12px;font-weight:900;color:var(--t-body);">確認の状態を取得できませんでした</div>
+                    <div style="font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
                         通信が不安定かもしれません。ホームを開き直すと再取得します。
                     </div>`;
                 return;
@@ -8579,15 +8580,15 @@
                 box.style.background = 'rgba(245,158,11,0.08)';
                 box.style.border = '1px solid rgba(245,158,11,0.30)';
                 box.innerHTML = `
-                    <div style="font-size:12.5px;font-weight:900;color:var(--warn-deep);">${who}${changed ? (changedSlots ? '確認したあとに時間帯を変えました' : '確認したあとに凸数を変えました') : '今回のレイドの確認がまだです'}</div>
-                    <div style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:3px;">
+                    <div style="font-size:12px;font-weight:900;color:var(--warn-deep);">${who}${changed ? (changedSlots ? '確認したあとに時間帯を変えました' : '確認したあとに凸数を変えました') : '今回のレイドの確認がまだです'}</div>
+                    <div style="font-size:12px;font-weight:700;color:var(--warn-deep);line-height:1.6;margin-top:3px;">
                         ${changed
                             ? (changedSlots ? `いまは <b>${n}枠</b> です (確認時は ${snap ? snap.length : c.slot_count}枠)。この内容でよければ確認しなおしてください。` : 'この凸数でよければ確認しなおしてください。押すと運営に届きます。')
                             : (fp ? 'Discord の報告どおりにブロックと凸数を入れたら「この時間で参加します」を押してください (本人の画面の ⏰ に出ます)。出られない人は「今回は難しい」。' : 'いまの設定で今回も動けるなら「この時間で参加します」を押してください。運営はこれを見て凸プランを組みます。')}
                     </div>
                     <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
-                        <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));">この時間で参加します</button>
-                        <button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">今回は難しい</button>
+                        <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;min-height:40px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));">この時間で参加します</button>
+                        <button onclick="handleConfirmAvailability(true)" style="flex:none;min-height:40px;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">今回は難しい</button>
                     </div>`;
                 _availConfirmSetBusy(_availConfirmBusy);   // 保存中の再描画でボタンを復活させない
                 return;
@@ -8596,15 +8597,15 @@
             box.style.background = c.unavailable ? 'var(--s1)' : 'rgba(24,194,107,0.08)';
             box.style.border = c.unavailable ? '1px solid rgba(var(--ink-rgb), 0.08)' : '1px solid rgba(24,194,107,0.28)';
             box.innerHTML = `
-                <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? 'var(--t-body)' : 'var(--ok-deep)'};">
+                <div style="font-size:12px;font-weight:900;color:${c.unavailable ? 'var(--t-body)' : 'var(--ok-deep)'};">
                     ${who}${c.unavailable ? '今回は難しいと伝えています' : '今回のレイドの確認が済んでいます'}
                 </div>
-                <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
+                <div style="font-size:12px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
                     ${escapeHtml(when)} に確認${c.unavailable ? '' : ` (${n}枠)`}。変える場合は上で時間帯を直してから、下のボタンを押してください。
                 </div>
                 <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
-                    <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:1.5px solid var(--ops-solid);border-radius:999px;padding:10px;font-family:inherit;font-size:12px;font-weight:900;color:var(--ops);background:var(--card);cursor:pointer;">この時間で参加します</button>
-                    ${c.unavailable ? '' : '<button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">今回は難しい</button>'}
+                    <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;min-height:40px;border:1.5px solid var(--ops-solid);border-radius:999px;padding:10px;font-family:inherit;font-size:12px;font-weight:900;color:var(--ops);background:var(--card);cursor:pointer;">この時間で参加します</button>
+                    ${c.unavailable ? '' : '<button onclick="handleConfirmAvailability(true)" style="flex:none;min-height:40px;border:none;border-radius:999px;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:800;color:var(--t-strong);background:var(--s2);cursor:pointer;">今回は難しい</button>'}
                 </div>`;
             // ★ 保存中の再描画 (_availDoSaveInner が呼ぶ) でボタンが作り直されるので、
             //   処理中なら貼り直す。でないと「処理中なのに押せる」状態に戻る
@@ -9224,21 +9225,21 @@
             const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
             const dmgB = d.totalDamage != null ? (Number(d.totalDamage) / 1e9).toFixed(2).replace(/\.?0+$/, '') : null;
             const attrChip = attr
-                ? `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img loading="lazy" decoding="async" src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
-                : `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--s2);color:var(--t-muted);font-size:20px;font-weight:900;">?</div>`;
+                ? `<div style="width:36px;height:36px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img loading="lazy" decoding="async" src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
+                : `<div style="width:36px;height:36px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--s2);color:var(--t-muted);font-size:20px;font-weight:900;">?</div>`;
             summary.innerHTML = `
                 <div onclick="toggleMyDmgPreviewAttrPicker()" title="タップで属性を選び直す" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
                 ${attrChip}
                 <div style="flex:1;min-width:0;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">${attr ? '属性 ✏️ タップで変更' : '認識した属性'}</div>
-                    <div style="font-size:15px;font-weight:900;color:var(--t-ink);margin-top:1px;">${attr ? attr.name + 'PT' : '未判定'}</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">${attr ? '属性 ✏️ タップで変更' : '認識した属性'}</div>
+                    <div style="font-size:16px;font-weight:900;color:var(--t-ink);margin-top:1px;">${attr ? attr.name + 'PT' : '未判定'}</div>
                 </div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">ダメージ${d.manual || dmgB == null ? ' (B)' : ''}</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">ダメージ${d.manual || dmgB == null ? ' (B)' : ''}</div>
                     ${d.manual || dmgB == null
-                        ? `<input id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0.01" min="0" value="${dmgB || ''}" placeholder="例 28.4" oninput="_myDmgPreviewSetDamage(this.value)" style="width:120px;font-size:20px;font-weight:900;text-align:right;padding:6px 8px;border-radius:9px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-variant-numeric:tabular-nums;">`
-                        : `<div style="font-size:23px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB}<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span></div>`}
+                        ? `<input id="myDmgPreviewDmgInput" type="number" inputmode="decimal" step="0.01" min="0" value="${dmgB || ''}" placeholder="例 28.4" oninput="_myDmgPreviewSetDamage(this.value)" style="width:120px;font-size:20px;font-weight:900;text-align:right;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-variant-numeric:tabular-nums;">`
+                        : `<div style="font-size:20px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB}<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span></div>`}
                 </div>`;
 
             // 5 キャラ (タップで保存前に修正できる)
@@ -9247,22 +9248,22 @@
                 if (!name) {
                     return `
                         <div onclick="editMyDmgPreviewChar(${i})" title="タップでキャラを選択" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
-                            <div style="width:44px;height:44px;border-radius:9px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;border:1px dashed var(--track);">?</div>
-                            <div style="font-size:10px;font-weight:700;color:var(--t-muted);">未認識</div>
+                            <div style="width:44px;height:44px;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;border:1px dashed var(--track);">?</div>
+                            <div style="font-size:11px;font-weight:700;color:var(--t-muted);">未認識</div>
                         </div>`;
                 }
                 const norm = fuzzyResolveCharacter(name) || name;
                 const r = resolveNikkeChar(norm);
                 const icon = r?.iconPath
-                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:9px;object-fit:cover;background:var(--t-ink);">`
-                    : `<div style="width:44px;height:44px;border-radius:9px;background:var(--s2);color:var(--t-strong);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">${escapeHtml((r?.canonical || norm).charAt(0))}</div>`;
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--t-ink);">`
+                    : `<div style="width:44px;height:44px;border-radius:8px;background:var(--s2);color:var(--t-strong);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;">${escapeHtml((r?.canonical || norm).charAt(0))}</div>`;
                 return `
                     <div onclick="editMyDmgPreviewChar(${i})" title="タップでキャラを修正" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
                         ${icon}
-                        <div style="font-size:10px;font-weight:700;color:var(--t-body);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(r?.canonical || norm)}</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--t-body);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(r?.canonical || norm)}</div>
                     </div>`;
             }).join('');
-            charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:9.5px;color:var(--t-muted);text-align:center;margin-top:2px;">${d.manual ? 'アイコンをタップして選びます (任意・よく使われる順)' : '認識ミスはアイコンをタップして修正できます'}</div>`;
+            charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:11px;color:var(--t-muted);text-align:center;margin-top:2px;">${d.manual ? 'アイコンをタップして選びます (任意・よく使われる順)' : '認識ミスはアイコンをタップして修正できます'}</div>`;
             charsEl.style.flexWrap = 'wrap';
 
             // 警告 (ダメージを手で入れたときも同じ判定で更新する: _myDmgPreviewWarns)
@@ -9282,7 +9283,7 @@
                 pickerBtns.innerHTML = PT_ATTRS.map(a => {
                     const c = DC_ATTR_COLORS[a.key];
                     const on = d.selectedAttr === a.key;
-                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:2px solid ${on ? c : 'transparent'};background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT${on ? ' ✓' : ''}</button>`;
+                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:7px 12px;border-radius:999px;border:2px solid ${on ? c : 'transparent'};background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT${on ? ' ✓' : ''}</button>`;
                 }).join('');
             } else {
                 picker.style.display = 'none';
@@ -9318,7 +9319,7 @@
             const lo = (n) => existing.find(e => (Number(e.slot) || 1) === n) || null;
             const btn = (n) => {
                 const cur = lo(n);
-                return `<button type="button" onclick="handleMyDmgPreviewPickSlot(${n})" aria-pressed="${Number(d.slot) === n}" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid var(--line);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;${Number(d.slot) === n ? 'background:var(--t-ink);color:var(--card);border-color:var(--t-ink);' : 'background:var(--card);color:var(--t-body);'}">編成${SLOT_JP[n]}<small style="display:block;font-weight:700;opacity:0.85;">${cur ? `登録あり ${(Number(cur.dmgB) || 0).toFixed(1)}B` : '空き'}</small></button>`;
+                return `<button type="button" onclick="handleMyDmgPreviewPickSlot(${n})" aria-pressed="${Number(d.slot) === n}" style="flex:1;min-height:40px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;${Number(d.slot) === n ? 'background:var(--t-ink);color:var(--card);border-color:var(--t-ink);' : 'background:var(--card);color:var(--t-body);'}">編成${SLOT_JP[n]}<small style="display:block;font-size:11px;font-weight:700;opacity:0.85;">${cur ? `登録あり ${(Number(cur.dmgB) || 0).toFixed(1)}B` : '空き'}</small></button>`;
             };
             const target = lo(Number(d.slot));
             el.style.display = '';
@@ -9661,17 +9662,17 @@
                 const n = Number((_availUI.counts || {})[rbd.countKey(b)]) || 0;
                 const dis = _availUI.blocksReady ? '' : 'disabled';
                 return `<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-top:1px solid var(--s2);">`
-                    + `<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(b.short)}</div><div style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${escapeHtml(b.range)}</div></div>`
-                    + `<button type="button" ${dis} ${n > 0 ? '' : 'disabled'} onclick="_availStepCount(${st.idx}, -1)" aria-label="${escapeHtml(b.short)} の凸数を減らす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--s2);color:var(--t-ink);font-size:17px;font-weight:900;cursor:pointer;">−</button>`
-                    + `<span style="min-width:64px;text-align:center;font-size:13px;font-weight:900;color:${n > 0 ? 'var(--ops-deep)' : 'var(--t-muted)'};">${n > 0 ? `${n} 凸` : 'おまかせ'}</span>`
-                    + `<button type="button" ${dis} ${cTotal >= 3 ? 'disabled' : ''} onclick="_availStepCount(${st.idx}, 1)" aria-label="${escapeHtml(b.short)} の凸数を増やす" style="width:34px;height:34px;border-radius:50%;border:none;background:var(--ops-solid);color:var(--ops-ink);font-size:17px;font-weight:900;cursor:pointer;">+</button>`
+                    + `<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:900;color:var(--t-ink);">${escapeHtml(b.short)}</div><div style="font-size:11px;font-weight:700;color:var(--t-muted);">${escapeHtml(b.range)}</div></div>`
+                    + `<button type="button" ${dis} ${n > 0 ? '' : 'disabled'} onclick="_availStepCount(${st.idx}, -1)" aria-label="${escapeHtml(b.short)} の凸数を減らす" style="width:40px;height:40px;flex:none;border-radius:50%;border:none;background:var(--s2);color:var(--t-ink);font-size:16px;font-weight:900;cursor:pointer;">−</button>`
+                    + `<span style="min-width:64px;text-align:center;font-size:14px;font-weight:900;color:${n > 0 ? 'var(--ops-deep)' : 'var(--t-muted)'};">${n > 0 ? `${n} 凸` : 'おまかせ'}</span>`
+                    + `<button type="button" ${dis} ${cTotal >= 3 ? 'disabled' : ''} onclick="_availStepCount(${st.idx}, 1)" aria-label="${escapeHtml(b.short)} の凸数を増やす" style="width:40px;height:40px;flex:none;border-radius:50%;border:none;background:var(--ops-solid);color:var(--ops-ink);font-size:16px;font-weight:900;cursor:pointer;">+</button>`
                     + `</div>`;
             }).join('');
             const countsHtml = onRows ? `
                 <!-- (2.5) 🧱 ブロックごとの凸数 -->
                 <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
-                        <div style="font-size:13px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">何凸するか</div>
+                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">何凸するか</div>
                         <div style="font-size:11px;font-weight:900;color:var(--ops-deep);font-variant-numeric:tabular-nums;">合計 ${cTotal} / 3</div>
                     </div>
                     <div style="font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.5;margin-bottom:4px;">入れなければ運営がその時間帯のどこかに割り当てます。下の「この時間で参加します」を押すと運営に届きます</div>
@@ -9687,7 +9688,7 @@
                 `<button type="button" class="avail-preset-pill" ${_availUI.blocksReady ? '' : 'disabled'} onclick="_availApplyPreset('${p.value}')">${p.label}</button>`
             ).join('');
             // 区切りが読めていない (通信の不調) → 見せるだけ。押せない理由と取り直しを出す
-            const notReady = _availUI.blocksReady ? '' : `<div style="margin-bottom:10px;padding:9px 12px;border-radius:10px;background:var(--warn-bg);font-size:11.5px;font-weight:800;color:var(--warn-deep);line-height:1.6;">⚠️ シーズンの区切りを読めませんでした。いまの区切りで保存すると違う時間帯になることがあるので、取り直してから変えてください。 <button type="button" onclick="renderMyAvailabilitySettings(_availTarget())" style="margin-left:4px;padding:4px 10px;border-radius:999px;border:1px solid var(--warn-solid);background:var(--card);color:var(--warn-deep);font:inherit;font-size:11px;font-weight:900;cursor:pointer;">取り直す</button></div>`;
+            const notReady = _availUI.blocksReady ? '' : `<div style="margin-bottom:10px;padding:9px 12px;border-radius:8px;background:var(--warn-bg);font-size:12px;font-weight:800;color:var(--warn-deep);line-height:1.6;">⚠️ シーズンの区切りを読めませんでした。いまの区切りで保存すると違う時間帯になることがあるので、取り直してから変えてください。 <button type="button" onclick="renderMyAvailabilitySettings(_availTarget())" style="margin-left:4px;padding:4px 10px;min-height:40px;border-radius:999px;border:1px solid var(--warn-solid);background:var(--card);color:var(--warn-deep);font:inherit;font-size:11px;font-weight:900;cursor:pointer;">取り直す</button></div>`;
             const partialNote = states.some(x => x.state === 'partial')
                 ? `<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--warn-deep);line-height:1.5;">「一部」= 以前の 1 時間刻みの登録がブロックの途中まで。押すとそのブロックの全時間が ON になります (そのままでも使えます)</div>`
                 : '';
@@ -9695,29 +9696,29 @@
             // ON な連続区間を抽出 (HOUR_ORDER 順)
             const ranges = _availExtractRanges(slots);
             const rangesHtml = ranges.length === 0
-                ? `<div style="display:flex;align-items:center;gap:9px;padding:13px 10px;border-radius:11px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.22);"><span style="font-size:16px;">⚠️</span><span style="font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.5;">時間帯が未設定です。Push通知は届きません。</span></div>`
+                ? `<div style="display:flex;align-items:center;gap:9px;padding:13px 10px;border-radius:14px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.22);"><span style="font-size:16px;">⚠️</span><span style="font-size:12px;font-weight:700;color:var(--warn-deep);line-height:1.5;">参加可能時間が未登録です。凸プランの割当と締め凸の候補には使われません。</span></div>`
                 : ranges.map((r, ri) => `
                     <div style="display:flex;align-items:center;gap:11px;padding:11px 6px;${ri === 0 ? '' : 'border-top:1px solid var(--s2);'}">
-                        <div style="width:34px;height:34px;flex:none;border-radius:9px;background:rgba(24,194,107,0.10);color:var(--ok-deep);display:flex;align-items:center;justify-content:center;font-size:14px;">⏰</div>
+                        <div style="width:34px;height:34px;flex:none;border-radius:8px;background:rgba(24,194,107,0.10);color:var(--ok-deep);display:flex;align-items:center;justify-content:center;font-size:14px;">⏰</div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:15px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">${r.fromH}:00 → ${r.toH}:00</div>
-                            <div style="font-size:10.5px;color:var(--t-muted);margin-top:1px;">${r.len} 時間</div>
+                            <div style="font-size:16px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">${r.fromH}:00 → ${r.toH}:00</div>
+                            <div style="font-size:11px;color:var(--t-muted);margin-top:1px;">${r.len} 時間</div>
                         </div>
-                        <button type="button" ${_availUI.blocksReady ? '' : 'disabled'} onclick="_availRemoveRange(${r.fromIdx}, ${r.toIdx})" style="padding:6px 12px;border-radius:8px;background:var(--s2);color:var(--t-body);font:inherit;font-size:11px;font-weight:800;cursor:${_availUI.blocksReady ? 'pointer' : 'not-allowed'};border:1px solid rgba(var(--ink-rgb), 0.06);">解除</button>
+                        <button type="button" ${_availUI.blocksReady ? '' : 'disabled'} onclick="_availRemoveRange(${r.fromIdx}, ${r.toIdx})" style="padding:6px 12px;min-height:40px;border-radius:8px;background:var(--s2);color:var(--t-body);font:inherit;font-size:11px;font-weight:800;cursor:${_availUI.blocksReady ? 'pointer' : 'not-allowed'};border:1px solid rgba(var(--ink-rgb), 0.06);">解除</button>
                     </div>`).join('');
 
             const groupEl_full = `
                 <!-- (1) 現状ステータス -->
                 <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:38px;height:38px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${isNowOn ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${isNowOn ? 'var(--ok-deep)' : 'var(--bad-deep)'};">${isNowOn ? '🔔' : '🔕'}</div>
+                        <div style="width:38px;height:38px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${isNowOn ? 'rgba(24,194,107,0.10)' : 'var(--s1)'};color:${isNowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${isNowOn ? '⏰' : '💤'}</div>
                         <div style="flex:1;">
-                            <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">現在 ${nowLabel}</div>
-                            <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:2px;">${isNowOn ? '通知 受信中' : '通知 OFF (時間帯外)'}</div>
+                            <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">現在 ${nowLabel}</div>
+                            <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:2px;">${isNowOn ? 'いまは参加可能時間' : 'いまは参加可能時間の外'}</div>
                         </div>
                         <div style="text-align:right;">
-                            <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">合計</div>
-                            <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:2px;font-variant-numeric:tabular-nums;">${totalHours} <span style="font-size:10px;font-weight:800;color:var(--t-muted);">時間</span></div>
+                            <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">合計</div>
+                            <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:2px;font-variant-numeric:tabular-nums;">${totalHours} <span style="font-size:11px;font-weight:800;color:var(--t-muted);">時間</span></div>
                         </div>
                     </div>
                 </div>
@@ -9725,12 +9726,12 @@
                 <!-- (2) 🧱 ブロック (区切りはシーズンのもの) -->
                 <div style="background:var(--card);border-radius:14px;padding:14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
-                        <div style="font-size:13px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">出られるブロック</div>
-                        <div style="font-size:10.5px;color:var(--t-muted);">AM 5時 → 翌 AM 4時 · ${blocks.length} ブロック</div>
+                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">出られるブロック</div>
+                        <div style="font-size:11px;color:var(--t-muted);">AM 5時 → 翌 AM 4時 · ${blocks.length} ブロック</div>
                     </div>
                     ${notReady}<div class="avail-blocks">${blockChips}</div>${partialNote}
-                    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;padding:7px 10px;border-radius:9px;background:var(--s1);font-size:11px;font-weight:700;color:var(--t-muted);">
-                        <span style="font-size:13px;">👆</span><span>タップで ON/OFF · 1 時間でも出られるブロックは ON</span>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;padding:7px 10px;border-radius:8px;background:var(--s1);font-size:11px;font-weight:700;color:var(--t-muted);">
+                        <span style="font-size:14px;">👆</span><span>タップで ON/OFF · 1 時間でも出られるブロックは ON</span>
                     </div>
                 </div>
 
@@ -9745,8 +9746,8 @@
                 <!-- (4) 選択中の範囲リスト -->
                 <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
-                        <div style="font-size:13px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">登録している時間帯</div>
-                        <div style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">${ranges.length} 区間</div>
+                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">登録している時間帯</div>
+                        <div style="font-size:11px;color:var(--t-muted);font-variant-numeric:tabular-nums;">${ranges.length} 区間</div>
                     </div>
                     ${rangesHtml}
                 </div>`;
@@ -14902,7 +14903,7 @@
                     return `
                         <div style="padding:12px;border:1px solid rgba(var(--ink-rgb), 0.08);border-left:4px solid var(--ops-solid);border-radius:8px;background:var(--s1);">
                             ${pick}
-                            <div style="font-size:13px;font-weight:700;color:var(--t-ink);margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
+                            <div style="font-size:14px;font-weight:700;color:var(--t-ink);margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
                             <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:var(--t-ink);margin-bottom:8px;">${escapeHtml(g.body || '')}</div>
                             <div style="font-size:11px;color:var(--t-ink);"><span style="color:var(--t-body);">受信者: </span>${recList}</div>
                         </div>`;
@@ -14911,7 +14912,7 @@
                 //   (言わないと「送ったのに届いていない」を調べることになる)
                 const testSeason = !!((typeof opsStore !== 'undefined' && opsStore.get()?.season) || (typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || {}).is_test;
                 if (testSeason && list.length) {
-                    bodyEl.insertAdjacentHTML('afterbegin', '<div id="pushPreviewTestNote" style="padding:9px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn-on);font-size:11.5px;font-weight:800;line-height:1.6;">🧪 テスト回です。実際に届くのは<b>運営担当</b>と、「開発中のテスト通知も受け取る」を ON にしている人だけです (下の受信者のうち、それ以外の人には届きません)。</div>');
+                    bodyEl.insertAdjacentHTML('afterbegin', '<div id="pushPreviewTestNote" style="padding:9px 12px;border-radius:8px;background:var(--warn-bg);color:var(--warn-on);font-size:12px;font-weight:800;line-height:1.6;">🧪 テスト回です。実際に届くのは<b>運営担当</b>と、「開発中のテスト通知も受け取る」を ON にしている人だけです (下の受信者のうち、それ以外の人には届きません)。</div>');
                 }
                 document.getElementById('pushPreviewModal').classList.add('open');
             });
@@ -16795,7 +16796,7 @@
                 return;
             }
             const days = window.opsStageDomain?.daysToRaid?.(opsStore.get()?.season || null, Date.now());
-            const tile = (k, v, cls) => `<div style="flex:1;min-width:0;border-radius:12px;padding:9px 10px;background:var(--s1);"><div style="font-size:11px;font-weight:800;color:var(--t-muted);">${k}</div><div style="font-size:20px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${v}</div></div>`;
+            const tile = (k, v, cls) => `<div style="flex:1;min-width:0;border-radius:14px;padding:9px 10px;background:var(--s1);"><div style="font-size:11px;font-weight:800;color:var(--t-muted);">${k}</div><div style="font-size:20px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${v}</div></div>`;
             const names = (list, cls) => list.map(r => `<span class="dc-mb-c ${cls}">${esc(r.name)}</span>`).join('');
             const sec = (title, sub, list, cls) => !list.length ? '' : `<div style="margin-top:12px;"><div style="font-size:12px;font-weight:900;color:var(--t-ink);">${title} <span style="font-weight:800;color:var(--t-muted);">${list.length}人</span></div>`
                 + (sub ? `<div style="font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;margin:2px 0 6px;">${sub}</div>` : '<div style="height:6px;"></div>')

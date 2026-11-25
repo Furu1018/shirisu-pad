@@ -2608,9 +2608,50 @@ test('★ 段階 2 の物差し (シート 1 回目 = メンバーも開くシ�
         ['.ps-close', 'min-height', '40px'], ['.ps-close', 'font-size', '14px']]) assert.equal(last(sel, prop), want, sel + ' の ' + prop + ' が物差しから外れた');
     assert.match(css, /border-radius: 22px 22px 0 0 !important;/, 'ホームのボトムシートの角丸が 22px でない');
     assert.ok(!/border-radius: 24px 24px 0 0/.test(css), 'ホームのボトムシートに 24px が残っている');
-    // ④ 「閉じる」は 16 枚とも class ps-close (高さ 40px・14px)。1 枚だけ元の小さい形 (31px) に戻すと落ちる
+    // ④ 「閉じる」は 16 枚とも class ps-close (高さ 40px・14px)。1 枚だけ元の小さい形 (31px) に戻すと落ちる (2 回目の見張りは下の test)
     assert.equal((html.match(/<button class="ps-close" onclick="close[A-Za-z]*\((?:false)?\)">閉じる<\/button>/g) || []).length, 16, '「閉じる」の数が 16 でない (ps-close を外した・足した)');
     assert.equal((html.match(/<button onclick="close[A-Za-z]*\([^)]*\)" style="padding:6px 12px;[^"]*">閉じる<\/button>/g) || []).length, 0, '小さい「閉じる」(31px) が残っている');
+});
+
+test('★ 段階 2 の物差し (シート 2 回目 = 運営 › 👥 のシート・2026-11-25): 練習の場面に出ない部品も物差しどおり — 疎通確認・一斉送信・送信の確認・参加可能時間・まとめて入力・手で入力', () => {
+    const html = _perfHtml;
+    const css = html.slice(0, html.indexOf('</style>'));
+    const FS = ['11', '12', '14', '16', '20', '24', '28', '30', '32'], RAD = ['4', '8', '14', '22', '50', '99', '999'];
+    const scan = (label, p) => {
+        for (const m of p.matchAll(/font-size: ?([\d.]+)px/g)) assert.ok(FS.includes(m[1]), label + ' に物差しの外の文字 ' + m[1] + 'px');
+        for (const m of p.matchAll(/border-radius: ?([\d.]+)px/g)) assert.ok(RAD.includes(m[1]), label + ' に物差しの外の角丸 ' + m[1] + 'px');
+    };
+    // ① シートの HTML と中身を描く関数 (確認済み・通信の失敗・警告・属性の選び直し・保存先・テストとして送る など、練習で出ない状態も)
+    const NEXT = /class="(?:player-select-modal|player-modal|fururi-help-modal)"|<script>/g;
+    const sheet = (id) => { const i = html.indexOf('id="' + id + '"'); assert.ok(i > 0, id + ' が無い'); NEXT.lastIndex = i + 10; const m = NEXT.exec(html); return html.slice(i, m.index); };
+    for (const id of ['opsPushCheckModal', 'opsPushSendModal', 'pushPreviewModal', 'myDmgPreviewModal', 'myAvailModal', 'opsMockBulkModal']) scan(id + ' の HTML', sheet(id));
+    const fnBody = (name) => { const i = html.indexOf('function ' + name + '('); assert.ok(i > 0, name + ' が無い'); return html.slice(i, html.indexOf('\n        }\n', i)); };
+    for (const f of ['_renderAvailUI', '_renderMyAvailConfirm', 'renderOpsPushCheck', 'showPushPreview', 'openMyDmgPreviewModal', '_renderMyDmgPreviewSlot', '_myDmgPreviewWarns', '_mkbRender', '_mkbRowHtml', '_mkbSideRender']) scan(f, fnBody(f));
+    // ② まとめて入力・参加可能時間の CSS は全部物差しの値
+    const rules = [...css.matchAll(/\n[ \t]*([^{}\n][^{}]*)\{([^}]*)\}/g)].filter(m => /\.mkb-|\.avail-/.test(m[1]));
+    assert.ok(rules.length >= 50, 'まとめて入力・参加可能時間の CSS の規則が見つからない (' + rules.length + ')');
+    for (const m of rules) scan(m[1].trim(), m[2]);
+    // ③ 押すものは 40px: 最後に効く値で見る (.mkb-preset は PC 幅の規則がもう 1 つある)
+    const last = (sel, prop) => {
+        const re = new RegExp('\\n\\s*' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\{([^}]*)\\}', 'g');
+        let v = null; for (const m of css.matchAll(re)) for (const d of m[1].matchAll(new RegExp('(?:^|[;\\s{])' + prop + ':\\s*([^;}]+)', 'g'))) v = d[1].trim();
+        assert.ok(v !== null, sel + ' の ' + prop + ' が無い'); return v;
+    };
+    for (const [sel, prop, want] of [['.mkb-face', 'width', '40px'], ['.mkb-face', 'height', '40px'], ['.mkb-preset', 'min-height', '40px'], ['.mkb-p', 'min-height', '40px'], ['.mkb-search', 'min-height', '40px'],
+        ['.mkb-dmg input', 'min-height', '40px'], ['.mkb-add', 'min-height', '40px'], ['.mkb-btn', 'min-height', '40px'], ['.mkb-btn.main', 'font-size', '14px'], ['.avail-preset-pill', 'min-height', '40px'],
+        ['.avail-blk .nm', 'font-size', '14px'], ['#opsMockBulkModal .mk-only', 'font-size', '11px']]) assert.equal(last(sel, prop), want, sel + ' の ' + prop + ' が物差しから外れた');
+    const avail = fnBody('_renderAvailUI');
+    assert.equal((avail.match(/style="width:40px;height:40px;flex:none;border-radius:50%;/g) || []).length, 2, '参加可能時間の凸数の − ＋ が 40px でない');
+    assert.match(avail, /onclick="_availRemoveRange\(\$\{r\.fromIdx\}, \$\{r\.toIdx\}\)" style="padding:6px 12px;min-height:40px;/, '時間帯の「解除」が 40px でない');
+    const conf = fnBody('_renderMyAvailConfirm');
+    assert.equal((conf.match(/<button onclick="handleConfirmAvailability\((?:true|false)\)" style="[^"]*min-height:40px;/g) || []).length, 4, '今期の確認のボタン (この時間で参加します / 今回は難しい × 2 通り) が 40px でない');
+    const dmg = fnBody('openMyDmgPreviewModal');
+    assert.match(dmg, /onclick="handleMyDmgPreviewPickAttr\('\$\{a\.key\}'\)" style="display:inline-flex;align-items:center;gap:5px;min-height:40px;/, '取り込みの確認の属性の選び直しが 40px でない');
+    assert.match(fnBody('_renderMyDmgPreviewSlot'), /style="flex:1;min-height:40px;padding:8px 10px;/, '保存先 (編成①〜③) のボタンが 40px でない');
+    assert.match(fnBody('_renderMyDmgPreviewSlot'), /<small style="display:block;font-size:11px;/, '保存先の「空き / 登録あり」が既定の小さい文字 (10px) に戻った');
+    // ④ 参加可能時間の状態の欄: 通知は参加可能時間で絞っていない (2026-10-07 から) — 「通知 受信中 / OFF」「Push通知は届きません」と言わない
+    for (const gone of ['通知 受信中', '通知 OFF (時間帯外)', 'Push通知は届きません']) assert.ok(!html.includes(gone), '参加可能時間のシートが通知について誤ったことを言う: ' + gone);
+    assert.ok(avail.includes("${isNowOn ? 'いまは参加可能時間' : 'いまは参加可能時間の外'}"), '状態の欄が「参加可能時間の中か外か」でない');
 });
 
 await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
