@@ -16281,10 +16281,14 @@
                 return `
                     <div data-boss-num="${b.boss_number}" data-cur-rem="${remB}" data-cur-total="${totalB}" style="padding:10px 6px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                            <strong style="font-size:14px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
-                            <span class="ops-hp-diff" style="font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;"></span>
-                            ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
-                            <span style="font-size:11px;color:var(--t-body);">tier: ${b.tier}</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;align-items:center;gap:4px 8px;flex-wrap:wrap;">
+                                    <strong style="font-size:14px;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
+                                    ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="flex:none;width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
+                                    <span style="font-size:11px;color:var(--t-body);white-space:nowrap;">tier: ${b.tier}</span>
+                                </div>
+                                <span class="ops-hp-diff" style="display:block;font-size:11px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;"></span>
+                            </div>
                             <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="flex:none;min-height:40px;padding:6px 14px;border-radius:8px;border:1px solid var(--t-ink);background:var(--t-ink);color:var(--card);font-size:12px;font-weight:700;cursor:pointer;">保存</button>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">

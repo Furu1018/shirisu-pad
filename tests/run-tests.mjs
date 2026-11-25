@@ -2679,6 +2679,10 @@ test('★ 段階 2 の物差し (シート 3 回目 = 運営 › ⚔️・👑 �
     assert.match(hp, /onclick="handleOpsBossHpSave\([^"]*\)" style="flex:none;min-height:40px;/, 'ボス HP の行の「保存」が 40px でない');
     //   「保存」はボスの名前の行の右 (欄の行に置くと 390px でも折り返して独りの行になり、40px にしたぶん 1 体ごとに縦に伸びる)
     assert.ok(hp.indexOf('handleOpsBossHpSave(') > 0 && hp.indexOf('handleOpsBossHpSave(') < hp.indexOf('<input class="ops-hp-rem"'), 'ボス HP の「保存」が名前の行に無い (欄の行で折り返して縦に伸びる)');
+    //   読み取りの差分 (.ops-hp-diff) は名前の下の行 (縮む列の中・display:block)。「保存」と同じ横の並びに置くと、差分の文が長いとき名前が 1 文字ずつ縦に折れた (390px でも: Codex 監査の「理論上」を実測して発覚・検査の hpdiff が見る)
+    assert.match(hp, /<div style="flex:1;min-width:0;">\s*<div style="display:flex;align-items:center;gap:4px 8px;flex-wrap:wrap;">[\s\S]*?<\/div>\s*<span class="ops-hp-diff" style="display:block;/, 'ボス HP の読み取りの差分が名前の下の行に無い (保存と並ぶと名前が潰れる)');
+    //   キャラ正規化のバーストの選択 (共通の _burstPillStyle・キャラの登録と共有) も 40px (2026-11-25 Codex 監査で確かめた・ここで固定)
+    assert.match(fnBody('_burstPillStyle'), /min-height:40px;/, 'バーストの選択 (_burstPillStyle) が 40px でない');
     assert.match(hp, /onclick="openOpsBossHpModal\(\)" style="margin-left:6px;min-height:40px;/, '読み込めなかったときの「もう一度読み込む」が 40px でない');
     const atk = fnBody('renderOpsAttacksList');
     assert.match(atk, /onclick="handleOpsAttackEditDmg\([^"]*\)" style="flex:none;min-height:40px;/, '凸履歴の「編集」が 40px でない (数字のある凸だけに出る = 練習の ✓ の凸では出ない)');

@@ -96,7 +96,9 @@ const DONE = {
     //   3 回目 (2026-11-25) = 運営 › ⚔️・👑 のシート: 🎯 ボス HP・📋 凸履歴 (結果の取り込みのカードを開いて「登録された凸」の横から)・✏️ シーズン編集・新シーズン作成 (段階を準備にして)・📚 キャラ正規化 (メンテナンスのキャラマスタの行から)・🧪 テストの終了。
     //   320px = 凸履歴の行 (名前・何凸目・ボス・ダメージ・編集・削除 — 1 行に並べていたころは 70px はみ出した)・ボスの行 (ボスコード・級・ボス名) が詰まる幅 — fit= で行からはみ出していないことも見る
     //   :charreg = 練習のキャラ表を「別の運営が手で登録した・未確定」にしてから開く (🔍 要確認 と「確認済みにする」が出る) / :testend = テストの終了の中身を読む関数だけ差し替えて開く (練習ではテストのシーズンを作れない)
+    //   :hpdiff = ボス HP のスクショを読み取ったあと (差分の文が名前の下に出る・いちばん長い文で) — 名前が潰れて縦に伸びないことも見る
     'ops/戦況@シート': ['ops-day:390:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal', 'ops-day:320:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal', 'ops-day:1366:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal',
+        'ops-day:390:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal+hpdiff+fit=#opsBossHpList > div > div', 'ops-day:320:click=[onclick="openOpsBossHpModal()"]+sheet=#opsBossHpModal+hpdiff+fit=#opsBossHpList > div > div',
         'ops-day:390:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal', 'ops-day:320:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal+fit=#opsAttacksList > div',
         'ops-day:1366:open+click=[onclick="openOpsAttacksEditModal()"]+sheet=#opsAttacksEditModal'],
     'ops/マスター@シート': ['ops-day:390:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal', 'ops-day:320:click=[onclick="openOpsSeasonEditModal()"]+sheet=#opsSeasonEditModal+fit=#opsSeasonEditBossRows > div',
@@ -342,6 +344,19 @@ const runScene = async (tab, scene) => {
                     //   → 練習の偽のサーバのキャラ表 (このページのメモリだけ) を「別の運営が 2 日前に手で登録した・未確定」にしてから、本物の入口 (click=) で開く。シートは開くたびにキャラ表を読み直すのでそのまま映る
                     const n = await ev(`(() => { const P = window.PAD_PRACTICE; const t = P && P.db && P.db.tables.nikke_characters; if (!Array.isArray(t) || !t.length) return 0; const at = new Date(Date.now() - 2 * 864e5).toISOString(); t.forEach(r => { r.registered_by = '練習の別の運営'; r.verification_source = 'https://example.com/char'; r.is_confirmed = false; r.first_seen = at; }); return t.length; })()`);
                     if (!n) active = '練習のキャラ表を書き換えられない';
+                } else if (a === 'hpdiff') {
+                    // 🎯 ボス HP: スクショを読み取ったあとの差分 (名前の行の .ops-hp-diff) を出す。読み取り (AI) だけを飛ばして、描くのは本物の _opsBossHpShowDiff。
+                    //   いちばん長い文になるよう、いまの値を満タン (総HP = data-cur-total・レベルが開いた直後) として「150.84 → 140.27B (−10.57)」/ 1 体は読めず / 1 体は増えた (読み違いの疑い)
+                    const n = await ev(`(() => { if (typeof _opsBossHpShowDiff !== 'function') return 0; const rows = [...document.querySelectorAll('#opsBossHpList > div[data-boss-num]')];
+                        const d = _opsBossHpShowDiff(rows.map((r, i) => { const full = Number(r.dataset.curTotal); return { bossNumber: Number(r.dataset.bossNum), curB: full, nextB: i === 0 ? null : i === 1 ? full + 12.34 : full - 10.57 }; }));
+                        return d ? rows.filter(r => (r.querySelector('.ops-hp-diff')?.textContent || '').trim().length > 5).length : 0; })()`);
+                    if (n < 3) active = '読み取りの差分が出ない';
+                    else {
+                        await settle();
+                        //   ボスの名前が潰れていないこと (はみ出しではなく縦に 1 文字ずつ折れる崩れ = fit= では拾えない: 差分を「保存」と同じ行に並べていたとき 390px でも「ス/ト/ー/ム…」になった)。2 行 (14px × 2 行 ≒ 42px) まで
+                        const tall = await ev(`[...document.querySelectorAll('#opsBossHpList > div[data-boss-num] strong')].map(e => Math.round(e.getBoundingClientRect().height)).filter(h => h > 46)`);
+                        if (tall.length) active = 'ボスの名前が潰れて縦に伸びる (' + tall.join(', ') + 'px)';
+                    }
                 } else if (a === 'testend') {
                     // 🧪 テストの終了のシートは、テストのシーズンが動いているときだけ開ける (練習のシーズンは本番の扱い = 入口の「🧪 ✕ 終了」が出ない)。
                     //   → 中身を読む関数 (supabasePreviewTestSeasonEnd = 偽のサーバでも本番の DB を見る形) だけを、テスト中の本物に近い答えに差し替えて、入口の関数を呼ぶ (描くのは本物の openOpsTestEndModal)。
