@@ -18768,7 +18768,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         const _acMon = (k) => { const m = /^(\d{4})-(\d{2})(b?)$/.exec(String(k || '')); return m ? `${Number(m[2])}月${m[3] ? ' (2 回目)' : ''}` : String(k || ''); };
         const _acPrevMonth = (k) => { const m = /^(\d{4})-(\d{2})/.exec(String(k || '')); if (!m) return null; const d = new Date(Number(m[1]), Number(m[2]) - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
         // 顔: 手元に画像がある (キャラのマスタが知っている) ならアイコン、無ければ GB の名前で (頭文字の札)
-        const _acTeam = (faces, names = {}) => renderTeamSnippet(faces.map(f => { const p = './character-images/' + f; return (typeof _nikkeCharsByIconPath !== 'undefined' && _nikkeCharsByIconPath.has(p)) || !names[f] ? p : names[f]; }), { size: 28 });
+        //   ユニオンの顔 (names を渡さない) は月次JSON と一緒に画像を置いているのでいつもパス。GB の顔で画像も名前も無いものは「？」の札 (壊れた画像にしない: Codex 監査 ⑤)
+        const _acTeam = (faces, names = null) => renderTeamSnippet(faces.map(f => { const p = './character-images/' + f; if (!names || (typeof _nikkeCharsByIconPath !== 'undefined' && _nikkeCharsByIconPath.has(p))) return p; return names[f] || '？'; }), { size: 28 });
         async function _acRender() {
             const host = document.getElementById('raidReviewComps');
             const dom = window.attrCompsDomain;
@@ -18776,7 +18777,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (!dom) { host.innerHTML = '<p class="ac-none">属性ごとの編成を読み込めませんでした (ページを再読み込みしてください)</p>'; return; }
             const seq = ++_acSeq;
             const months = (_allMonthJson || []).map(m => ({ key: m.key, players: m.json.players }));
-            const keys = months.map(m => m.key).filter(k => /^\d{4}-\d{2}$/.test(k));
+            const keys = [...new Set(months.map(m => String(m.key).replace(/b$/, '')).filter(k => /^\d{4}-\d{2}$/.test(k)))].sort();   // 2 回目の回 (2026-10b) の GB はその月 (2026-10): Codex 監査 ⑤
             const gbKeys = [...new Set([...keys, ...(keys.length ? [_acPrevMonth(keys[0])] : [])].filter(Boolean))];
             const gbs = await Promise.all(gbKeys.map(k => _loadGbExport(k).then(json => (json ? { key: k, json } : null))));
             if (seq !== _acSeq) return;   // 待っている間に描き直しが始まった
@@ -18818,7 +18819,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const max = Math.max(1, ...v.gbRows.map(r => r.med), ...v.unionRows.map(r => r.med));
             const bar = (x) => `<span class="ac-bar"><i style="width:${Math.max(2, Math.min(100, x / max * 100)).toFixed(1)}%;background:${_AC_FILL[a]};"></i></span>`;
             const ent = (es, unit) => es.map(e => `${esc(_acMon(e.month))} ${esc(e.boss)} ${fmt(e.med)}B (${e.n} ${unit})`).join(' · ');
-            const gRows = v.gbRows.map(r => `<div class="ac-row"><span class="ac-faces">${_acTeam(r.faces, r.names)}</span><span class="ac-v">${fmt(r.med)}B<small>${r.n} 人</small></span>${bar(r.med)}<span class="ac-sub">${ent(r.entries, '人')}</span></div>`).join('');
+            const gRows = v.gbRows.map(r => `<div class="ac-row"><span class="ac-faces">${_acTeam(r.faces, r.names || {})}</span><span class="ac-v">${fmt(r.med)}B<small>${r.n} 人</small></span>${bar(r.med)}<span class="ac-sub">${ent(r.entries, '人')}</span></div>`).join('');
             const uRows = v.unionRows.map(r => {
                 const who = r.who.slice(0, 3).map(w => `<b>${esc(w.player)}</b> ${w.rawB.toFixed(1)}B (SLv ${w.slv ?? '—'}) → ${w.normB.toFixed(1)}B · ${esc(_acMon(w.month))} ${esc(w.boss)}`).join(' / ');
                 const more = r.who.length > 3 ? ` ほか ${r.who.length - 3} 凸` : '';
@@ -18832,6 +18833,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (d.gMonths.length) notes.push(`GB = ${d.gMonths.map(_acMon).join('・')} の提出`); else notes.push('GB の書き出しが無い回はユニオンだけ');
             if (d.skipped.length) notes.push(`締め凸の分からない回 (${d.skipped.map(_acMon).join('・')}) は入れていません`);
             if (u.unresolved) notes.push(`5 人そろわない凸 ${u.unresolved} 件は編成に数えていません`);
+            if (u.unknownKill) notes.push(`締め凸か分からない凸 ${u.unknownKill} 件は入れていません`);
             host.innerHTML = `<div class="ac-chips">${uChips}${gChips}</div>${gapHtml}
                 <div class="ac-cols">
                     <div class="ac-col"><h4>GB で出やすかった編成 <small>上位 5・人数で重み</small></h4>${gRows || '<p class="ac-none">この絞り込みの GB の編成はありません</p>'}</div>

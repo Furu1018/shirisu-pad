@@ -30,12 +30,12 @@
     };
     const ratioOf = (table, slv) => { const v = table && slv != null ? num(table[String(slv)]) : null; return v != null && v > 0 ? v : null; };
     const hasKillFlags = (players) => (Array.isArray(players) ? players : []).some(p => (p && Array.isArray(p.attacks) ? p.attacks : []).some(a => a && typeof a.isKill === 'boolean'));
-    const blank = () => ({ bosses: [], comps: [], unresolved: 0, noSlv: 0 });
+    const blank = () => ({ bosses: [], comps: [], unresolved: 0, noSlv: 0, unknownKill: 0 });
 
     /**
      * ユニオン (本家の月次JSON) → 属性ごと: その属性で殴ったボス (回・名前・凸数・真ん中) と編成 (回またぎ・ボス別の内訳・誰が)。
      * @param {{ months: {key:string, players:Object[]}[], ratioTable: Object, attrOf: (code:string)=>string|null, refSlv?: number }} a
-     * @returns {{ attrs: Object<string, {bosses, comps, unresolved, noSlv}>, months: string[], skipped: string[] }}
+     * @returns {{ attrs: Object<string, {bosses, comps, unresolved, noSlv, unknownKill}>, months: string[], skipped: string[] }}
      *   bosses[] = { month, boss, code, attacks (締め凸込み), kills, n (数えた凸), med (SLv600 B・n=0 なら null) }
      *   comps[]  = { key, faces (並びは最初に見た凸のまま), entries: [{ month, boss, n, med }], who: [{ player, month, boss, rawB, slv, normB }] }
      */
@@ -55,12 +55,13 @@
                     if (!at || !at.bossCode) continue;
                     const attr = fn(at.bossCode);
                     if (!attr || !ATTRS.includes(attr)) continue;
-                    const x = acc[attr] ??= { bosses: new Map(), comps: new Map(), unresolved: 0, noSlv: 0 };
+                    const x = acc[attr] ??= { bosses: new Map(), comps: new Map(), unresolved: 0, noSlv: 0, unknownKill: 0 };
                     const boss = bossName(at.bossType) || String(at.bossCode);
                     const bk = `${m.key}|${boss}`;
                     const b = x.bosses.get(bk) || (x.bosses.set(bk, { month: m.key, boss, code: String(at.bossCode), attacks: 0, kills: 0, vals: [] }), x.bosses.get(bk));
                     b.attacks += 1;
                     if (at.isKill === true) { b.kills += 1; continue; }   // 締め凸は火力から外す
+                    if (at.isKill !== false) { x.unknownKill += 1; continue; }   // 締め凸か分からない凸 (月の中で印が欠けた凸) は火力に入れない・件数だけ (Codex 監査 ⑤)
                     const d = num(at.damage);
                     if (!(d > 0)) continue;
                     if (r == null || r600 == null) { x.noSlv += 1; continue; }
@@ -88,7 +89,7 @@
                     entries: [...c.entries.values()].map(e => ({ month: e.month, boss: e.boss, n: e.vals.length, med: median(e.vals) })),
                     who: c.who.slice().sort((a, b) => b.normB - a.normB),
                 })),
-                unresolved: x.unresolved, noSlv: x.noSlv,
+                unresolved: x.unresolved, noSlv: x.noSlv, unknownKill: x.unknownKill,
             };
         }
         return { attrs, months: used, skipped };

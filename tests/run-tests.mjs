@@ -4958,7 +4958,7 @@ console.log('\nattrCompsDomain (⚔️ 属性ごとの編成):');
         assert.equal(w.comps.length, 1, '並びが違うだけの編成を別にした');
         assert.deepEqual(w.comps[0].entries, [{ month: '2026-11', boss: 'ブラックスミス', n: 2, med: 20 }]);
         assert.deepEqual(w.comps[0].who.map(x => [x.player, x.rawB, x.slv, x.normB]), [['a', 40, 800, 20], ['b', 10, 400, 20]]);
-        assert.deepEqual(r.attrs.iron, { bosses: [], comps: [], unresolved: 0, noSlv: 0 }, '凸の無い属性が空でない');
+        assert.deepEqual(r.attrs.iron, { bosses: [], comps: [], unresolved: 0, noSlv: 0, unknownKill: 0 }, '凸の無い属性が空でない');
         // SLv の係数が無い人は換算できない → 数えずに件数だけ
         const r2 = AC.unionCompsByAttr({ months: [{ key: '2026-11', players: [{ player: 'd', syncLevel: 999, attacks: [A({})] }] }], ratioTable, attrOf });
         assert.equal(r2.attrs.water.noSlv, 1); assert.equal(r2.attrs.water.comps.length, 0);
@@ -4976,6 +4976,12 @@ console.log('\nattrCompsDomain (⚔️ 属性ごとの編成):');
         assert.deepEqual(w.comps[0].entries.map(e => [e.month, e.med, e.n]), [['2026-10', 7.5, 10], ['2026-11', 25, 30]]);
         assert.equal(w.comps[0].names['f2.webp'], 'N2');
         assert.deepEqual(AC.gbCompsByAttr({ exports: [ex('2026-10', 777, 10e9, 1.5, 10)], ratioTable }).months, [], 'SLv の係数が無い書き出しを使った');
+    });
+    test('unionCompsByAttr (Codex 監査 ⑤): 月の中で締め凸の印が欠けた凸は火力に入れず件数だけ (unknownKill)・凸数には数える', () => {
+        const r = AC.unionCompsByAttr({ months: [{ key: '2026-11', players: [{ player: 'a', syncLevel: 600, attacks: [A({ damage: 20e9 }), { ...A({ damage: 90e9 }), isKill: undefined }] }] }], ratioTable, attrOf });
+        assert.equal(r.attrs.water.unknownKill, 1, '印の欠けた凸の件数');
+        assert.deepEqual([r.attrs.water.bosses[0].attacks, r.attrs.water.bosses[0].n, r.attrs.water.bosses[0].med], [2, 1, 20], '印の欠けた凸を火力に入れた');
+        assert.equal(r.attrs.water.comps[0].who.length, 1);
     });
     test('view: ボスで絞る / 凸数・人数で重みを付けた真ん中 / 高い順の上位 / 絞ったときだけキャラ別 (3 凸以上)', () => {
         const union = { bosses: [{ month: '2026-11', boss: 'X', n: 3, med: 20 }, { month: '2026-10', boss: 'Y', n: 1, med: 10 }], comps: [
@@ -5013,6 +5019,10 @@ console.log('\nattrCompsDomain (⚔️ 属性ごとの編成):');
         assert.ok(/\$\{_acSel\.boss \? esc\(_acSel\.boss\)/.test(ac) && /\$\{esc\(b\.boss\)\}/.test(ac), 'ボスの名前を escape していない');
         assert.ok(/dom\.unionCompsByAttr\(\{ months, ratioTable: slvRatioTable, attrOf: _rrAttrOf \}\)/.test(ac) && /dom\.gbCompsByAttr\(\{ exports: gbs\.filter\(Boolean\), ratioTable: slvRatioTable \}\)/.test(ac), '計算をドメインに任せていない');
         assert.ok(/r\.n === 1 \? '1 凸 \(その 1 回\)'/.test(ac), 'n=1 を中央値のように見せている (Q9)');
+        // Codex 監査 ⑤: 2 回目の回 (2026-10b) の GB はその月 / 画像も名前も無い GB のキャラは「？」/ 印の欠けた凸の件数を言う
+        assert.ok(/months\.map\(m => String\(m\.key\)\.replace\(\/b\$\/, ''\)\)/.test(ac), '2 回目の回の GB を読まない');
+        assert.ok(/if \(!names \|\| \(typeof _nikkeCharsByIconPath !== 'undefined' && _nikkeCharsByIconPath\.has\(p\)\)\) return p; return names\[f\] \|\| '？';/.test(html), '画像も名前も無い GB のキャラが壊れた画像になる');
+        assert.ok(/_acTeam\(r\.faces, r\.names \|\| \{\}\)/.test(ac) && /if \(u\.unknownKill\) notes\.push/.test(ac), 'GB の顔に名前を渡していない / 印の欠けた凸を言っていない');
     });
 }
 
