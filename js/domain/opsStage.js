@@ -209,12 +209,11 @@
      * @param {number=} a.pendingRepublish
      * @param {number|null=} a.freshMin     HP更新からの分 (当日)
      * @param {number=} a.remainingTotal    残凸の合計 (当日)
-     * @param {number|null=} a.finPending   締め凸未返答 (当日)
      * @param {number=} a.attacksDone       当日〜終了: 実凸の合計
      * @param {number=} a.attackCap         定員×3
      * @returns {{lead:string, why:string, action:string, label:string}}
      */
-    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, finPending, attacksDone, attackCap, decided = true, rebuild = null } = {}) {
+    function hero({ stage, season, rows, reservations, pendingRepublish, freshMin, remainingTotal, attacksDone, attackCap, decided = true, rebuild = null } = {}) {
         const rp = Number(pendingRepublish) || 0;
         const rvP = reservations ? Number(reservations.pending) || 0 : 0;
         if (stage === 'prep') {
@@ -259,7 +258,6 @@
                 return { lead, why: `${base}。${rebuild.block} で済んでいない凸は、${rebuild.next} に出られる人なら ${rebuild.next} のピースに出ます`, action: 'build', label: `🧱 ${rebuild.next} を組む` };
             }
             if (freshMin != null && freshMin >= 30) return { lead: `HP 更新が ${fmtAgo(freshMin)} です`, why: '古い HP で締め凸を出すと、無駄凸や取りこぼしが出ます', action: 'hp', label: '🎯 ボス HP を更新する' };
-            if ((Number(finPending) || 0) > 0) return { lead: `締め凸の返答待ちが ${finPending} 件`, why: '返答が無いと締めの割当が決まりません', action: 'members', label: '👥 返答待ちを見る' };
             if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '当日の予約は承認するとすぐ決まります', action: 'reserve', label: '🔒 予約を見る' };
             if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません`, action: 'republish', label: '🧮 組み直して再配信' };
             // ★ 盤面が未ロード (null) なら「完了」とは言わない (Codex指摘 2026-09-08)。
@@ -270,9 +268,6 @@
             //   決定を使っていないシーズン (decided === false・従来の配信) は ✓ 凸の記録が空なので従来の案内 (S5 レビュー TP-6)
             if (rem > 0 && decided === false) return { lead: `残り ${rem} 凸`, why: 'メンバー状況で まだ凸していない人を、⚔️ 戦況で 結果がまだの凸を見ます', action: 'members', label: '👥 メンバー状況を見る' };
             if (rem > 0) return { lead: `残り ${rem} 凸`, why: 'Discord の凸の報告を見て、⚔️ 戦況 › ✓ 凸の記録 で ✓ を付けます。まだ凸していない人は 👥 メンバー状況で', action: 'tap', label: '✓ 凸の記録を開く' };
-            // ★ 締め凸の返答 (finPending) が未取得 (null) のうちは「全員完了」と断定しない (Codex再監査 2026-09-08)。
-            //   メンバー状況は運営画面の描画で必ず読みに行くので、null は読み込み中か取得失敗のどちらか
-            if (finPending == null) return { lead: 'メンバー状況を読み込んでいます', why: '締め凸の返答が読めると、全員完了かどうかが決まります', action: 'members', label: '👥 メンバー状況を見る' };
             // ★ 当日は終了処理を出さない (Codex指摘 2026-09-08)。翌日5時以降の「終了」の段階でだけ終了できる。
             //   ここから handleOpsEndSeason に飛べると、レイド中にシーズンを非アクティブ化できてしまう
             return { lead: '🎉 全員 3 凸完了', why: '終了処理は翌日 5 時以降の「終了」の段階でできます。それまでは HP と結果の確認だけです', action: 'members', label: '👥 状況を見る' };

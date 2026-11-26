@@ -21877,7 +21877,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 stage: st.stage, season, rows, reservations, pendingRepublish,
                 freshMin: lay.hpFreshnessMin(bosses || [], Date.now()),
                 remainingTotal: players ? Math.max(0, attackCap - attacksDone) : null,
-                finPending: Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null,
                 attacksDone, attackCap,
                 rebuild: _opsRebuildHero(season, bosses, players),   // ⏱ 再編成時間の手順 (⑥)
                 // 決定のあるシーズンだけ「✓ 凸の記録を開く」へ。配信をまだ読めていない (null) ときは決定ありとみなす (S5 の既定の流れ: S5 レビュー TP-6)

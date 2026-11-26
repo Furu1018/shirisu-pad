@@ -4490,14 +4490,14 @@ console.log('\nopsStageDomain:');
         const loaded = dom.checklist({ stage: 'pre', season, bosses: [], mbRows: null, reservations: null, published: null }).find(r => r.key === 'bosses');
         assert.equal(loaded.pending, false); assert.equal(loaded.value, 0);
         // 当日: remainingTotal null → 「全員3凸完了」と言わない・終了へ飛ばない
-        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: null, remainingTotal: null, finPending: null });
+        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: null, remainingTotal: null });
         assert.match(h.lead, /読み込んでいます/);
         assert.notEqual(h.action, 'end');
     });
 
     test('★ 当日のヒーローは終了処理へ飛ばさない (レイド中にシーズンを非アクティブ化できてしまう)', () => {
         const season = { id: 1, is_active: true, hard_date: '2026-09-11' };
-        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: 3, remainingTotal: 0, finPending: 0 });
+        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: 3, remainingTotal: 0 });
         assert.match(h.lead, /全員 3 凸完了/);
         assert.notEqual(h.action, 'end', '当日なのに終了処理へ誘導している');
         assert.match(h.why, /翌日 5 時以降/);
@@ -4597,19 +4597,16 @@ console.log('\nopsStageDomain:');
         assert.equal(chase.action, 'pushcheck'); assert.match(chase.lead, /届いていない人が 5 人/);
         assert.match(dom.hero({ stage: 'pre', rows: [{ ...waitRow, value: 31, done: true, waiting: false }, R({ key: 'publish', done: true })], reservations: { pending: 0 } }).lead, /配信済み/);
     });
-    test('hero(当日): HP更新30分以上 > 締め凸未返答 > 承認待ち > 配信後の予約 > 残凸 > 全員完了 / 準備・終了', () => {
-        assert.equal(dom.hero({ stage: 'day', freshMin: 38, finPending: 2, remainingTotal: 10 }).action, 'hp');
-        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 2, remainingTotal: 10 }).action, 'members');
-        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: { pending: 1 }, remainingTotal: 10 }).action, 'reserve');
-        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, pendingRepublish: 1, remainingTotal: 10 }).action, 'republish');
-        const r = dom.hero({ stage: 'day', freshMin: 5, finPending: 0, remainingTotal: 41 });
+    test('hero(当日): HP更新30分以上 > 承認待ち > 配信後の予約 > 残凸 > 全員完了 / 準備・終了 (締め凸の返答待ちは 2026-11-26 に撤去)', () => {
+        assert.equal(dom.hero({ stage: 'day', freshMin: 38, remainingTotal: 10 }).action, 'hp');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 2, remainingTotal: 10 }).action, 'tap', '撤去した「締め凸の返答待ち」でヒーローが止まる');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, reservations: { pending: 1 }, remainingTotal: 10 }).action, 'reserve');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, pendingRepublish: 1, remainingTotal: 10 }).action, 'republish');
+        const r = dom.hero({ stage: 'day', freshMin: 5, remainingTotal: 41 });
         assert.equal(r.action, 'tap'); assert.match(r.lead, /41 凸/); assert.match(r.why, /✓ 凸の記録/);   // S5: Discord の報告を見て ✓ 凸の記録 で付ける (当日の運営の主作業)
         // 当日の全員完了は終了へ飛ばさない (Codex指摘 2026-09-08) — 終了は翌日5時以降の「終了」の段階で
-        const done = dom.hero({ stage: 'day', freshMin: null, finPending: 0, remainingTotal: 0 });
+        const done = dom.hero({ stage: 'day', freshMin: null, remainingTotal: 0 });
         assert.match(done.lead, /全員 3 凸完了/); assert.equal(done.action, 'members');
-        // 締め凸の返答が未取得 (null) なら残凸0でも「全員完了」と言わない (Codex再監査 2026-09-08)
-        const unk = dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 });
-        assert.match(unk.lead, /読み込んでいます/); assert.notEqual(unk.action, 'end');
         assert.equal(dom.hero({ stage: 'prep' }).action, 'create');
         const e = dom.hero({ stage: 'end', attacksDone: 90, attackCap: 96 });
         assert.equal(e.action, 'end'); assert.match(e.lead, /90 凸 \/ 96/);
@@ -14742,7 +14739,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/case 'tap': _opsJump\('opsSecAttackTap'\); break;/.test(html), 'ヒーローの行き先');
         assert.ok(/attack_tap:   \{ label: '✓ 凸 \(運営\)'/.test(html) && /types: \['attack', 'attack_tap'\]/.test(html), '活動ログの種類と絞り込み');
         const st = globalThis.opsStageDomain;
-        const h = st.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: null, remainingTotal: 12 });
+        const h = st.hero({ stage: 'day', freshMin: 5, reservations: null, remainingTotal: 12 });
         assert.equal(h.action, 'tap'); assert.match(h.label, /✓ 凸の記録/);
         const ac = globalThis.attackCheckDomain;
         const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, dmgB: 30, hourIdx: 0 }] }] }] };
@@ -14861,8 +14858,8 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/if \(_coordPollTick === 2 && _opsMode && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\s*\n\s*&& document\.getElementById\('opsSecAttackTap'\)\?\.offsetParent != null\s*\n\s*&& typeof _atkTap !== 'undefined' && _atkTap\.busy\.size === 0 && _atkCheck\.busy\.size === 0 && !\(typeof _ob !== 'undefined' && _ob\.busy\)\s*\n\s*&& opsStore\.get\(\) && typeof _opsReloadBoardCards === 'function'\) _opsReloadBoardCards\(\);/.test(html), '別の運営の ✓ を取り込まない');
         // TP-6: 決定を使っていないシーズンは従来の案内
         const st = globalThis.opsStageDomain;
-        assert.equal(st.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: null, remainingTotal: 12, decided: false }).action, 'members', '決定の無いシーズンでも空の ✓ 凸の記録へ誘う');
-        assert.equal(st.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: null, remainingTotal: 12, decided: true }).action, 'tap');
+        assert.equal(st.hero({ stage: 'day', freshMin: 5, reservations: null, remainingTotal: 12, decided: false }).action, 'members', '決定の無いシーズンでも空の ✓ 凸の記録へ誘う');
+        assert.equal(st.hero({ stage: 'day', freshMin: 5, reservations: null, remainingTotal: 12, decided: true }).action, 'tap');
         assert.ok(/decided: !\(Array\.isArray\(_opsPublishedRows\) && season\?\.id != null\) \|\| !!\(window\.decidePlanDomain && window\.decidePlanDomain\.latestDecided\(/.test(html), 'ヒーローに決定の有無を渡していない');
     });
     test('★ 予約を隠す の直し (S5 レビュー RS-1 / RS-2 / RS-4) と ⚔️ ボス状況の 🎯 (DX-7)', () => {
@@ -15420,7 +15417,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
     });
     test('★ 運営のヒーロー: 再編成時間は HP → ✓ → 組む の済んでいない最初の手順 / 分からない手順で止めない / 次のブロックを決定したらいつもの当日', () => {
         const os = globalThis.opsStageDomain;
-        const base = { stage: 'day', freshMin: 5, remainingTotal: 10, finPending: 0, decided: true };
+        const base = { stage: 'day', freshMin: 5, remainingTotal: 10, decided: true };
         const R = (o) => ({ block: 'A 朝', next: 'B 午前', label: '8:40〜9:00', to: '9:00', hpDone: true, tapLeft: 0, decided: false, ...o });
         assert.equal(os.hero({ ...base, rebuild: R({ hpDone: false }) }).action, 'hp');
         const tp = os.hero({ ...base, rebuild: R({ tapLeft: 3 }) });
