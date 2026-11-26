@@ -36,6 +36,7 @@ import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モ�
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
 import '../js/domain/raidReview.js';   // globalThis.raidReviewDomain (レイドの振り返り: 属性別の進捗 / 得意・不得意 / 誰が)
+import '../js/domain/attrComps.js';     // globalThis.attrCompsDomain (⚔️ 属性ごと: ダメージが出やすかった編成 — 第46回の反省 ⑤)
 import '../js/domain/aiVision.js';     // globalThis.aiVisionDomain (画像認識の失敗を日本語で説明する)
 import '../js/domain/blockBuild.js';
 import '../js/domain/decidePlan.js';   // globalThis.decidePlanDomain (決定 = 組めたブロックまでを 1 行に・時間割・通知 — シンプル化 S4)   // globalThis.blockBuildDomain (凸プランを組む: ブロックの様子・手で置く駒・ピース — シンプル化 S2)
@@ -4925,6 +4926,96 @@ console.log('\ncharMasterDomain:');
 }
 
 // ---- 運営による模擬提出の除外 (35_player_damages_exclusion.sql) ------------------
+// ---- ⚔️ 属性ごと: ダメージが出やすかった編成 (第46回の反省 ⑤・2026-11-26・js/domain/attrComps.js) ----
+console.log('\nattrCompsDomain (⚔️ 属性ごとの編成):');
+{
+    const AC = globalThis.attrCompsDomain;
+    const ratioTable = { 600: 2, 800: 4, 400: 1 };   // 600 = 2 / 800 = 4 / 400 = 1 (計算が見える値)
+    const attrOf = (code) => ({ 'H.S.T.A.': 'water', 'Z.E.U.S.': 'iron' })[code] || null;
+    const F = (n) => Array.from({ length: n }, (_, i) => `./character-images/f${i}.webp`);
+    const A = (o) => ({ bossCode: 'H.S.T.A.', bossType: 'Vブラックスミス', damage: 20e9, isKill: false, characters: F(5), ...o });
+    test('bossName: 位置のローマ数字 (I〜V) だけを外す / hashOf: パスの最後の名前', () => {
+        assert.deepEqual(['Iオベリスク', 'IIトゥームストーン', 'IIIモダニア', 'IVリビルドバルカンR', 'Vクラーケン', 'ドリアン'].map(AC.bossName), ['オベリスク', 'トゥームストーン', 'モダニア', 'リビルドバルカンR', 'クラーケン', 'ドリアン']);
+        assert.equal(AC.hashOf('./character-images/abc.webp'), 'abc.webp');
+        assert.equal(AC.hashOf('abc.webp'), 'abc.webp');
+        assert.equal(AC.hashOf(''), null);
+    });
+    test('unionCompsByAttr: SLv 600 換算 (damage ÷ ratio(SLv) × ratio(600))・締め凸は除く (凸数には数える)・締め凸の分からない回は入れない・5 人そろわない凸は件数だけ', () => {
+        const months = [
+            { key: '2026-11', players: [
+                { player: 'a', syncLevel: 800, attacks: [A({ damage: 40e9 }), A({ damage: 99e9, isKill: true }), A({ damage: 10e9, characters: F(4) })] },
+                { player: 'b', syncLevel: 400, attacks: [A({ damage: 10e9, characters: F(5).reverse() })] },   // 並びが違っても同じ編成
+            ] },
+            { key: '2026-07', players: [{ player: 'c', syncLevel: 600, attacks: [{ bossCode: 'H.S.T.A.', bossType: 'Iドリアン', damage: 30e9, characters: F(5) }] }] },   // isKill が無い
+        ];
+        const r = AC.unionCompsByAttr({ months, ratioTable, attrOf });
+        assert.deepEqual(r.months, ['2026-11']); assert.deepEqual(r.skipped, ['2026-07'], '締め凸の分からない回を入れた');
+        const w = r.attrs.water;
+        assert.deepEqual(w.bosses.map(b => [b.month, b.boss, b.attacks, b.kills, b.n]), [['2026-11', 'ブラックスミス', 4, 1, 3]], '凸数・締め凸・数えた凸');
+        // a: 40 ÷ 4 × 2 = 20 / a の 4 人の凸: 10 ÷ 4 × 2 = 5 (ボスの真ん中には入るが編成には数えない) / b: 10 ÷ 1 × 2 = 20
+        assert.equal(w.bosses[0].med, 20);
+        assert.equal(w.unresolved, 1, '5 人そろわない凸の件数');
+        assert.equal(w.comps.length, 1, '並びが違うだけの編成を別にした');
+        assert.deepEqual(w.comps[0].entries, [{ month: '2026-11', boss: 'ブラックスミス', n: 2, med: 20 }]);
+        assert.deepEqual(w.comps[0].who.map(x => [x.player, x.rawB, x.slv, x.normB]), [['a', 40, 800, 20], ['b', 10, 400, 20]]);
+        assert.deepEqual(r.attrs.iron, { bosses: [], comps: [], unresolved: 0, noSlv: 0 }, '凸の無い属性が空でない');
+        // SLv の係数が無い人は換算できない → 数えずに件数だけ
+        const r2 = AC.unionCompsByAttr({ months: [{ key: '2026-11', players: [{ player: 'd', syncLevel: 999, attacks: [A({})] }] }], ratioTable, attrOf });
+        assert.equal(r2.attrs.water.noSlv, 1); assert.equal(r2.attrs.water.comps.length, 0);
+    });
+    test('gbCompsByAttr: medianFururi × baseDamage ÷ ratio(baseSlv) × ratio(600) (2026-11 の slv-b = baseDamage 1e9・baseSlv 600 でも同じ式) / 回またぎで同じ編成をまとめる / 5 人そろわない編成は捨てる', () => {
+        const faces = ['f0.webp', 'f1.webp', 'f2.webp', 'f3.webp', 'f4.webp'];
+        const ex = (key, baseSlv, baseDamage, fururi, n, extra = []) => ({ key, json: { base: { baseSlv, attributes: { WATER: { bossName: 'ドリアン', baseDamage } } },
+            attributes: { WATER: { attackBenchmark: { n: 100, medianFururi: fururi }, comps: [{ compKey: faces.join('|'), members: faces.map((f, i) => ({ gbId: f, name: 'N' + i })), n, medianFururi: fururi }, ...extra] } } } });
+        const r = AC.gbCompsByAttr({ exports: [ex('2026-10', 800, 10e9, 1.5, 10, [{ compKey: 'a|b', n: 9, medianFururi: 2 }]), ex('2026-11', 600, 1e9, 25, 30)], ratioTable });
+        assert.deepEqual(r.months, ['2026-10', '2026-11']);
+        const w = r.attrs.water;
+        // 2026-10: 1.5 × 10 ÷ 4 × 2 = 7.5 / 2026-11: 25 × 1 ÷ 2 × 2 = 25
+        assert.deepEqual(w.bosses.map(b => [b.month, b.med, b.n]), [['2026-11', 25, 100], ['2026-10', 7.5, 100]]);
+        assert.equal(w.comps.length, 1, '5 人そろわない編成を数えた / 回またぎでまとまっていない');
+        assert.deepEqual(w.comps[0].entries.map(e => [e.month, e.med, e.n]), [['2026-10', 7.5, 10], ['2026-11', 25, 30]]);
+        assert.equal(w.comps[0].names['f2.webp'], 'N2');
+        assert.deepEqual(AC.gbCompsByAttr({ exports: [ex('2026-10', 777, 10e9, 1.5, 10)], ratioTable }).months, [], 'SLv の係数が無い書き出しを使った');
+    });
+    test('view: ボスで絞る / 凸数・人数で重みを付けた真ん中 / 高い順の上位 / 絞ったときだけキャラ別 (3 凸以上)', () => {
+        const union = { bosses: [{ month: '2026-11', boss: 'X', n: 3, med: 20 }, { month: '2026-10', boss: 'Y', n: 1, med: 10 }], comps: [
+            { key: 'k1', faces: ['p', 'q', 'r', 's', 't'], entries: [{ month: '2026-11', boss: 'X', n: 3, med: 20 }, { month: '2026-10', boss: 'Y', n: 1, med: 10 }],
+              who: [{ player: 'a', boss: 'X', normB: 22 }, { player: 'b', boss: 'X', normB: 20 }, { player: 'c', boss: 'X', normB: 18 }, { player: 'd', boss: 'Y', normB: 10 }] },
+            { key: 'k2', faces: ['p', 'u', 'v', 'w', 'x'], entries: [{ month: '2026-10', boss: 'Y', n: 1, med: 30 }], who: [{ player: 'e', boss: 'Y', normB: 30 }] },
+        ] };
+        const gb = { bosses: [{ month: '2026-11', boss: 'X', n: 100, med: 24 }], comps: [{ key: 'g1', faces: ['p'], names: {}, entries: [{ month: '2026-11', boss: 'X', n: 50, med: 26 }] }] };
+        const all = AC.view({ union, gb });
+        assert.deepEqual(all.unionRows.map(r => [r.key, r.n, r.med]), [['k2', 1, 30], ['k1', 4, 17.5]], '重み (20×3 + 10×1) ÷ 4 = 17.5 / 高い順');
+        assert.equal(all.unionMed, 17.5); assert.equal(all.unionN, 4); assert.equal(all.gbMed, 24);
+        assert.deepEqual(all.chars, [], 'まとめて (回またぎ) なのにキャラ別を出した');
+        const x = AC.view({ union, gb, boss: 'X' });
+        assert.deepEqual(x.unionRows.map(r => [r.key, r.n, r.med, r.who.length]), [['k1', 3, 20, 3]], 'ボスで絞れていない');
+        assert.deepEqual(x.chars.map(c => [c.face, c.n, c.med]), [['p', 3, 20], ['q', 3, 20], ['r', 3, 20], ['s', 3, 20], ['t', 3, 20]], '3 凸以上のキャラ別');
+        const y = AC.view({ union, gb, boss: 'Y' });
+        assert.deepEqual(y.chars, [], '3 凸未満のキャラを出した');
+        assert.deepEqual(y.gbRows, [], '絞ったボスに無い GB の編成を出した');
+        assert.equal(AC.view({ union, gb, top: 1 }).unionRows.length, 1);
+        assert.doesNotThrow(() => AC.view({}));
+    });
+}
+{
+    const fs = await import('node:fs');
+    const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    test('★ 配線 (⑤): ドメインを読む / 🛡 全体分析のカード (幅 12) / 全体分析を描くとき頭で描く / 読めた月は正式な JSON だけ / チップは添字・名前を onclick に埋めない', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/attrComps.js"></script>'), 'attrComps.js を読んでいない');
+        assert.ok(/<div class="dc-card" id="raidReviewCompsCard" data-slv-view="review" data-span="12" hidden>/.test(html), '全体分析のカードが無い');
+        assert.ok(/_allMonthJson = \[\.\.\.byMonth\.values\(\)\]\.filter\(x => x && x\.source === 'json'/.test(html), '読めた月を持っていない / Supabase から組んだ月 (締め凸の印が無い) まで入れている');
+        const rr = html.slice(html.indexOf('async function renderRaidReview()'), html.indexOf('function renderAll()'));
+        assert.ok(/const seq = \+\+_rrSeq;\s*_acRender\(\)\.catch\(/.test(rr), '全体分析を描くときに頭で描いていない (この回の凸が無いと出ない)');
+        const ac = html.slice(html.indexOf('async function _acRender()'), html.indexOf('async function renderRaidReview()'));
+        assert.ok(/if \(seq !== _acSeq\) return;/.test(ac), '追い越された読み込みで描いている');
+        assert.ok(/onclick="setAcBoss\(\$\{i\}\)"/.test(ac) && !/setAcBoss\('\$\{/.test(ac), 'ボスの名前を onclick に埋めている');
+        assert.ok(/\$\{_acSel\.boss \? esc\(_acSel\.boss\)/.test(ac) && /\$\{esc\(b\.boss\)\}/.test(ac), 'ボスの名前を escape していない');
+        assert.ok(/dom\.unionCompsByAttr\(\{ months, ratioTable: slvRatioTable, attrOf: _rrAttrOf \}\)/.test(ac) && /dom\.gbCompsByAttr\(\{ exports: gbs\.filter\(Boolean\), ratioTable: slvRatioTable \}\)/.test(ac), '計算をドメインに任せていない');
+        assert.ok(/r\.n === 1 \? '1 凸 \(その 1 回\)'/.test(ac), 'n=1 を中央値のように見せている (Q9)');
+    });
+}
+
 console.log('\n運営除外の配線 (ソース突合):');
 {
     const fs = await import('node:fs');
@@ -10281,7 +10372,7 @@ console.log('\ngrowthDomain:');
             && /dom\.memberMatrix\(\{ players, attrOf: _rrAttrOf \}\)/.test(fn), '判定を raidReviewDomain に任せていない');
         assert.ok(/if \(seq !== _rrSeq\) return;/.test(fn), '待っている間にシーズンを切り替えても古い結果で描いてしまう');
         // ★ 取得の間に図を切り替えても前の回を描き直さない / 名乗り直しで「自分」の行を直す (Codex指摘 2026-09-15)
-        assert.ok(/const seq = \+\+_rrSeq;\s*_rrLastApt = null;/.test(fn), '取得の間も前の回の図が残る');
+        assert.ok(/const seq = \+\+_rrSeq;\s*_acRender\(\)\.catch\([^\n]*\n\s*_rrLastApt = null;/.test(fn), '取得の間も前の回の図が残る (⚔️ 回またぎのカードはこの回の凸が無くても描く)');
         assert.ok(/'tab-slv-ranking' && _slvView === 'review' && typeof renderRaidReview === 'function'\) \{\s*renderRaidReview\(\)/.test(html), '名乗り直しで振り返りを描き直していない');
         // ★ 軸が壊れる値なら横棒に倒す / 効かない sticky を残さない / color-mix が無い環境の受け皿
         assert.ok(/if \(!\[x0, x1, y0, y1\]\.every\(Number\.isFinite\) \|\| !\(x1 > x0\) \|\| !\(y1 > y0\)\) return _rrAptBarsHtml\(apt\);/.test(html), '散布図の座標が壊れても描いてしまう');

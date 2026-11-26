@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../js/domain/raidReview.js';
+import '../js/domain/attrComps.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
@@ -275,6 +276,76 @@ test('① 帯: 凸1本ずつに区切られ、幅の合計 = その Lv の進捗
     clean(api._rrProgressHtml(rows, { attr: 'fire', level: 3, i: 999 }));
     assert.ok(!api._rrProgressHtml(rows, { attr: 'fire', level: 9, i: 0 }).includes('class="rr-det"'), '無いレベルで詳細を出している');
 });
+
+// ===== ⚔️ 属性ごと: ダメージが出やすかった編成 (第46回の反省 ⑤・2026-11-26) — 本番の月次JSON (2026-09〜11) と GB の書き出し (2026-08〜11) で描く =====
+{
+    const AC = globalThis.attrCompsDomain;
+    const acEls = new Map(['raidReviewCompsTabs', 'raidReviewComps'].map(k => [k, { innerHTML: '' }]));
+    const acDoc = { getElementById: (id) => acEls.get(id) || null };
+    const between = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('切り出せない: ' + a); return html.slice(i, j); };
+    const acSrc = [
+        'const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\'/g, "&#39;");',
+        'const renderTeamSnippet = (team, o) => team.map((c) => `<img class="chr" src="${c}" width="${o.size}">`).join("");',
+        'const PT_ATTRS = [{ key: "fire", name: "灼熱" }, { key: "water", name: "水冷" }, { key: "electric", name: "電撃" }, { key: "iron", name: "鉄甲" }, { key: "wind", name: "風圧" }];',
+        'let _acData = null;',
+        grab('_acSel', 'const'), grab('_AC_FILL', 'const'), grab('_acMon', 'const'), grab('_acTeam', 'const'), grab('_acBossNames', 'const'),
+        between('        function setAcAttr(a) {', '        // ボスのチップの並び'),
+        grab('_acPaint'),
+        'return { setAcAttr, setAcBoss, _acPaint, set: (d) => { _acData = d; }, sel: _acSel };',
+    ].join('\n');
+    const ac = new Function('BOSS_ATTRIBUTES', 'window', 'document', acSrc)(BOSS_ATTRIBUTES, { attrCompsDomain: AC }, acDoc);
+    const months = ['2026-09', '2026-10', '2026-11'].map(k => ({ key: k, players: rd(`data/${k}.json`).players }));
+    const exportsGb = ['2026-08', '2026-09', '2026-10', '2026-11'].map(k => ({ key: k, json: rd(`data/gb-export/${k}.json`) }));
+    const U = AC.unionCompsByAttr({ months, ratioTable: ratio, attrOf });
+    const G = AC.gbCompsByAttr({ exports: exportsGb, ratioTable: ratio });
+    ac.set({ union: U.attrs, gb: G.attrs, uMonths: U.months, gMonths: G.months, skipped: ['2026-08'] });
+    const out = () => acEls.get('raidReviewComps').innerHTML, tabs = () => acEls.get('raidReviewCompsTabs').innerHTML;
+    test('⚔️ 属性ごと (⑤): 本番のデータで描ける — 属性のタブ 5 つ (水冷が選ばれている) / ボスのチップ (ユニオン 3 + GB 4) / 真ん中の帯 / 2 列 5 行ずつ / 材料の注記', () => {
+        ac._acPaint();
+        assert.equal((tabs().match(/class="ac-tab"/g) || []).length, 5);
+        assert.ok(/aria-selected="true" onclick="setAcAttr\('water'\)">水冷PT <small>H\.S\.T\.A\.<\/small>/.test(tabs()), '水冷のタブが選ばれていない');
+        assert.equal((out().match(/class="ac-chip" aria-pressed/g) || []).length, 7, 'ボスのチップの数');
+        assert.ok(/ユニオン 11月<b>ブラックスミス<\/b>20\.2B · 11 凸/.test(out()), 'ユニオンのボスのチップ (第46回 ブラックスミス 20.2B) が違う');
+        assert.ok(/まとめた真ん中: ユニオン <b>16\.6B<\/b> \(45 凸\) \/ GB <b>19\.7B<\/b>/.test(out()) && out().includes('GB の方が 3.1B 出ています'), '真ん中の帯が違う');
+        assert.equal((out().match(/class="ac-row"/g) || []).length, 10, '2 列 5 行ずつでない');
+        assert.ok(out().includes('1 凸 (その 1 回)') && /→ \d+\.\dB · /.test(out()), 'n=1 を「その 1 回」と言っていない / 誰が・換算が無い');
+        assert.ok(out().includes('締め凸の分からない回 (8月) は入れていません'), '飛ばした回を言っていない');
+        assert.ok(/<img class="chr" src="\.\/character-images\/[0-9a-f]{32}\.webp"/.test(out()), '顔の画像を出していない');
+        clean(out()); clean(tabs());
+    });
+    test('⚔️ 属性ごと (⑤): ボスのチップを押すと ユニオンと GB の同じボスに絞れる (もう一度でまとめて) / 絞ったときだけ「入っていると出た」/ 属性を替えると絞り込みを外す', () => {
+        ac._acPaint();
+        const names = [...out().matchAll(/onclick="setAcBoss\((\d+)\)"[^>]*>[^<]*<b>([^<]+)<\/b>/g)].map(m => [Number(m[1]), m[2]]);
+        const bs = names.find(([, n]) => n === 'ブラックスミス');
+        assert.ok(bs, 'ブラックスミスのチップが無い');
+        ac.setAcBoss(bs[0]);
+        assert.equal(ac.sel.boss, 'ブラックスミス');
+        assert.equal((out().match(/aria-pressed="true"/g) || []).length, 2, 'ユニオンと GB の両方のチップが選ばれていない');
+        assert.ok(out().includes('ブラックスミス の真ん中: ユニオン <b>20.2B</b> (11 凸)') && out().includes('入っていると出た'), '絞った真ん中 / キャラ別が無い');
+        assert.ok(!/ドリアン \d/.test(out().split('入っていると出た')[0].split('class="ac-cols"')[1] || ''), '絞ったのに別のボスの内訳が残っている');
+        ac.setAcBoss(bs[0]);
+        assert.equal(ac.sel.boss, null, 'もう一度押してもまとめて に戻らない');
+        assert.ok(!out().includes('入っていると出た'), 'まとめて なのにキャラ別を出している (回またぎだとボスの差が混ざる)');
+        ac.setAcBoss(bs[0]); ac.setAcAttr('wind');
+        assert.equal(ac.sel.boss, null, '属性を替えても絞り込みが残っている');
+        assert.ok(/aria-selected="true" onclick="setAcAttr\('wind'\)"/.test(tabs()) && out().includes('アニヒリオ'));
+        ac.setAcAttr('nope');
+        assert.equal(ac.sel.attr, 'wind', '知らない属性に切り替わった');
+        clean(out());
+        ac.setAcAttr('water');
+    });
+    test('⚔️ 属性ごと (⑤): 材料が無いときの文 / GB が無い回はユニオンだけ / 人の名前を escape する', () => {
+        ac.set({ union: AC.unionCompsByAttr({ months: [] }).attrs, gb: AC.gbCompsByAttr({ exports: [] }).attrs, uMonths: [], gMonths: [], skipped: [] });
+        ac._acPaint();
+        assert.ok(out().includes('締め凸の分かる回の月次JSON も GB の書き出しもありません'), '材料が無いときの文が無い');
+        const evil = months.map(m => ({ ...m, players: m.players.map((p, i) => i === 0 ? { ...p, player: '<img src=x onerror=alert(1)>' } : p) }));
+        const U2 = AC.unionCompsByAttr({ months: evil, ratioTable: ratio, attrOf });
+        ac.set({ union: U2.attrs, gb: AC.gbCompsByAttr({ exports: [] }).attrs, uMonths: U2.months, gMonths: [], skipped: [] });
+        for (const a of AC.ATTRS) { ac.setAcAttr(a); assert.ok(!out().includes('<img src=x'), '人の名前を escape していない'); clean(out()); }
+        assert.ok(out().includes('GB の書き出しが無い回はユニオンだけ') && out().includes('この絞り込みの GB の編成はありません'), 'GB が無いときの文が無い');
+        ac.setAcAttr('water');
+    });
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

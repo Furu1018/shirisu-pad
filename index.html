@@ -131,6 +131,7 @@
     <script defer src="./js/domain/releaseNotes.js"></script> <!-- 🆕 新しくなったこと (更新履歴) の判定 -->
     <script defer src="./js/domain/slvSim.js"></script>
     <script defer src="./js/domain/raidReview.js"></script>   <!-- レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) -->      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
+    <script defer src="./js/domain/attrComps.js"></script>      <!-- ⚔️ 属性ごと: ダメージが出やすかった編成 (第46回の反省 ⑤) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
     <script defer src="./js/domain/aiVision.js"></script>       <!-- 画像認識 (AI Vision) の失敗を日本語で説明する (クレジット切れ・レート制限…) -->
@@ -3102,6 +3103,33 @@
         /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
         /* 📅 レイド予定表 (S5)。色はトークンだけ (時間割の .mt-* と模擬表の .mk-* を使い回す) */
         .rt-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        /* ⚔️ 属性ごと: ダメージが出やすかった編成 (分析 › 🛡 全体分析・第46回の反省 ⑤・2026-11-26) */
+        .ac-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+        .ac-tab { font: inherit; font-size: 12px; font-weight: 800; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .ac-tab small { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .ac-tab[aria-selected="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
+        .ac-tab[aria-selected="true"] small { color: var(--on-ink-soft); }
+        .ac-tab:focus-visible, .ac-chip:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+        .ac-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+        .ac-chip { font: inherit; text-align: left; min-height: 40px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--s1); color: var(--t-body); cursor: pointer; display: inline-flex; flex-direction: column; justify-content: center; line-height: 1.3; font-size: 11px; font-weight: 700; }
+        .ac-chip b { font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .ac-chip[aria-pressed="true"] { border-color: var(--ops); box-shadow: inset 0 0 0 1px var(--ops); background: var(--ops-bg); }
+        .ac-gap { font-size: 12px; font-weight: 800; padding: 8px 12px; border-radius: 8px; margin: 2px 0 10px; background: var(--s1); color: var(--t-body); line-height: 1.6; }
+        .ac-gap.up { background: var(--warn-bg); color: var(--warn-on); }
+        .ac-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 10px; }
+        .ac-col { background: var(--s1); border-radius: 14px; padding: 10px 12px; min-width: 0; }
+        .ac-col h4 { margin: 0 0 4px; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .ac-col h4 small { font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .ac-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+        .ac-row:first-of-type { border-top: 0; }
+        .ac-faces { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; }
+        .ac-v { text-align: right; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--t-ink); }
+        .ac-v small { display: block; font-size: 11px; font-weight: 700; color: var(--t-muted); }
+        .ac-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+        .ac-bar i { display: block; height: 100%; border-radius: 999px; }
+        .ac-sub { grid-column: 1 / -1; font-size: 11px; color: var(--t-muted); line-height: 1.6; }
+        .ac-sub b { color: var(--t-body); }
+        .ac-none { margin: 4px 0; font-size: 12px; color: var(--t-muted); }
         /* 📅 みんなの模擬は押したら開く (段階 3 続き・2026-11-26)。見出しそのものがボタン */
         button.rt-card-h.rt-fold { font: inherit; color: inherit; background: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer; min-height: 40px; align-items: center; margin-bottom: 0; }
         button.rt-card-h.rt-fold[aria-expanded="true"] { margin-bottom: 8px; }
@@ -4166,6 +4194,8 @@
                     <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:12px;line-height:1.6;color:var(--t-body);">
                         <b style="color:var(--t-ink);white-space:nowrap;">👥 誰がどの属性で</b>
                         <span>誰がどの属性を担当したか。<b>その属性を任せられる人が何人いるか</b>、特定の人に偏っていないかが分かります。</span>
+                        <b style="color:var(--t-ink);white-space:nowrap;">⚔️ 属性ごとの編成</b>
+                        <span>その属性で選ばれてきたボスに、<b>ユニオンと GB でどの編成がどれだけ出たか</b> (回をまたいで・SLv 600 換算)。次に試す編成の候補が分かります。</span>
                     </div>
                 </div>
                 <p style="margin:10px 0 0;font-size:11px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:8px;padding:8px 10px;">
@@ -4197,6 +4227,16 @@
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 誰がどの属性で削ったか</div>
                 <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">色が濃いほど削った量が多い人。マス目に触れると 凸数 も出ます。</div>
                 <div id="raidReviewMembers" style="margin-top:12px;"></div>
+            </div>
+
+            <!-- ⚔️ 属性ごと: ダメージが出やすかった編成 (第46回の反省 ⑤・2026-11-26 / メモ docs/第46期_前日準備と組むの見直し_2026-11-01.md §5・Q7〜Q10)。
+                 その属性で選ばれてきたボス (回またぎ) へ、ユニオンの実凸 (月次JSON・締め凸は除く) と GB の提出 (凍結エクスポート) が どの編成でどれだけ出たか。
+                 単位は SLv 600 換算の B。判定は js/domain/attrComps.js が唯一 (画面で計算を書き足さない) -->
+            <div class="dc-card" id="raidReviewCompsCard" data-slv-view="review" data-span="12" hidden>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">⚔️ 属性ごと: ダメージが出やすかった編成</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">その属性で選ばれてきたボスに、どの編成が効いたか (回をまたいでまとめる)。ボスのチップを押すと、そのボスだけに絞れます。単位は <b>SLv 600 換算の B</b>。</div>
+                <div id="raidReviewCompsTabs" class="ac-tabs" role="tablist" aria-label="属性"></div>
+                <div id="raidReviewComps"><p class="ac-none">読み込み中…</p></div>
             </div>
 
             <div data-slv-view="growth" hidden>
@@ -5773,6 +5813,7 @@
         let currentData = [];       // processed players from current month
         let previousData = [];      // processed players from previous month
         let currentMonthKey = null;
+        let _allMonthJson = [];   // 分析の月次JSON (data/ の正式な JSON で読めた月すべて・古い順)。⚔️ 属性ごとの編成が回またぎで使う (⑤・2026-11-26)
         let previousMonthKey = null;
         let currentMetadata = null;
         let slvRatioTable = null;
@@ -18413,6 +18454,8 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
                 byMonth.set(key, { key, json, source: 'json' });
             });
 
+            // ⚔️ 属性ごとの編成 (⑤) は読めた月を全部使う (正式な JSON だけ — Supabase から組んだ月は締め凸の印が無い)
+            _allMonthJson = [...byMonth.values()].filter(x => x && x.source === 'json' && x.json && Array.isArray(x.json.players)).sort((a, b) => a.key.localeCompare(b.key));
             // 月キー降順で上位2件
             const found = [...byMonth.values()]
                 .sort((a, b) => b.key.localeCompare(a.key))
@@ -18717,12 +18760,93 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             return `<div class="rr-hm" data-no-swipe><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`
                 + '<p class="rr-note">数字は削った量 (B)。締め凸は残HP分しか記録されないので小さく出ます (マス目に触れると 締 の本数が分かります)。</p>';
         }
+        // ===== ⚔️ 属性ごと: ダメージが出やすかった編成 (第46回の反省 ⑤・2026-11-26 ふるり「水冷なら水冷で選ばれるボスに対しての編成をまとめて (本家 + GB)」) =====
+        //   材料: ユニオン = 分析の月次JSON (_allMonthJson・締め凸の印がある回だけ) / GB = 凍結エクスポート (ユニオンの回 + その 1 つ前)。計算は attrCompsDomain が唯一
+        let _acSeq = 0, _acData = null;   // { union, gb, uMonths, gMonths, skipped }
+        const _acSel = { attr: 'water', boss: null };   // 属性のタブ / ボスの絞り込み (null = まとめて)。端末に覚えない
+        const _AC_FILL = { fire: 'var(--attr-fire-solid)', water: 'var(--attr-water-solid)', electric: 'var(--attr-electric-solid)', iron: 'var(--attr-iron-solid)', wind: 'var(--attr-wind-solid)' };
+        const _acMon = (k) => { const m = /^(\d{4})-(\d{2})(b?)$/.exec(String(k || '')); return m ? `${Number(m[2])}月${m[3] ? ' (2 回目)' : ''}` : String(k || ''); };
+        const _acPrevMonth = (k) => { const m = /^(\d{4})-(\d{2})/.exec(String(k || '')); if (!m) return null; const d = new Date(Number(m[1]), Number(m[2]) - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+        // 顔: 手元に画像がある (キャラのマスタが知っている) ならアイコン、無ければ GB の名前で (頭文字の札)
+        const _acTeam = (faces, names = {}) => renderTeamSnippet(faces.map(f => { const p = './character-images/' + f; return (typeof _nikkeCharsByIconPath !== 'undefined' && _nikkeCharsByIconPath.has(p)) || !names[f] ? p : names[f]; }), { size: 28 });
+        async function _acRender() {
+            const host = document.getElementById('raidReviewComps');
+            const dom = window.attrCompsDomain;
+            if (!host) return;
+            if (!dom) { host.innerHTML = '<p class="ac-none">属性ごとの編成を読み込めませんでした (ページを再読み込みしてください)</p>'; return; }
+            const seq = ++_acSeq;
+            const months = (_allMonthJson || []).map(m => ({ key: m.key, players: m.json.players }));
+            const keys = months.map(m => m.key).filter(k => /^\d{4}-\d{2}$/.test(k));
+            const gbKeys = [...new Set([...keys, ...(keys.length ? [_acPrevMonth(keys[0])] : [])].filter(Boolean))];
+            const gbs = await Promise.all(gbKeys.map(k => _loadGbExport(k).then(json => (json ? { key: k, json } : null))));
+            if (seq !== _acSeq) return;   // 待っている間に描き直しが始まった
+            const union = dom.unionCompsByAttr({ months, ratioTable: slvRatioTable, attrOf: _rrAttrOf });
+            const gb = dom.gbCompsByAttr({ exports: gbs.filter(Boolean), ratioTable: slvRatioTable });
+            _acData = { union: union.attrs, gb: gb.attrs, uMonths: union.months, gMonths: gb.months, skipped: union.skipped };
+            _acPaint();
+        }
+        function setAcAttr(a) { if (!window.attrCompsDomain || !window.attrCompsDomain.ATTRS.includes(a)) return; _acSel.attr = a; _acSel.boss = null; _acPaint(); }
+        function setAcBoss(i) {
+            const d = _acData; if (!d) return;
+            const names = _acBossNames(d.union[_acSel.attr], d.gb[_acSel.attr]);
+            const b = names[Number(i)] ?? null;
+            _acSel.boss = (b == null || _acSel.boss === b) ? null : b;   // もう一度押すと まとめて に戻る
+            _acPaint();
+        }
+        // ボスのチップの並び (ユニオン → GB・同じ名前は 1 つ)。チップは添字で押す (名前を onclick に埋めない)
+        const _acBossNames = (u, g) => [...new Set([...(u ? u.bosses : []).map(b => b.boss), ...(g ? g.bosses : []).map(b => b.boss)])];
+        function _acPaint() {
+            const tabsEl = document.getElementById('raidReviewCompsTabs'), host = document.getElementById('raidReviewComps');
+            const dom = window.attrCompsDomain, d = _acData;
+            if (!tabsEl || !host || !dom || !d) return;
+            const esc = escapeHtml, a = _acSel.attr;
+            const ptName = (x) => PT_ATTRS.find(p => p.key === x)?.name || x;
+            const codeOf = (x) => Object.entries(BOSS_ATTRIBUTES || {}).find(([, v]) => String(v.attribute || '').toLowerCase() === x)?.[0] || '';
+            tabsEl.innerHTML = dom.ATTRS.map(x => `<button type="button" class="ac-tab" role="tab" aria-selected="${x === a}" onclick="setAcAttr('${x}')">${esc(ptName(x))}PT <small>${esc(codeOf(x))}</small></button>`).join('');
+            const u = d.union[a], g = d.gb[a];
+            if (!d.uMonths.length && !d.gMonths.length) { host.innerHTML = '<p class="ac-none">締め凸の分かる回の月次JSON も GB の書き出しもありません。</p>'; return; }
+            const names = _acBossNames(u, g);
+            if (_acSel.boss != null && !names.includes(_acSel.boss)) _acSel.boss = null;   // 属性を替えた・材料が変わった
+            const v = dom.view({ union: u, gb: g, boss: _acSel.boss });
+            const fmt = (x) => (x == null ? '—' : x.toFixed(1));
+            const chip = (label, b, sub) => { const i = names.indexOf(b.boss); return `<button type="button" class="ac-chip" aria-pressed="${_acSel.boss === b.boss}" onclick="setAcBoss(${i})" title="押すとこのボスだけに絞る (もう一度でまとめて)">${label} ${esc(_acMon(b.month))}<b>${esc(b.boss)}</b>${sub}</button>`; };
+            const uChips = u.bosses.map(b => chip('ユニオン', b, `${fmt(b.med)}B · ${b.n} 凸`)).join('');
+            const gChips = g.bosses.map(b => chip('GB', b, `${fmt(b.med)}B · ${b.n} 人`)).join('');
+            // ユニオンの真ん中 / GB の真ん中 (凸数・人数で重み)。GB が 2B 以上上なら「次に試す編成がある」の色
+            const gap = (v.unionMed != null && v.gbMed != null) ? v.gbMed - v.unionMed : null;
+            const gapHtml = `<p class="ac-gap${gap != null && gap >= 2 ? ' up' : ''}">${_acSel.boss ? esc(_acSel.boss) + ' の' : 'まとめた'}真ん中: ユニオン <b>${fmt(v.unionMed)}B</b> (${v.unionN} 凸) / GB <b>${fmt(v.gbMed)}B</b> (${v.gbN} 人)${gap != null && gap >= 2 ? ` — GB の方が ${gap.toFixed(1)}B 出ています。GB の上位の編成が次に試す候補です` : ''}</p>`;
+            const max = Math.max(1, ...v.gbRows.map(r => r.med), ...v.unionRows.map(r => r.med));
+            const bar = (x) => `<span class="ac-bar"><i style="width:${Math.max(2, Math.min(100, x / max * 100)).toFixed(1)}%;background:${_AC_FILL[a]};"></i></span>`;
+            const ent = (es, unit) => es.map(e => `${esc(_acMon(e.month))} ${esc(e.boss)} ${fmt(e.med)}B (${e.n} ${unit})`).join(' · ');
+            const gRows = v.gbRows.map(r => `<div class="ac-row"><span class="ac-faces">${_acTeam(r.faces, r.names)}</span><span class="ac-v">${fmt(r.med)}B<small>${r.n} 人</small></span>${bar(r.med)}<span class="ac-sub">${ent(r.entries, '人')}</span></div>`).join('');
+            const uRows = v.unionRows.map(r => {
+                const who = r.who.slice(0, 3).map(w => `<b>${esc(w.player)}</b> ${w.rawB.toFixed(1)}B (SLv ${w.slv ?? '—'}) → ${w.normB.toFixed(1)}B · ${esc(_acMon(w.month))} ${esc(w.boss)}`).join(' / ');
+                const more = r.who.length > 3 ? ` ほか ${r.who.length - 3} 凸` : '';
+                // n=1 は中央値と呼ばない (Q9): 「1 凸」と出す
+                return `<div class="ac-row"><span class="ac-faces">${_acTeam(r.faces)}</span><span class="ac-v">${fmt(r.med)}B<small>${r.n === 1 ? '1 凸 (その 1 回)' : r.n + ' 凸'}</small></span>${bar(r.med)}<span class="ac-sub">${who}${more}</span></div>`;
+            }).join('');
+            const chars = (_acSel.boss && v.chars.length)
+                ? `<div class="ac-col" style="margin-top:10px;"><h4>入っていると出た (キャラ別・${esc(_acSel.boss)}・ユニオン 3 凸以上) <small>その キャラが入った凸の真ん中</small></h4><div class="ac-chips">${v.chars.map(c => `<span class="ac-chip" style="cursor:default;flex-direction:row;align-items:center;gap:6px;">${_acTeam([c.face])}<span><b>${fmt(c.med)}B</b> ${c.n} 凸</span></span>`).join('')}</div></div>` : '';
+            const notes = [];
+            if (d.uMonths.length) notes.push(`ユニオン = ${d.uMonths.map(_acMon).join('・')} の実凸 (締め凸は除く)`);
+            if (d.gMonths.length) notes.push(`GB = ${d.gMonths.map(_acMon).join('・')} の提出`); else notes.push('GB の書き出しが無い回はユニオンだけ');
+            if (d.skipped.length) notes.push(`締め凸の分からない回 (${d.skipped.map(_acMon).join('・')}) は入れていません`);
+            if (u.unresolved) notes.push(`5 人そろわない凸 ${u.unresolved} 件は編成に数えていません`);
+            host.innerHTML = `<div class="ac-chips">${uChips}${gChips}</div>${gapHtml}
+                <div class="ac-cols">
+                    <div class="ac-col"><h4>GB で出やすかった編成 <small>上位 5・人数で重み</small></h4>${gRows || '<p class="ac-none">この絞り込みの GB の編成はありません</p>'}</div>
+                    <div class="ac-col"><h4>ユニオンで使った編成 <small>上位 5・誰が・生 → 換算</small></h4>${uRows || '<p class="ac-none">この絞り込みのユニオンの編成はありません</p>'}</div>
+                </div>${chars}
+                <p class="ac-none" style="margin-top:8px;font-size:11px;line-height:1.6;">${notes.map(esc).join(' / ')}。人数・凸数の少ない編成は、強いとは言い切れません。</p>`;
+        }
+
         async function renderRaidReview() {
             const dom = window.raidReviewDomain;
             const pEl = document.getElementById('raidReviewProgress');
             const mEl = document.getElementById('raidReviewMembers');
             if (!dom || !pEl || !mEl) return;
             const seq = ++_rrSeq;
+            _acRender().catch(e => console.warn('[属性ごとの編成] 描画に失敗:', e?.message || e));   // ⚔️ 回またぎ (この回の凸が無くても描く・⑤)
             _rrLastApt = null;   // ★ 取得の間に 散布図/ランキング を押しても前の回の図を描き直さない (Codex指摘 2026-09-15)
             _rrPick = null; _rrLastProgress = null;   // 帯で選んだ凸は回ごとに捨てる
             const players = Array.isArray(currentData) ? currentData : [];
