@@ -2953,10 +2953,13 @@
         /* 🧱 組む の盤は行に収まらない駒を次の段へ折り返す (切れた駒の ✕ は押せない: Codex 指摘)。⚔️ / 📅 の盤 (.db) の帯は見るだけなので 1 段のまま */
         #opsBuild .obr-bar { flex-wrap: wrap; height: auto; min-height: 28px; }
         #opsBuild .obpc { height: 28px; }
-        button.obpc { min-width: 34px; padding: 0 5px; border-width: 0 2px 0 0; border-style: solid; border-color: var(--card); font-family: inherit; cursor: pointer; }
-        button.obpc.hand { border-bottom: 3px solid rgba(var(--ink-rgb), 0.6); }   /* 手で置いた駒の印 (🧮 でも動かない)。自動の駒と見分ける */
+        /* ① 2026-11-27 ふるり「置いたピースの詳細を外さずに見たい」: 駒 = 本体 (押すと 🧭 詳細・外れない) + ✕ (外す) の 2 つのボタン。外すのは ✕ だけ */
+        .obpc.pin { min-width: 44px; padding: 0; }
+        .obpc.pin.hand { border-bottom: 3px solid rgba(var(--ink-rgb), 0.6); }   /* 手で置いた駒の印 (🧮 でも動かない)。自動の駒と見分ける */
+        .obpc-b { flex: 1 1 auto; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0 2px 0 5px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+        .obpc-b.peek { box-shadow: inset 0 0 0 2px currentColor; }   /* 🧭 にいま詳細を出している駒 */
         .obpc-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        .obpc-x { flex: none; margin-left: 4px; font-size: 12px; }
+        .obpc-x { flex: none; height: 100%; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; padding: 0 5px; border: 0; background: rgba(var(--ink-rgb), 0.16); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
         /* 決定の盤 (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28): 組むと同じ部品。過ぎたブロックも押せる (.was)・行は押せない (.ro)・
            完了の駒は濃く (.ok)・自分の駒は太い枠 (.me)・押すのは帯の下の名前の札 (.db-tag) */
         .obb.was { opacity: .8; }
@@ -2985,9 +2988,24 @@
         .db-mine { margin: 0 0 8px; padding: 7px 10px; border-radius: 8px; background: var(--ops-bg); font-size: 12px; font-weight: 800; color: var(--ops-deep); line-height: 1.6; }
         .ob-tray { border: 1px solid rgba(var(--ink-rgb), 0.08); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .ob-tray-h { font-size: 12px; font-weight: 900; color: var(--t-ink); } .ob-tray-h span { font-weight: 700; color: var(--t-muted); font-size: 11px; }
-        .ob-tray-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
-        .obt { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 4px 8px; min-height: 40px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; max-width: 100%; text-align: left; }
-        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.view { outline: 2px dashed var(--ops); outline-offset: 1px; } .obt.off { opacity: .4; cursor: default; } .obt.off.undo { opacity: 1; border-style: dashed; cursor: pointer; } .obt.undo .where { color: var(--ops); font-weight: 800; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
+        /* ⑥ 2026-11-27 ふるり「高さはこのまま・情報を見やすく触りやすく」: 札は 2 行 (1 行目 = ボス・名前・ダメージ / 2 行目 = このブロックのみ・ほか・置いた) を 2 列以上の格子に */
+        .ob-tray-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 5px; max-height: 480px; overflow-y: auto; overflow-x: hidden; }
+        .obt { display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 4px 8px; min-height: 40px; min-width: 0; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 700; cursor: grab; text-align: left; }
+        .obt-l1 { display: flex; align-items: center; gap: 5px; min-width: 0; }
+        .obt-l1 b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+        .obt-dmg { margin-left: auto; flex: none; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+        .obt-l2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .obt.sel { border-color: var(--ops); box-shadow: 0 0 0 2px var(--ops-bg); } .obt.view { outline: 2px dashed var(--ops); outline-offset: 1px; } .obt.off { opacity: .4; cursor: pointer; } .obt.dropped { border-style: dashed; } .obt.dup { border-color: var(--bad); }
+        /* ⑥ 並べ替え・絞り込み (いつも出す・押す / 打つとすぐ置き場が変わる = メニューを開かない)。見せ方だけ — 置けるかの判定・ピースの中身は変えない */
+        .ob-tools { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px; border-radius: 8px; background: var(--s1); }
+        .ob-tool { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+        .ob-tl { flex: none; width: 52px; font-size: 11px; font-weight: 900; color: var(--t-muted); }
+        .ob-seg, .ob-chips, .ob-rng { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0; }
+        .ob-seg button, .ob-fa, .ob-fclear { min-height: 40px; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-body); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+        .ob-seg button[aria-pressed="true"], .ob-fa[aria-pressed="true"] { background: var(--t-ink); border-color: var(--t-ink); color: var(--card); }
+        .ob-in { width: 56px; min-height: 40px; padding: 0 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+        .ob-rng > span { font-size: 12px; font-weight: 800; color: var(--t-body); }
+        #obTrayClearWrap { margin-left: auto; }
         .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 900; } .obt small { font-size: 11px; color: var(--t-muted); }
         .obt .rigid { font-size: 11px; font-weight: 900; color: var(--ops-on); } .obt .flex, .obt .where { font-size: 11px; color: var(--t-muted); }   /* 先に置く人の文字は紫・赤は「置けない」(.ng) だけ (2026-11-02) */
         /* 「このブロックのみ / このブロックで最後」(第46回の反省 ②・2026-11-02): ピースの文字・置けないピースの赤・ボタンの人数・新しい段 */
@@ -4655,7 +4673,7 @@
                         <ul>
                             <li>ブロックのボタンを押すと、そのブロックの始まりのボスの HP と、<strong>その時間帯に出られる人の模擬</strong>のピースが出ます (<strong>このブロックのみ</strong> = ほかのブロックに出られない人・<strong>このブロックで最後</strong> = 後ろに出られるブロックが無い人 = 先に置く / ほか: 出られる別のブロック)。<strong>赤く塗ったピース</strong> (⚠ 置けない) は、いまは置けません (相手のボスが撃破済み・Lv4 はボス 5 だけ — 理由がピースに出ます。押しても選ばれません)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます</li>
                             <li><strong>「このブロックのみ」「このブロックで最後」の人</strong> — ブロックのボタンに「このブロックのみ N 人」、その下の段にブロックごとの人と模擬、置ける見込み (段に出すのは、このブロックのみの人と、ほかのブロックがもう過ぎて実質このブロックだけの人 =「このブロックで最後 (ほか ○○ は済)」。手前のブロックにも出られる「このブロックで最後」の人は、ピースに文字だけ) (✓ 置ける / ⚠ 相手のボスが前のブロックで撃破の見込み → そのブロックに次の Lv は出ない見込み)。⚠ のときは、前のブロックを組むときに <strong>5 体とも倒して次の Lv を出す</strong> か <strong>相手のボスを残す</strong> かを決めます (「○○ を開く」で撃破の見込みのブロックへ)。見せるだけで、🧮 はこの人を優先しません</li>
-                            <li>ピースを押してボスの行を押す (PC はドラッグ) → <strong>📌 仮置き</strong>。幅 = ダメージで、ボスの残り HP が減るのが見えます。駒は <strong>✕</strong> で 1 個ずつ外せます (手で置いた駒も自動の駒も・ほかの駒はそのまま・下のピースをもう一度押しても同じ)。外した駒は 🧮 では使いません (置き直すか「このブロックをやり直す」で戻ります)。<strong>🧮 を押さず、手で置いた駒だけでも ✅ 決定できます</strong> (朝と夜に出られる人を朝に置かず、夜まで温存できます。だれも置いていないブロックは飛ばして、まだ決まっていないブロックのまま残ります)。置けないときは理由が出ます</li>
+                            <li>ピースを押してボスの行を押す (PC はドラッグ) → <strong>📌 仮置き</strong>。幅 = ダメージで、ボスの残り HP が減るのが見えます。駒の本体を押すと 🧭 に詳細が出ます (外れません)。外すのは駒の <strong>✕</strong> で、1 個ずつ外せます (手で置いた駒も自動の駒も・ほかの駒はそのまま)。ピース置き場の上で <strong>並べ替え</strong> (いつもの順 / ダメージ順 / 属性順) と <strong>絞り込み</strong> (属性・ダメージの範囲) ができます (見せ方だけ)。外した駒は 🧮 では使いません (置き直すか「このブロックをやり直す」で戻ります)。<strong>🧮 を押さず、手で置いた駒だけでも ✅ 決定できます</strong> (朝と夜に出られる人を朝に置かず、夜まで温存できます。だれも置いていないブロックは飛ばして、まだ決まっていないブロックのまま残ります)。置けないときは理由が出ます</li>
                             <li><strong>🧮 残りを自動で組む</strong> — 手で置いた 📌 は動かさず、そのブロックの始まりの盤面から本物のソルバーが組みます。本人の凸数 (ブロックごとの上限)・ボス 5 の 2 編成目は Lv4 だけ・時間未登録の人は候補にしない、も自動で効きます</li>
                             <li>次のブロックは、前のブロックを組んだとおりに削れたとして残り HP を引き継ぎます。5 体倒したブロックの次から Lv が上がります</li>
                         </ul>
@@ -15798,6 +15816,7 @@
             const o = ov[idx], blk = blocks[idx];
             const sel = tray.find(p => p.key === _ob.sel) || null;
             const usedOf = (mid) => o.rows.reduce((t, r) => t + r.pieces.filter(a => String(a.memberId) === String(mid)).length, 0);
+            const peekKey = (_ob.view && _ob.view.idx === idx) ? _ob.view.key : null;   // 🧭 いま詳細を出している駒 (① 2026-11-27)
             const rows = o.rows.map(r => {
                 const can = sel ? window.blockBuildDomain.canDrop({ piece: sel, row: r, level: o.level, usedHere: usedOf(sel.memberId) }).ok : null;
                 let acc = 0;
@@ -15817,7 +15836,10 @@
                     // 🔄 ほかの運営の変更を反映した直後は、変わった駒を光らせる。手で置いた駒は置いた人の名前を title に
                     const pinBy = pin ? ((_ob.pins || []).find(x => Number(x.id) === Number(a.reservationId))?.pinned_by || '') : '';
                     const flash = pin && _ob.flash && _ob.flash.has(Number(a.reservationId)) ? ' flash' : '';
-                    return `<button type="button" class="obpc pin${pin ? ' hand' : ''}${over}${flash}" ${box} ${pin ? `data-ob-unpin="${Number(a.reservationId)}"` : `data-ob-drop="${pieceKey}"`} title="${nm} ${dmgTxt}B — ${pin ? `手で置いた駒${pinBy ? ` (${escapeHtml(pinBy)})` : ''}` : '自動で置いた駒'}。押すと外れます" aria-label="${nm} の駒を外す"><span class="obpc-nm">${nm} ${dmgTxt}</span><span class="obpc-x" aria-hidden="true">✕</span></button>`;
+                    // ① 本体を押すと 🧭 に詳細 (外れない: 2026-11-27 ふるり「置いたピースの詳細を外さずに見たい」)・✕ で外す。ピースを選んでいるときに本体を押すと「この行に置く」
+                    const peek = peekKey === `${a.memberId}:${r.weakness}:${Number(a.loadoutSlot) || 1}` ? ' peek' : '';
+                    return `<span class="obpc pin${pin ? ' hand' : ''}${over}${flash}" ${box}><button type="button" class="obpc-b${peek}" data-ob-peek="${pieceKey}" aria-pressed="${peek ? 'true' : 'false'}" title="${nm} ${dmgTxt}B — ${pin ? `手で置いた駒${pinBy ? ` (${escapeHtml(pinBy)})` : ''}` : '自動で置いた駒'}。押すと詳細 (外すのは ✕)" aria-label="${nm} の駒の詳細"><span class="obpc-nm">${nm} ${dmgTxt}</span></button>`
+                        + `<button type="button" class="obpc-x" ${pin ? `data-ob-unpin="${Number(a.reservationId)}"` : `data-ob-drop="${pieceKey}"`} title="外す" aria-label="${nm} の駒を外す">✕</button></span>`;
                 }).join('');
                 const hp = r.infinite ? `置いた ${r.gotB.toFixed(1)}B` : (r.done ? `撃破 ✓${r.gotB - r.startB > 0.05 ? ` 余り ${(r.gotB - r.startB).toFixed(1)}B` : ''}` : `あと ${r.remB.toFixed(1)}B / ${r.startB.toFixed(1)}B`);
                 // 🧭 選んでいるピースを置ける行には「置くとどうなるか」を先に出す (2026-11-12 ふるり「組む際のガイド」)
@@ -15837,37 +15859,24 @@
                 return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${act}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
-            const pinHint = o.rows.some(r => r.pieces.length) ? '<b>駒の ✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)' : '';
+            const pinHint = o.rows.some(r => r.pieces.length) ? '<b>駒の本体を押すと詳細 (外れません)・✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)' : '';
             // 状態の文 (Lv4 / 撃破済み) は出したまま。決まった読み方 (幅 = ダメージ・駒の外し方) は「？」の中 (段階 3 続き)
             const stateNote = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
                 : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : '');
             const howBody = [stateNote ? '' : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`, pinHint].filter(Boolean).join('<br>');
             const boardHelp = (stateNote ? `<p class="ob-note">${stateNote}</p>` : '')
-                + (howBody ? _qh('ob-board', stateNote ? '駒の外し方' : (pinHint ? '幅 = ダメージ · 駒の ✕ で外す' : '幅 = ダメージ'), howBody) : '');
+                + (howBody ? _qh('ob-board', stateNote ? '駒の外し方' : (pinHint ? '幅 = ダメージ · 押すと詳細 · ✕ で外す' : '幅 = ダメージ'), howBody) : '');
             // ③ ピース (このブロックに出られる人の模擬だけ)
             const people = new Set(tray.map(p => String(p.memberId))).size;
             const free = tray.filter(p => p.placedIdx == null && !p.blocked && p.remaining > 0).length;
-            const viewKey = (_ob.view && _ob.view.idx === idx) ? _ob.view.key : null;   // 🧭 見ているだけのピース (選べないピースを押した) に印
-            const trayHtml = tray.length ? tray.map(p => {
-                const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
-                const bn = (opsStore.get()?.bosses || []).find(b => b.weakness === p.attr);
-                const used = p.placedIdx != null, off = used || !!p.blocked || p.remaining <= 0;
-                const undo = used && p.placedIdx === idx && (p.pinId == null || (_ob.pins || []).some(r => Number(r.id) === Number(p.pinId) && r.status === 'pinned'));   // 押すと外せる札 (🔒 予約は除く)
-                const dropped = !used && !!_ob.skip.get(idx)?.has(p.key);   // ✕ で外した駒: 手で置き直せる。🧮 では使わない
-                const where = used ? (undo ? '置いた · 押すと外す' : (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.short || '')}に置いた`)) : (p.blocked === 'used' ? 'キャラ使用済み' : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '凸なし' : '')));
-                // 🔒 の印をやめて文字で (第46回の反省 ②・Q3): このブロックのみ / このブロックで最後 (ほかは済 = 実質このブロックだけ) / ほか: 出られる別のブロック
-                const others = escapeHtml(p.others.join('・'));
-                const lockLbl = p.kind === 'only' ? '<span class="rigid">このブロックのみ</span>'
-                    : (p.kind === 'lastOnly' ? `<span class="rigid">このブロックで最後${others ? ` (ほか ${others} は済)` : ''}</span>`
-                    : (p.kind === 'last' ? '<span class="rigid last">このブロックで最後</span>' : ''));
-                const flex = (p.kind === 'only' || p.kind === 'lastOnly' || !others) ? '' : `<span class="flex">ほか: ${others}</span>`;
-                // 置けないピースは赤 (押す前に分かる・押したときの理由は canDrop のまま): このブロックの盤 (置いた駒を入れた) で相手のボスがいない・撃破
-                const bs = (!off && !dropped) ? window.blockBuildDomain.bossState({ ov, idx, first: ctx.first, attr: p.attr }) : null;
-                const ngTxt = bs && !bs.ok ? _obDeadText(bs, blocks, pt, p.attr) : '';
-                const tail = where ? `<span class="where">${where}</span>` : (dropped ? '<span class="where">外した · 🧮 では使わない</span>' : (ngTxt ? `<span class="where ng">⚠ 置けない: ${escapeHtml(ngTxt)}</span>` : flex));
-                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${p.key === viewKey ? ' view' : ''}${off ? ' off' : ''}${undo ? ' undo' : ''}${dropped ? ' dropped' : ''}${p.dup ? ' dup' : ''}${ngTxt ? ' ng' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off || ngTxt ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}${ngTxt ? ' — 置けない: ' + escapeHtml(ngTxt) : ''}">`
-                    + `<span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + Number(bn.boss_number) : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b> ${p.dmgB.toFixed(1)}B${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''} ${lockLbl}${lockLbl && tail ? ' ' : ''}${tail}</button>`;
-            }).join('') : '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>';
+            const tt = _obTrayTiles(ctx);
+            // ⑥ 並べ替え・絞り込み (いつも出す)。属性はボスの順
+            const attrKeys = (snap.bosses || []).slice().sort((x, y) => Number(x.boss_number) - Number(y.boss_number)).map(b => b.weakness).filter((w, i, a) => w && a.indexOf(w) === i);
+            const toolsHtml = tray.length ? `<div class="ob-tools" id="obTrayTools" role="group" aria-label="ピースの並べ替えと絞り込み">`
+                + `<div class="ob-tool"><span class="ob-tl">並べ替え</span><span class="ob-seg">${[['default', 'いつもの順'], ['dmg', 'ダメージ順'], ['attr', '属性順']].map(([k, l]) => `<button type="button" data-ob-sort="${k}" aria-pressed="${_obTray.sort === k}">${l}</button>`).join('')}</span></div>`
+                + `<div class="ob-tool"><span class="ob-tl">属性</span><span class="ob-chips">${attrKeys.map(a => `<button type="button" class="ob-fa" data-ob-fattr="${escapeHtml(a)}" aria-pressed="${_obTray.attrs.has(a)}">${escapeHtml(pt(a))}</button>`).join('')}</span></div>`
+                + `<div class="ob-tool"><span class="ob-tl">ダメージ</span><span class="ob-rng"><input type="text" inputmode="decimal" id="obTrayMin" class="ob-in" placeholder="下" autocomplete="off" value="${escapeHtml(_obTray.minTxt)}" aria-label="ダメージの下 (B)"><span>〜</span><input type="text" inputmode="decimal" id="obTrayMax" class="ob-in" placeholder="上" autocomplete="off" value="${escapeHtml(_obTray.maxTxt)}" aria-label="ダメージの上 (B)"><span>B</span></span><span id="obTrayClearWrap">${tt.filtered ? '<button type="button" class="ob-fclear" data-ob-fclear>✕ 外す</button>' : ''}</span></div>`
+                + `</div>` : '';
             const err = _ob.pinsErr ? `<p class="ob-note" style="color:var(--bad);">${escapeHtml(_ob.pinsErr)}</p>` : (_ob.pins == null ? '<p class="ob-note">手で置いた駒を読み込んでいます…</p>' : '');
             // ④ 決定: いまのブロックから、組めたブロックが続くところまで
             const range = _obDecideRange(ctx.first, blocks.length, ov);
@@ -15894,16 +15903,18 @@
             const rbHtml = rbNow && blocks[rbNow.idx] && blocks[rbNow.next]
                 ? `<p class="ob-rebuild">⏱ <b>再編成時間 ${escapeHtml(rbNow.label)}</b> — ${escapeHtml(blocks[rbNow.idx].short)} の凸の時間は終わりました。${escapeHtml(blocks[rbNow.next].short)} (${escapeHtml(rbNow.to)} から) を組んで ✅ 決定します: ⚔️ HP → ✓ 凸の記録 → 🧱 組む → ✅ 決定。${escapeHtml(blocks[rbNow.idx].short)} で済んでいない凸は、${escapeHtml(blocks[rbNow.next].short)} に出られる人なら ${escapeHtml(blocks[rbNow.next].short)} のピースに出ます</p>`
                 : '';
+            const focIn = (() => { const a = document.activeElement; return a && (a.id === 'obTrayMin' || a.id === 'obTrayMax') ? { id: a.id, s: a.selectionStart, e: a.selectionEnd } : null; })();
             host.innerHTML = `${rbHtml}<div id="obSync">${_obSyncHtml()}</div>${pastHtml}<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${lockHtml}${decideHtml}
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
                     ${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>
-                        <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
-                            ${_qh('ob-tray', 'ピースの印と置き方', '「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます')}
-                            <div class="ob-tray-list">${trayHtml}</div></div></div>
+                        <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}<span id="obTrayShown">${tt.filtered ? ` · 表示 ${tt.shown} / ${tt.total}` : ''}</span></span></div>
+                            ${_qh('ob-tray', 'ピースの印と置き方', '「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。ピースを押すと 🧭 に詳細が出ます (置いたピースも・外れません)。外すのは盤の駒の ✕。上の並べ替え・絞り込みは見せ方だけです (選んだピースは見えなくなっても選んだまま)')}
+                            ${toolsHtml}<div class="ob-tray-list" id="obTrayList">${tt.html}</div></div></div>
                 </div>`;
+            if (focIn) { const el = document.getElementById(focIn.id); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(focIn.s, focIn.e); } catch (_) { /* 選べない欄 */ } } }
             _obDelegate(host);
         }
         // 🧭 ピースのガイド (2026-11-12 ふるり「ピースを握った際・ポイントしたときに、そのメンバーのほかに凸できる時間・編成 (キャラのアイコン)・ダメージ、
@@ -15912,6 +15923,89 @@
         //     ポインタを乗せて出すと、中身を読みに・動かしに行くあいだに別のピースの上を通って中身が替わる。押したピースは押し直すまで残るので、枠の中を動かせる (PC もスマホも同じ動き)。
         //     ポインタを乗せて替える仕組み (乗せたピースを覚える変数・mouseover / mouseout の受け口・ガイドだけの描き直し) は外した — 戻さない
         //     選べないピース (置けない・使用済み・別のブロックに置いてある) も押せば出す = _ob.view { key, idx } (_obPress)。ブロックを替えたら出さない (idx が違う)
+        // ⑥ 🧩 ピース置き場の札と、並べ替え・絞り込み (2026-11-27 ふるり「ワンボタンでピースをソート・属性やダメージのレンジで」「ボタンを押して開くより、見えてる範囲で入力してすぐに反映」・見本 ⑥)。
+        //   ★ 見せ方だけ — 置けるかの判定 (canDrop / bossState)・ピースの中身・選び方は変えない。選んでいるピースが絞り込みで見えなくなっても選んだまま
+        //   並べ替えは端末に覚える (shirisuko_ob_tray_sort_v1)・絞り込みは開いている間だけ (絞ったまま忘れて「ピースが足りない」と見間違えないように: ふるり 11/27 おすすめ)
+        const _OB_TRAY_SORT_KEY = 'shirisuko_ob_tray_sort_v1';
+        const _obTray = { sort: (() => { try { const v = localStorage.getItem(_OB_TRAY_SORT_KEY); return v === 'dmg' || v === 'attr' ? v : 'default'; } catch (_) { return 'default'; } })(),
+            attrs: new Set(), min: null, max: null, minTxt: '', maxTxt: '' };
+        // B の数字 (全角・カンマ・空白も読む)。空・読めない・負は null (= その側は絞らない)
+        const _obParseB = (t) => {
+            const s = String(t ?? '').replace(/[０-９．]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[,，\s]/g, '');
+            if (!s) return null;
+            const n = Number(s);
+            return Number.isFinite(n) && n >= 0 ? n : null;
+        };
+        function _obTrayTiles(ctx) {
+            const { tray, idx, ov, blocks } = ctx;
+            const pt = (a) => PT_ATTRS.find(x => x.key === a)?.name || a;
+            const bossNo = new Map((opsStore.get()?.bosses || []).map(b => [b.weakness, Number(b.boss_number)]));
+            const viewKey = (_ob.view && _ob.view.idx === idx) ? _ob.view.key : null;   // 🧭 見ているだけのピース (選べないピースを押した) に印
+            const f = _obTray, filtered = f.attrs.size > 0 || f.min != null || f.max != null;
+            const dmg1 = (p) => Math.round((Number(p.dmgB) || 0) * 10) / 10;   // 画面の 1 桁で比べる (28.04B を「28.0B」と出して 28 で外さない)
+            let list = tray.filter(p => (!f.attrs.size || f.attrs.has(p.attr)) && (f.min == null || dmg1(p) >= f.min) && (f.max == null || dmg1(p) <= f.max));
+            const byIdx = (arr, cmp) => arr.map((p, i) => [p, i]).sort((x, y) => cmp(x[0], y[0]) || (x[1] - y[1])).map(x => x[0]);   // 同じなら いつもの順 (安定)
+            if (f.sort === 'dmg') list = byIdx(list, (x, y) => dmg1(y) - dmg1(x));
+            else if (f.sort === 'attr') list = byIdx(list, (x, y) => ((bossNo.get(x.attr) ?? 99) - (bossNo.get(y.attr) ?? 99)) || (dmg1(y) - dmg1(x)));
+            const html = list.map(p => {
+                const [fill, ink] = _bbFill(p.attr) || ['var(--s2)', 'var(--t-ink)'];
+                const bn = bossNo.get(p.attr);
+                const used = p.placedIdx != null, off = used || !!p.blocked || p.remaining <= 0;
+                const dropped = !used && !!_ob.skip.get(idx)?.has(p.key);   // ✕ で外した駒: 手で置き直せる。🧮 では使わない
+                // ① 置いたピースは押すと詳細 (外れない・2026-11-27)。外すのは盤の駒の ✕
+                const where = used ? (p.placedIdx === idx ? '置いた' : `${escapeHtml(blocks[p.placedIdx]?.short || '')}に置いた`) : (p.blocked === 'used' ? 'キャラ使用済み' : (p.blocked ? '被りの相方を置いた' : (p.remaining <= 0 ? '凸なし' : '')));
+                // 🔒 の印をやめて文字で (第46回の反省 ②・Q3): このブロックのみ / このブロックで最後 (ほかは済 = 実質このブロックだけ) / ほか: 出られる別のブロック
+                const others = escapeHtml(p.others.join('・'));
+                const lockLbl = p.kind === 'only' ? '<span class="rigid">このブロックのみ</span>'
+                    : (p.kind === 'lastOnly' ? `<span class="rigid">このブロックで最後${others ? ` (ほか ${others} は済)` : ''}</span>`
+                    : (p.kind === 'last' ? '<span class="rigid last">このブロックで最後</span>' : ''));
+                const flex = (p.kind === 'only' || p.kind === 'lastOnly' || !others) ? '' : `<span class="flex">ほか: ${others}</span>`;
+                // 置けないピースは赤 (押す前に分かる・押したときの理由は canDrop のまま): このブロックの盤 (置いた駒を入れた) で相手のボスがいない・撃破
+                const bs = (!off && !dropped) ? window.blockBuildDomain.bossState({ ov, idx, first: ctx.first, attr: p.attr }) : null;
+                const ngTxt = bs && !bs.ok ? _obDeadText(bs, blocks, pt, p.attr) : '';
+                const tail = where ? `<span class="where">${where}</span>` : (dropped ? '<span class="where">外した · 🧮 では使わない</span>' : (ngTxt ? `<span class="where ng">⚠ 置けない: ${escapeHtml(ngTxt)}</span>` : flex));
+                const l2 = (lockLbl || tail) ? `<span class="obt-l2">${lockLbl}${lockLbl && tail ? ' ' : ''}${tail}</span>` : '';
+                return `<button type="button" class="obt${p.key === _ob.sel ? ' sel' : ''}${p.key === viewKey ? ' view' : ''}${off ? ' off' : ''}${dropped ? ' dropped' : ''}${p.dup ? ' dup' : ''}${ngTxt ? ' ng' : ''}" data-ob-piece="${escapeHtml(p.key)}" draggable="${off || ngTxt ? 'false' : 'true'}" title="${escapeHtml(p.name)} ${escapeHtml(pt(p.attr))}PT 編成${SLOT_JP[p.slot] || p.slot} ${p.dmgB.toFixed(1)}B${p.team.length ? ' — ' + escapeHtml(p.team.join('・')) : ''}${p.dup ? ' (別の編成とキャラが被る)' : ''}${ngTxt ? ' — 置けない: ' + escapeHtml(ngTxt) : ''}">`
+                    + `<span class="obt-l1"><span class="obt-pt" style="background:${fill};color:${ink};">${bn ? 'B' + bn : escapeHtml(pt(p.attr))}</span><b>${escapeHtml(p.name)}</b>${p.slot > 1 ? `<small>編成${SLOT_JP[p.slot] || p.slot}</small>` : ''}<span class="obt-dmg">${p.dmgB.toFixed(1)}B</span></span>${l2}</button>`;
+            }).join('');
+            const empty = !tray.length ? '<p class="ob-note">このブロックに出られる人の模擬がありません (⏰ 参加可能時間と 📸 模擬を先に)</p>'
+                : '<p class="ob-note">絞り込みに合うピースがありません (「✕ 外す」で全部に戻ります)</p>';
+            return { html: list.length ? html : empty, shown: list.length, total: tray.length, filtered };
+        }
+        // 置き場だけを描き直す (ダメージの欄に打っている間も焦点を動かさない)。置き場が無ければ全体を描く
+        function _obTrayRepaint() {
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            const list = document.getElementById('obTrayList'), tools = document.getElementById('obTrayTools');
+            if (!ctx || !list || !tools || ctx.idx !== _ob.idx) { renderOpsBuild(); return; }
+            const t = _obTrayTiles(ctx);
+            list.innerHTML = t.html;
+            const shown = document.getElementById('obTrayShown'); if (shown) shown.textContent = t.filtered ? ` · 表示 ${t.shown} / ${t.total}` : '';
+            tools.querySelectorAll('[data-ob-sort]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.obSort === _obTray.sort)));
+            tools.querySelectorAll('[data-ob-fattr]').forEach(b => b.setAttribute('aria-pressed', String(_obTray.attrs.has(b.dataset.obFattr))));
+            const cw = document.getElementById('obTrayClearWrap'); if (cw) cw.innerHTML = t.filtered ? '<button type="button" class="ob-fclear" data-ob-fclear>✕ 外す</button>' : '';
+        }
+        function _obTraySetSort(v) {
+            _obTray.sort = (v === 'dmg' || v === 'attr') ? v : 'default';
+            try { if (_obTray.sort === 'default') localStorage.removeItem(_OB_TRAY_SORT_KEY); else localStorage.setItem(_OB_TRAY_SORT_KEY, _obTray.sort); } catch (_) { /* 覚えられないだけ */ }
+            _obTrayRepaint();
+        }
+        function _obTrayToggleAttr(a) {
+            if (typeof a !== 'string' || !a) return;
+            if (_obTray.attrs.has(a)) _obTray.attrs.delete(a); else _obTray.attrs.add(a);
+            _obTrayRepaint();
+        }
+        function _obTraySetRange(which, txt) {
+            if (which !== 'min' && which !== 'max') return;
+            _obTray[which] = _obParseB(txt);
+            _obTray[which + 'Txt'] = String(txt ?? '').slice(0, 12);
+            _obTrayRepaint();
+        }
+        function _obTrayClear() {
+            _obTray.attrs.clear(); _obTray.min = null; _obTray.max = null; _obTray.minTxt = ''; _obTray.maxTxt = '';
+            const a = document.getElementById('obTrayMin'), b = document.getElementById('obTrayMax');
+            if (a) a.value = ''; if (b) b.value = '';
+            _obTrayRepaint();
+        }
         function _obGuideKey(ctx) {
             const v = _ob.view;
             return (v && v.idx === ctx.idx && ctx.tray.some(p => p.key === v.key)) ? v.key : _ob.sel;
@@ -16216,13 +16310,20 @@
                 if (_ob.busy) return;   // 処理の途中はブロックの切り替えもピースの選択も受けない (終わったあとの選択が古くなる: Codex 指摘)
                 const blkBtn = e.target.closest('[data-ob-blk]');
                 if (blkBtn) { _ob.idx = Number(blkBtn.dataset.obBlk); _ob.sel = null; renderOpsBuild(); return; }
+                // ⑥ 並べ替え・絞り込み (押すとすぐ置き場が変わる)
+                const so = e.target.closest('[data-ob-sort]'); if (so) { _obTraySetSort(so.dataset.obSort); return; }
+                const fa = e.target.closest('[data-ob-fattr]'); if (fa) { _obTrayToggleAttr(fa.dataset.obFattr); return; }
+                if (e.target.closest('[data-ob-fclear]')) { _obTrayClear(); return; }
                 const un = e.target.closest('[data-ob-unpin],[data-ob-drop]');
-                // ピースを選んでいるときに駒の本体を押すのは「この行に置く」(埋まった行にも置ける)。✕ と 下の「実行されない駒」の ✕ 外す はいつでも外す
-                if (un && (!_ob.sel || !un.classList.contains('obpc') || e.target.closest('.obpc-x'))) {
+                // ✕ (駒の右の ✕・下の「実行されない駒」の ✕ 外す) はいつでも外す
+                if (un) {
                     if (un.dataset.obUnpin) _obUnpin(Number(un.dataset.obUnpin));
                     else _obDropAuto(un.dataset.obDrop, Number(un.dataset.obBossN ?? un.closest('[data-ob-boss]')?.dataset.obBoss));
                     return;
                 }
+                // ① 駒の本体: ピースを選んでいるときは「この行に置く」(埋まった行にも置ける = 下の行の処理へ)。選んでいなければ 🧭 詳細 (外さない: 2026-11-27 ふるり)
+                const pk = e.target.closest('[data-ob-peek]');
+                if (pk && !_ob.sel) { _obPeek(pk.dataset.obPeek); return; }
                 const pc = e.target.closest('[data-ob-piece]');
                 if (pc) { _obPress(pc.dataset.obPiece); return; }
                 const nt = e.target.closest('[data-ob-note]');
@@ -16241,6 +16342,8 @@
             //   ここで合わせないと前のピースの詳細と点線が次の描き直しまで残る (Codex 監査 0f08f4a)。行に落としたときは _obPlace が描く (処理中 = _ob.busy なら触らない)
             host.addEventListener('dragend', () => { _obDragOff(); if (!_ob.busy) renderOpsBuild(); }); host.addEventListener('drop', _obDragOff); host.addEventListener('mouseover', _obDragOff);
             host.addEventListener('dragover', (e) => { if (e.target.closest('[data-ob-boss]')) e.preventDefault(); });
+            // ⑥ ダメージの範囲は打っているそばから絞る (描き直すのは置き場だけ = 欄の焦点を動かさない)
+            host.addEventListener('input', (e) => { const t = e.target; if (t && (t.id === 'obTrayMin' || t.id === 'obTrayMax')) _obTraySetRange(t.id === 'obTrayMin' ? 'min' : 'max', t.value); });
             host.addEventListener('drop', (e) => { const row = e.target.closest('[data-ob-boss]'); if (!row) return; e.preventDefault(); if (_ob.sel) _obPlace(Number(row.dataset.obBoss)); });
         }
         // 🧭 ピースを押した (2026-11-16 ふるり「その人の凸を押すと詳細がでる」)。押したときの動き (選ぶ・選ぶのをやめる・置いた駒を外す・選べない理由を言う) は今までどおり _obSelect が決める。
@@ -16258,6 +16361,15 @@
             _ob.view = { key, idx: ctx.idx };
             renderOpsBuild();
         }
+        // ① 盤の駒の本体を押した = 🧭 詳細だけ (外さない・2026-11-27 ふるり)。もう一度押すと閉じる。外すのは駒の ✕
+        function _obPeek(key) {
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            if (!ctx) return;
+            if (!ctx.tray.some(x => x.key === key)) { showNotification('この駒の模擬が見つかりません (模擬を消した・別の編成に変えた)。外すときは ✕'); return; }
+            const v = _ob.view;
+            _ob.view = (v && v.key === key && v.idx === ctx.idx) ? null : { key, idx: ctx.idx };
+            renderOpsBuild();
+        }
         function _obSelect(key) {
             _ob.selSeq = (_ob.selSeq || 0) + 1;   // ピースを押した回数 (「反映する」の通信待ちの間に押したかを _obSyncNow が見る — 同じピースを選び直しても分かるように: Codex 監査 3748921)
             const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
@@ -16268,14 +16380,8 @@
             if (p.placedIdx != null) {
                 // pinId は承認済みの予約 (🔒) のこともある — 盤に 📌 は無いので外し方を言い分ける (S5 レビュー RS-1)
                 const pinRow = p.pinId != null ? (_ob.pins || []).find(r => Number(r.id) === Number(p.pinId)) : null;
-                // 置いたピースをもう一度押す = 外す (置いたときと同じ所で外せるように: 2026-10-31 ふるり)。別のブロックの駒はそのブロックを開いてから (見えていない所を変えない)
-                if (p.placedIdx === ctx.idx) {
-                    if (pinRow && pinRow.status === 'pinned') { _obUnpin(Number(pinRow.id)); return; }
-                    if (p.pinId == null) {
-                        const bossRow = ctx.ov[ctx.idx].rows.find(r => r.weakness === p.attr && r.pieces.some(a => String(a.memberId) === String(p.memberId) && (Number(a.loadoutSlot) || 1) === p.slot));
-                        if (bossRow) { _obDropAuto(p.key, bossRow.bossNumber); return; }
-                    }
-                }
+                // 置いたピースを押す = 🧭 詳細だけ (外さない: 2026-11-27 ふるり「置いたピースの詳細を外さずに見たい」— 2026-10-31 からは押すと外れていた)。外すのは盤の駒の ✕。詳細は _obPress が出す
+                if (p.placedIdx === ctx.idx) return;
                 // ⏱ 過ぎたブロックに残った 📌 (✓ が付くと外れる — 残っているのは ✓ がまだ・📥 の数字で登録した・凸しなかった仮置き) は、ここで確かめて外せる (⑥: 残りは次のブロック。
                 //   以前は外す入口が無く、置き場で「置いた」扱いのまま・DB の残り凸も食っていた)。過ぎたブロックの組んだ結果は触らない
                 if (ctx.ov[p.placedIdx]?.past && pinRow && pinRow.status === 'pinned') {

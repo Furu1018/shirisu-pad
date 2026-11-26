@@ -14772,24 +14772,29 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.equal(bb.withoutPieces(board, new Set()), board, '外した駒が無いのに作り直した');
         assert.equal(bb.withoutPieces(board, null), board);
     });
-    test('★ 駒は ✕ で 1 個ずつ外せる (手で置いた駒も自動の駒も) / 外せないのは 🔒 予約だけ / 下線 = 手で置いた駒 / 盤の近くに案内', () => {
+    test('★ 駒は ✕ で 1 個ずつ外せる (手で置いた駒も自動の駒も) / 本体を押すと詳細 (外れない・2026-11-27) / 外せないのは 🔒 予約だけ / 下線 = 手で置いた駒 / 盤の近くに案内', () => {
         const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
         assert.ok(/if \(resv\) return `<span class="obpc\$\{over\}" \$\{box\} data-ob-note=/.test(r), '🔒 予約が押すと外せる形になっている');
-        assert.ok(/return `<button type="button" class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}\$\{flash\}" \$\{box\} \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\}/.test(r), '駒がボタンでない / 自動の駒に外す印が無い');
+        // ① 駒 = 本体 (押すと 🧭 詳細・外れない) + ✕ (外す) の 2 つのボタン (2026-11-27 ふるり「置いたピースの詳細を外さずに見たい」)
+        assert.ok(/return `<span class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}\$\{flash\}" \$\{box\}><button type="button" class="obpc-b\$\{peek\}" data-ob-peek="\$\{pieceKey\}"/.test(r), '駒の本体がボタンでない / 詳細の印が無い');
+        assert.ok(/`<button type="button" class="obpc-x" \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\} title="外す" aria-label="\$\{nm\} の駒を外す">✕<\/button><\/span>`/.test(r), '✕ が自分のボタンでない / 自動の駒に外す印が無い / 読み上げの名前が無い');
         assert.ok(/const pieceKey = escapeHtml\(`\$\{a\.memberId\}:\$\{r\.weakness\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\);/.test(r), '駒の鍵がピースの鍵と違う');
-        assert.ok(/<span class="obpc-x" aria-hidden="true">✕<\/span><\/button>/.test(r) && /aria-label="\$\{nm\} の駒を外す"/.test(r), '✕ が見えない / 読み上げの名前が無い');
-        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の ✕ で 1 個ずつ外せます') && /const howBody = \[[^\n]*pinHint\]/.test(r) && /_qh\('ob-board', stateNote \? '駒の外し方' : \(pinHint \? '幅 = ダメージ · 駒の ✕ で外す'/.test(r) && /\$\{boardHelp\}/.test(r), '盤の近くの案内が無い (段階 3 続き: 盤のすぐ上の「？」の中)');
-        assert.ok(/button\.obpc \{ min-width: 34px;/.test(html) && /button\.obpc\.hand \{ border-bottom:/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
+        assert.ok(/aria-label="\$\{nm\} の駒の詳細"/.test(r) && /押すと詳細 \(外すのは ✕\)/.test(r) && !/押すと外れます/.test(r), '本体の読み上げ・説明が「外す」のまま');
+        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の本体を押すと詳細 (外れません)・✕ で 1 個ずつ外せます') && /const howBody = \[[^\n]*pinHint\]/.test(r) && /_qh\('ob-board', stateNote \? '駒の外し方' : \(pinHint \? '幅 = ダメージ · 押すと詳細 · ✕ で外す'/.test(r) && /\$\{boardHelp\}/.test(r), '盤の近くの案内が無い (段階 3 続き: 盤のすぐ上の「？」の中)');
+        assert.ok(/\.obpc\.pin \{ min-width: 44px; padding: 0; \}/.test(html) && /\.obpc\.pin\.hand \{ border-bottom:/.test(html) && /\.obpc-x \{[^}]*min-width: 22px;/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
         // 最小幅の駒が並ぶと行の右で切れて ✕ に届かない (overflow: hidden) → 🧱 組む の盤だけ折り返す (Codex 指摘)
         assert.ok(/#opsBuild \.obr-bar \{ flex-wrap: wrap; height: auto; min-height: 28px; \}/.test(html) && /#opsBuild \.obpc \{ height: 28px; \}/.test(html), '行に収まらない駒が切れて ✕ を押せない');
         const d = fnU('function _obDelegate(host)', "host.addEventListener('dragstart'");
-        assert.ok(/if \(un && \(!_ob\.sel \|\| !un\.classList\.contains\('obpc'\) \|\| e\.target\.closest\('\.obpc-x'\)\)\) \{/.test(d), 'ピースを選んでいるのに駒の本体で外れる (埋まった行に置けない) / ✕ で外れない');
-        assert.ok(d.indexOf('[data-ob-unpin],[data-ob-drop]') > 0 && d.indexOf('[data-ob-unpin],[data-ob-drop]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf("const row = e.target.closest('[data-ob-boss]')"), '押したときの順が違う (外す → 理由 → 行)');
+        assert.ok(/const un = e\.target\.closest\('\[data-ob-unpin\],\[data-ob-drop\]'\);[^\n]*\n[^\n]*\n\s*if \(un\) \{/.test(d), '✕ で外れない (いつでも外す)');
+        assert.ok(/const pk = e\.target\.closest\('\[data-ob-peek\]'\);\s*\n\s*if \(pk && !_ob\.sel\) \{ _obPeek\(pk\.dataset\.obPeek\); return; \}/.test(d), '駒の本体が詳細にならない / ピースを選んでいるのに本体で置けない (埋まった行に置けない)');
+        assert.ok(d.indexOf('[data-ob-unpin],[data-ob-drop]') > 0 && d.indexOf('[data-ob-unpin],[data-ob-drop]') < d.indexOf('[data-ob-peek]') && d.indexOf('[data-ob-peek]') < d.indexOf('[data-ob-note]') && d.indexOf('[data-ob-note]') < d.indexOf("const row = e.target.closest('[data-ob-boss]')"), '押したときの順が違う (外す → 詳細 → 理由 → 行)');
+        const pe = fnU('function _obPeek(key)', 'function _obSelect(key)');
+        assert.ok(/_ob\.view = \(v && v\.key === key && v\.idx === ctx\.idx\) \? null : \{ key, idx: ctx\.idx \};/.test(pe) && !/_obUnpin|_obDropAuto|supabase/.test(pe), '詳細を押すと外れる / もう一度押しても閉じない');
         assert.ok(/if \(nt && !_ob\.sel\) \{ showNotification\(nt\.dataset\.obNote\); return; \}/.test(d), 'ピースを選んでいるのに 🔒 の駒の上の行に置けない');
         const d2 = fnU('function _obDelegate(host)', "host.addEventListener('dragover'");
         assert.ok(/host\.addEventListener\('click', \(e\) => \{\s*\n\s*if \(_ob\.busy\) return;/.test(d2) && /host\.addEventListener\('dragstart', \(e\) => \{ if \(_ob\.busy\) \{ e\.preventDefault\(\); return; \}/.test(d2), '処理の途中に選択・ドラッグ・ブロックの切り替えができる');
     });
-    test('★ 外したあとも ほかの駒は残る (指紋を付け直す・決定のままでなくなる・後ろは要組み直し) / 🧮 で戻さない / 置き直す・やり直す で戻る / ピースをもう一度押しても外れる', () => {
+    test('★ 外したあとも ほかの駒は残る (指紋を付け直す・決定のままでなくなる・後ろは要組み直し) / 🧮 で戻さない / 置き直す・やり直す で戻る / 置いたピースを押すと詳細 (外れない・2026-11-27)', () => {
         const rm = fnU('function _obRemoveFromPlan(idx, blocks, piece, rows)', 'const _obSkipAdd');
         assert.ok(/const \{ fromDecided: _fd, obBlockFp: _fp, \.\.\.mine \} = plan;\s*\n\s*_ob\.plans\.set\(idx, mine\);/.test(rm), '手を入れたブロックが「決定のまま」に見える (決定し直せない)');
         assert.ok(/if \(k > idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(!hand\) \{ _ob\.stale\.add\(k\); later = true; \} \}/.test(rm), '後ろのブロックを要組み直しにしていない / 手で置いただけのブロックまで要組み直しにする');
@@ -14805,10 +14810,9 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/_ob\.skip\.delete\(ctx\.idx\);/.test(fnU('async function _obReset()', '// ピースの塗りと上の文字')), 'やり直しても「外した」が残る');
         assert.ok(/_ob\.plans\.clear\(\); _ob\.stale\.clear\(\); _ob\.skip\.clear\(\);/.test(html), 'シーズンが変わっても「外した」が残る');
         const s0 = fnU('function _obSelect(key)', '// 置いたら / 外したら');
-        assert.ok(/if \(p\.placedIdx === ctx\.idx\) \{\s*\n\s*if \(pinRow && pinRow\.status === 'pinned'\) \{ _obUnpin\(Number\(pinRow\.id\)\); return; \}/.test(s0), '置いたピースを押しても外れない / 別のブロックの駒まで外す');
-        assert.ok(/if \(bossRow\) \{ _obDropAuto\(p\.key, bossRow\.bossNumber\); return; \}/.test(s0), '自動で置いたピースを押しても外れない');
-        const t = fnU('const trayHtml = tray.length', 'const err = _ob.pinsErr');
-        assert.ok(/const undo = used && p\.placedIdx === idx && \(p\.pinId == null \|\| \(_ob\.pins \|\| \[\]\)\.some\(r => Number\(r\.id\) === Number\(p\.pinId\) && r\.status === 'pinned'\)\);/.test(t) && /undo \? '置いた · 押すと外す'/.test(t), 'ピースに「押すと外す」が出ていない (🔒 予約に出している)');
+        assert.ok(/if \(p\.placedIdx === ctx\.idx\) return;/.test(s0) && !/_obUnpin\(Number\(pinRow\.id\)\)/.test(s0) && !/_obDropAuto\(p\.key/.test(s0), '置いたピースを押すと外れる (外すのは盤の駒の ✕ だけ)');
+        const t = fnU('function _obTrayTiles(ctx)', 'function _obTrayRepaint()');
+        assert.ok(/const where = used \? \(p\.placedIdx === idx \? '置いた' :/.test(t) && !/押すと外す|const undo/.test(t), 'ピースに「押すと外す」が残っている');
         assert.ok(/外した · 🧮 では使わない/.test(t), '外した駒が分からない');
         // 実行されない駒: 自動の駒も外せる・🔒 予約と言わない / 行の外なのでボスを渡す (Codex 監査)
         const r2 = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
@@ -14817,6 +14821,61 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         // 後ろの決定は残す (振り回さない) が、HP の見積もりがずれたことは確認で言う (Codex 監査)
         assert.ok(/const staleKept = kept\.filter\(b => _ob\.stale\.has\(b\.idx\)\);/.test(html) && /の HP の見積もりはずれています/.test(html), '前のブロックを変えたのに、後ろの決定の見積もりがずれたことを言わない');
         assert.ok(/const conflicts = dp\.conflictsOf\(plan, _obConflictSkip\(\{ plan, blocks, first, doneNow: _obDoneKeys\(snap2, blocks\), rbNow: _raidRebuildNow\(snap2\.season, blocks\), marked: _obSkipMarked\(prev, skipsAll, snap2\.season\) \}\)\);/.test(html) && /\(conflicts\.length \? `\\n\\n⚠ 組み合わせを確かめてください/.test(html), '4 凸・同じキャラの決定を黙って配信する');
+    });
+    test('★ 実行: ⑥ ピース置き場の並べ替え・絞り込み (いつもの順 / ダメージ順 / 属性順・属性・ダメージの範囲は画面の 1 桁で・見せ方だけ) / 並べ替えは端末に覚える・絞り込みは覚えない (2026-11-27)', () => {
+        const code = fnU('        const _OB_TRAY_SORT_KEY', '        function _obTrayRepaint()');
+        assert.ok(code && /function _obTrayTiles\(ctx\)/.test(code), '置き場の札の関数が無い');
+        const store = {};
+        const ls = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+        const mk = () => new Function('localStorage', 'PT_ATTRS', 'opsStore', '_ob', '_bbFill', 'escapeHtml', 'SLOT_JP', 'window', '_obDeadText',
+            `${code}\nreturn { _obTrayTiles, _obTray, _obParseB };`)(ls, [{ key: 'fire', name: '灼熱' }, { key: 'water', name: '水冷' }, { key: 'wind', name: '風圧' }],
+            { get: () => ({ bosses: [{ boss_number: 1, weakness: 'water' }, { boss_number: 2, weakness: 'fire' }, { boss_number: 3, weakness: 'wind' }] }) },
+            { view: null, sel: null, skip: new Map() }, () => null, (x) => String(x), { 1: '①', 2: '②', 3: '③' },
+            { blockBuildDomain: { bossState: () => ({ ok: true }) } }, () => '');
+        const P = (key, attr, dmgB, extra = {}) => ({ key, name: key, attr, dmgB, slot: 1, team: [], others: [], kind: null, placedIdx: null, blocked: null, remaining: 1, memberId: key, ...extra });
+        const tray = [P('a', 'fire', 20), P('b', 'water', 31.04), P('c', 'fire', 28.4), P('d', 'wind', 25), P('e', 'water', 19.96)];
+        const ctx = { tray, idx: 1, ov: [], blocks: [], first: 0 };
+        const keys = (t) => [...t.html.matchAll(/data-ob-piece="([^"]+)"/g)].map(x => x[1]);
+        let m = mk();
+        assert.deepEqual(keys(m._obTrayTiles(ctx)), ['a', 'b', 'c', 'd', 'e'], 'いつもの順を変えた');
+        m._obTray.sort = 'dmg';
+        assert.deepEqual(keys(m._obTrayTiles(ctx)), ['b', 'c', 'd', 'a', 'e'], 'ダメージの高い順でない (20 と 19.96 は画面で同じ 20.0 = いつもの順)');
+        m._obTray.sort = 'attr';
+        assert.deepEqual(keys(m._obTrayTiles(ctx)), ['b', 'e', 'c', 'a', 'd'], '属性順 (ボスの順・同じ属性は高い順) でない');
+        m._obTray.sort = 'default';
+        m._obTray.attrs.add('fire');
+        let t = m._obTrayTiles(ctx);
+        assert.deepEqual([keys(t), t.shown, t.total, t.filtered], [['a', 'c'], 2, 5, true], '属性で絞れていない');
+        m._obTray.attrs.add('wind');
+        assert.deepEqual(keys(m._obTrayTiles(ctx)), ['a', 'c', 'd'], '属性を 2 つ押したら両方を出す');
+        m._obTray.attrs.clear(); m._obTray.min = 20; m._obTray.max = 28.4;
+        assert.deepEqual(keys(m._obTrayTiles(ctx)), ['a', 'c', 'd', 'e'], 'ダメージの範囲を画面の 1 桁 (19.96 → 20.0・28.4) で比べていない');
+        m._obTray.min = null; m._obTray.max = 19;
+        t = m._obTrayTiles(ctx);
+        assert.deepEqual([keys(t), /絞り込みに合うピースがありません/.test(t.html)], [[], true], '合うピースが無いときに理由を言わない');
+        m._obTray.max = null;
+        assert.equal(m._obTrayTiles(ctx).filtered, false);
+        // 見せ方だけ: 選んだピース・置けるかの判定に触らない
+        assert.ok(!/_ob\.sel\s*=|_ob\.view\s*=/.test(code), '並べ替え・絞り込みが選んだピースを変える');
+        // 数字の読み方: 全角・カンマ・空白・空・読めない・負
+        assert.deepEqual(['２０．５', ' 1,000 ', '', 'abc', '-3', '0'].map(m._obParseB), [20.5, 1000, null, null, null, 0]);
+        // 並べ替えは端末に覚える (読み込み直しても残る)・絞り込みは覚えない (絞ったまま忘れて「ピースが足りない」と見間違えない)
+        store.shirisuko_ob_tray_sort_v1 = 'dmg';
+        m = mk();
+        assert.equal(m._obTray.sort, 'dmg', '並べ替えを覚えていない');
+        assert.deepEqual([m._obTray.attrs.size, m._obTray.min, m._obTray.max], [0, null, null], '絞り込みを覚えている');
+        store.shirisuko_ob_tray_sort_v1 = 'x'; assert.equal(mk()._obTray.sort, 'default', '知らない値を使った');
+        // 札は 2 行: 1 行目 = ボス・名前・ダメージ / 2 行目 = このブロックのみ・置いた など。置いたピースは「置いた」(押すと詳細・外れない)
+        t = mk()._obTrayTiles({ ...ctx, tray: [P('p', 'fire', 20, { placedIdx: 1, kind: 'only' })] });
+        assert.ok(/<span class="obt-l1"><span class="obt-pt"[^>]*>B2<\/span><b>p<\/b><span class="obt-dmg">20\.0B<\/span><\/span><span class="obt-l2"><span class="rigid">このブロックのみ<\/span> <span class="where">置いた<\/span><\/span>/.test(t.html), '札が 2 行でない / 置いたピースの印が違う');
+        // 配線: いつも出す (開かない)・押す / 打つとすぐ (置き場だけ描き直す)・描き直しでも欄の焦点を戻す
+        const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
+        assert.ok(/data-ob-sort="\$\{k\}"/.test(r) && /data-ob-fattr="\$\{escapeHtml\(a\)\}"/.test(r) && /id="obTrayMin"/.test(r) && /id="obTrayMax"/.test(r) && /\$\{toolsHtml\}<div class="ob-tray-list" id="obTrayList">\$\{tt\.html\}<\/div>/.test(r), '並べ替え・絞り込みが置き場の上に無い');
+        assert.ok(/const focIn = /.test(r) && /if \(focIn\) \{ const el = document\.getElementById\(focIn\.id\); if \(el\) \{ el\.focus\(\{ preventScroll: true \}\);/.test(r), '打っている途中の描き直しで欄の焦点が外れる');
+        const dl = fnU('function _obDelegate(host)', '// 🧭 ピースを押した');
+        assert.ok(/host\.addEventListener\('input', \(e\) => \{ const t = e\.target; if \(t && \(t\.id === 'obTrayMin' \|\| t\.id === 'obTrayMax'\)\) _obTraySetRange\(/.test(dl) && /_obTraySetSort\(so\.dataset\.obSort\)/.test(dl) && /_obTrayToggleAttr\(fa\.dataset\.obFattr\)/.test(dl) && /_obTrayClear\(\)/.test(dl), '押す / 打つで置き場が変わらない');
+        const rp = fnU('function _obTrayRepaint()', 'function _obTraySetSort(v)');
+        assert.ok(/list\.innerHTML = t\.html;/.test(rp) && !/obTrayMin['"]\)\.value\s*=/.test(rp), '置き場だけを描き直していない (打っている欄を書き換える)');
     });
     test('★ 手で置いただけのブロックも ✅ 決定できる (🧮 を押さなくてよい) / 空のブロックは飛ばす / 決定のあとは読み戻した扱い / 凸が減ると確認で言う', () => {
         const rg = fnU('function _obDecideRange(first, count, ov)', '// 範囲のうち、今回決めるブロック');
