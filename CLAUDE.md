@@ -342,6 +342,13 @@ rm -f .claude/hooks/.codex-on      # OFF
   意味のある拒否を握り潰して落ちると、拒否したはずの凸が入る。
   attacks ⇄ 予約のリンクは **`attacks.reservation_id` の片方向だけ**
   (相互FKは循環参照になり、バックアップ復元の順序が決まらない)
+- **js/domain/attrComps.js** — 分析 › 🛡 全体分析 の **⚔️ 属性ごと: ダメージが出やすかった編成** (第46回の反省 ⑤・2026-11-26・メモ §5・Q7〜Q10)。その属性で選ばれてきたボス (本家はボスのコードと PT 属性が固定 → 同じコードを回またぎで集める) に、ユニオンの実凸と GB の提出がどの編成でどれだけ出たか。
+  計算は `unionCompsByAttr` (月次JSON) / `gbCompsByAttr` (GB の凍結エクスポート) / `view` (ボスで絞る・凸数 / 人数で重みを付けた真ん中・上位・ボスに絞ったときだけキャラ別 3 凸以上) が唯一 — 画面で計算を書き足さない。
+  ★ 単位は **SLv 600 換算の B** (ユニオン = damage ÷ ratio(SLv) × ratio(600) / GB = medianFururi × baseDamage ÷ ratio(baseSlv) × ratio(600)。2026-11 から GB の単位は slv-b だが baseDamage 1e9・baseSlv 600 なので同じ式)。
+  ★ **編成は画像の名前 (BlaBlaLINK の CDN のハッシュ・"…webp") で突き合わせる** — 月次JSON の characters と GB の gbId が同じ名前 (名前で突き合わせると「:」「：」の表記ゆれで割れる)。5 人そろわない凸は件数だけ (`unresolved`)。
+  ★ 締め凸は火力から外し (凸数には数える)、**isKill の無い回 (第43回以前 = 7・8 月) は入れない** (`skipped`・除いたつもりの数字に見える)。ボス名の位置のローマ数字 (「Iオベリスク」) は `bossName` で外す。ユニオンの n=1 を中央値と呼ばない (画面は「1 凸 (その 1 回)」+ 誰が・生 → 換算)。
+  画面: `_acRender` (全体分析を描くたびに頭で呼ぶ = この回の凸が無くても描く・`_acSeq` で追い越しを捨てる) / `_acPaint` / `setAcAttr` / `setAcBoss(添字)` (名前を onclick に埋めない・もう一度でまとめて)。材料は `_allMonthJson` (autoLoadData が読めた**正式な JSON の月**だけ — Supabase から組んだ月は締め凸の印が無い) と GB (ユニオンの回 + その 1 つ前・`_loadGbExport`)。
+  顔は `_acTeam` = 手元に画像がある (キャラのマスタが知っている) ならアイコン、無ければ GB の名前 (頭文字の札)。実行テスト `tests/raid-review.mjs` (本番の 2026-09〜11 + GB 2026-08〜11 で描く)
 - **js/domain/availability.js** — 戦闘可能時間 ('hXX' の配列) の読み方 (2026-09-08)。5時始まりの並びで区間にまとめ
   (`rangesOf` / `labelOf` → 「5〜9時・21〜翌2時 (11時間)」)、区間の始まりか (`windowStartsAt`)、今から N 時間に出られるか
   (`canAttackWithin`)、当日の「戦闘可能時間になりました」の相手 (`reminderTargets`: 残凸あり・今期参加できる・隙間型でない・
