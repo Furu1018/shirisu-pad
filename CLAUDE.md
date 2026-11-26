@@ -518,6 +518,14 @@ rm -f .claude/hooks/.codex-on      # OFF
       開いた中 `.mb1-det` = 理由・得意属性・模擬・SLv・凸数・時刻 (当日は凸の Lv・代理)・催促 / ✓ 完了・📸 模擬を見る (`setOpsMv('mock', id)` = 未完のみで隠れている人なら 全員 にしてその行へ)。スマホはアバターを出さない・PC (900px〜) は 2 列。
       **未完のみ / 全員 (`_mb.filter`) は両方の見え方で共通** (`handleOpsMemberFilter` が両方を描き直す)。模擬ダメージ表の 未完のみ = 模擬が届いていない人 (`missingRows`)・✏️ まとめて入力 の「次の人 →」(`_mockIntake.order`) は絞らない全員の並び。
     ⑤ 見えない所の片付け = 上の「従来の画面」の節の ★ 段階 3 B。
+    ⑥ **段階 3 の続き (2026-11-26・見本 https://claude.ai/artifact/35QyNK2xCaXuEa2MzkfA1V・全部おすすめ)**:
+      **説明の「？」= `_qh(key, sum, body)`** (1 行 + ？ を押すとその場に開く・**端末に覚えない** = 読み込み直すと閉じる・描き直しでは開いたまま = `_qh.open`・toggle は document の捕まえる段で受ける)。長い説明を足すときはこれで (状態の文は出したまま)。
+      🧱 組む: 過ぎたブロック (再編成中は除く) は押せない 1 行 `.obb-past`。✓ 凸の記録: `_decidedBoardHtml` の `foldPast` で、✓ が全部済んだ過ぎたブロックだけ 1 行に畳む (✓ が残る・選んでいる・これからはボタン・押すと出す `_atkTap.showPast`)。**メンバーの 📅 の盤は畳まない** (foldPast を渡さない)。
+      📅 みんなの模擬: 見出し `#raidMocksToggle` を押すと開く (既定は閉じる・端末に覚える `shirisuko_raid_mk_open_v1`)。表の HTML は閉じている間も作り (`_raidMkHtml`)、開いたときだけ画面に入れる (`_raidMkPaintOpen`)。
+      ⚔️ 締め凸検索: ボスの「締凸検索」を押したときだけ (`_opsFinSync` → `#tab-ops.fin-on`)・✕ `handleOpsFinishClose`。隠している間はボス状況を全幅 (700px〜)。締め凸検索へ飛ぶ入口を足すなら、先に `_opsCurrentAttr` を決めて `_opsFinSync()`。
+      📸 模擬の表: 埋まったマスはチップだけ・＋ は空のマスと、ボス 5 の 2 編成目が足りない人のマスだけ (2 つ目は名前の ✏️ まとめて入力 の「＋ 編成②を足す」)。
+      見えない所: reservations.js は 🧱 組む の 📌 と凸の消し込みが使う 11 個だけ (`canPin` / `isFixed` / `toSolverConstraints` / `matchForAttack` / `conflictingReservation` / `STATUS_JP` ほか)。申請・承認・本人の 3 枠・指紋・自動解除・JS 側の遷移表は**無い — 戻さない** (予約の遷移表の見張りは SQL ↔ 練習の偽サーバ = practice.mjs)。
+      従来の配信の関数 (`supabasePublishPlan` ほか 6 個) も無い — 配信は ✅ 決定 (`supabasePublishDecidedPlan`・互換ゲートもここ)。テストで従来の形の配信の行が要るときは偽のサーバに直接入れる (practice.mjs の `insertLegacyPlan`)。
   - Chart.js は版を固定して読む (テストが見張る)。上げるときは URL を書き換えて分析タブを確かめる
   - `_syncOpsRole` は役割が変わっても、開いていない設定タブは描かない (`_invalidateTabRenderCache('settings')` で次に開いたとき描き直す)
   - 運営タブの `data-stage` の出し分けは「自動判定が準備 (= シーズン無し) の間は準備の部品を必ず出す」(b431ce7: 段階を手動で変えた端末で「シーズン作成」が消えていた)
