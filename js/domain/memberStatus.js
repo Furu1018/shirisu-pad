@@ -244,6 +244,12 @@
         });
     }
 
+    /**
+     * ⑤ 時間がまだの人 (2026-11-27 ふるり「時間帯 登録 n/31 を押すと時間がまだの人だけ」)。理由「時間帯未登録」と同じ物差し:
+     *   時間が無く・⏳隙間型でもなく・「今回は難しい」でもない人 (今回は難しいと申告した人は催促しない)
+     */
+    const isTimeMissing = (r) => !!r && !(Array.isArray(r.slots) && r.slots.length) && !r.flex && !r.availUnavailable;
+
     /** 表示順: 'why' = 要対応が多い順 → 名前 / 'name' = 名前順 */
     function sortRows(rows, mode) {
         const out = [...(Array.isArray(rows) ? rows : [])];
@@ -359,5 +365,5 @@
         return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。模擬は Discord にスクショを貼ってください (運営が登録します)。参加可能時間 (出られるブロックと凸数) も Discord で運営に伝えてください🙏 (運営が登録します)`, url: './?tab=mypage' };
     }
 
-    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs, deviceKind, latestDeviceByPlayer };
+    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, isTimeMissing, nudgeMessage, localDateStr, maxDisjointAttrs, deviceKind, latestDeviceByPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);

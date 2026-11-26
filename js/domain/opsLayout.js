@@ -44,8 +44,7 @@
         // 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18): Discord に貼られたスクショを運営が本人の代わりに登録。準備〜当日 (当日は畳む)。
         //   幅 12 で単独の行 — 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭 (各行 12 のまま)
         { id: 'opsSecMockIntake', title: '模擬の取り込み',        group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['prep', 'pre', 'day'], span: 12, tab: 'members' },
-        // 前日 (告知) と終了 (結果報告) の両方で使う
-        { id: 'opsSecDiscord',   title: 'Discord 用の文面',      group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 12, tab: 'members' },   // 2026-10-23: 新しい流れの案内とプランの説明 (画面に戻した)
+        // 📣 Discord 用の文面 (opsSecDiscord) は 2026-11-27 に撤去 (ふるり「Discord に貼る文章は PAD で手に入れなくていい・アプリを作るときに Claude Code が書く」)
         { id: 'opsSecPlan',      title: '凸プランを組む',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12, tab: 'build' },
         { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12, tab: 'master' },
         // 🧱 ブロックの設定 (👑 マスターだけ・2026-10-30 ふるり)。シーズンを作ったあと・メンバーに聞く前に使う
@@ -175,7 +174,6 @@
             opsSecPlan: { text: published === null ? '配信を確認中' : published ? '配信中' : '未配信', bad: false },
             opsSecPush: { text: '', bad: false },
             opsSecSeason: { text: season ? `${season.month_key || ''}${season.is_test ? ' 🧪' : ''} · Lv${lvl}` : 'シーズン無し', bad: !season },
-            opsSecDiscord: { text: '', bad: false },
         };
         return { summaries, usedText: season ? `${doneAttacks} / ${capacity}凸` : '' };
     }

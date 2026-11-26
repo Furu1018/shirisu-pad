@@ -117,6 +117,39 @@
     }
 
     /**
+     * ④ 予定とのずれ (2026-11-27 ふるり「入れる」・見本 88yepqLS55WK18h7j37nwi ④): いまのレベルの生きているボスごとに、実際に減った HP と
+     *   凸の予定 (✓ の凸 = ✓ を付けたときの予定ダメージ planned_damage_raw / 数字で取り込んだ凸 = その数字 damage_raw) を比べる。
+     *   ★ 撃破したボスは数えない (残り HP を超えたぶんが記録されないので、予定より少なく見える)。数えられる凸が 1 つも無いボスも数えない
+     *   ★ HP は運営が 🎯 で合わせた値 — ✓ がまだの凸のぶんが HP に入っていると高く出る / HP が古いと低く出る (画面が言う)
+     *   ★ 見せるだけ (🧮 の見込みには掛けない: ふるり 11/27「まず見せるだけ」)
+     * @param {{ level:number, bosses:{boss_number:number,total_hp_raw:number,remaining_hp_raw:number}[], attacks:{boss_number:number,level:number,damage_raw?:number,planned_damage_raw?:number}[] }} a
+     * @returns {{ rows:{bossNumber:number,expectedB:number,actualB:number,ratio:number,n:number}[], expectedB:number, actualB:number, ratio:number|null, n:number, killed:number[], unknown:number, infinite?:boolean }}
+     */
+    function planGap({ level, bosses, attacks } = {}) {
+        const lv = Number(level) || 1;
+        if (lv >= 4) return { rows: [], expectedB: 0, actualB: 0, ratio: null, n: 0, killed: [], unknown: 0, infinite: true };   // Lv4 は HP 無限 = 削った量で比べられない
+        const by = new Map(); let unknown = 0;
+        for (const a of (Array.isArray(attacks) ? attacks : [])) {
+            if (!a || (Number(a.level) || 1) !== lv || a.boss_number == null) continue;
+            const real = Number(a.damage_raw) || 0, plan = Number(a.planned_damage_raw) || 0;
+            const v = real > 0 ? real : plan;
+            if (!(v > 0)) { unknown += 1; continue; }   // 予定も数字も無い凸 (56 より前の ✓ など) は数えない
+            const b = Number(a.boss_number), x = by.get(b) || { sum: 0, n: 0 };
+            x.sum += v; x.n += 1; by.set(b, x);
+        }
+        const rows = [], killed = [];
+        for (const b of (Array.isArray(bosses) ? bosses : []).slice().sort((x, y) => Number(x.boss_number) - Number(y.boss_number))) {
+            const total = Number(b.total_hp_raw) || 0, rem = Number(b.remaining_hp_raw) || 0, x = by.get(Number(b.boss_number));
+            if (!(total > 0) || !x) continue;
+            if (rem <= 0) { killed.push(Number(b.boss_number)); continue; }
+            const actual = Math.max(0, total - rem);
+            rows.push({ bossNumber: Number(b.boss_number), expectedB: x.sum / 1e9, actualB: actual / 1e9, ratio: actual / x.sum, n: x.n });
+        }
+        const e = rows.reduce((t, r) => t + r.expectedB, 0), ac = rows.reduce((t, r) => t + r.actualB, 0);
+        return { rows, expectedB: e, actualB: ac, ratio: e > 0 ? ac / e : null, n: rows.reduce((t, r) => t + r.n, 0), killed, unknown };
+    }
+
+    /**
      * 🗣 9e (2026-10-24): ボス HP の照合 — スクショから読み取った値と いまの値 の差分。保存の前に「何が変わるか」を 1 行で見せるため。
      * rows = [{ bossNumber, curB, nextB }] (nextB が null = 読めなかった)。B 単位・小数 2 桁で比べる (入力欄と同じ丸め)。
      * up = 残 HP が増えている (レベルが開いた直後でなければ読み違いの疑い)
@@ -143,5 +176,5 @@
         return { rows: out, changed: out.filter(x => x.changed).length, read: out.filter(x => x.read).length, unread: out.filter(x => !x.read).length };
     }
 
-    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, digestText, bossHpDiff };
+    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, digestText, planGap, bossHpDiff };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

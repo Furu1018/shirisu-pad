@@ -1009,6 +1009,11 @@
         .dc-mb-sum .v { font-size:16px; font-weight:900; color:var(--t-ink); font-variant-numeric:tabular-nums}
         .dc-mb-sum .v small { font-size:11px; color:var(--t-body); font-weight:700}
         .dc-mb-sum.bad .v { color:var(--attr-fire)}
+        /* ⑤ 「時間帯 登録」は押すと時間がまだの人だけ (2026-11-27) */
+        button.dc-mb-sum.sumbtn { display:block; width:100%; min-height:40px; border:1.5px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
+        button.dc-mb-sum.sumbtn[aria-pressed="true"] { border-color:var(--ops); background:var(--ops-bg); }
+        .mb-notime-bar { grid-column:1 / -1; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px; border-radius:8px; background:var(--ops-bg); color:var(--ops-deep); font-size:12px; font-weight:800; }
+        .mb-notime-bar .dc-mb-pill { margin-left:auto; }
         .dc-mb-rows { display:flex; flex-direction:column; gap:6px; }
         .dc-mb-row { border:1px solid rgba(var(--ink-rgb), 0.06); border-radius:14px; padding:8px 10px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
         .dc-mb-row.todo { border-color:rgba(245,158,11,0.45); background:rgba(245,158,11,0.04); }
@@ -2823,6 +2828,21 @@
         /* ③ 1 ブロックの手順 (🧱 組む の頭) */
         .bs { margin: 0 0 10px; padding: 10px 11px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
         .ops-recent-empty { margin: 0; font-size: 12px; color: var(--t-muted); }
+        /* ④ 📏 予定とのずれ (2026-11-27): ✓ の凸の予定 (模擬) と 実際に減った HP。いまのレベルの生きているボスだけ */
+        .pg { margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: var(--s1); display: flex; flex-direction: column; gap: 6px; }
+        .pg-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--t-ink); }
+        .pg-big { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+        .pg-big.w { color: var(--warn-deep); }
+        .pg-sub, .pg-d { font-size: 12px; color: var(--t-body); }
+        .pg-warn { font-size: 12px; font-weight: 800; color: var(--warn-deep); }
+        .pg-bars { display: flex; flex-direction: column; gap: 4px; }
+        .pg-bar { display: grid; grid-template-columns: 28px minmax(0, 1fr) 52px; gap: 6px; align-items: center; font-size: 11px; font-weight: 800; color: var(--t-strong); }
+        .pg-tr { position: relative; height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
+        .pg-tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--ok-solid); }
+        .pg-tr i.w { background: var(--warn-solid); }
+        .pg-mk { position: absolute; top: 0; bottom: 0; left: 90.9%; width: 2px; background: var(--t-ink); }   /* 予定どおり (100%) — 棒は 110% で満杯 */
+        .pg-v { text-align: right; font-variant-numeric: tabular-nums; }
+        .pg-v.w { color: var(--warn-deep); }
         /* 📣 当日の知らせ (2026-11-27): 1 行 = 何を誰へ / いまの数 / 送る (押せない時間は理由の文 = ずっと押せないボタンを置かない) */
         .ntf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
         .ntf-row:last-of-type { border-bottom: none; }
@@ -3754,6 +3774,8 @@
                 <div id="opsBossSummary" data-no-swipe style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 8px;-webkit-overflow-scrolling:touch;">
                     <p style="color:var(--t-muted);font-size:12px;padding:14px;">読み込み中...</p>
                 </div>
+                <!-- ④ 📏 予定とのずれ (2026-11-27 ふるり「入れる」): ✓ の凸の予定 (模擬) と 実際に減った HP -->
+                <div id="opsPlanGap"></div>
             </div>
 
             <!-- 締め凸候補検索 -->
@@ -3953,15 +3975,6 @@
                 <div id="opsGrowthBody"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
-            <!-- 📣 Discord 告知テンプレ (運営用) -->
-            <div class="dc-card" data-ops-only>
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">📣 Discord 用の文面</div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">メンバー向けの「前日まで/前日/当日にやること」案内と、凸プランのロジック解説。コピーしてDiscordに貼るだけ。</p>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <button onclick="copyAnnouncementText('main')" class="dc-ops-action">📋 メンバー向け案内</button>
-                    <button onclick="copyAnnouncementText('logic')" class="dc-ops-action">📋 プランのロジック解説</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -12166,6 +12179,7 @@
                 if (snap.season?.id && _ob.pinsSeason === snap.season.id) { _obLoadPins(snap.season.id); _obLoadDecided(snap.season.id); }   // 決定も取り直す (S4 レビュー [27])
             }
             if (typeof renderOpsNotify === 'function') renderOpsNotify();   // 📣 当日の知らせ (まだの人の数)
+            if (typeof _renderOpsPlanGap === 'function') _renderOpsPlanGap();   // ④ 📏 予定とのずれ (✓ が増えた)
         }
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
         async function renderOpsAttackCheck(force = false) {
@@ -13196,7 +13210,7 @@
         // ========== 👥 メンバー状況ボード (運営改修 #1・運営ONのみ) ==========
         // 純ロジック (要対応の定義・集計・催促文面) は js/domain/memberStatus.js。
         // 盤面は opsStore の snapshot を再利用し、追加取得は supabaseLoadMemberStatusExtras の4クエリだけ。
-        const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 };
+        const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0, noTime: false };   // noTime = ⑤ 時間がまだの人だけ (👥 状況だけ・2026-11-27)
         function _mbCurrentPhase() {
             const dom = window.memberStatusDomain;
             if (_mb.phase) return _mb.phase;
@@ -13288,16 +13302,23 @@
             const nowH = new Date().getHours();
             const all = _mb.rows;
             const todoCount = all.filter(r => r.todo).length;
-            const shown = dom.sortRows(_mb.filter === 'all' ? all : all.filter(r => r.todo), _mb.sort);
+            if (isDay && _mb.noTime) _mb.noTime = false;   // 当日の集計に「時間帯 登録」は無い
+            // ⑤ 「時間帯 登録」を押すと時間がまだの人だけ (2026-11-27 ふるり)。📸 模擬と共通の 未完のみ / 全員 とは別 (👥 状況だけに効く)
+            const noTimeRows = _mb.noTime ? all.filter(dom.isTimeMissing) : null;
+            const shown = dom.sortRows(noTimeRows || (_mb.filter === 'all' ? all : all.filter(r => r.todo)), _mb.sort);
             // ボタンの状態
             const press = (id, on) => { const el = document.getElementById(id); if (el) el.setAttribute('aria-pressed', on ? 'true' : 'false'); };
-            press('opsMbFilterTodo', _mb.filter === 'todo'); press('opsMbFilterAll', _mb.filter === 'all');
+            press('opsMbFilterTodo', !_mb.noTime && _mb.filter === 'todo'); press('opsMbFilterAll', !_mb.noTime && _mb.filter === 'all');
             press('opsMbSortWhy', _mb.sort === 'why'); press('opsMbSortName', _mb.sort === 'name');
             const ft = document.getElementById('opsMbFilterTodo'); if (ft) ft.textContent = `未完のみ (${todoCount})`;
             const fa = document.getElementById('opsMbFilterAll'); if (fa) fa.textContent = `全員 (${all.length})`;
             // 集計
-            sumEl.innerHTML = dom.summarize(all, phase).map(s =>
-                `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}${s.sub ? `<small style="margin-left:6px;color:var(--t-muted);">${escapeHtml(s.sub)}</small>` : ''}</div></div>`).join('');
+            const sumIn = (s) => `<div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}${s.sub ? `<small style="margin-left:6px;color:var(--t-muted);">${escapeHtml(s.sub)}</small>` : ''}</div>`;
+            const missN = all.filter(dom.isTimeMissing).length, hardN = all.filter(r => !(r.slots.length || r.flex) && r.availUnavailable).length;
+            sumEl.innerHTML = dom.summarize(all, phase).map(s => (s.key === 'slots' && (missN > 0 || _mb.noTime))
+                ? `<button type="button" class="dc-mb-sum sumbtn ${s.bad ? 'bad' : ''}" aria-pressed="${_mb.noTime}" onclick="handleOpsMbNoTime()" title="押すと時間がまだの人だけ">${sumIn(s)}</button>`
+                : `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}">${sumIn(s)}</div>`).join('')
+                + (_mb.noTime ? `<div class="mb-notime-bar"><span>⏰ 時間がまだの <b>${missN} 人</b>を表示中${hardN ? ` (今回は難しい ${hardN} 人は除く)` : ''}</span><button type="button" class="dc-mb-pill" onclick="handleOpsMbNoTime(false)">✕ 絞り込みを外す</button></div>` : '');
             // 行
             const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || 'var(--ghost)'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
             // 🧱 シーズンのブロック。行の時間はブロックの文字で出す (A から順 = 5 時始まり。24 個の点は 0 時始まりで、ホームの ⏰ と並びが違って読みにくかった: 2026-10-31 ふるり)
@@ -13462,7 +13483,13 @@
             requestAnimationFrame(() => requestAnimationFrame(step));
         }
 
+        // ⑤ 時間がまだの人だけ (on = true / false / 省略で切り替え)。行の ⏰ からその場で登録できる (登録すると一覧から消える)
+        function handleOpsMbNoTime(on) {
+            _mb.noTime = on == null ? !_mb.noTime : !!on;
+            _mbPaint(_mbCurrentPhase());
+        }
         function handleOpsMemberFilter(f) {
+            _mb.noTime = false;   // ⑤ 未完のみ / 全員 を押したら「時間がまだの人だけ」は外す
             _mb.filter = f; _mbPaint(_mbCurrentPhase());
             if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();   // 未完のみ / 全員 は 📸 模擬の見え方と共通 (段階 3)
         }
@@ -14830,10 +14857,29 @@
             }
         }
 
+        // ④ 📏 予定とのずれ (2026-11-27 ふるり「入れる」・見本 ④): 数え方は raidEventsDomain.planGap が唯一。見せるだけ (🧮 の見込みには掛けない)
+        function _renderOpsPlanGap() {
+            const el = document.getElementById('opsPlanGap');
+            if (!el) return;
+            const snap = opsStore.get(), D = window.raidEventsDomain;
+            if (!snap?.season || !D?.planGap || !_opsMode) { el.innerHTML = ''; return; }
+            const g = D.planGap({ level: snap.season.current_level, bosses: snap.bosses, attacks: (snap.players || []).flatMap(p => p.attacks || []) });
+            if (g.infinite || !g.rows.length || g.ratio == null) { el.innerHTML = ''; return; }   // 数えられる凸がまだ無い・Lv4 は出さない
+            const pct = (r) => `${Math.round(r * 100)}%`, low = (r) => r < 0.85;
+            const fresh = window.opsLayoutDomain?.hpFreshnessMin ? window.opsLayoutDomain.hpFreshnessMin(snap.bosses) : null;
+            const bars = g.rows.map(r => `<div class="pg-bar"><span>B${r.bossNumber}</span><span class="pg-tr"><i class="${low(r.ratio) ? 'w' : ''}" style="width:${Math.max(0, Math.min(100, r.ratio / 1.1 * 100)).toFixed(1)}%"></i><span class="pg-mk"></span></span><span class="pg-v${low(r.ratio) ? ' w' : ''}">${pct(r.ratio)}${low(r.ratio) ? ' ⚠' : ''}</span></div>`).join('');
+            el.innerHTML = `<div class="pg"><div class="pg-h"><b>📏 予定とのずれ</b><span class="pg-big${low(g.ratio) ? ' w' : ''}">${pct(g.ratio)}</span><span class="pg-sub">実際は予定の ${pct(g.ratio)} (Lv${Number(snap.season.current_level) || 1})</span></div>`
+                + `<div class="pg-d">凸 ${g.n} の予定 ${g.expectedB.toFixed(1)}B → 実際に減った HP ${g.actualB.toFixed(1)}B${g.killed.length ? ` · 撃破した B${g.killed.join('・B')} は数えません` : ''}</div>`
+                + (fresh != null && fresh >= 30 ? '<div class="pg-warn">⚠ HP の更新が 30 分より前です — 🎯 で合わせてから見てください (古いと低く出ます)</div>' : '')
+                + `<div class="pg-bars">${bars}</div>`
+                + _qh('plan-gap', '数え方 (縦の線 = 予定どおり)', 'いまのレベルの、生きているボスだけを比べます。予定 = ✓ を付けた凸の模擬のダメージ (📥 で数字を取り込んだ凸はその数字)、実際 = 🎯 で合わせたボスの HP の減り。85% より下は ⚠。撃破したボスは、残り HP を超えたぶんが記録されないので数えません。✓ がまだの凸のぶんが HP に入っていると高く出ます。🧮 は模擬のダメージどおりに組みます (この数字は掛けません)')
+                + `</div>`;
+        }
         function renderOpsBossSummary() {
             _renderOpsCockpitSoon();   // HP鮮度 (30秒ポーリング) をコックピットにも反映
             if (!opsStore.get()) return;
             const { season, bosses } = opsStore.get();
+            _renderOpsPlanGap();   // ④ 📏 予定とのずれ
             const el = document.getElementById('opsBossSummary');
             const lvEl = document.getElementById('opsBossSummaryLevel');
             if (!el) return;
@@ -15920,7 +15966,7 @@
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
-                    ${_obDraftBannerHtml(ctx, idx)}${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
+                    ${_obDraftBannerHtml(ctx, idx)}${_obGapNoteHtml(snap)}${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}<span id="obTrayShown">${tt.filtered ? ` · 表示 ${tt.shown} / ${tt.total}` : ''}</span></span></div>
                             ${_qh('ob-tray', 'ピースの印と置き方', '「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。ピースを押すと 🧭 に詳細が出ます (置いたピースも・外れません)。外すのは盤の駒の ✕。上の並べ替え・絞り込みは見せ方だけです (選んだピースは見えなくなっても選んだまま)')}
@@ -16005,6 +16051,14 @@
             if (!Number.isFinite(t)) return '';
             const m = Math.floor((Date.now() - t) / 60000);
             return m < 1 ? 'たったいま' : (m < 60 ? `${m} 分前` : `${Math.floor(m / 60)} 時間前`);
+        }
+        // ④ 📏 🧱 組む にも 1 行 (文だけ・5% 以上ずれたとき)。🧮 は模擬のダメージどおりに組む (掛けない)
+        function _obGapNoteHtml(snap) {
+            const D = window.raidEventsDomain;
+            if (!snap?.season || !D?.planGap) return '';
+            const g = D.planGap({ level: snap.season.current_level, bosses: snap.bosses, attacks: (snap.players || []).flatMap(p => p.attacks || []) });
+            if (g.ratio == null || Math.abs(g.ratio - 1) < 0.05) return '';
+            return `<p class="ob-note">📏 いまのレベルの凸は、模擬の予定の <b>${Math.round(g.ratio * 100)}%</b> でした (⚔️ 戦況 › ボス状況)。🧮 は模擬のダメージどおりに組みます</p>`;
         }
         function _obDraftBannerHtml(ctx, idx) {
             const blk = ctx.blocks[idx];
@@ -17543,92 +17597,8 @@
             }
         }
 
-        // ========== 運営: Discord 告知テンプレ (ワンボタンコピー) ==========
-        // ★ 2026-10-23 🧱 ブロック制の流れに書き直した (Codex 全体監査 A: 旧テンプレは 模擬タブ・戦闘準備・凸報告・⏳隙間型・締め凸のお願い が前提だった)。
-        //   画像版は docs/最適凸プランの説明_2026-10-23_1.png / _2.png (元は docs/最適凸プランの説明_src_2026-10-23/)
-        const _ANNOUNCE_MAIN = `@everyone
-📣 **ユニオンレイドのやり方 (PAD の「📅 レイド予定表」)**
-次のユニレから、みんなにやってほしいことは **2 つだけ** です👇
-
-━━━━━━━━━━━━━━
-⏰ **前日までに**
-━━━━━━━━━━━━━━
-1. PAD をホーム画面に追加 (アプリ化) → 🔔 通知 ON ※iPhone はアプリ化しないと通知が来ません
-2. レイドの日に **確実に動けるブロック** (朝 / 午前 / 午後 / 夕方 / 夜 / 深夜) と、できれば **何凸するか** (朝 1・夕方 2 など) を **このチャンネルに書く** → 運営が PAD に登録します (ホームの **⏰ ユニオンレイド参加可能時間** に出ます。PAD で入力する操作はありません)
-3. 模擬戦をしたら **結果のスクショを Discord に貼る** (編成 5 キャラとダメージが写っているもの)。運営が PAD に登録します。最低ラインは **キャラ被りなしで 3 属性**、**18 時以降に出られる人は ボス 5 の弱点の模擬を 2 編成**
-4. 「このブロックに この PT で凸したい」希望がある人だけ、**ここに書く** (「夕方に 風圧PT で行きたい」など) → 運営が組むときに先に置きます (しなくても運営が割り当てます)
-
-━━━━━━━━━━━━━━
-⚔️ **当日**
-━━━━━━━━━━━━━━
-1. **「🧱 あなたの凸が決まりました」** の通知が届いたら、PAD の **📅 レイド予定表** を開く — ブロックのボタンを押すと、ボスごとに誰が行くかが出ます (★ と太い枠があなた)。下の「みんなの模擬」でほかの人の編成とダメージも見られます。ホームの **📅 きょうの凸** にはあなたの凸だけ
-2. 読んだら **✅ 確認しました** を押す
-3. ブロックの時間内に凸 → **結果のスクショを Discord に貼る**だけ (PAD では何も押しません。運営が ✓ を付けます)。**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**。入ってしまった凸は次のブロックの凸になります
-4. **「🔄 あなたの凸が変わりました」の通知が来たら、もう一度 📅 レイド予定表 を見て ✅** (✅ を押していなくても、変わった人には届きます)
-5. 凸できなかったときも Discord で一言。締め凸は運営が Discord で声をかけます
-
-PAD の中で入力するものはありません (時間・模擬・希望・凸の結果はすべて Discord へ)。PAD は「見る・✅ 確認しました を押す」だけです。分からないことは PAD のヘルプか、ここで聞いてください!`;
-
-        const _ANNOUNCE_LOGIC = `🧠 **【読みたい人だけ】最適凸プランはどうやって決まってるの?**
-
-「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AI のおまかせではなく、決まった手順の計算**です (同じ材料なら何度組んでも同じ結果)。
-
-**🧱 1 日をブロックに分けて、見通しのつくところまで決定**
-レイドの日 (朝5時〜翌朝5時) を A・B・C… のブロック (例: A 朝 5〜9時) に区切り、各ブロックの最後の 20 分は運営が次のブロックを組む再編成時間 (凸の時間は A なら 5〜8:40)。運営は A から順に「そのブロックに出られる人だけ」で組んで、見通しのつくブロックまで決定します。先のブロックは見通しがついたら決定し直します (変わった人にだけ通知)。レベルはブロックの頭でしか変わりません。
-
-**📥 材料にしているもの (5 つ)**
-参加可能時間と凸数 / 登録された模擬 (属性ごとに編成①・②・③) / 凸先の希望 (運営が先に置いた凸) / ボスの残り HP / 済んだ凸 (運営が ✓ を付けた凸)
-**つまり、みんなの登録の質 = プランの質**です。
-
-**⚖️ 割り当てのルール**
-1. **各レベルは 5 体全部倒さないと次に進めない**ので、Lv1 から順に「誰の凸で削り切るか」を組みます。Lv3 を踏破すると **Lv4 = ボス 5 だけ・HP 無限** が開き、そこへの凸は全額スコアに入ります
-2. **そのブロックに出られる人だけで組み、凸数は上限**として守ります (「朝 1・夕方 2」なら朝は 1 凸だけ)
-3. **1 つの編成は 1 回だけ・同じキャラは 1 日 1 回** (ゲームと同じ)
-4. **運営が先に置いた凸 (希望) はそのまま置き**、残りの枠だけ計算します (何時に凸するかはブロックの中で自由)
-5. **オーバーキル (削りすぎ) が小さい人を優先** — 残り 4B のボスに 30B 出せる人を当てるのはもったいない、という計算
-6. **参加可能時間の中で、そのレベルが開く時刻以降のいちばん早い時刻に**。登録した時間の外には置きません (⏰ 時間厳守)
-7. **決定し直すのは組み直したブロックだけ** — ほかのブロックは前の決定のまま。同じ盤面なら同じ割当になります
-＋ **ボス 5 の弱点の編成② は Lv4 でだけ使います** (18 時以降に出られる人は 2 編成を)
-
-**🙋 よくある疑問**
-・**「自分の凸が入ってない」** → そのブロックがまだ決まっていない / 参加可能時間が無い / 凸数の上限 / 模擬が未登録の属性しか残っていない / 3 凸済み のどれか。分からなければここで聞いてください
-・**「想定ダメージより出なかった / 出すぎた」** → 全然 OK。結果のスクショさえ貼ってくれれば次のブロックの計算で吸収されます
-・**「この時間、無理になった」** → Discord で一言ください。次のブロック以降に出られるなら、そこで組み直します`;
-
-        // ⏱ 📣 Discord 用の文面の再編成時間の一文は、シーズンの分数とブロックで書き直す (⑥ レビュー flow-8: 「20 分 (8:40〜9:00)」で固定だった)。0 分 (なし) なら外す
-        const _ANNOUNCE_RB_MAIN = '。**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**。入ってしまった凸は次のブロックの凸になります';
-        const _ANNOUNCE_RB_LOGIC = '、各ブロックの最後の 20 分は運営が次のブロックを組む再編成時間 (凸の時間は A なら 5〜8:40)';
-        function _announceText(kind) {
-            const t = kind === 'logic' ? _ANNOUNCE_LOGIC : _ANNOUNCE_MAIN;
-            const rb = window.raidBlocksDomain;
-            if (!rb) return t;
-            const s = opsStore.get()?.season || seasonStore.get()?.season || null;
-            const n = rb.rebuildMinutesOf(s), b0 = rb.blocksOfSeason(s)[0];
-            const main = (n && b0 && b0.rebuild) ? `。**各ブロックの最後の ${n} 分 (例: ${b0.rebuild.label}) は再編成時間 = 凸しない時間**。入ってしまった凸は次のブロックの凸になります` : '';
-            const logic = (n && b0 && b0.rebuild) ? `、各ブロックの最後の ${n} 分は運営が次のブロックを組む再編成時間 (凸の時間は ${b0.short} なら ${b0.attackRange})` : '';
-            return t.split(_ANNOUNCE_RB_MAIN).join(main).split(_ANNOUNCE_RB_LOGIC).join(logic);
-        }
-        async function copyAnnouncementText(kind) {
-            const text = _announceText(kind);
-            try {
-                await navigator.clipboard.writeText(text);
-                showNotification('📋 コピーしました — Discordに貼り付けてください');
-            } catch {
-                // clipboard API 不可の環境 (非https等) へのフォールバック
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.cssText = 'position:fixed;opacity:0;';
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    showNotification('📋 コピーしました — Discordに貼り付けてください');
-                } catch {
-                    padAlert('コピーに失敗しました。ヘルプから手動でコピーしてください。');
-                }
-                ta.remove();
-            }
-        }
+        // 📣 Discord 用の文面 (告知テンプレの 2 つの文面と、そのコピーの関数) は 2026-11-27 に撤去 (ふるり「Discord に貼る文章は PAD で手に入れなくていい —
+        //   アプリを作るときに Claude Code に書いてもらって貼ればいい」)。当日の名前・数字が入るコピー (締め凸検索の 📋・結果がまだの凸の 📋 聞く・疎通確認の Discord 用にコピー) は残す
 
         // ========== 運営: シーズン制御 (Phase 3c) ==========
         const BOSS_CODES = ['H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.', 'D.M.T.R.', 'A.N.M.I.'];

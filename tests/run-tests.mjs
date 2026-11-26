@@ -4528,10 +4528,10 @@ console.log('\nopsStageDomain:');
         // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
         // ✅ 凸報告の確認 (③-f) も 12 で単独の行: 当日は 残り12 の次 (取り込みの前)、終了は先頭
         // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
-        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPlan', 'opsSecBlocks']);   // 凸の予約カードは 2026-11-16 に撤去
+        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecPlan', 'opsSecBlocks']);   // 📣 Discord 用の文面は 2026-11-27 に撤去   // 凸の予約カードは 2026-11-16 に撤去
         assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecNotify', 'opsSecAttackCheck', 'opsSecMockIntake', 'opsSecPlan']);   // 📣 当日の知らせ (2026-11-27) は ✓ 凸の記録 の次   // 運営アクション・ペース・直近・残り は 2026-11-16 に撤去 / ✓ 凸の記録 は 結果の取り込み の前
         assert.deepEqual(vis('prep'),['opsSecMockIntake', 'opsSecSeason', 'opsSecBlocks', 'opsSecPush', 'opsSecGrowth']);
-        assert.deepEqual(vis('end'), ['opsSecAttackTap', 'opsSecAttackCheck', 'opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
+        assert.deepEqual(vis('end'), ['opsSecAttackTap', 'opsSecAttackCheck', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
     const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
@@ -5835,7 +5835,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const sm = L.summarize({ season: { current_level: 2, month_key: '2026-11' }, bosses: [{ remaining_hp_raw: 5 }, { remaining_hp_raw: 0 }], players: [{ attackCount: 2 }, { attackCount: 3 }, { attackCount: 0, unavailableThisSeason: true }], mbRows: [{ todo: true }, { todo: false }], published: false });
         assert.deepEqual(Object.keys(sm).sort(), ['summaries', 'usedText']);
         assert.equal(sm.usedText, '5 / 6凸'); assert.equal(sm.summaries.opsSecMembers.text, '未完 1'); assert.equal(sm.summaries.opsSecPlan.text, '未配信');
-        assert.deepEqual(Object.keys(sm.summaries).sort(), ['opsSecBoss', 'opsSecDiscord', 'opsSecFinish', 'opsSecMembers', 'opsSecPlan', 'opsSecPush', 'opsSecSeason']);
+        assert.deepEqual(Object.keys(sm.summaries).sort(), ['opsSecBoss', 'opsSecFinish', 'opsSecMembers', 'opsSecPlan', 'opsSecPush', 'opsSecSeason']);
         // 通信の関数: 締め凸の依頼・状態・運営あての宛先・運営除外の操作・きっかけの件数・提出漏れの集計 は無い。呼んでいるのに定義の無い window.supabaseXxx が 1 つも無い
         for (const fn of ['supabaseSetFinishRequests', 'supabaseSetFinishOffer', 'supabaseDeclineFinishRows', 'supabaseLoadFinishOffer', 'supabaseLoadFinishRequests', 'supabaseRespondFinishRequest', 'supabaseFindFinishRequestsToClear', 'supabaseDeleteFinishRequests',
                           'supabaseGetActiveFinishCoordinations', 'supabaseSetMyFinishCoordination', 'supabaseClearMyFinishCoordination', 'supabaseLoadOpsPlayerIds', 'supabaseSetMockExclusion', 'supabaseCountMockUpdatesSince', 'supabaseLoadSeasonAttackStats', '_loadFinishRequestsForStatus']) {
@@ -5868,14 +5868,11 @@ console.log('\nreservationsDomain (凸の予約):');
         // 誤って登録した凸を直す・消す入口 (凸履歴・編集のモーダル) が 📥 結果の取り込みにある
         assert.ok(/登録された凸 <button type="button"[^>]*onclick="openOpsAttacksEditModal\(\)"[^>]*>✏️ 編集・削除<\/button>/.test(html), '登録した凸を直す・消す入口が無い');
         assert.ok(/async function openOpsAttacksEditModal\(\)/.test(html), '凸履歴・編集のモーダルが無い');
-        // Discord 用の文面は 👥 メンバーのタブにあり、古い流れの言葉が無い
-        const ann = html.slice(html.indexOf('const _ANNOUNCE_MAIN = `'), html.indexOf('async function copyAnnouncementText'));
-        // 🗣 9c (2026-10-24 Q1): メンバーは PAD に入力しない → 告知も「このチャンネルに書く → 運営が登録」。MY設定・枠を予約する・この時間で参加します は入口として言わない
-        for (const old of ['模擬タブ', '戦闘準備', '凸報告', '隙間', '締め凸のお願い', '引き受け', '戦闘可能時間', '申請', 'MY設定', '枠を予約する', 'この時間で参加します']) assert.ok(!ann.includes(old), 'Discord 用の文面に古い言葉「' + old + '」');
-        for (const w of ['ユニオンレイド参加可能時間', 'Discord に貼る', 'このチャンネルに書く', '運営が PAD に登録', '📅 レイド予定表', '📅 きょうの凸', '✅ 確認しました', '運営が ✓ を付けます', 'ブロック', 'PAD で入力する操作はありません']) assert.ok(ann.includes(w), 'Discord 用の文面に「' + w + '」が無い');
-        // S5 (2026-10-27): メンバーは ✓ を押さない・予約の画面は無い
-        for (const old of ['✓ 凸しました', '🔒 予約', '運営が取り込むと']) assert.ok(!ann.includes(old), 'Discord 用の文面に S5 より前の言葉「' + old + '」');
-        assert.ok(html.includes('>📣 Discord 用の文面</div>'), 'カードの名前');
+        // 📣 Discord 用の文面 (固定の案内文) は 2026-11-27 に撤去 (ふるり「Discord に貼る文章は PAD で手に入れなくていい・アプリを作るときに Claude Code が書く」)。
+        //   当日の名前・数字が入るコピー (締め凸検索の 📋 / 結果がまだの凸の 📋 聞く / 疎通確認の Discord 用にコピー) は残す
+        assert.ok(!/_ANNOUNCE_MAIN|_ANNOUNCE_LOGIC|copyAnnouncementText|_announceText|>📣 Discord 用の文面<|opsSecDiscord/.test(html), '📣 Discord 用の文面が残っている (撤去した)');
+        assert.ok(!globalThis.opsLayoutDomain.cardById('opsSecDiscord'), 'カードの登録が残っている');
+        assert.ok(/handleOpsFinishPlanCopy/.test(html) && /askText/.test(html) && /Discord 用にコピー/.test(html), '当日のデータ入りのコピーまで消した');
         // 設定の練習 (運営編) は運営だけ
         assert.ok(html.includes("<button onclick=\"startPractice('ops-eve')\" data-ops-only") && html.includes("<button onclick=\"startPractice('ops-day')\" data-ops-only"), '運営編の練習がメンバーにも出ている');
         // 当日ヒーローの「残り N 凸」は 👥 メンバー状況へ (残り戦闘可能のカードは外した)
@@ -9666,7 +9663,7 @@ console.log('\ngrowthDomain:');
         const L = globalThis.opsLayoutDomain;
         const byTab = (t) => L.CARDS.filter(c => c.tab === t).map(c => c.id);
         assert.deepEqual(L.TAB_KEYS, ['members', 'build', 'battle', 'master']);
-        assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く / Discord 用の文面も (2026-10-23)');
+        assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く (📣 Discord 用の文面は 2026-11-27 に撤去)');
         assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecNotify', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定) / S5: ✓ 凸の記録 は 結果の取り込み の前');
         assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecBlocks', 'opsSecGrowth']);
         assert.deepEqual(byTab('build'), ['opsSecPlan'], '🧱 組む は「凸プランを組む」だけ (凸の予約カードは 2026-11-16 に撤去)');
@@ -11381,7 +11378,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/\} catch \(e\) \{\s*\n\s*if \(gen !== _opsBossHpGen\) return;[^\n]*\n\s*statusEl\.textContent = `❌/.test(ocr), '古い読み取りの失敗を新しいシートに出す');
         assert.ok(/\} finally \{\s*\n\s*if \(gen === _opsBossHpGen && input\) input\.disabled = false;[^\n]*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない / 別の世代の受け口を戻している');
         // Codex 9e E: アプリ内の Discord 文面にも 9h の「プランが変わったら もう一度 ✅」(強調の入れ子で壊さない)
-        assert.ok(html.includes('**「🔄 あなたの凸が変わりました」の通知が来たら、もう一度 📅 レイド予定表 を見て ✅** (✅ を押していなくても、変わった人には届きます)'), 'Discord 文面に 9h の再確認の手順が無い / 強調が入れ子 (S5: 見る先は 📅 レイド予定表)');
+        // Discord 文面の 9h の再確認の手順は、📣 Discord 用の文面の撤去 (2026-11-27) で一緒に無くなった (文は Claude Code が作る)
     });
     test('★ 🧱 段階 8 planChainDomain.projectBoard: ブロックの凸を実行したことにして盤面を進める — 残 HP は min(ダメージ, 残り) / 5 体倒れたら次のレベル (HP は表) / Lv3 踏破で Lv4 はボス 5 無限 / 済んだ凸と使ったキャラを人に足す / 予想の報告時刻はその時刻', () => {
         const d = globalThis.planChainDomain;
@@ -12287,6 +12284,37 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.equal(RE.diffRaidEvents(snap(4, [B(5, 100, 50)]), snap(4, [B(5, 100, 50)])).lastBoss, null);
         assert.deepEqual(RE.aliveBossNumbers([B(3, 100, 1), B(1, 0, 0), B(2, 100, 0), B(5, 50, 50)]), [3, 5]);
         assert.equal(RE.diffRaidEvents(null, after).lastBoss, null);
+    });
+    test('★ ④ 予定とのずれ (planGap): いまのレベルの生きているボスだけ・予定 = ✓ の予定ダメージ (数字で取り込んだ凸はその数字)・撃破したボスは数えない・Lv4 は出さない (2026-11-27)', () => {
+        const Bs = (n, total, rem) => ({ boss_number: n, total_hp_raw: total * 1e9, remaining_hp_raw: rem * 1e9 });
+        const A = (n, lv, planned, real = 0) => ({ boss_number: n, level: lv, planned_damage_raw: planned * 1e9, damage_raw: real * 1e9 });
+        const g = RE.planGap({ level: 2, bosses: [Bs(1, 200, 110.2), Bs(2, 200, 143.1), Bs(3, 200, 0), Bs(4, 200, 200), Bs(5, 300, 218.9)],
+            attacks: [A(1, 2, 50), A(1, 2, 38), A(2, 2, 70.2), A(3, 2, 230), A(5, 2, 0, 81.1), A(5, 2, 0, 7.1), A(1, 1, 999), A(2, 2, 0, 0)] });
+        // B1: 予定 88.0 → 実際 89.8 / B2: 70.2 → 56.9 / B3 は撃破 (数えない) / B4 は凸なし / B5: 数字の 88.2 → 81.1 / Lv1 の凸は数えない / 予定も数字も無い凸は unknown
+        assert.deepEqual(g.rows.map(r => [r.bossNumber, +r.expectedB.toFixed(1), +r.actualB.toFixed(1), Math.round(r.ratio * 100), r.n]), [[1, 88, 89.8, 102, 2], [2, 70.2, 56.9, 81, 1], [5, 88.2, 81.1, 92, 2]]);
+        assert.deepEqual([+g.expectedB.toFixed(1), +g.actualB.toFixed(1), Math.round(g.ratio * 100), g.n, g.killed, g.unknown], [246.4, 227.8, 92, 5, [3], 1]);
+        assert.deepEqual(RE.planGap({ level: 4, bosses: [Bs(5, 100, 50)], attacks: [A(5, 4, 30)] }).ratio, null, 'Lv4 (HP 無限) で比べた');
+        assert.equal(RE.planGap({ level: 1, bosses: [Bs(1, 100, 100)], attacks: [] }).ratio, null, '凸が無いのに数字を出した');
+        assert.equal(RE.planGap({}).ratio, null);
+        // 配線: ⚔️ ボス状況の下 / 盤面の取り直しでも描く / 🧱 組む は文だけ (🧮 には掛けない)
+        const html = _fsLate.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(html.includes('<div id="opsPlanGap"></div>') && /_renderOpsPlanGap\(\);   \/\/ ④ 📏 予定とのずれ\n/.test(html) && /if \(typeof _renderOpsPlanGap === 'function'\) _renderOpsPlanGap\(\);/.test(html), '予定とのずれを描いていない');
+        const pg = html.match(/function _renderOpsPlanGap\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/D\.planGap\(\{ level: snap\.season\.current_level, bosses: snap\.bosses, attacks: \(snap\.players \|\| \[\]\)\.flatMap\(p => p\.attacks \|\| \[\]\) \}\)/.test(pg) && /fresh >= 30/.test(pg), '盤面から数えていない / HP が古いことを言わない');
+        assert.ok(!/planGap|_obGapNoteHtml|_renderOpsPlanGap/.test(html.match(/function computeOptimalPlan\([\s\S]*?\n        \}\n/)?.[0] || ''), '🧮 に予定とのずれを掛けている (見せるだけ)');
+    });
+    test('★ ⑤ 時間がまだの人だけ: 「時間帯 登録」を押すと時間がまだの人 (今回は難しい・⏳ は除く) だけ / 未完のみ・全員 とは別 (👥 状況だけ) / 当日は外す (2026-11-27)', () => {
+        const MS = globalThis.memberStatusDomain;
+        const R = (id, extra) => ({ id, slots: [], flex: false, availUnavailable: false, ...extra });
+        assert.deepEqual([R(1), R(2, { slots: ['h05'] }), R(3, { flex: true }), R(4, { availUnavailable: true }), null].map(MS.isTimeMissing), [true, false, false, false, false]);
+        const html = _fsLate.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        const mp = html.match(/function _mbPaint\(phase\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const noTimeRows = _mb\.noTime \? all\.filter\(dom\.isTimeMissing\) : null;/.test(mp) && /const shown = dom\.sortRows\(noTimeRows \|\| \(_mb\.filter === 'all' \? all : all\.filter\(r => r\.todo\)\), _mb\.sort\);/.test(mp), '時間がまだの人に絞れない');
+        assert.ok(/s\.key === 'slots' && \(missN > 0 \|\| _mb\.noTime\)/.test(mp) && /aria-pressed="\$\{_mb\.noTime\}" onclick="handleOpsMbNoTime\(\)"/.test(mp) && /✕ 絞り込みを外す/.test(mp), '「時間帯 登録」が押せない / 外す手段が無い');
+        assert.ok(/if \(isDay && _mb\.noTime\) _mb\.noTime = false;/.test(mp), '当日 (集計に時間帯が無い) でも絞ったまま');
+        assert.ok(/function handleOpsMemberFilter\(f\) \{\s*\n\s*_mb\.noTime = false;/.test(html), '未完のみ / 全員 を押しても時間の絞り込みが残る');
+        // 📸 模擬の見え方 (未完のみ / 全員 と共通) には効かない
+        assert.ok(!/_mb\.noTime/.test(html.match(/function renderOpsMockIntake\([\s\S]*?\n        \}\n/)?.[0] || ''), '📸 模擬の表まで時間で絞っている');
     });
     test('★ 節目: 戦況のまとめの文面は盤面の数字 (撃破・残り %・未設定・Lv4・全員完了)・定時の印は無い (2026-11-27 から運営が押したとき)', () => {
         assert.ok(RE.digestSlot === undefined && RE.DIGEST_HOURS === undefined, '定時の印が残っている');
@@ -14963,7 +14991,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/build_drafts: \{ pk: \['season_id', 'player_id', 'kind'\]/.test(srv) && /'member_growth_status', 'build_drafts'\]\.includes\(t\)\)\.map\(t => \[t, 'season_id'\]\)/.test(srv) && /'member_devices', 'build_drafts'\]\.map\(t => \[t, 'player_id'\]\)/.test(srv), '練習の偽サーバに表の写しが無い');
         assert.ok(/if \(_opsMode && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\) && typeof _obPeersTick === 'function'\) _obPeersTick\(\)/.test(html), '見回りで読んでいない');
         const r = fnU('function renderOpsBuild()', '// 範囲のうち、今回決めるブロック');
-        assert.ok(/\$\{_obDraftBannerHtml\(ctx, idx\)\}\$\{boardHelp\}/.test(r) && /peerOpen\.has\(i\) \? `<span class="obb-who">👤 /.test(r), '下書きの知らせ / 👤 の札を描いていない');
+        assert.ok(/\$\{_obDraftBannerHtml\(ctx, idx\)\}\$\{_obGapNoteHtml\(snap\)\}\$\{boardHelp\}/.test(r) && /peerOpen\.has\(i\) \? `<span class="obb-who">👤 /.test(r), '下書きの知らせ / 👤 の札を描いていない');
         assert.ok(/const ds = _obDraftSig\(\); if \(ds !== _ob\.draftSig\) \{ const first = _ob\.draftSig == null; _ob\.draftSig = ds; if \(!first \|\| ds !== ''\) _obDraftSchedule\(\); \}/.test(r), '自分の 🧮 の結果が変わっても下書きを置き直さない');
         assert.ok(/const dft = e\.target\.closest\('\[data-ob-draft\]'\); if \(dft\) \{ _obDraftImport\(dft\.dataset\.obDraft\); return; \}/.test(html), '取り込むボタンが効かない');
         assert.ok(/_ob\.peers = null; _ob\.peersSig = null; _ob\.draftSig = null; _ob\.openKey = null; clearTimeout\(_ob\.draftTimer\);/.test(html), 'シーズンが変わっても前の下書き・札を持ち越す');
@@ -15499,18 +15527,8 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(/if \(_ob\.idx != null && idx !== _ob\.idx\) \{ _ob\.sel = null; renderOpsBuild\(\);/.test(au) && /if \(ctx2 && ctx2\.first !== ctx\.first\) \{ showNotification\(/.test(au), '描いたのと違うブロックを組む / 黙って止まる (now-4)');
         assert.ok(/await _yieldToPaint\(\);\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== ctx2\.first\) \{ showNotification\([^\n]*\); return; \}\s*\n\s*const skipKeys = _ob\.skip\.get\(idx\);/.test(au), '描く間を空けたあとに「いま」を見直さずに組む (Codex ⑥ 再監査)');
         assert.ok(/rbNow && r\.idx === rbNow\.next \? `<span class="mt-chip now">\$\{esc\(rbNow\.to\)\} から<\/span>`/.test(html) && /!ops && rebuild && v\.idx === rebuild\.next \? `<span class="mt-chip now">\$\{esc\(rebuild\.to\)\} から<\/span>`/.test(html) && /rebuild: _raidRebuildNow\(season, blocks\) \};/.test(html), '再編成時間に次のブロックを「いま」と出す (flow-6)');
-        // Discord 用の文面: シーズンの分数で書き直す・0 分は外す
-        const at = fnR('        const _ANNOUNCE_RB_MAIN', 'async function copyAnnouncementText(kind) {');
-        const main = html.match(/const _ANNOUNCE_MAIN = `[\s\S]*?`;/)?.[0] || '', logic = html.match(/const _ANNOUNCE_LOGIC = `[\s\S]*?`;/)?.[0] || '';
-        assert.ok(main && logic && at, '文面が見つからない');
-        const f = (season) => new Function('window', 'opsStore', 'seasonStore', `${main}\n${logic}\n${at}\nreturn _announceText;`)(W, { get: () => (season ? { season } : null) }, { get: () => null });
-        assert.ok(f(s20)('main').includes('**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**'));
-        const m15 = f({ ...s20, metadata: { rebuild_minutes: 15 } });
-        assert.ok(m15('main').includes('**各ブロックの最後の 15 分 (例: 8:45〜9:00) は再編成時間 = 凸しない時間**') && !m15('main').includes('20 分'), '分数を変えても文面が 20 分のまま');
-        assert.ok(m15('logic').includes('各ブロックの最後の 15 分は運営が次のブロックを組む再編成時間 (凸の時間は A 朝 なら 5〜8:45)'));
-        const m0 = f({ ...s20, metadata: {} });
-        assert.ok(!m0('main').includes('再編成時間') && !m0('logic').includes('再編成時間') && m0('logic').includes('に区切り。運営は A から順に'), '再編成なしでも文面が再編成時間を言う');
-        assert.ok(/const text = _announceText\(kind\);/.test(html));
+        // Discord 用の文面の分数の書き直し (flow-8) は、📣 Discord 用の文面の撤去 (2026-11-27) で一緒に無くなった
+        assert.ok(!/_ANNOUNCE_RB_MAIN|_announceText/.test(html), '撤去した文面の書き直しが残っている');
         // 写しの鮮度: 見回り・前面に戻ったとき・レイド予定表は盤面のシーズン
         // 通知の行をいまのブロックから絞る (notify-3) / 再編成時間は ⚔️ が見えていなくても盤面を取り直す (data-3) / 過ぎた 📌 の確認は凸したかを言い切らない (now-3 / flow-7)
         assert.ok(/ptName: \(w\) => PT_ATTRS\.find\(x => x\.key === w\)\?\.name \|\| '', fromIdx \}\);/.test(fnR('async function _obNotifyDecide(', 'async function _obCarrySkips(') || html), '通知に fromIdx を渡していない');
@@ -15597,7 +15615,6 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.ok(html.includes('各ブロックの<strong>最後の数分は再編成時間</strong>') && html.includes('<strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です') && html.includes('<strong>⏱ 再編成時間</strong> (運営の記録でそのブロックの凸がまだの人だけ「A 朝 の凸は 8:40 まで」)'), 'ヘルプに再編成時間が無い');
         assert.ok(html.includes('<strong>🧱 ブロックの設定</strong> — 区切り (A・B・C…) と <strong>⏱ 再編成時間</strong>'), '👑 のタブに設定の場所が無い');
         assert.ok(html.includes('<strong>当日 (各ブロックの最後の ⏱ 再編成時間に)</strong>'), 'ツアーの運営の 1 日が古い');
-        assert.ok(html.includes('**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**'), 'Discord 用の文面に無い');
         assert.ok(/\| \*\*再編成時間\*\* \|/.test(rd('docs/用語集.md')), '用語集に無い');
         const notes = JSON.parse(rd('data/release-notes.json')).notes;
         { const n = notes.find(x => x.id === 2026110201); assert.ok(n, '再編成時間の項目が無い'); assert.match(n.title, /再編成時間/); }
