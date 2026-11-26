@@ -403,6 +403,11 @@ SELECT * FROM (
                       FROM to_regprocedure('public.ops_set_season_meta_key(bigint,text,jsonb)') AS f WHERE f IS NOT NULL), false),
         '⏱ 再編成時間 (seasons.metadata.rebuild_minutes) を保存できる鍵の白リスト。未適用でも「読んで混ぜて書く」で保存できる (同時編集に弱いだけ)。51 を流し直すと false に戻る → 59 も流し直す'
 
+    UNION ALL SELECT '60_build_drafts',
+        EXISTS (SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'build_drafts'),
+        '📝 🧱 組む の下書きの共有と開いているブロックの札 (未適用だと 🧮 の結果はその端末だけ・札も出ない — 組む・決定はいまのまま動く)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

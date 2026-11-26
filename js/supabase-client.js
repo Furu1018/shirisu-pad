@@ -1907,6 +1907,25 @@ window.supabaseLoadMemberDevices = async function () {
     return Array.isArray(data) ? data : [];
 };
 
+// ===== 📝 🧱 組む の下書きの共有・開いているブロック (60_build_drafts.sql・2026-11-27 ふるり「② 必要」) =====
+// kind 'draft' = 自分の 🧮 の結果 / 'open' = いま開いているブロック。1 行 = (シーズン, 運営, 種類) を上書きする。
+// ★ 未適用 (42P01) は黙って何もしない — 読む側は null = 分からない (下書きも札も出さない)。一度見つけたら読みに行かない (10 秒ごとに 404 を出さない)
+let _buildDraftsMissing = false;
+window.supabaseLoadBuildDrafts = async function (seasonId) {
+    if (!seasonId || _buildDraftsMissing) return null;
+    const { data, error } = await supabase.from('build_drafts').select('player_id, kind, payload, updated_at').eq('season_id', seasonId);
+    if (error) { if (_isMissingTableErr(error, 'build_drafts')) { _buildDraftsMissing = true; return null; } console.warn('[build drafts] 取得に失敗:', error.message); return null; }
+    return (data || []).map(r => ({ playerId: r.player_id, kind: String(r.kind), payload: (r.payload && typeof r.payload === 'object') ? r.payload : {}, updatedAt: r.updated_at || null }));
+};
+window.supabaseSaveBuildDraft = async function (seasonId, playerId, kind, payload) {
+    if (!seasonId || !Number.isFinite(Number(playerId)) || (kind !== 'draft' && kind !== 'open')) throw new Error('seasonId / playerId / kind 必須');
+    if (_buildDraftsMissing) return false;
+    const { error } = await supabase.from('build_drafts')
+        .upsert({ season_id: seasonId, player_id: Number(playerId), kind, payload: payload || {}, updated_at: new Date().toISOString() }, { onConflict: 'season_id,player_id,kind' });
+    if (error) { if (_isMissingTableErr(error, 'build_drafts')) { _buildDraftsMissing = true; return false; } throw error; }
+    return true;
+};
+
 // ===== 互換ゲート (41_client_gate.sql / L2 ⑦) =====
 // 予約を知らない古いアプリが「プラン表示・凸報告・配信」をするのを止める仕組み。
 // ★ **fail-open**: 未適用・通信断・行なしは null を返し、呼び出し側は「誰も止めない」に倒す。
@@ -2201,6 +2220,8 @@ const _BACKUP_TABLES = [
     'member_growth', 'member_growth_status',
     // 2026-10-08 追加 (📱 端末の状態・49): 本人の端末が報告した 許可/拒否・最後に開いた日時・版。device_id (TEXT) が主キー
     'member_devices',
+    // 2026-11-27 追加 (📝 🧱 組む の下書き・60): 運営の 🧮 の結果と開いているブロック (シーズン・運営の CASCADE で消える)
+    'build_drafts',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -2270,6 +2291,8 @@ const _RESTORE_TABLES = [
     ['member_growth_status', 'season_id', 'num'],
     //   member_devices = 📱 端末の状態 (player_id → CASCADE)。主キーは TEXT なので 'str'。他から参照されないので最後でよい
     ['member_devices', 'device_id', 'str'],
+    //   build_drafts = 📝 🧱 組む の下書き (season_id / player_id → CASCADE)。他から参照されないので最後でよい
+    ['build_drafts', 'season_id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');

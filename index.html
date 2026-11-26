@@ -3006,6 +3006,13 @@
         .ob-in { width: 56px; min-height: 40px; padding: 0 8px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
         .ob-rng > span { font-size: 12px; font-weight: 800; color: var(--t-body); }
         #obTrayClearWrap { margin-left: auto; }
+        /* ② 📝 下書きの共有・👤 開いているブロック (2026-11-27・SQL 60) */
+        .obb-who { align-self: flex-start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 800; color: var(--t-ink); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
+        .ob-draft { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; padding: 8px 10px; border-radius: 14px; border: 1.5px solid var(--ops); background: var(--ops-bg); font-size: 12px; color: var(--t-ink); line-height: 1.5; }
+        .ob-draft > span { flex: 1 1 220px; min-width: 0; }
+        .ob-draft.off { border-style: dashed; color: var(--t-body); }
+        .ob-draft-btn { margin-left: auto; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: linear-gradient(var(--grad-ops-a), var(--grad-ops-b)); color: var(--on-fill); font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; }
+        .ob-draft-btn:disabled { opacity: .55; cursor: progress; }
         .obt-pt { padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 900; } .obt small { font-size: 11px; color: var(--t-muted); }
         .obt .rigid { font-size: 11px; font-weight: 900; color: var(--ops-on); } .obt .flex, .obt .where { font-size: 11px; color: var(--t-muted); }   /* 先に置く人の文字は紫・赤は「置けない」(.ng) だけ (2026-11-02) */
         /* 「このブロックのみ / このブロックで最後」(第46回の反省 ②・2026-11-02): ピースの文字・置けないピースの赤・ボタンの人数・新しい段 */
@@ -10383,6 +10390,8 @@
                 }
                 // 🔄 🧱 組む が見えている間は、ほかの運営が置いた・外した駒を 10 秒ごとに確かめる (2026-11-12)。見えていなければ通信しない・この端末が処理中なら待つ (中で見る)
                 if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active') && typeof _obSyncPins === 'function') _obSyncPins().catch(() => { /* 次の周期で */ });
+                // ② 📝 ほかの運営の下書きと 👤 開いているブロック (🧱 組む が見えている間だけ・中で見る)
+                if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active') && typeof _obPeersTick === 'function') _obPeersTick().catch(() => { /* 次の周期で */ });
                 // 📣 当日の知らせは時間で変わる (再編成時間に入った・ブロックが始まった) — 見えている間は 10 秒ごとに描き直す (通信は送った記録の読み直しだけ・30 秒に 1 回まで)
                 if (_opsMode && document.getElementById('opsSecNotify')?.offsetParent != null && typeof renderOpsNotify === 'function') renderOpsNotify();
                 // ⏱ 再編成時間は 🧱 組む を開いていても盤面を取り直す (ヒーローの ✓ の残り・🧱 の始まりの盤面がほかの運営の ✓ を知るように: ⑥ レビュー data-3)。
@@ -15427,7 +15436,8 @@
             dec: null, decErr: null, decTriedAt: 0, decSeq: 0, seededFrom: null,   // dec = { row: 最新の決定の行 | null, basisId } (シンプル化 S4)
             skip: new Map(),   // ブロックの添字 → 外した駒の鍵 (人:属性:編成) の Set。🧮 で戻さない (端末のメモリだけ・置き直すか やり直す で消える: 2026-10-31 ふるり)
             notifySame: false,   // 「変更なしでも割当のある人に通知する」(2026-11-02 ふるり Q1 のスイッチ・既定 OFF・端末のメモリだけ)
-            lockOpen: null };   // 「このブロックのみ / 最後」の段を開いているか (null = 既定で開く・畳んだら覚える・端末のメモリだけ)
+            lockOpen: null,   // 「このブロックのみ / 最後」の段を開いているか (null = 既定で開く・畳んだら覚える・端末のメモリだけ)
+            peers: null, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, openKey: null, openAt: 0 };   // ② 📝 ほかの運営の下書きと札 (SQL 60)・自分の下書きを置く
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
@@ -15777,6 +15787,7 @@
                 _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.skip.clear(); _ob.sel = null; _ob.idx = null;
                 _ob.dec = null; _ob.decErr = null; _ob.seededFrom = null; _ob.notifySame = false;
                 _ob.syncPending = null; _ob.syncNote = null; _ob.flash = null; _ob.view = null;   // 🔄 前のシーズンの知らせ・🧭 見ているだけのピースを持ち越さない (選んだピース _ob.sel は上で外している)
+                _ob.peers = null; _ob.peersSig = null; _ob.draftSig = null; _ob.openKey = null; clearTimeout(_ob.draftTimer);   // ② 前のシーズンの下書き・札を持ち越さない
                 _obLoadPins(snap.season.id);
                 _obLoadDecided(snap.season.id);
             } else {
@@ -15796,6 +15807,7 @@
             _ob.phaseKey = _obPhaseKey(snap.season, blocks);
             // ① ブロックの大きなボタン。過ぎたブロック (再編成中のブロックは除く) は 1 行の文字にまとめる (押せない・段階 3 続き)
             const pastNames = [];
+            const peerOpen = _obPeerOpen();   // ② 👤 ほかの運営が開いているブロック
             const btns = blocks.map((b, i) => {
                 const o = ov[i];
                 if (o.past && rbNow && rbNow.idx === i) return `<div class="obb past rebuild" aria-disabled="true" title="${escapeHtml(`${b.short} の凸の時間は ${rbNow.from} で終わりました (再編成時間 ${rbNow.label})。✓ と結果は ⚔️ 戦況で`)}"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">⏱ 再編成中</span></div>`;
@@ -15808,7 +15820,7 @@
                 const lkTxt = lk ? [lk.only ? `このブロックのみ ${lk.only} 人` : '', lk.lastOnly ? `このブロックで最後 ${lk.lastOnly} 人` : ''].filter(Boolean).join(' · ') : '';
                 const lkHtml = lkTxt ? `<span class="lk${lk.ng ? ' ng' : ''}">${lk.ng ? '⚠ ' : ''}${lkTxt}</span>` : '';
                 return `<button type="button" class="obb${i === idx ? ' on' : ''}${lk && lk.ng ? ' lk-ng' : ''}" data-ob-blk="${i}" aria-pressed="${i === idx}"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span>`
-                    + `<span class="lv${o.allDone ? ' done' : (o.attacks ? '' : ' idle')}">${lvTxt}</span><span class="ct">${o.attacks ? `${o.attacks} 凸・${o.people} 人${built ? ' · 自動済み' : ''}` : 'まだ空'}${_ob.stale.has(i) ? ' · <b class="ob-stale">要組み直し</b>' : ''}</span>${lkHtml}<span class="minis">${minis}</span></button>`;
+                    + `<span class="lv${o.allDone ? ' done' : (o.attacks ? '' : ' idle')}">${lvTxt}</span><span class="ct">${o.attacks ? `${o.attacks} 凸・${o.people} 人${built ? ' · 自動済み' : ''}` : 'まだ空'}${_ob.stale.has(i) ? ' · <b class="ob-stale">要組み直し</b>' : ''}</span>${lkHtml}${peerOpen.has(i) ? `<span class="obb-who">👤 ${peerOpen.get(i).map(n => escapeHtml(n)).join('・')}</span>` : ''}<span class="minis">${minis}</span></button>`;
             }).join('');
             const pastHtml = pastNames.length ? `<p class="obb-past">過ぎた: ${pastNames.map(n => escapeHtml(n)).join(' · ')}</p>` : '';
             const lockHtml = _obLockHtml(lock, blocks, idx, pt);
@@ -15863,7 +15875,7 @@
             // 状態の文 (Lv4 / 撃破済み) は出したまま。決まった読み方 (幅 = ダメージ・駒の外し方) は「？」の中 (段階 3 続き)
             const stateNote = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
                 : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : '');
-            const howBody = [stateNote ? '' : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`, pinHint].filter(Boolean).join('<br>');
+            const howBody = [stateNote ? '' : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`, pinHint, _ob.peers != null ? '🧮 で組んだ結果は、ほかの運営にも下書きとして見えます (相手が取り込むまで何も変わりません)' : ''].filter(Boolean).join('<br>');
             const boardHelp = (stateNote ? `<p class="ob-note">${stateNote}</p>` : '')
                 + (howBody ? _qh('ob-board', stateNote ? '駒の外し方' : (pinHint ? '幅 = ダメージ · 押すと詳細 · ✕ で外す' : '幅 = ダメージ'), howBody) : '');
             // ③ ピース (このブロックに出られる人の模擬だけ)
@@ -15908,7 +15920,7 @@
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
-                    ${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
+                    ${_obDraftBannerHtml(ctx, idx)}${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}<span id="obTrayShown">${tt.filtered ? ` · 表示 ${tt.shown} / ${tt.total}` : ''}</span></span></div>
                             ${_qh('ob-tray', 'ピースの印と置き方', '「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。ピースを押すと 🧭 に詳細が出ます (置いたピースも・外れません)。外すのは盤の駒の ✕。上の並べ替え・絞り込みは見せ方だけです (選んだピースは見えなくなっても選んだまま)')}
@@ -15916,6 +15928,8 @@
                 </div>`;
             if (focIn) { const el = document.getElementById(focIn.id); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(focIn.s, focIn.e); } catch (_) { /* 選べない欄 */ } } }
             _obDelegate(host);
+            // ② 自分の 🧮 の結果が変わったら下書きを置き直す (1.5 秒にまとめて)。シーズンの最初の描画で何も無ければ置かない
+            { const ds = _obDraftSig(); if (ds !== _ob.draftSig) { const first = _ob.draftSig == null; _ob.draftSig = ds; if (!first || ds !== '') _obDraftSchedule(); } }
         }
         // 🧭 ピースのガイド (2026-11-12 ふるり「ピースを握った際・ポイントしたときに、そのメンバーのほかに凸できる時間・編成 (キャラのアイコン)・ダメージ、
         //   この編成を使うことでほかの編成にどう影響するかも見たい」)。中身は blockBuildDomain.pieceGuide が唯一 (見せるだけ・置けるかの判定は増やさない)。
@@ -15923,6 +15937,134 @@
         //     ポインタを乗せて出すと、中身を読みに・動かしに行くあいだに別のピースの上を通って中身が替わる。押したピースは押し直すまで残るので、枠の中を動かせる (PC もスマホも同じ動き)。
         //     ポインタを乗せて替える仕組み (乗せたピースを覚える変数・mouseover / mouseout の受け口・ガイドだけの描き直し) は外した — 戻さない
         //     選べないピース (置けない・使用済み・別のブロックに置いてある) も押せば出す = _ob.view { key, idx } (_obPress)。ブロックを替えたら出さない (idx が違う)
+        // ===== ② 📝 🧮 の下書きの共有・だれがどのブロックを開いているか (2026-11-27 ふるり「② 必要」・見本 88yepqLS55WK18h7j37nwi ②・SQL 60 build_drafts) =====
+        //   🧮 残りを自動で組む の結果は ✅ 決定するまでその端末だけだった (手で置いた駒は plan_reservations にあるので 🔄 で 10 秒で届く)。
+        //   ★ 自分の 🧮 の結果は自動でほかの運営に見せる (ふるり 11/27 おすすめ「自動」= 押し忘れが無い)。見せるだけ — 相手が取り込むまで何も変わらない
+        //   ★ 取り込むと、自分の 🧮 の結果は下書きに置き換わる (確認つき・ふるり 11/27 おすすめ)。✅ 決定はされない (メンバーには何も届かない)
+        //   ★ 載せるのは自分の 🧮 の結果だけ (決定から読み戻したブロック = fromDecided は全員が持っている)
+        //   ★ 取り込めるのは、下書きのいまより後ろのブロックがみな「いまの駒」で組んだもの (指紋 obPinsFp が同じ) のときだけ。違えば文だけ (押せないボタンを置かない)
+        //   ★ 開いているブロックの札 (👤) = 🧱 組む を開いている運営 (10 秒の見回りで読み・20 秒ごとに書く)。_OB_PEER_FRESH_MS より古い行は閉じたとみなす
+        //   ★ 60 未適用は何も出さない (読み出しが null)
+        const _OB_PEER_FRESH_MS = 45000;
+        const _obPlanIds = new WeakMap(); let _obPlanIdSeq = 0;
+        const _obPlanId = (p) => { if (!_obPlanIds.has(p)) _obPlanIds.set(p, ++_obPlanIdSeq); return _obPlanIds.get(p); };
+        // 自分の 🧮 の結果の指紋 (組んだ・外した・やり直した・取り込んだで変わる = プランの入れ替え)。何も無ければ ''
+        function _obDraftSig() {
+            const mine = [..._ob.plans].filter(([, p]) => p && p.fromDecided == null).map(([k, p]) => `${k}:${_obPlanId(p)}`).sort();
+            if (!mine.length) return '';
+            return mine.join(',') + '|' + [..._ob.skip].map(([k, s]) => `${k}:${s ? s.size : 0}`).sort().join(',');
+        }
+        function _obDraftSchedule() {
+            if (typeof window.supabaseSaveBuildDraft !== 'function') return;
+            clearTimeout(_ob.draftTimer);
+            _ob.draftTimer = setTimeout(() => { _obDraftPush().catch(() => { /* 次に変わったとき */ }); }, 1500);
+        }
+        async function _obDraftPush() {
+            const sid = _ob.pinsSeason, me = getCurrentIdentity();
+            if (!sid || !me?.id || !_opsMode || typeof window.supabaseSaveBuildDraft !== 'function') return;
+            const plans = {}, skip = {};
+            for (const [k, p] of _ob.plans) if (p && p.fromDecided == null) plans[k] = p;
+            for (const [k, set] of _ob.skip) if (plans[k] && set && set.size) skip[k] = [...set];
+            try { await window.supabaseSaveBuildDraft(sid, me.id, 'draft', { plans, skip, at: new Date().toISOString(), by: me.name || '' }); }
+            catch (e) { console.warn('[build draft] 下書きを置けませんでした:', e?.message || e); }
+        }
+        const _obPeerFresh = (r) => { const t = Date.parse(r && r.updatedAt); return Number.isFinite(t) && Date.now() - t < _OB_PEER_FRESH_MS; };
+        function _obPeerName(r) {
+            const p = (opsStore.get()?.players || []).find(x => String(x.id) === String(r.playerId));
+            return (p && p.name) || (r.payload && typeof r.payload.by === 'string' && r.payload.by) || '別の運営';
+        }
+        // 開いているブロック → 名前 (自分は除く・新しい行だけ)
+        function _obPeerOpen() {
+            const m = new Map();
+            for (const r of (_ob.peers || [])) {
+                if (r.kind !== 'open' || !_obPeerFresh(r)) continue;
+                const i = Number(r.payload && r.payload.idx);
+                if (!Number.isInteger(i)) continue;
+                if (!m.has(i)) m.set(i, []);
+                m.get(i).push(_obPeerName(r));
+            }
+            return m;
+        }
+        // このブロック (idx) を組んだほかの運営の下書き。新しい順。ok = いま取り込める (指紋が同じ)
+        function _obPeerDrafts(ctx, idx) {
+            const out = [], mine = _ob.plans.get(idx), pc = window.planChainDomain, sid = opsStore.get()?.season?.id;
+            for (const r of (_ob.peers || [])) {
+                if (r.kind !== 'draft') continue;
+                const plans = (r.payload && r.payload.plans && typeof r.payload.plans === 'object') ? r.payload.plans : null;
+                const p = plans ? plans[idx] : null;
+                if (!p || typeof p !== 'object' || !Array.isArray(p.levels) || Number(p.seasonId) !== Number(sid)) continue;
+                if (mine && mine.builtAt && mine.builtAt === p.builtAt) continue;   // もう同じ結果を持っている (取り込んだ)
+                const ks = Object.keys(plans).map(Number).filter(k => Number.isInteger(k) && k >= ctx.first && k < ctx.blocks.length && plans[k] && Array.isArray(plans[k].levels));
+                const ok = _ob.pins != null && ks.length > 0 && ks.every(k => plans[k].obPinsFp === _obPinsFp(_ob.pins, ctx.blocks, k));
+                out.push({ playerId: r.playerId, who: _obPeerName(r), at: p.builtAt || r.updatedAt, n: pc ? pc.attacksIn(p, ctx.blocks[idx]).length : 0, ok });
+            }
+            return out.sort((x, y) => String(y.at || '').localeCompare(String(x.at || '')));
+        }
+        function _obAgo(iso) {
+            const t = Date.parse(iso);
+            if (!Number.isFinite(t)) return '';
+            const m = Math.floor((Date.now() - t) / 60000);
+            return m < 1 ? 'たったいま' : (m < 60 ? `${m} 分前` : `${Math.floor(m / 60)} 時間前`);
+        }
+        function _obDraftBannerHtml(ctx, idx) {
+            const blk = ctx.blocks[idx];
+            const ds = blk ? _obPeerDrafts(ctx, idx).slice(0, 2) : [];
+            return ds.map(d => d.ok
+                ? `<div class="ob-draft"><span>📝 <b>${escapeHtml(d.who)} さんの下書き</b> — ${escapeHtml(blk.short)} を 🧮 で組みました (${d.n} 凸 · ${escapeHtml(_obAgo(d.at))})。取り込むと、あなたの 🧮 の結果はこの下書きに置き換わります (✅ 決定はまだされません)</span><button type="button" class="ob-draft-btn" data-ob-draft="${escapeHtml(String(d.playerId))}"${_ob.busy ? ' disabled' : ''}>取り込む</button></div>`
+                : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、手で置いた駒が変わったので取り込めません (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)</div>`).join('');
+        }
+        // ほかの運営の下書きを取り込む (確かめてから・指紋が合うブロックだけ)。後ろのブロックで取り込まなかった自分の結果は前提が変わった = 要組み直し
+        async function _obDraftImport(playerId) {
+            if (_ob.busy) return;
+            const snap = opsStore.get(); const ctx = snap ? _obCtx(snap) : null;
+            const row = (_ob.peers || []).find(r => r.kind === 'draft' && String(r.playerId) === String(playerId));
+            if (!ctx || !row) { showNotification('下書きが見つかりません (取り消された・組み直された)。少し待ってからもう一度'); return; }
+            const who = _obPeerName(row), plans = (row.payload && row.payload.plans) || {};
+            const pick = (c) => Object.keys(plans).map(Number).filter(k => Number.isInteger(k) && k >= c.first && k < c.blocks.length && plans[k] && Array.isArray(plans[k].levels)
+                && Number(plans[k].seasonId) === Number(snap.season.id) && plans[k].obPinsFp === _obPinsFp(_ob.pins, c.blocks, k)).sort((a, b) => a - b);
+            const idxs = pick(ctx);
+            if (!idxs.length) { showNotification('手で置いた駒が変わったので、この下書きは取り込めません'); renderOpsBuild(); return; }
+            const names = idxs.map(k => ctx.blocks[k].short).join('・');
+            if (!(await padConfirm(`${who} さんの下書きを取り込みますか？\n\n・あなたの ${names} の 🧮 の結果は、この下書きに置き換わります\n・✅ 決定はまだされません (メンバーには何も届きません)`, { ok: '取り込む' }))) return;
+            // 答えを待つ間に変わった (処理が始まった・シーズン・いまのブロック・駒) → 確かめた中身と違うので止める
+            const s2 = opsStore.get(), c2 = s2 ? _obCtx(s2) : null;
+            if (_ob.busy || !c2 || String(s2.season?.id) !== String(snap.season.id) || c2.first !== ctx.first || pick(c2).join() !== idxs.join()) {
+                renderOpsBuild(); showNotification('確かめている間に画面が変わりました。もう一度押してください'); return;
+            }
+            const got = new Set(idxs);
+            for (const k of idxs) {
+                _ob.plans.set(k, { ...plans[k] });
+                _ob.stale.delete(k);
+                const sk = row.payload && row.payload.skip && row.payload.skip[k];
+                if (Array.isArray(sk) && sk.length) _ob.skip.set(k, new Set(sk.map(String))); else _ob.skip.delete(k);
+            }
+            const lo = idxs[0];
+            for (const k of [..._ob.plans.keys()]) if (k > lo && !got.has(k)) { const hand = _obHandOnly(k); _ob.plans.delete(k); if (!hand) _ob.stale.add(k); }
+            showNotification(`📝 ${who} さんの下書きを取り込みました (${names})。✅ 決定はまだです`);
+            renderOpsBuild();
+        }
+        // 10 秒の見回り (🧱 組む が見えている間だけ): 開いているブロックを書き (変わったとき・20 秒ごと)、ほかの運営の下書きと札を読む。変わったときだけ描き直す
+        async function _obPeersTick() {
+            const host = document.getElementById('opsBuild'), snap = opsStore.get(), me = getCurrentIdentity();
+            if (!host || host.offsetParent == null || !_opsMode || !snap?.season || !me?.id || typeof window.supabaseLoadBuildDrafts !== 'function') return;
+            const sid = snap.season.id;
+            const key = `${sid}|${_ob.idx}`;
+            if (Number.isInteger(_ob.idx) && (_ob.openKey !== key || Date.now() - _ob.openAt > 20000)) {
+                _ob.openKey = key; _ob.openAt = Date.now();
+                window.supabaseSaveBuildDraft(sid, me.id, 'open', { idx: _ob.idx, at: new Date().toISOString() }).catch(() => { _ob.openKey = null; });
+            }
+            const seq = ++_ob.peersSeq;
+            const rows = await window.supabaseLoadBuildDrafts(sid);
+            if (seq !== _ob.peersSeq || Number(opsStore.get()?.season?.id) !== Number(sid)) return;   // 追い越された / シーズンが変わった
+            const others = Array.isArray(rows) ? rows.filter(r => String(r.playerId) !== String(me.id)) : null;
+            // 描き直すのは、見えるもの (新しい札・下書き) が変わったときだけ
+            const sig = others == null ? 'x' : others.filter(r => r.kind === 'draft' || _obPeerFresh(r))
+                .map(r => r.kind === 'open' ? `o${r.playerId}:${r.payload && r.payload.idx}` : `d${r.playerId}:${r.payload && r.payload.at}`).sort().join(',');
+            _ob.peers = others;
+            if (sig === _ob.peersSig) return;
+            _ob.peersSig = sig;
+            if (!_ob.busy && !_ob.sel) renderOpsBuild();
+        }
         // ⑥ 🧩 ピース置き場の札と、並べ替え・絞り込み (2026-11-27 ふるり「ワンボタンでピースをソート・属性やダメージのレンジで」「ボタンを押して開くより、見えてる範囲で入力してすぐに反映」・見本 ⑥)。
         //   ★ 見せ方だけ — 置けるかの判定 (canDrop / bossState)・ピースの中身・選び方は変えない。選んでいるピースが絞り込みで見えなくなっても選んだまま
         //   並べ替えは端末に覚える (shirisuko_ob_tray_sort_v1)・絞り込みは開いている間だけ (絞ったまま忘れて「ピースが足りない」と見間違えないように: ふるり 11/27 おすすめ)
@@ -16314,6 +16456,7 @@
                 const so = e.target.closest('[data-ob-sort]'); if (so) { _obTraySetSort(so.dataset.obSort); return; }
                 const fa = e.target.closest('[data-ob-fattr]'); if (fa) { _obTrayToggleAttr(fa.dataset.obFattr); return; }
                 if (e.target.closest('[data-ob-fclear]')) { _obTrayClear(); return; }
+                const dft = e.target.closest('[data-ob-draft]'); if (dft) { _obDraftImport(dft.dataset.obDraft); return; }   // ② 📝 ほかの運営の下書きを取り込む
                 const un = e.target.closest('[data-ob-unpin],[data-ob-drop]');
                 // ✕ (駒の右の ✕・下の「実行されない駒」の ✕ 外す) はいつでも外す
                 if (un) {
