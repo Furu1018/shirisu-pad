@@ -1,5 +1,5 @@
 // ============================================================================
-// 戦況の変化 (ボス撃破 / レベル開放 / 残り 1 体) の検知と、定時の戦況まとめ — 純ロジック
+// 戦況の変化 (ボス撃破 / レベル開放 / 残り 1 体) の検知と、戦況のまとめの文面 — 純ロジック
 // ----------------------------------------------------------------------------
 // 「前回見た盤面」と「いまの盤面」を比べて、通知すべき変化だけを返す。
 // DOM も通信も触らないので単体テストできる (tests/run-tests.mjs)。
@@ -77,20 +77,12 @@
         };
     }
 
-    // ---- 定時の戦況まとめ (チームの状況・2026-10-07 ユーザー決定「節目だけ全員に」) ----
-    // レイド当日の 12・18・21・24 時に 1 通ずつ。送り手は運営端末の定期チェックで、二重送信は raid_event_notices の一意制約で防ぐ。
-    const DIGEST_HOURS = [12, 18, 21, 0];   // JST。0 = 24 時 (同じレイド日の深夜)
-
-    /** その時刻 (JST の時 0-23) が定時まとめの時刻なら、その印 ('h12' など)。違えば null */
-    function digestSlot(hourJst) {
-        // ★ null・空は「分からない」(Number(null) は 0 = 24 時のまとめに化ける)
-        if (hourJst == null || hourJst === '') return null;
-        const h = Number(hourJst);
-        return DIGEST_HOURS.includes(h) ? `h${String(h).padStart(2, '0')}` : null;
-    }
+    // ---- 戦況のまとめ (チームの状況・2026-10-07 ユーザー決定「節目だけ全員に」) ----
+    // 2026-11-27 から定時 (12・18・21・24 時) に自動で送らない — ⚔️ 戦況の「📣 当日の知らせ」で運営が押したときに送る (ふるり「通知は運営がボタンを押したときだけ」)。
+    //   定時の印 (DIGEST_HOURS / digestSlot) はそのとき撤去した
 
     /**
-     * 定時まとめの文面。★ 数字は盤面そのもの (運営の HP 更新と凸報告) — 画面と別の数え方をしない
+     * 戦況のまとめの文面 (hourJst = 送る時刻)。★ 数字は盤面そのもの (運営の HP 更新と凸報告) — 画面と別の数え方をしない
      * @param {Object} a
      * @param {number} a.hourJst      0-23
      * @param {number} a.level        いまのレベル
@@ -151,5 +143,5 @@
         return { rows: out, changed: out.filter(x => x.changed).length, read: out.filter(x => x.read).length, unread: out.filter(x => !x.read).length };
     }
 
-    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, DIGEST_HOURS, digestSlot, digestText, bossHpDiff };
+    root.raidEventsDomain = { deadBossNumbers, aliveBossNumbers, snapshotBoard, diffRaidEvents, digestText, bossHpDiff };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

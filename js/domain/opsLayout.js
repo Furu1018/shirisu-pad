@@ -37,6 +37,8 @@
         //   終了にも出す (BlaBlaLINK との突き合わせ・報告漏れの確認)。幅 12 で単独の行 (当日 = 残り12 の次、終了 = 先頭)
         // ✓ 凸の記録 (シンプル化 S5・2026-10-27 ふるり): Discord の報告を見て運営が決定の時間割の行に ✓ を付ける (数字は入れない)。当日の運営の主作業 → ⚔️ 戦況で 結果の取り込み の前
         { id: 'opsSecAttackTap', title: '✓ 凸の記録',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle' },
+        // 📣 当日の知らせ (2026-11-27 ふるり「通知は運営がボタンを押したときだけ」): 時間で出していた 3 つ (戦況のまとめ・再編成の始まり・ブロックの始まり) を運営が押して送る。当日だけ・幅 12 で単独の行
+        { id: 'opsSecNotify',    title: '当日の知らせ',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 12, tab: 'battle' },
         // S5: 数字を入れる 結果の取り込み は「詳しく」(タブの中でも畳んで始める = tabOpen: false。開いた記憶があればそれ)
         { id: 'opsSecAttackCheck', title: '結果の取り込み',      group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day', 'end'], span: 12, tab: 'battle', tabOpen: false },
         // 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18): Discord に貼られたスクショを運営が本人の代わりに登録。準備〜当日 (当日は畳む)。

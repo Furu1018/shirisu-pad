@@ -309,6 +309,29 @@ window.supabaseLoadAttackSkips = async function (seasonId) {
         return null;
     }
 };
+// ===== 📣 当日の知らせ (2026-11-27 ふるり「通知は運営がボタンを押したときだけ」) =====
+// 運営が押して送った知らせの記録。置き場は raid_event_notices (29) — 新しい表を作らない。
+//   kind 'digest_m' (戦況のまとめ・ref = m<送った時刻>) / 'rebuild_start' / 'block_start' (ref = ブロックの鍵|人 = 送るときの確保と同じ行)
+// 戻り値: [{ kind, ref, sent, claimed_at, notified_by }]。取れなければ null (= 分からない。空の配列と混ぜない)
+window.supabaseLoadRaidNotices = async function (seasonId, kinds) {
+    if (!seasonId || !Array.isArray(kinds) || !kinds.length) return [];
+    try {
+        const { data, error } = await supabase.from('raid_event_notices').select('kind, ref, sent, claimed_at, notified_by')
+            .eq('season_id', seasonId).in('kind', kinds.map(String));
+        if (error) throw error;
+        return (data || []).map(r => ({ kind: String(r.kind), ref: String(r.ref), sent: !!r.sent, claimed_at: r.claimed_at || null, notified_by: r.notified_by ?? null }));
+    } catch (e) {
+        console.warn('[raid notices] 取得に失敗:', e?.message || e);
+        return null;
+    }
+};
+// 送った記録を 1 行 (戦況のまとめ)。同じ ref は 1 件
+window.supabaseRecordRaidNotice = async function (seasonId, kind, ref, byPlayerId = null) {
+    if (!seasonId || !kind || !ref) throw new Error('seasonId / kind / ref 必須');
+    const { error } = await supabase.from('raid_event_notices')
+        .insert({ season_id: seasonId, kind: String(kind), ref: String(ref), sent: true, notified_by: byPlayerId || null, claimed_at: new Date().toISOString() });
+    if (error && error.code !== '23505') throw error;
+};
 // on = true で印を付ける (2 回押しても 1 件)、false で外す
 window.supabaseSetAttackSkip = async function (seasonId, key, on, byPlayerId = null) {
     if (!seasonId || !key) throw new Error('seasonId / key 必須');

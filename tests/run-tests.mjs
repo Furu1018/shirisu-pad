@@ -4270,7 +4270,7 @@ console.log('\nopsLayoutDomain:');
         // (順番は別のテストが見る — ここは「どれが開くか」だけ)
         const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true)).sort();
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
-        assert.deepEqual(openDay, ['opsSecAttackCheck', 'opsSecAttackTap', 'opsSecBoss', 'opsSecMembers'], '当日の既定で開くカードが違う');   // ✓ 凸の記録・結果の取り込みは当日の主作業
+        assert.deepEqual(openDay, ['opsSecAttackCheck', 'opsSecAttackTap', 'opsSecBoss', 'opsSecMembers', 'opsSecNotify'], '当日の既定で開くカードが違う');   // ✓ 凸の記録・結果の取り込みは当日の主作業
         assert.deepEqual(openPre, ['opsSecBlocks', 'opsSecMembers', 'opsSecMockIntake', 'opsSecPlan'], '前日の既定で開くカードが違う');   // 📸 模擬の取り込み・🧱 ブロックの設定は前日に開く
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
         assert.ok(!dom.CARDS.some(c => c.always), 'always (畳めない) のカードは無い (運営アクションは 2026-11-16 に撤去)');
@@ -4529,7 +4529,7 @@ console.log('\nopsStageDomain:');
         // ✅ 凸報告の確認 (③-f) も 12 で単独の行: 当日は 残り12 の次 (取り込みの前)、終了は先頭
         // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
         assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPlan', 'opsSecBlocks']);   // 凸の予約カードは 2026-11-16 に撤去
-        assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecAttackCheck', 'opsSecMockIntake', 'opsSecPlan']);   // 運営アクション・ペース・直近・残り は 2026-11-16 に撤去 / ✓ 凸の記録 は 結果の取り込み の前
+        assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecNotify', 'opsSecAttackCheck', 'opsSecMockIntake', 'opsSecPlan']);   // 📣 当日の知らせ (2026-11-27) は ✓ 凸の記録 の次   // 運営アクション・ペース・直近・残り は 2026-11-16 に撤去 / ✓ 凸の記録 は 結果の取り込み の前
         assert.deepEqual(vis('prep'),['opsSecMockIntake', 'opsSecSeason', 'opsSecBlocks', 'opsSecPush', 'opsSecGrowth']);
         assert.deepEqual(vis('end'), ['opsSecAttackTap', 'opsSecAttackCheck', 'opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
@@ -5801,7 +5801,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // 見回り: 10 秒ごとの 締め凸依頼・調整中一覧・予約 は読まない / 30 秒ごとの予約の点検も無い。撃破の検知・役割・配信・時間の通知は残る
         const poll = html.match(/\n        function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(poll.length > 2000 && !/finish|Reservations|supabaseGetActive/i.test(poll.replace(/\/\/.*$/gm, '')), '見回りが締め凸の依頼・状態・予約を読んでいる');
-        for (const keep of ['_checkRaidEvents()', '_syncOpsRole()', 'renderMyPublishedPlan(id)', 'renderRaidTab(id)', '_checkAvailReminders(r.season)', '_checkRaidDigest(r.season)', '_obSyncPins()', '_refreshClientGateIfStale()']) {
+        for (const keep of ['_checkRaidEvents()', '_syncOpsRole()', 'renderMyPublishedPlan(id)', 'renderRaidTab(id)', 'renderOpsNotify()', '_obSyncPins()', '_refreshClientGateIfStale()']) {
             assert.ok(poll.includes(keep), `見回りから ${keep} が消えた (撤去で巻き込んだ)`);
         }
         // 撃破の検知 (_checkRaidEvents): 予約・締め凸依頼の後片付けは無い。通知・戦況まとめ・残り 1 体は残る
@@ -6794,15 +6794,8 @@ console.log('\navailabilityDomain (参加可能時間):');
         assert.equal(av.labelOf([], { flexTime: true }), '⏳ 隙間時間型 (時刻は約束しない)');
         assert.equal(av.labelOf(H(1, 2)), '翌1〜翌3時 (2時間)'); assert.equal(av.labelOf(H(3, 4)), '翌3〜翌5時 (2時間)');
     });
-    test('★ windowStartsAt: 区間の始まりだけ真 (途中の時刻では毎時通知しない) / 5時は並びの先頭', () => {
+    test('windowAt: その時刻を含む区間 (無ければ null)', () => {
         const s = H(9, 10, 11, 21, 22);
-        assert.equal(av.windowStartsAt(s, 9), true);
-        assert.equal(av.windowStartsAt(s, 10), false);
-        assert.equal(av.windowStartsAt(s, 21), true);
-        assert.equal(av.windowStartsAt(s, 12), false, 'OFF の時刻を始まりにしている');
-        assert.equal(av.windowStartsAt(H(5, 6), 5), true, '5時は並びの先頭なので始まり');
-        // ★ 翌4時と5時は同じ「レイド日」の両端 (5時始まり・翌4時終わり)。当日の5時に4時から続いている人はいない
-        assert.equal(av.windowStartsAt(H(4, 5), 5), true, 'レイド日は5時始まり。翌4時は前の枠ではない');
         assert.deepEqual(av.windowAt(s, 10), { start: 9, end: 11, hours: 3 });
         assert.equal(av.windowAt(s, 12), null);
     });
@@ -6814,20 +6807,6 @@ console.log('\navailabilityDomain (参加可能時間):');
         assert.equal(av.canAttackWithin([], 10, 2), false, '未登録は「参加可能時間が分からない」');
         assert.equal(av.canAttackWithin([], 10, 2, { flexTime: true }), true);
         assert.equal(av.canAttackWithin([], 10, null), true, '制限なしは全員');
-    });
-    test('★ reminderTargets: 残凸あり・今期参加できる・隙間型でない・その時刻が区間の始まり の人だけ', () => {
-        const ps = [
-            { id: 1, name: 'A', attackCount: 0, availableSlots: H(13, 14, 15) },          // 13時が始まり
-            { id: 2, name: 'B', attackCount: 3, availableSlots: H(13, 14) },              // 3凸済み
-            { id: 3, name: 'C', attackCount: 1, availableSlots: H(12, 13) },              // 13時は途中
-            { id: 4, name: 'D', attackCount: 0, availableSlots: H(13), flexTime: true },  // 隙間型は時刻を約束しない
-            { id: 5, name: 'E', attackCount: 0, availableSlots: H(13), unavailableThisSeason: true },
-            { id: 6, name: 'F', attackCount: 2, availableSlots: H(13) },
-        ];
-        const t = av.reminderTargets(ps, 13);
-        assert.deepEqual(t.map(x => [x.id, x.remaining]), [[1, 3], [6, 1]]);
-        assert.deepEqual(t[0].window, { start: 13, end: 15, hours: 3 });
-        assert.deepEqual(av.reminderTargets(ps, 14), [], '区間の途中では誰にも送らない');
     });
 }
 
@@ -6896,34 +6875,19 @@ console.log('\nfinishDomain (人数・時間範囲):');
         const close = html.match(/function closeMyAvailModal\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/renderMyAvailStrip\(id\)/.test(close), '変更のあと帯を描き直していない');
     });
-    test('★ 配線: 当日、時間帯の始まりに「参加可能時間になりました」を本人へ (運営端末が送り手・二重送信よけ)', () => {
+    test('★ 配線: ⏰「参加可能時間になりました」の自動の知らせは無い (2026-11-27 ふるり「通知は運営がボタンを押したときだけ」→ 📣 当日の知らせ の「ブロックの始まり」へ)', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
-        const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(fn, '通知の関数が無い');
-        assert.ok(/if \(!raidDay \|\| season\.hard_date !== raidDay\) return;/.test(fn), '当日以外にも送る');
-        // ★ 暦の日付で判定しない (翌0時・1時の枠の人に前夜の 0 時に届いていた・第45回)
-        assert.ok(/const now = Date\.now\(\);\s*\n\s*const raidDay = window\.opsStageDomain\?\.raidDayKey\?\.\(now\);/.test(fn) && !/todayJst/.test(fn), 'レイド日を暦の日付で見ている');
+        assert.ok(!/_checkAvailReminders|'avail_start'|reminderTargets/.test(html), '自動の参加可能時間の知らせが残っている');
+        assert.ok(typeof globalThis.availabilityDomain.reminderTargets === 'undefined' && typeof globalThis.availabilityDomain.windowStartsAt === 'undefined', '使わなくなったドメインの関数が残っている');
+        // レイド日は 5 時〜翌 4 時 (暦の日付で見ない・第45回で踏んだ) — 📣 当日の知らせ が使う
         const rk = globalThis.opsStageDomain?.raidDayKey;
         if (typeof rk === 'function') {
             assert.equal(rk(Date.parse('2026-10-10T15:30:00Z')), '2026-10-10', '翌0時半 (10/11 0:30 JST) がレイド日 10/10 に入らない');
             assert.equal(rk(Date.parse('2026-10-09T15:30:00Z')), '2026-10-09', '前夜 0時半 (10/10 0:30 JST) がレイド日に入っている');
             assert.equal(rk(Date.parse('2026-10-09T20:00:00Z')), '2026-10-10', '当日 5時がレイド日でない');
         }
-        assert.ok(/dom\.reminderTargets\(players, hour\)/.test(fn), '相手の判定をドメインでやっていない');
-        assert.ok(/supabaseClaimRaidNotice\(season\.id, 'avail_start', ref, me\?\.id\)/.test(fn), '二重送信よけ (確保) が無い');
-        assert.ok(/supabaseMarkRaidNoticeSent\(season\.id, 'avail_start', ref\)/.test(fn), '送信済みを記録していない');
-        assert.ok(/supabaseReleaseRaidNotice\(season\.id, 'avail_start', ref\)/.test(fn), '送信失敗で確保を戻していない');
-        assert.ok(/ignoreAvailability: true/.test(fn) && /playerIds: \[t\.id\]/.test(fn), '本人だけに送っていない');
-        assert.ok(fn.includes('参加可能時間になりました'));
-        // Codex指摘 (2026-09-08): 残凸は送る直前に本人の実凸で見直す / 1人の失敗で残りを落とさない / 30分を過ぎたら送らない
-        assert.ok(/supabaseLoadMyAttacks\?\.\(t\.id, season\.id, season\.hard_date\)/.test(fn), '残凸を取り直していない');
-        assert.ok(/if \(remaining <= 0\) continue;/.test(fn));
-        assert.ok(/for \(const t of targets\) \{\s*\n[^\n]*\n\s*try \{/.test(fn), '人ごとに try で囲んでいない');
-        assert.ok(/if \(minute >= 30\) return;/.test(fn), '遅れすぎた通知を止めていない');
         // 「何時まで待てば誰が最適？」は絞る前の全員で
         assert.ok(/_buildFinishTimeline\(attrKey, candidatesAll, remainingHpB\)/.test(html), '時間別ベストを範囲で絞ってしまっている');
-        // 定期チェックから呼ばれる (運営ONの端末)
-        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkAvailReminders === 'function'\) \{\s*\n\s*_checkAvailReminders\(r\.season\)/.test(html), '定期チェックから呼んでいない');
     });
 }
 
@@ -8854,36 +8818,6 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(await mk(() => ({ data: null, error: null })).fn(9, '2026-10-10'), []);
     });
 
-    await testAsync('★ 実行: ⏰ 参加可能時間の通知はレイド日 (5時〜翌4時) だけ・前夜 0 時台は送らない (第45回で踏んだ)', async () => {
-        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
-        const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(fn, '_checkAvailReminders が無い');
-        const runAt = async (isoJst, { stage = globalThis.opsStageDomain } = {}) => {
-            const t = Date.parse(isoJst);
-            const R = Date;
-            const FD = class extends R { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } };
-            const sent = [];
-            const w = {
-                opsStageDomain: stage,
-                availabilityDomain: { reminderTargets: (ps, h) => ps.filter(p => p.hours.includes(h)).map(p => ({ id: p.id, name: p.name, remaining: 3, window: null })), rangeLabel: () => '' },
-                supabaseClaimRaidNotice: async () => 'claimed', supabaseMarkRaidNoticeSent: async () => {}, supabaseReleaseRaidNotice: async () => {},
-                supabaseLoadMyAttacks: async () => [],
-                sendPushNotification: async (m) => { sent.push(m.tag); },
-            };
-            const players = [{ id: 19, name: '翌1時の人', hours: [1] }, { id: 24, name: '5時の人', hours: [5] }];
-            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', `${fn}\nreturn _checkAvailReminders;`)(
-                w, { get: () => ({ players }) }, () => ({ id: 1 }), FD, { warn() {}, log() {} });
-            await f({ id: 36, hard_date: '2026-10-10' });
-            return sent;
-        };
-        assert.deepEqual(await runAt('2026-10-10T01:05:00+09:00'), [], '前夜 1 時 (レイド日の前) に送っている');
-        assert.deepEqual(await runAt('2026-10-11T01:05:00+09:00'), ['avail-start-36-19-h01'], '本当の翌1時に送っていない');
-        assert.deepEqual(await runAt('2026-10-10T05:10:00+09:00'), ['avail-start-36-24-h05'], '当日 5 時に送っていない');
-        assert.deepEqual(await runAt('2026-10-11T05:05:00+09:00'), [], '翌5時 (次の日) に送っている');
-        assert.deepEqual(await runAt('2026-10-11T01:40:00+09:00'), [], '30 分を過ぎて送っている');
-        assert.deepEqual(await runAt('2026-10-11T01:05:00+09:00', { stage: null }), [], 'opsStageDomain が無いのに送っている (安全側に倒れていない)');
-    });
-
     test('★ 配線: 🧱 ブロック制 ② — 条件「ブロックの人」/ ブロックの選択 / 算出に渡す / 焼き込み / ピル / シーズン編集で区切りを保存 (2026-10-18)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
@@ -9733,7 +9667,7 @@ console.log('\ngrowthDomain:');
         const byTab = (t) => L.CARDS.filter(c => c.tab === t).map(c => c.id);
         assert.deepEqual(L.TAB_KEYS, ['members', 'build', 'battle', 'master']);
         assert.deepEqual(byTab('members'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecDiscord', 'opsSecPush'], '一斉通知は運営も使う (ユーザー決定) — 👥 メンバーに置く / Discord 用の文面も (2026-10-23)');
-        assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定) / S5: ✓ 凸の記録 は 結果の取り込み の前');
+        assert.deepEqual(byTab('battle'), ['opsSecBoss', 'opsSecFinish', 'opsSecAttackTap', 'opsSecNotify', 'opsSecAttackCheck'], '締め凸検索は戦況に残す (ユーザー決定) / S5: ✓ 凸の記録 は 結果の取り込み の前');
         assert.deepEqual(byTab('master'), ['opsSecSeason', 'opsSecBlocks', 'opsSecGrowth']);
         assert.deepEqual(byTab('build'), ['opsSecPlan'], '🧱 組む は「凸プランを組む」だけ (凸の予約カードは 2026-11-16 に撤去)');
         assert.ok(L.CARDS.every(c => L.TAB_KEYS.includes(c.tab)), 'タブの無いカードがある (画面から外すカード = tab: null は 2026-11-16 に撤去した)');
@@ -12354,9 +12288,8 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.deepEqual(RE.aliveBossNumbers([B(3, 100, 1), B(1, 0, 0), B(2, 100, 0), B(5, 50, 50)]), [3, 5]);
         assert.equal(RE.diffRaidEvents(null, after).lastBoss, null);
     });
-    test('★ 節目: 定時の戦況まとめは 12・18・21・24 時だけ / 文面は盤面の数字 (撃破・残り %・未設定・Lv4・全員完了)', () => {
-        assert.deepEqual([12, 18, 21, 0].map(RE.digestSlot), ['h12', 'h18', 'h21', 'h00']);
-        assert.deepEqual([5, 13, 23, 24, null, 'x'].map(RE.digestSlot), [null, null, null, null, null, null]);
+    test('★ 節目: 戦況のまとめの文面は盤面の数字 (撃破・残り %・未設定・Lv4・全員完了)・定時の印は無い (2026-11-27 から運営が押したとき)', () => {
+        assert.ok(RE.digestSlot === undefined && RE.DIGEST_HOURS === undefined, '定時の印が残っている');
         const m = RE.digestText({ hourJst: 21, level: 2, bosses: [B(3, 100, 18.2), B(1, 100, 0), B(2, 100, 62), B(4, 0, 0), B(5, 1000, 1)], done: 52, capacity: 93 });
         assert.equal(m.title, '📊 戦況まとめ (21時) — Lv2・残り 41 凸');
         assert.equal(m.body, '凸 52/93\nB1 撃破 · B2 残62% · B3 残18% · B4 — · B5 残1%', '番号順でない / 0% に丸めて撃破に見える');
@@ -12415,11 +12348,12 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.ok(/if \(ev\.lastBoss != null\) \{[\s\S]*?const lst = lb \? await window\.supabaseClaimRaidNotice\(cur\.seasonId, 'last_boss', lref, me\?\.id\) : 'done';[\s\S]*?if \(lst === 'claimed'\) \{\s*lsent = await _notifyLastBoss\(cur\.seasonId, lb, level\);\s*if \(lsent\) await window\.supabaseMarkRaidNoticeSent\(cur\.seasonId, 'last_boss', lref\);\s*else await window\.supabaseReleaseRaidNotice\(cur\.seasonId, 'last_boss', lref\);/.test(ce), '残り 1 体の通知が 確保 → 送信 → 完了 / 失敗で戻す の形でない');
         assert.ok(/if \(!lsent && ev\.defeated\.length\) cur\.dead\.delete\(ev\.defeated\[0\]\);/.test(ce), '送れなかった・確保中のとき手元の記録を戻していない (次の検知でやり直せない — Codex指摘)');
         assert.ok(/async function _notifyLastBoss\(seasonId, boss, level\) \{[\s\S]*?kind: 'team',/.test(html));
-        const dg = html.match(/async function _checkRaidDigest\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(SD\.raidDayKey\(Date\.now\(\)\) !== String\(season\.hard_date \|\| ''\)\.slice\(0, 10\)\) return;/.test(dg), '定時まとめがレイド当日 (翌 4 時まで) 以外にも出る');
-        assert.ok(/const st = await window\.supabaseClaimRaidNotice\(season\.id, 'digest', slot, me\?\.id\);\s*if \(st !== 'claimed'\) return;/.test(dg), '二重送信よけが無い');
-        assert.ok(/const snap = await opsStore\.load\(\);[\s\S]*?kind: 'team', title: msg\.title, body: msg\.body[\s\S]*?await window\.supabaseMarkRaidNoticeSent\(season\.id, 'digest', slot\);\s*\} catch \(e\) \{[\s\S]*?await window\.supabaseReleaseRaidNotice\(season\.id, 'digest', slot\);/.test(dg), '盤面を取り直してから送っていない / 失敗で確保を戻していない');
-        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkRaidDigest === 'function'\) \{\s*_checkRaidDigest\(r\.season\)\.catch/.test(html), '定期チェックから呼んでいない');
+        // 📊 戦況のまとめ (旧 定時の戦況まとめ) は押したときだけ (2026-11-27): 盤面を取り直す → 確認 → 全員へ → 送った記録
+        assert.ok(!/_checkRaidDigest|'digest', slot/.test(html), '定時の自動のまとめが残っている');
+        const dg = html.match(/async function _opsSendDigest\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const snap = await opsStore\.load\(\);[\s\S]*?const msg = _opsDigestMsg\(snap\);\s*if \(!\(await showPushPreview\(\[\{ title: msg\.title, body: msg\.body, allSubscribers: true \}\]\)\)\) return;/.test(dg), '盤面を取り直してから / 確認を見せてから送っていない');
+        assert.ok(/kind: 'team', title: msg\.title, body: msg\.body/.test(dg) && /supabaseRecordRaidNotice\(snap\.season\.id, 'digest_m', `m\$\{Date\.now\(\)\}`/.test(dg), '全員へ送っていない / 送った記録を残していない');
+        assert.ok(/D\.digestText\(\{ hourJst: Number\(String\(getCurrentSlotJST\(\)\)\.slice\(1\)\)/.test(html), '文面をドメインで作っていない');
     });
     test('★ 配線: 疎通確認 — 運営は 記録 → 送信 (二重押しよけ・届いた人には送り直さない) / 本人はタップで伝わる・この端末で通知が無効なら「届きました」を出さない', () => {
         const send = html.match(/async function handleOpsPushCheckSend\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -15092,10 +15026,10 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.equal(run('2026-11-28T08:45:00+09:00', { rows: rowsOld, pub: rowsOld[0] }).decided, false, '再編成の前の決定を「決定した」と言う');
         assert.equal(run('2026-11-28T08:45:00+09:00', { rows: null, pub: null }).decided, null);
     });
-    await testAsync('★ 実行: ⏱ 再編成の始まりの通知 (Q13) — そのブロックの割当で凸がまだの人だけ・1 人 1 通・10 分を過ぎたら送らない・済んだ人 /「凸していない」の人 / 読み直しで済んでいた人に送らない', async () => {
-        const fn = fnR('        const REBUILD_NOTICE_DELAY = 3, REBUILD_NOTICE_MIN = 13;', '        // ---- GB比較');
+    await testAsync('★ 実行: 📣 当日の知らせ — ⏱ 再編成の始まり / 🧱 ブロックの始まり は押したときだけ・そのブロックの割当で凸がまだの人だけ・1 人 1 通・送った人には送らない・確認でやめたら送らない (2026-11-27)', async () => {
+        const mod = fnR('        // ===== 📣 当日の知らせ (2026-11-27', '        // ---- GB比較');
         const ad = fnOf('function _atkCheckDecidedPlan(plan, season)'), dk = fnOf('function _raidDoneKeys(board, blocks, plan)');
-        assert.ok(fn && ad && dk, '関数が見つからない');
+        assert.ok(mod && ad && dk, '関数が見つからない');
         const kA = '5-8', kB = '9-12';
         // 決定の凸はブロックの中の時刻 (hourIdx) を持つ (build が入れる)。数字の報告の消し込み (doneInPrev) はブロックの時刻で凸を拾う
         const at = (memberId, block = kA, slot = 1) => ({ memberId, memberName: `m${memberId}`, block, hourIdx: block === kA ? 0 : 4, loadoutSlot: slot, dmgB: 10 });
@@ -15107,7 +15041,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const run = async (iso, o = {}) => {
             const t = Date.parse(iso), R0 = Date;
             const FD = class extends R0 { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } };
-            const sent = [], claims = [], released = [];
+            const sent = [], claims = [], released = [], notes = [], previews = [];
             // 2 は ✓ 済み (plan_key)・3 は数字の報告 (人|レベル|ボス) で済み・1 は A に 2 凸残り・4 は B だけ
             const players = [{ id: 1, attacks: [], availableSlots: ['h05', 'h10'], ...(o.p1 || {}) }, { id: 2, attacks: [{ plan_key: pk(2, 1), boss_number: 1, level: 1 }] }, { id: 3, attacks: [{ boss_number: 1, level: 1 }] }, { id: 4, attacks: [] }];
             const w = {
@@ -15116,18 +15050,21 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
                 supabaseMarkRaidNoticeSent: async () => {}, supabaseReleaseRaidNotice: async (sid, kind, ref) => { released.push(ref); },
                 supabaseGetPublishedPlans: async () => (o.pubs || [pub]),
                 supabaseLoadAttackSkips: async () => (o.skips === undefined ? new Set() : o.skips),
+                supabaseLoadRaidNotices: async () => (o.sentRows === undefined ? [] : o.sentRows),
                 supabaseLoadMyAttacks: async (id) => ((o.my && o.my[id]) || players.find(p => String(p.id) === String(id))?.attacks || []),
                 sendPushNotification: async (m) => { if (o.sendFail) throw new Error('x'); sent.push(m); },
             };
-            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', `${ad}\n${dk}\n${fn}\nreturn _checkRebuildStart;`)(
-                w, { get: () => ({ season: o.season || s20, players }) }, () => ({ id: 99 }), FD, { warn() {}, log() {} });
-            await f(o.season || s20);
-            return { sent, claims, released };
+            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', 'showNotification', 'showPushPreview', 'PT_ATTRS',
+                `${ad}\n${dk}\n${mod}\nreturn _opsSendBlockNotice;`)(
+                w, { get: () => ({ season: o.season || s20, players }) }, () => ({ id: 99 }), FD, { warn() {}, log() {} },
+                (m) => { notes.push(m); }, async (g) => { previews.push(g); return !o.cancel; }, []);
+            await f(o.mode || 'rebuild');
+            return { sent, claims, released, notes, previews };
         };
-        // ★ 始まりから 3 分待つ (✓ は再編成時間に付けるので、始まりちょうどに送ると凸を済ませた人にも「まだ」と届いた: ⑥ レビュー notify-2 / flow-4)
-        assert.deepEqual((await run('2026-11-28T08:42:59+09:00')).sent, [], '✓ を付ける時間をおかずに送っている');
         let r = await run('2026-11-28T08:43:00+09:00');
         assert.deepEqual(r.sent.map(m => m.playerIds), [['1']], '凸がまだの人 (1) だけに送っていない');
+        assert.equal(r.previews.length, 1, '送る前に宛先と文面を見せていない');
+        assert.deepEqual(r.previews[0].map(g => g.recipients.map(x => x.id)), [['1']]);
         assert.equal(r.sent[0].title, '⏱ A 朝 の凸は 8:40 まで');
         assert.equal(r.sent[0].body, 'いまから 9:00 までは再編成時間です (凸しない時間)。運営の記録ではまだ ✓ の無い A 朝 の凸が 2 凸あります。もう凸して Discord に貼ったなら、そのままで大丈夫です (運営が ✓ を付けます)。まだなら、残りは運営が B 午前 以降で組み直します。');
         // 後ろのブロックに出られない人 (このブロックのみ) には「組み直します」と約束しない / 出られるか分からなければ言い切らない (⑥ レビュー notify-1 / flow-5)
@@ -15136,15 +15073,15 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.match((await run('2026-11-28T08:43:00+09:00', { noBb: true })).sent[0].body, /まだなら、残りは、B 午前 以降に出られれば運営が組み直します。$/);
         assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05', 'h17'], blockCounts: { '5-8': 1, '17-20': 2 } } })).sent[0].body, /まだなら、凸数の登録 \(A 朝 1 · D 夕方 2\) のとおりに組むので、残りを後ろのブロックに足すなら Discord で運営へ。$/, '凸数を登録した人に「組み直します」と約束した (再レビュー time-1)');
         assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05', 'h17'], blockCounts: { '5-8': 1 } } })).sent[0].body, /まだなら、残りは運営が B 午前 以降で組み直します。$/, '凸数の無い後ろのブロック (🧮 が組める) があるのに「凸数どおり」と言った (再レビュー 3 回目 logic-1 / flow-2)');
-        assert.match((await run('2026-11-28T08:43:00+09:00', { p1: { availableSlots: ['h05'], blockCounts: { '5-8': 3 } } })).sent[0].body, /まだなら、B 午前 以降に出られる時間が登録されていないので/, 'A にしか出られない凸数の人');
         assert.equal(r.sent[0].tag, 'rebuild-47-5-8-1'); assert.equal(r.sent[0].url, './?tab=raid');
         assert.deepEqual(r.claims, ['rebuild_start:5-8|1'], 'ref は ブロックの鍵|人 (決定の id を入れない)');
-        assert.deepEqual((await run('2026-11-28T08:39:00+09:00')).sent, [], '凸の時間のうちに送っている');
-        assert.equal((await run('2026-11-28T08:52:59+09:00')).sent.length, 1);
-        assert.deepEqual((await run('2026-11-28T08:53:00+09:00')).sent, [], '13 分を過ぎても送っている (遅れて開いた端末から古い知らせ)');
-        const s10 = { ...s20, metadata: { rebuild_minutes: 10 } };
-        // 10 分のとき再編成は 8:50〜9:00 → 8:53〜8:59 に送る (窓は再編成時間の中だけ)
-        assert.deepEqual([(await run('2026-11-28T08:52:59+09:00', { season: s10 })).sent.length, (await run('2026-11-28T08:53:00+09:00', { season: s10 })).sent.length, (await run('2026-11-28T08:59:59+09:00', { season: s10 })).sent.length, (await run('2026-11-28T09:00:00+09:00', { season: s10 })).sent.length], [0, 1, 1, 0], '10 分の再編成時間で窓が違う');
+        // 押したときに再編成時間でなければ送らない (ボタンは再編成時間だけ出るが、描いたあとに時間が進むことがある)
+        r = await run('2026-11-28T08:39:00+09:00');
+        assert.deepEqual([r.sent, r.claims, r.previews.length], [[], [], 0], '凸の時間のうちに送っている');
+        assert.match(r.notes[0], /時間が進みました/);
+        // 始まりちょうどでも・終わりの間際でも、押せば送る (いつ送るかは運営が決める — 自動の 3 分待ちと 13 分の締め切りは無い)
+        assert.equal((await run('2026-11-28T08:40:00+09:00')).sent.length, 1);
+        assert.equal((await run('2026-11-28T08:59:59+09:00')).sent.length, 1);
         assert.deepEqual((await run('2026-11-27T08:43:00+09:00')).sent, [], 'レイド日の前に送っている');
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { season: { ...s20, metadata: {} } })).sent, [], '0 分なのに送っている');
         // 「凸していない」の印: 全部付いていれば送らない・1 つなら 1 凸で送る・読めなければ送らない
@@ -15163,8 +15100,45 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const pubB = { ...pub, plan: { ...pub.plan, decided: { blocks: [{ key: kB }] } } };
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { pubs: [pubB] })).sent, [], '決めていないブロックで送っている');
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { pubs: [pub, { id: 91, season_id: 47, plan: { levels: [] } }] })).sent, [], '最新が従来の配信なのに送っている');
-        // 見回り (30 秒ごと) から運営端末だけが呼ぶ
-        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkRebuildStart === 'function'\) \{\s*\n\s*_checkRebuildStart\(r\.season\)\.catch\(/.test(html), '見回りから呼んでいない');
+        // ★ 送った人には送らない (もう一度押すと、まだの人にだけ)・送った記録が読めなければ送らない
+        r = await run('2026-11-28T08:43:00+09:00', { sentRows: [{ kind: 'rebuild_start', ref: '5-8|1' }] });
+        assert.deepEqual([r.sent, r.previews.length], [[], 0], '送った人にもう一度送っている');
+        assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { sentRows: null })).sent, [], '送った記録が読めないのに送っている');
+        // ★ 確認でやめたら送らない・確保もしない
+        r = await run('2026-11-28T08:43:00+09:00', { cancel: true });
+        assert.deepEqual([r.sent, r.claims], [[], []], '確認でやめたのに送った / 確保した');
+        // 🧱 ブロックの始まり (旧 ⏰ 参加可能時間になりました): B の凸の時間に、B に凸がある人 (4) へ「あなたの凸」
+        r = await run('2026-11-28T09:05:00+09:00', { mode: 'block' });
+        assert.deepEqual(r.sent.map(m => m.playerIds), [['4']]);
+        assert.equal(r.sent[0].title, '🧱 B 午前 が始まりました');
+        assert.equal(r.sent[0].body, 'あなたの凸: B 午前 9〜12:40 Lv1 B1 編成①。レイド予定表で確認できます。');
+        assert.deepEqual(r.claims, ['block_start:9-12|4'], 'ref は ブロックの鍵|人');
+        assert.equal(r.sent[0].tag, 'block-start-47-9-12-4');
+        assert.deepEqual((await run('2026-11-28T08:45:00+09:00', { mode: 'block' })).sent, [], '再編成時間 (次のブロックはまだ) にブロックの始まりを送った');
+        // A の凸の時間なら A に凸がまだある人だけ (1 は 2 凸・2 は ✓ 済み・3 は数字の報告で済み)。行は決定の通知と同じ言い方
+        r = await run('2026-11-28T06:00:00+09:00', { mode: 'block' });
+        assert.deepEqual(r.sent.map(m => m.playerIds), [['1']]);
+        assert.equal(r.sent[0].body, 'あなたの凸: A 朝 5〜8:40 Lv1 B1 編成① / A 朝 5〜8:40 Lv1 B2 編成②。レイド予定表で確認できます。');
+        assert.deepEqual((await run('2026-11-28T09:05:00+09:00', { mode: 'block', sentRows: [{ kind: 'block_start', ref: '9-12|4' }] })).sent, [], 'ブロックの始まりを送った人にもう一度送っている');
+        // ★ 自動では送らない: 見回りから呼ばない・時間で送る関数が無い
+        assert.ok(!/_checkRebuildStart|REBUILD_NOTICE_DELAY/.test(html), '自動の再編成の知らせが残っている');
+        assert.ok(/if \(_opsMode && document\.getElementById\('opsSecNotify'\)\?\.offsetParent != null && typeof renderOpsNotify === 'function'\) renderOpsNotify\(\);/.test(html), '見回りで 📣 当日の知らせ を描き直していない (時間で変わる)');
+    });
+    test('★ 配線: 📣 当日の知らせ — ⚔️ 戦況のカード / 3 つのボタン (押せない時間は理由の文) / 送った記録の読み書き (raid_event_notices・新しい表を作らない)', () => {
+        const client = _fsLate.readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/<div class="dc-card" data-ops-only id="opsSecNotify">\s*<div style="[^"]*">\s*<div style="[^"]*">📣 当日の知らせ<\/div>/.test(html) && html.includes('<div id="opsNotifyBody"></div>'), 'カードが無い / 先頭が見出しでない');
+        const card = globalThis.opsLayoutDomain.cardById('opsSecNotify');
+        assert.ok(card && card.tab === 'battle' && card.stages.join() === 'day' && card.span === 12, 'CARDS の置き場が違う (⚔️ 戦況・当日・幅 12)');
+        const rn = html.match(/function renderOpsNotify\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/btn\('digest'\)/.test(rn) && /blockRow\('rebuild_start'/.test(rn) && /blockRow\('block_start'/.test(rn), '3 つの行が無い');
+        assert.ok(/wait\(nx \? '再編成時間に押せます' : ''\)/.test(rn) &&/wait\(`\$\{to\} から押せます`\)/.test(rn) && /wait\('決定のあとに押せます'\)/.test(rn), '押せない時間を理由の文にしていない (ずっと押せないボタンを置かない)');
+        assert.ok(/if \(!c\.raidDay\) \{ body\.innerHTML = '<p class="ops-recent-empty">レイド当日/.test(rn), 'レイド当日でないのにボタンを出す');
+        assert.ok(/\$\{esc\(blk\.short\)\}/.test(rn) && !/\$\{blk\.short\}/.test(rn), 'ブロックの名前 (運営が付ける) をそのまま HTML に入れている');
+        assert.ok(/window\.supabaseLoadRaidNotices = async function \(seasonId, kinds\) \{[\s\S]*?\.from\('raid_event_notices'\)[\s\S]*?return null;/.test(client), '送った記録の読み出しが無い / 読めないとき null でない');
+        assert.ok(/window\.supabaseRecordRaidNotice = async function/.test(client), '送った記録の書き込みが無い');
+        // 二重押しよけ: 押している間は 3 つとも押せない・終わったら記録を読み直す
+        const sd = html.match(/async function _opsNtfSend\(kind\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_opsNtf\.busy\) return;\s*_opsNtf\.busy = kind;/.test(sd) && /finally \{\s*_opsNtf\.busy = null;\s*_opsNtfLoadSent\(true\);/.test(sd), '二重押しで 2 回送る / 送ったあと記録を読み直さない');
     });
     await testAsync('★ 実行: 再編成時間の保存 — RPC (59) が本線 / 59 未適用 (51 の断り文・PGRST202) だけ読んで混ぜて書く / ほかの P0001 は投げる / 不正な値は通信の前に断る / null で鍵を消す', async () => {
         const client = rd('js/supabase-client.js');
@@ -15470,7 +15444,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.equal(run(s20, s20, null).r, false);
     });
     test('★ ヘルプ・ツアー・Discord 用の文面・用語集・更新履歴に再編成時間 (章は 18 のまま・使わない言い方を使わない)', () => {
-        assert.ok(html.includes('各ブロックの<strong>最後の数分は再編成時間</strong>') && html.includes('<strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です') && html.includes('<strong>⏱ 再編成時間のはじめ</strong>'), 'ヘルプに再編成時間が無い');
+        assert.ok(html.includes('各ブロックの<strong>最後の数分は再編成時間</strong>') && html.includes('<strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です') && html.includes('<strong>⏱ 再編成時間</strong> (運営の記録でそのブロックの凸がまだの人だけ「A 朝 の凸は 8:40 まで」)'), 'ヘルプに再編成時間が無い');
         assert.ok(html.includes('<strong>🧱 ブロックの設定</strong> — 区切り (A・B・C…) と <strong>⏱ 再編成時間</strong>'), '👑 のタブに設定の場所が無い');
         assert.ok(html.includes('<strong>当日 (各ブロックの最後の ⏱ 再編成時間に)</strong>'), 'ツアーの運営の 1 日が古い');
         assert.ok(html.includes('**各ブロックの最後の 20 分 (例: 8:40〜9:00) は再編成時間 = 凸しない時間**'), 'Discord 用の文面に無い');

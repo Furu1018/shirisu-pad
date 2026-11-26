@@ -2823,6 +2823,16 @@
         /* ③ 1 ブロックの手順 (🧱 組む の頭) */
         .bs { margin: 0 0 10px; padding: 10px 11px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
         .ops-recent-empty { margin: 0; font-size: 12px; color: var(--t-muted); }
+        /* 📣 当日の知らせ (2026-11-27): 1 行 = 何を誰へ / いまの数 / 送る (押せない時間は理由の文 = ずっと押せないボタンを置かない) */
+        .ntf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+        .ntf-row:last-of-type { border-bottom: none; }
+        .ntf-t { font-size: 14px; font-weight: 900; color: var(--t-ink); min-width: 0; }
+        .ntf-d { grid-column: 1; font-size: 12px; color: var(--t-body); line-height: 1.5; min-width: 0; }
+        .ntf-d b { color: var(--t-ink); }
+        .ntf-row > .ntf-btn, .ntf-row > .ntf-wait { grid-row: 1 / span 2; grid-column: 2; }
+        .ntf-btn { min-width: 72px; }
+        .ntf-wait { font-size: 11px; color: var(--t-muted); text-align: right; max-width: 120px; }
+        .ntf-note { margin: 8px 0 0; font-size: 11px; color: var(--t-muted); line-height: 1.5; }
         /* HP更新の鮮度 (「HP更新 ○分前」) は目立つピルで (2026-09-11 ユーザー要望)。30 分以上で警告色 */
         .hp-fresh { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: 0.2px; background: rgba(var(--ink-rgb), 0.06); color: var(--t-strong); white-space: nowrap; }
         .hp-fresh.warn { background: var(--warn-bg); color: var(--warn-deep); }
@@ -3749,6 +3759,15 @@
                 <div id="opsAtkTapBody"></div>
             </div>
 
+            <!-- 📣 当日の知らせ (2026-11-27 ふるり「通知は運営がボタンを押したときだけ」): 時間で出していた 3 つを自動で送らず、運営が押して送る -->
+            <div class="dc-card" data-ops-only id="opsSecNotify">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📣 当日の知らせ</div>
+                    <span style="font-size:11px;font-weight:800;color:var(--t-muted);">押したときだけ送ります</span>
+                </div>
+                <div id="opsNotifyBody"></div>
+            </div>
+
             <div class="dc-card" data-ops-only id="opsSecAttackCheck">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📥 結果の取り込み</div>
@@ -4586,7 +4605,7 @@
                         <p>本番の凸が終わったら、<strong>結果の画面のスクショを Discord に貼る</strong>だけです。PAD では何も押しません。<strong>運営が Discord を見て ✓ を付けると</strong>、📅 レイド予定表 と ホームの凸に ✓ が出ます。</p>
                         <ul>
                             <li>決まったブロックの時間内 (例: A 朝 5〜8:40) に、決まったボス・PT・編成で凸します。何時に凸するかはブロックの中で自由です</li>
-                            <li><strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です。入ってしまった凸は<strong>次のブロックの凸</strong>として扱います。再編成時間のはじめ (数分あと) に、運営の記録でそのブロックの凸がまだの人へ「⏱ A 朝 の凸は 8:40 まで」の通知が届きます (Discord に結果を貼ったなら、そのままで大丈夫です)</li>
+                            <li><strong>⏱ 再編成時間</strong> (例: 8:40〜9:00) は凸しない時間です。入ってしまった凸は<strong>次のブロックの凸</strong>として扱います。再編成時間に運営が送ると、運営の記録でそのブロックの凸がまだの人へ「⏱ A 朝 の凸は 8:40 まで」の通知が届きます (Discord に結果を貼ったなら、そのままで大丈夫です)</li>
                             <li>凸できなかったときも Discord で一言ください。次のブロック以降に出られるなら、運営が組み直します (出られないときは、その旨も)</li>
                             <li>本番のダメージは翌月の初期値として引き継がれません — 期間中に模擬を貼ってください</li>
                         </ul>
@@ -4656,6 +4675,7 @@
                             <li>✓ は数字を持ちません (ダメージ 0・ボスの HP は動かない)。HP は 🎯 で合わせます</li>
                             <li>数字で登録したいときは下の 📥 結果の取り込み (畳んである)。<strong>⏰ 結果がまだの凸</strong>: 📥 取り込む / 📋 聞く / 凸していない。登録された凸は配信と突き合わせて、食い違いに印 (計画にない / 予定よりかなり低い)</li>
                             <li>⚔️ のタブの横の数字 = 確認していない凸 + 結果がまだの凸 (✓ を付けた凸は確認済みに数えます)</li>
+                            <li><strong>📣 当日の知らせ</strong> (✓ 凸の記録の下): 📊 戦況のまとめ → 全員 / ⏱ 再編成の始まり → そのブロックで ✓ がまだの人 / 🧱 ブロックの始まり → そのブロックに凸がある人。<strong>押したときだけ</strong>送ります (時間で自動には送りません)。押すと宛先と文面を確かめてから送り、同じブロックで同じ人に 2 回は送りません</li>
                         </ul>
                     </section>
                     <section id="help-finish-call" class="help-section" data-sum="今打てる手と、待って打てる手を探す">
@@ -4762,8 +4782,8 @@
                         </div>
                         <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li><strong>あなた宛</strong> — 決定の「あなたの凸」(🧱 決まりました / 🔄 変わりました・外れました。決定し直しでは変わった人に ✅ 確認の有無に関わらず。運営が変更なしで決定し直して通知に印を付けたときだけ 📅 変わりません。タップで 📅 レイド予定表)・<strong>⏱ 再編成時間のはじめ</strong> (運営の記録でそのブロックの凸がまだの人だけ「A 朝 の凸は 8:40 まで」・始まりの数分あと・運営の端末が開いているときに届きます)・催促・参加可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
-                            <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
+                            <li><strong>あなた宛</strong> — 決定の「あなたの凸」(🧱 決まりました / 🔄 変わりました・外れました。決定し直しでは変わった人に ✅ 確認の有無に関わらず。運営が変更なしで決定し直して通知に印を付けたときだけ 📅 変わりません。タップで 📅 レイド予定表)・<strong>⏱ 再編成時間</strong> (運営の記録でそのブロックの凸がまだの人だけ「A 朝 の凸は 8:40 まで」)・<strong>🧱 ブロックの始まり</strong> (そのブロックに凸がある人に「あなたの凸」)・催促。再編成時間とブロックの始まりは<strong>運営が送ったとき</strong>に届きます。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 戦況のまとめ (運営が送ったとき)。1 日に数通です</li>
                             <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
                         <p>アプリの中に通知の OFF はありません (テストの通知が来なくなったので、切る理由が無くなりました)。端末で止めたいときは、端末 (ブラウザ) の通知設定から行えます。</p>
@@ -5662,7 +5682,7 @@
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 通知</h2>
                         <button class="ps-close" onclick="closeMyPushModal()">閉じる</button>
                     </div>
-                    <p class="subtitle"><strong>あなた宛の連絡</strong> (あなたの凸が決まった・変わった・参加可能時間の始まり) と、<strong>レイド当日のチームの状況</strong> (Lv 開放・残り 1 体・定時のまとめ) が届きます。<strong>iPhone</strong> は Safari で「ホーム画面に追加」してから設定してください。</p>
+                    <p class="subtitle"><strong>あなた宛の連絡</strong> (あなたの凸が決まった・変わった・ブロックの始まり) と、<strong>レイド当日のチームの状況</strong> (Lv 開放・残り 1 体・戦況のまとめ) が届きます。<strong>iPhone</strong> は Safari で「ホーム画面に追加」してから設定してください。</p>
                     <div id="mypagePushStatus" style="font-size:14px;margin-bottom:10px;">読み込み中...</div>
                     <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
                     <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
@@ -7346,71 +7366,6 @@
             }
         }
 
-        // ===== ⏰ 戦闘可能時間になったらお知らせ (2026-09-08 ユーザー要望) =====
-        // 当日、本人の時間帯の**始まり**の時刻に「戦闘可能時間になりました」を送る (区間の途中では毎時送らない)。
-        // 送り手は運営端末の定期チェック (30秒ごと)。二重送信は撃破通知と同じ raid_event_notices の一意制約で防ぐ
-        // (kind 'avail_start' / ref `${playerId}:hXX`)。相手の判定は availabilityDomain.reminderTargets。
-        // ★ 限界: 運営端末が1台も開いていない時間は送れない (サーバ側の cron ではない — ROADMAP G7 と同じ課題)
-        async function _checkAvailReminders(season) {
-            try {
-                if (!season?.id || typeof window.supabaseClaimRaidNotice !== 'function') return;
-                const dom = window.availabilityDomain;
-                if (!dom) return;
-                // ★ レイド日は「朝5時〜翌4時」(暦の日付ではない)。暦で見ると、翌0時・1時の枠の人に
-                //   レイド前夜の 0 時に届き、本当の翌0時には届かなかった (第45回 2026-10-10 に本番で踏んだ)
-                // ★ 「いま」は 1 回だけ取る (Codex指摘 2026-10-11): 日・時・分を別々に取ると、翌5:00 をまたいだ瞬間に
-                //   「前のレイド日 + 5時の枠」になり得る
-                const now = Date.now();
-                const raidDay = window.opsStageDomain?.raidDayKey?.(now);
-                if (!raidDay || season.hard_date !== raidDay) return;   // レイド当日 (5時〜翌4時) だけ
-                const players = opsStore.get()?.players;
-                if (!Array.isArray(players)) return;
-                const hm = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(now));
-                const hour = Number(hm.find(x => x.type === 'hour')?.value) % 24;
-                const minute = Number(hm.find(x => x.type === 'minute')?.value) || 0;
-                if (!Number.isInteger(hour)) return;
-                const curSlot = `h${String(hour).padStart(2, '0')}`;
-                const targets = dom.reminderTargets(players, hour);
-                if (targets.length === 0) return;
-                // ★ 時刻の始まりから30分を過ぎていたら送らない (Codex指摘): 運営端末を 13:40 に開いて
-                //   「13時になりました」が届くのは変。次の区間の始まりは別の ref なので取りこぼしはそこまで
-                if (minute >= 30) return;
-                const me = getCurrentIdentity();
-                for (const t of targets) {
-                    // ★ 1人の失敗で残りの人を落とさない (Codex指摘): 確保も送信も人ごとに try で囲む
-                    try {
-                        // ★ 残凸は盤面のスナップショット (最大60秒古い) でなく、送る直前に本人の実凸で見直す (Codex指摘)。
-                        //   別端末で3凸目を終えた人に「残り1凸」と送ると、その時刻の ref が消費されて取り消せない
-                        let remaining = t.remaining;
-                        try {
-                            const atks = await window.supabaseLoadMyAttacks?.(t.id, season.id, season.hard_date);
-                            if (Array.isArray(atks)) remaining = 3 - atks.length;
-                        } catch { /* 取れなければ盤面の値で進む */ }
-                        if (remaining <= 0) continue;
-                        const ref = `${t.id}:${curSlot}`;
-                        const st = await window.supabaseClaimRaidNotice(season.id, 'avail_start', ref, me?.id);
-                        if (st !== 'claimed') continue;                   // 'done' = 送信済み / 'held' = 別の端末が送信中
-                        const w = t.window ? dom.rangeLabel(t.window) : `${hour}時〜`;
-                        try {
-                            await window.sendPushNotification({
-                                title: '⏰ 参加可能時間になりました',
-                                body: `${w} はあなたが登録した参加可能時間です。残り ${remaining} 凸。割当はホームで確認できます。`,
-                                url: './?tab=mypage',
-                                tag: `avail-start-${season.id}-${t.id}-${curSlot}`,
-                                ignoreAvailability: true,                 // 本人が登録した時刻そのものなのでフィルタは要らない
-                                playerIds: [t.id],
-                            }, { senderPlayerId: me?.id || null });
-                            await window.supabaseMarkRaidNoticeSent(season.id, 'avail_start', ref);
-                        } catch (e) {
-                            // 送れなかったら確保を戻す (戻さないと「送っていないのに送信済み」で永久に届かない)
-                            console.warn('[avail reminder] 送信失敗 (確保を戻す):', e?.message || e);
-                            await window.supabaseReleaseRaidNotice(season.id, 'avail_start', ref);
-                        }
-                    } catch (e) { console.warn('[avail reminder] 1人分をskip:', t?.name || t?.id, e?.message || e); }
-                }
-            } catch (e) { console.warn('[avail reminder] skip:', e?.message || e); }
-        }
-
         async function _notifyLevelOpened(seasonId, levelUp) {
             try {
                 // ★ チームの状況 = 在籍の全員へ (2026-10-07 ユーザー決定)。以前は残り凸のある人だけだった。
@@ -7459,115 +7414,253 @@
             }
         }
 
-        // 📊 定時の戦況まとめ (レイド当日の 12・18・21・24 時に 1 通ずつ・全員へ — 2026-10-07 ユーザー決定「節目だけ」)。
-        // 送り手は運営端末の定期チェック (30 秒ごと)。二重送信は raid_event_notices の一意制約 (kind 'digest' / ref 'h12' など) で防ぐ。
-        // ★ その時刻の 1 時間のうちに運営端末が 1 台も開いていなければ、その回は送らない (遅れて古いまとめを流さない)。
-        // ★ 数字は盤面を取り直してから (開きっぱなしの端末の古い凸数で流さない)
-        async function _checkRaidDigest(season) {
-            try {
-                const D = window.raidEventsDomain, SD = window.opsStageDomain;
-                if (!season?.id || !D?.digestSlot || !SD?.raidDayKey || typeof window.supabaseClaimRaidNotice !== 'function') return;
-                if (SD.raidDayKey(Date.now()) !== String(season.hard_date || '').slice(0, 10)) return;   // レイド当日だけ (翌 4 時までが同じ日)
-                const hour = Number(String(getCurrentSlotJST()).slice(1));
-                const slot = D.digestSlot(hour);
-                if (!slot) return;
-                const me = getCurrentIdentity();
-                const st = await window.supabaseClaimRaidNotice(season.id, 'digest', slot, me?.id);
-                if (st !== 'claimed') return;
-                try {
-                    const snap = await opsStore.load();
-                    if (!snap?.season || Number(snap.season.id) !== Number(season.id) || !Array.isArray(snap.players)) throw new Error('盤面を読めませんでした');
-                    const done = snap.players.reduce((n, p) => n + (Number(p.attackCount) || 0), 0);
-                    const capacity = snap.players.filter(p => !p.unavailableThisSeason).length * 3;
-                    const msg = D.digestText({ hourJst: hour, level: Number(snap.season.current_level) || 1, bosses: snap.bosses || [], done, capacity });
-                    await window.sendPushNotification({ kind: 'team', title: msg.title, body: msg.body, url: './?tab=ops', tag: `digest-${season.id}-${slot}` },
-                        { senderPlayerId: me?.id || null });
-                    await window.supabaseMarkRaidNoticeSent(season.id, 'digest', slot);
-                } catch (e) {
-                    // 送れなかったら確保を戻す (同じ 1 時間のうちに、次の周期か別の運営端末がやり直せる)
-                    console.warn('[digest] 送信失敗 (確保を戻す):', e?.message || e);
-                    await window.supabaseReleaseRaidNotice(season.id, 'digest', slot);
-                }
-            } catch (e) { console.warn('[digest] skip:', e?.message || e); }
+        // ===== 📣 当日の知らせ (2026-11-27 ふるり「通知は、運営が通知ボタンを押したときだけにすれば、端末が裏に回る心配は要らない」・見本 88yepqLS55WK18h7j37nwi ③) =====
+        //   時間で出していた 3 つ (📊 定時の戦況まとめ / ⏱ 再編成の始まり / ⏰ 参加可能時間になりました) は自動で送らない — 運営の端末が見回りで送っていたので、
+        //   PAD が裏に回る (BlaBlaLINK・Discord を見ている) と見回りが止まり、その時間の通知が出なかった。⚔️ 戦況の「📣 当日の知らせ」(#opsSecNotify) から運営が押して送る。
+        //   ⏰ は「🧱 ブロックの始まり → そのブロックに凸がある人へ、その凸を知らせる」に置き換えた (ふるり 11/27・ブロック制では「登録した時間が始まった」より役に立つ)。
+        //   撃破・Lv 開放・残り 1 体 (運営が HP を更新したその場で、その端末から出る) と ✅ 決定の通知は自動のまま。
+        //   ★ 同じブロックで同じ人に 2 回送らない: 確保 (raid_event_notices) の ref = ブロックの鍵|人 (kind rebuild_start / block_start)。もう一度押すと、まだ送っていない人にだけ
+        //   ★ 宛先と文面は送信の確認 (showPushPreview) で見せてから。送る直前に本人の凸を読み直す (別の端末で ✓ が付いた人に「まだ」と送らない)
+        //   ★ 戦況のまとめは送った記録を 1 行 (kind digest_m / ref m<時刻>) — 「前回 12:03 (しずく)」を出す (ほかの運営が送ったのも見える)
+        const _opsNtf = { busy: null, sent: null, sentSeason: null, triedAt: 0, loading: false, seq: 0, bound: false };
+        const _OPS_NTF_KINDS = ['digest_m', 'rebuild_start', 'block_start'];
+        // 送った記録を読み直す (30 秒に 1 回まで・force で今すぐ)。読めなければ前の値のまま (null = 分からない)
+        function _opsNtfLoadSent(force = false) {
+            const sid = opsStore.get()?.season?.id;
+            if (!sid || typeof window.supabaseLoadRaidNotices !== 'function') return;
+            if (_opsNtf.loading && !force) return;
+            if (!force && _opsNtf.sentSeason === sid && Date.now() - _opsNtf.triedAt < 30000) return;
+            const seq = ++_opsNtf.seq;
+            _opsNtf.loading = true; _opsNtf.triedAt = Date.now();
+            window.supabaseLoadRaidNotices(sid, _OPS_NTF_KINDS).then(rows => {
+                if (seq !== _opsNtf.seq) return;
+                _opsNtf.loading = false;
+                if (!Array.isArray(rows) || Number(opsStore.get()?.season?.id) !== Number(sid)) return;
+                _opsNtf.sent = rows; _opsNtf.sentSeason = sid;
+                renderOpsNotify();
+            }).catch(() => { if (seq === _opsNtf.seq) _opsNtf.loading = false; });
         }
-        // ⏱ 再編成時間の始まりの通知 (Q13・第46回の反省 ⑥・2026-11-02 ふるり「出す。そのブロックで凸がまだの人だけ」)。
-        //   相手 = 最新の決定でそのブロックに割当があって、まだ済んでいない (✓ も数字の報告の消し込みも無い = 📅 レイド予定表の「未完了」と同じ物差し)・
-        //   「凸していない」の印も無い人。送り手は運営端末 (30 秒ごと)・複数の運営端末でも raid_event_notices の確保で 1 通。
-        //   ★ 遅れて開いた端末から古い知らせを流さない: 再編成の始まりから REBUILD_NOTICE_MIN 分まで (参加可能時間の通知の 30 分と同じ考え)
-        //   ★ ref = ブロックの鍵|人 (決定の id や中身は入れない — 再編成の間に決定し直す・✓ を付けるたびに同じ人へ届かせない)
-        //   ★ 送る直前に本人の凸を読み直す (端末ごとに盤面の鮮度が違う: 撃破・時間の通知と同じ守り)。読めなければ送らない (済んだ人に「まだ」と送らない側)
-        //   ★ 始まりから REBUILD_NOTICE_DELAY 分待つ (⑥ レビュー notify-2 / flow-4: ✓ は再編成時間に付けるので、始まりちょうどに送ると凸を済ませた人にも「まだ」と届いた)
-        const REBUILD_NOTICE_DELAY = 3, REBUILD_NOTICE_MIN = 13;
-        async function _checkRebuildStart(season) {
-            try {
-                const rbd = window.raidBlocksDomain, dp = window.decidePlanDomain, ac = window.attackCheckDomain, SD = window.opsStageDomain;
-                if (!season?.id || !rbd?.phaseAt || !dp || !ac || !SD?.raidDayKey || typeof window.supabaseClaimRaidNotice !== 'function') return;
-                const now = Date.now();
-                if (SD.raidDayKey(now) !== String(season.hard_date || '').slice(0, 10)) return;   // レイド当日だけ (翌 4 時までが同じ日)
-                const blocks = rbd.blocksOfSeason(season);
-                const minute = rbd.raidMinuteOfMs(now);
-                const ph = rbd.phaseAt(blocks, minute);
-                const blk = ph.inRebuild ? blocks[ph.idx] : null;
-                if (!blk || !blk.rebuild) return;
-                const since = minute - blk.rebuild.fromMin;
-                if (since < Math.min(REBUILD_NOTICE_DELAY, blk.rebuild.minutes - 1) || since >= Math.min(REBUILD_NOTICE_MIN, blk.rebuild.minutes)) return;
-                const board = opsStore.get();
-                if (!board?.season || Number(board.season.id) !== Number(season.id) || !Array.isArray(board.players)) return;
-                const pubs = await window.supabaseGetPublishedPlans();
-                const pub = Array.isArray(pubs) ? dp.currentDecided(pubs.filter(r => r && Number(r.season_id) === Number(season.id))) : null;
+        // その kind で送った (確保した) ref の Set。読めていなければ null (= 分からない)
+        function _opsNtfSentRefs(kind, sid) {
+            if (!Array.isArray(_opsNtf.sent) || Number(_opsNtf.sentSeason) !== Number(sid)) return null;
+            return new Set(_opsNtf.sent.filter(r => r.kind === kind).map(r => r.ref));
+        }
+        // 📊 戦況のまとめの文面 (盤面そのもの = raidEventsDomain.digestText。時刻は押したいま)
+        function _opsDigestMsg(snap) {
+            const D = window.raidEventsDomain;
+            const done = snap.players.reduce((n, p) => n + (Number(p.attackCount) || 0), 0);
+            const capacity = snap.players.filter(p => !p.unavailableThisSeason).length * 3;
+            return D.digestText({ hourJst: Number(String(getCurrentSlotJST()).slice(1)), level: Number(snap.season.current_level) || 1, bosses: snap.bosses || [], done, capacity });
+        }
+        // そのブロックの決定の割当 (attackCheckDomain.plannedOf の行・planKey つき)
+        function _opsNtfPlanned(season, pub, bkey) {
+            return window.attackCheckDomain.plannedOf(_atkCheckDecidedPlan(pub.plan, season)).filter(p => p.planKey && p.planKey.startsWith(`${bkey}|`));
+        }
+        // 人ごとの「まだ」の凸 = 済んでいない (✓ も数字の報告の消し込みも無い = 📅 レイド予定表の「未完了」と同じ物差し)・「凸していない」の印も無い
+        function _opsNtfLeft(planned, done, skips, pubId) {
+            const ac = window.attackCheckDomain, by = new Map();
+            for (const p of planned) {
+                if (done.has(p.planKey) || (skips && skips.has(ac.missingKey(pubId, p)))) continue;
+                const k = String(p.memberId);
+                if (!by.has(k)) by.set(k, []);
+                by.get(k).push(p);
+            }
+            return by;
+        }
+        // いまの時間の形 (レイド日か・いまのブロック・再編成中か)
+        function _opsNtfPhase(season, nowMs = Date.now()) {
+            const rbd = window.raidBlocksDomain, SD = window.opsStageDomain;
+            if (!season || !rbd || !SD || typeof SD.raidDayKey !== 'function') return null;
+            const blocks = rbd.blocksOfSeason(season);
+            const raidDay = SD.raidDayKey(nowMs) === String(season.hard_date || '').slice(0, 10);
+            const ph = raidDay ? rbd.phaseAt(blocks, rbd.raidMinuteOfMs(nowMs)) : { idx: -1, attackIdx: -1, inRebuild: false };
+            return { blocks, raidDay, ph };
+        }
+        function renderOpsNotify() {
+            const body = document.getElementById('opsNotifyBody');
+            if (!body || !_opsMode) return;
+            if (!_opsNtf.bound) {   // 委譲は最初に 1 回
+                _opsNtf.bound = true;
+                body.addEventListener('click', (ev) => { const b = ev.target.closest('[data-ntf]'); if (b && !b.disabled) _opsNtfSend(b.dataset.ntf); });
+            }
+            const snap = opsStore.get();
+            if (!snap) return;   // 取り直しの最中 (完了が描く)
+            const s = snap.season, dp = window.decidePlanDomain;
+            if (!s) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; return; }
+            const c = _opsNtfPhase(s);
+            if (!c || !dp || !window.attackCheckDomain || !window.raidEventsDomain) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">当日の知らせを読み込めませんでした (再読み込みしてください)</p>'; return; }
+            if (!c.raidDay) { body.innerHTML = '<p class="ops-recent-empty">レイド当日 (5 時〜翌 4 時) に使います。送るのは運営がボタンを押したときだけです。</p>'; return; }
+            _opsNtfLoadSent();
+            const esc = escapeHtml, busy = _opsNtf.busy;
+            const btn = (k) => `<button type="button" class="dc-ops-action ntf-btn" data-ntf="${k}"${busy ? ' disabled' : ''}>${busy === k ? '準備中…' : '送る'}</button>`;
+            const wait = (t) => `<span class="ntf-wait">${esc(t)}</span>`;
+            const row = (t, d, act) => `<div class="ntf-row"><span class="ntf-t">${t}</span><span class="ntf-d">${d}</span>${act}</div>`;
+            const nameOf = (id) => (snap.players || []).find(p => String(p.id) === String(id))?.name || '';
+            const hm = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d) : ''; };
+            const pub = _opsDecidedPub(s.id);
+            const skips = (Number(_atkCheck.skipsSeason) === Number(s.id) && _atkCheck.skips instanceof Set) ? _atkCheck.skips : null;
+            // ブロックの知らせの行: 決定していない / まだの人 n 人 (送った m 人) / 全員に送った
+            const blockRow = (kind, blk, what) => {
                 const bkey = dp.keyOf(blk);
-                if (!pub || !dp.decidedBlocks(pub.plan).has(bkey)) return;   // そのブロックを決めていなければ送らない (頼んでいない凸を促さない)
-                const skips = await window.supabaseLoadAttackSkips?.(season.id);
-                if (!(skips instanceof Set)) return;   // 「凸していない」の印が読めない = 片付けた人にも送ってしまう → 次の周期で
-                const planned = ac.plannedOf(_atkCheckDecidedPlan(pub.plan, season)).filter(p => p.planKey && p.planKey.startsWith(`${bkey}|`));
-                const pending = (done) => planned.filter(p => !done.has(p.planKey) && !skips.has(ac.missingKey(pub.id, p)));
-                const doneAll = _raidDoneKeys(board, blocks, pub.plan);
-                const byMember = new Map();
-                for (const p of pending(doneAll)) byMember.set(String(p.memberId), (byMember.get(String(p.memberId)) || 0) + 1);
-                if (!byMember.size) return;
-                const me = getCurrentIdentity();
-                const next = blocks[ph.attackIdx];
-                for (const [memberId] of byMember) {
-                    try {
-                        // 送る直前に本人の凸で決め直す (別の端末で ✓ / 報告が入ったかもしれない)
-                        let atks = null;
-                        try { atks = await window.supabaseLoadMyAttacks?.(memberId, season.id, season.hard_date); } catch { atks = null; }
-                        if (!Array.isArray(atks)) continue;
-                        const left = pending(_raidDoneKeys({ players: [{ id: memberId, attacks: atks }] }, blocks, pub.plan)).filter(p => String(p.memberId) === memberId).length;
-                        if (left <= 0) continue;
-                        // 後ろのブロックに出られるか (⑥ レビュー notify-1 / flow-5: 「このブロックのみ」の人にも「組み直します」と約束していた)。分からなければ言い切らない
-                        const pl = board.players.find(x => String(x.id) === memberId);
-                        const later = (pl && window.blockBuildDomain?.availableBlocks) ? window.blockBuildDomain.availableBlocks(pl, blocks).some(i => i > ph.idx) : null;
-                        const nx = next ? next.short : '次のブロック';
-                        // 凸数を登録した人は凸数どおりに組む (後ろのブロックの上限は登録した凸数・残りは足さない: 再レビュー time-1)
-                        //   ただし凸数の無い後ろのブロックに出られるなら、🧮 はそこに組む (上限が無い) → 「組み直します」(再レビュー logic-1 / flow-2)
-                        const hasCounts = !!(pl && pl.blockCounts && typeof pl.blockCounts === 'object' && Object.keys(pl.blockCounts).length);
-                        const aheadIdx = pl ? (pl.flexTime ? blocks.map((_, i) => i) : rbd.blocksOfSlots(blocks, pl.availableSlots)).filter(i => i > ph.idx) : [];
-                        const counts = (hasCounts && aheadIdx.length && aheadIdx.every(i => Number(pl.blockCounts[rbd.countKey(blocks[i])]) > 0)) ? rbd.countsLabel(pl.blockCounts, blocks) : '';
-                        const rest = counts ? `凸数の登録 (${counts}) のとおりに組むので、残りを後ろのブロックに足すなら Discord で運営へ。`
-                            : (later === true || (hasCounts && aheadIdx.length)) ? `残りは運営が ${nx} 以降で組み直します。`
-                            : later === false ? `${nx} 以降に出られる時間が登録されていないので、残りは組まれません (出られるなら Discord で運営へ)。`
-                            : `残りは、${nx} 以降に出られれば運営が組み直します。`;
-                        const ref = `${bkey}|${memberId}`;
-                        const st = await window.supabaseClaimRaidNotice(season.id, 'rebuild_start', ref, me?.id);
-                        if (st !== 'claimed') continue;   // 'done' = 送信済み / 'held' = 別の端末が送信中
-                        try {
-                            await window.sendPushNotification({
-                                title: `⏱ ${blk.short} の凸は ${blk.rebuild.from} まで`,
-                                body: `いまから ${blk.rebuild.to} までは再編成時間です (凸しない時間)。運営の記録ではまだ ✓ の無い ${blk.short} の凸が ${left} 凸あります。もう凸して Discord に貼ったなら、そのままで大丈夫です (運営が ✓ を付けます)。まだなら、${rest}`,
-                                url: './?tab=raid',
-                                tag: `rebuild-${season.id}-${bkey}-${memberId}`,   // 確保の引き継ぎで 2 通になっても端末でまとまる (ref と同じ粒度)
-                                ignoreAvailability: true,
-                                playerIds: [memberId],
-                            }, { senderPlayerId: me?.id || null });
-                            await window.supabaseMarkRaidNoticeSent(season.id, 'rebuild_start', ref);
-                        } catch (e) {
-                            console.warn('[rebuild notice] 送信失敗 (確保を戻す):', e?.message || e);
-                            await window.supabaseReleaseRaidNotice(season.id, 'rebuild_start', ref);
-                        }
-                    } catch (e) { console.warn('[rebuild notice] 1人分をskip:', memberId, e?.message || e); }
+                if (!pub || !dp.decidedBlocks(pub.plan).has(bkey)) return { d: `${esc(blk.short)} はまだ決定していません`, act: wait('決定のあとに押せます') };
+                const by = _opsNtfLeft(_opsNtfPlanned(s, pub, bkey), _raidDoneKeys(snap, c.blocks, pub.plan), skips, pub.id);
+                const ids = [...by.keys()], sentRefs = _opsNtfSentRefs(kind, s.id);
+                const sentN = sentRefs ? ids.filter(id => sentRefs.has(`${bkey}|${id}`)).length : 0;
+                const left = ids.length - sentN;
+                return { d: `${what} <b>${left} 人</b>${sentN ? ` (送った ${sentN} 人)` : ''}`, act: left > 0 ? btn(kind === 'rebuild_start' ? 'rebuild' : 'block') : wait(ids.length ? '全員に送りました' : '送る人はいません') };
+            };
+            const rows = [];
+            // 📊 戦況のまとめ → 全員
+            {
+                const m = _opsDigestMsg(snap);
+                const last = (Array.isArray(_opsNtf.sent) && Number(_opsNtf.sentSeason) === Number(s.id))
+                    ? _opsNtf.sent.filter(r => r.kind === 'digest_m' && r.claimed_at).sort((x, y) => String(y.claimed_at).localeCompare(String(x.claimed_at)))[0] : null;
+                const who = last ? nameOf(last.notified_by) : '';
+                rows.push(row('📊 戦況のまとめ → 全員', `いま: <b>${esc(m.body.replace(/\n/g, ' · '))}</b>${last ? `<br>前回 ${esc(hm(last.claimed_at))}${who ? ` (${esc(who)})` : ''}` : ''}`, btn('digest')));
+            }
+            // ⏱ 再編成の始まり → そのブロックで ✓ がまだの人
+            {
+                const rb = _raidRebuildNow(s, c.blocks);
+                if (rb && c.blocks[rb.idx]) {
+                    const blk = c.blocks[rb.idx], r = blockRow('rebuild_start', blk, `${esc(blk.short)} で ✓ がまだ`);
+                    rows.push(row('⏱ 再編成の始まり → まだの人', `${r.d}<br>いまは再編成時間 (${esc(rb.label)})`, r.act));
+                } else {
+                    const from = Math.max(0, c.ph.idx);
+                    const nx = c.blocks.find((b, i) => i >= from && b && b.rebuild);
+                    rows.push(row('⏱ 再編成の始まり → まだの人', nx ? `次は ${esc(nx.short)} の再編成時間 (${esc(nx.rebuild.label)})` : '再編成時間はありません (👑 🧱 ブロックの設定)', wait(nx ? '再編成時間に押せます' : '')));
                 }
-            } catch (e) { console.warn('[rebuild notice] skip:', e?.message || e); }
+            }
+            // 🧱 ブロックの始まり → そのブロックに凸がある人 (旧 ⏰ 参加可能時間になりました)
+            {
+                const ph = c.ph;
+                if (ph.idx >= 0 && !ph.inRebuild && c.blocks[ph.idx]) {
+                    const blk = c.blocks[ph.idx], r = blockRow('block_start', blk, `${esc(blk.short)} (${esc(blk.attackRange || blk.range)}) に凸がある`);
+                    rows.push(row('🧱 ブロックの始まり → 凸がある人', r.d, r.act));
+                } else if (ph.inRebuild && c.blocks[ph.idx]?.rebuild && c.blocks[ph.attackIdx]) {
+                    const to = c.blocks[ph.idx].rebuild.to;
+                    rows.push(row('🧱 ブロックの始まり → 凸がある人', `${esc(c.blocks[ph.attackIdx].short)} は ${esc(to)} から`, wait(`${to} から押せます`)));
+                }
+            }
+            body.innerHTML = rows.join('') + '<p class="ntf-note">押すと、宛先と文面を確かめてから送ります。再編成の始まり・ブロックの始まりは、同じブロックで同じ人に 2 回は送りません。</p>';
+        }
+        async function _opsNtfSend(kind) {
+            if (_opsNtf.busy) return;
+            _opsNtf.busy = kind;
+            renderOpsNotify();
+            try {
+                if (kind === 'digest') await _opsSendDigest();
+                else if (kind === 'rebuild' || kind === 'block') await _opsSendBlockNotice(kind);
+            } catch (e) {
+                showNotification('❌ 送れませんでした: ' + (e?.message || e));
+            } finally {
+                _opsNtf.busy = null;
+                _opsNtfLoadSent(true);
+                renderOpsNotify();
+            }
+        }
+        // 📊 戦況のまとめを全員へ (旧 定時の戦況まとめ・2026-10-07 ユーザー決定「節目だけ」の 12・18・21・24 時を、運営が押したときに)
+        async function _opsSendDigest() {
+            const sid0 = opsStore.get()?.season?.id;
+            // ★ 数字は盤面を取り直してから (開きっぱなしの端末の古い凸数で流さない)
+            const snap = await opsStore.load();
+            if (!snap?.season || Number(snap.season.id) !== Number(sid0) || !Array.isArray(snap.players)) { showNotification('⚠️ 盤面を読めませんでした。もう一度押してください'); return; }
+            const msg = _opsDigestMsg(snap);
+            if (!(await showPushPreview([{ title: msg.title, body: msg.body, allSubscribers: true }]))) return;
+            if (Number(opsStore.get()?.season?.id ?? snap.season.id) !== Number(snap.season.id)) { showNotification('⚠️ 確かめている間にシーズンが変わりました。送っていません'); return; }
+            const me = getCurrentIdentity();
+            const res = await window.sendPushNotification({ kind: 'team', title: msg.title, body: msg.body, url: './?tab=ops', tag: `digest-${snap.season.id}-${Date.now()}` },
+                { senderPlayerId: me?.id || null });
+            // 送った記録 (前回いつ・だれ)。記録できなくても送信は済んでいる
+            try { await window.supabaseRecordRaidNotice(snap.season.id, 'digest_m', `m${Date.now()}`, me?.id || null); } catch (e) { console.warn('[digest] 送った記録に失敗 (送信は済み):', e?.message || e); }
+            showNotification(`📊 戦況のまとめを送りました${Number.isFinite(Number(res?.sent)) ? ` (${res.sent} 端末)` : ''}`);
+        }
+        // ⏱ 再編成の始まり (mode 'rebuild'・Q13 / 第46回の反省 ⑥) / 🧱 ブロックの始まり (mode 'block') を、そのブロックの決定で凸がまだの人へ 1 通ずつ
+        async function _opsSendBlockNotice(mode) {
+            const rbd = window.raidBlocksDomain, dp = window.decidePlanDomain;
+            const board = opsStore.get(), season = board?.season;
+            if (!season || !Array.isArray(board.players)) { showNotification('⚠️ 盤面を読み込んでいます。少し待ってからもう一度押してください'); return; }
+            const rebuild = mode === 'rebuild';
+            const kindKey = rebuild ? 'rebuild_start' : 'block_start';
+            const phaseOk = (c) => c && c.raidDay && c.ph.idx >= 0 && (rebuild ? (c.ph.inRebuild && !!c.blocks[c.ph.idx]?.rebuild) : !c.ph.inRebuild);
+            const c0 = _opsNtfPhase(season);
+            if (!phaseOk(c0)) { showNotification('⏱ 時間が進みました。画面を合わせたので、もう一度押してください'); return; }
+            const blocks = c0.blocks, blk = blocks[c0.ph.idx], bkey = dp.keyOf(blk);
+            const pubs = await window.supabaseGetPublishedPlans();
+            const pub = Array.isArray(pubs) ? dp.currentDecided(pubs.filter(r => r && Number(r.season_id) === Number(season.id))) : null;
+            if (!pub || !dp.decidedBlocks(pub.plan).has(bkey)) { showNotification(`${blk.short} は決定していないので送りません (頼んでいない凸を促さない)`); return; }
+            const skips = await window.supabaseLoadAttackSkips?.(season.id);
+            if (!(skips instanceof Set)) { showNotification('⚠️ 「凸していない」の印を読めませんでした (片付けた人にも送ってしまうので止めました)。もう一度押してください'); return; }
+            const sentRows = await window.supabaseLoadRaidNotices?.(season.id, [kindKey]);
+            if (!Array.isArray(sentRows)) { showNotification('⚠️ 送った記録を読めませんでした (同じ人に 2 回送らないように止めました)。もう一度押してください'); return; }
+            const sentRefs = new Set(sentRows.map(r => r.ref));
+            const planned = _opsNtfPlanned(season, pub, bkey);
+            const rowsBy = dp.rowsOf(pub.plan, blocks);
+            const next = blocks[c0.ph.attackIdx];
+            const ptName = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
+            const targets = [];
+            for (const [memberId] of _opsNtfLeft(planned, _raidDoneKeys(board, blocks, pub.plan), skips, pub.id)) {
+                const ref = `${bkey}|${memberId}`;
+                if (sentRefs.has(ref)) continue;   // もう送った (同じブロックで同じ人に 2 回送らない)
+                // 送る直前に本人の凸で決め直す (別の端末で ✓ / 報告が入ったかもしれない)。読めなければ送らない (済んだ人に「まだ」と送らない側)
+                let atks = null;
+                try { atks = await window.supabaseLoadMyAttacks?.(memberId, season.id, season.hard_date); } catch { atks = null; }
+                if (!Array.isArray(atks)) continue;
+                const mine = (_opsNtfLeft(planned, _raidDoneKeys({ players: [{ id: memberId, attacks: atks }] }, blocks, pub.plan), skips, pub.id).get(memberId) || []);
+                if (!mine.length) continue;
+                const pl = board.players.find(x => String(x.id) === memberId);
+                const name = pl?.name || String(memberId);
+                if (rebuild) {
+                    // 後ろのブロックに出られるか (⑥ レビュー notify-1 / flow-5: 「このブロックのみ」の人にも「組み直します」と約束していた)。分からなければ言い切らない
+                    const later = (pl && window.blockBuildDomain?.availableBlocks) ? window.blockBuildDomain.availableBlocks(pl, blocks).some(i => i > c0.ph.idx) : null;
+                    const nx = next ? next.short : '次のブロック';
+                    // 凸数を登録した人は凸数どおりに組む (後ろのブロックの上限は登録した凸数・残りは足さない: 再レビュー time-1)。凸数の無い後ろのブロックに出られるなら 🧮 はそこに組む → 「組み直します」
+                    const hasCounts = !!(pl && pl.blockCounts && typeof pl.blockCounts === 'object' && Object.keys(pl.blockCounts).length);
+                    const aheadIdx = pl ? (pl.flexTime ? blocks.map((_, i) => i) : rbd.blocksOfSlots(blocks, pl.availableSlots)).filter(i => i > c0.ph.idx) : [];
+                    const counts = (hasCounts && aheadIdx.length && aheadIdx.every(i => Number(pl.blockCounts[rbd.countKey(blocks[i])]) > 0)) ? rbd.countsLabel(pl.blockCounts, blocks) : '';
+                    const rest = counts ? `凸数の登録 (${counts}) のとおりに組むので、残りを後ろのブロックに足すなら Discord で運営へ。`
+                        : (later === true || (hasCounts && aheadIdx.length)) ? `残りは運営が ${nx} 以降で組み直します。`
+                        : later === false ? `${nx} 以降に出られる時間が登録されていないので、残りは組まれません (出られるなら Discord で運営へ)。`
+                        : `残りは、${nx} 以降に出られれば運営が組み直します。`;
+                    targets.push({ memberId, name, ref, url: './?tab=raid', tag: `rebuild-${season.id}-${bkey}-${memberId}`,
+                        title: `⏱ ${blk.short} の凸は ${blk.rebuild.from} まで`,
+                        body: `いまから ${blk.rebuild.to} までは再編成時間です (凸しない時間)。運営の記録ではまだ ✓ の無い ${blk.short} の凸が ${mine.length} 凸あります。もう凸して Discord に貼ったなら、そのままで大丈夫です (運営が ✓ を付けます)。まだなら、${rest}` });
+                } else {
+                    // あなたの凸の行 (決定の通知と同じ言い方 = decidePlanDomain.lineText)。まだの凸だけ
+                    const keys = new Set(mine.map(p => p.planKey));
+                    const lines = (rowsBy.get(memberId) || []).filter(r => r.block === bkey && keys.has(dp.planKey({ block: r.block, level: r.level, bossNumber: r.bossNumber, memberId, loadoutSlot: r.slot })))
+                        .map(r => dp.lineText(r, ptName));
+                    targets.push({ memberId, name, ref, url: './?tab=raid', tag: `block-start-${season.id}-${bkey}-${memberId}`,
+                        title: `🧱 ${blk.short} が始まりました`,
+                        body: `あなたの凸: ${lines.length ? lines.join(' / ') : `${mine.length} 凸`}。レイド予定表で確認できます。` });
+                }
+            }
+            if (!targets.length) { showNotification(sentRefs.size ? '送る人はいません (まだの人には送ってあります)' : '送る人はいません'); return; }
+            // 宛先と文面を見せてから (同じ文面はまとめる)
+            const groups = [];
+            for (const t of targets) {
+                const g = groups.find(x => x.title === t.title && x.body === t.body);
+                if (g) g.recipients.push({ id: t.memberId, name: t.name }); else groups.push({ title: t.title, body: t.body, recipients: [{ id: t.memberId, name: t.name }] });
+            }
+            if (!(await showPushPreview(groups))) return;
+            if (!phaseOk(_opsNtfPhase(season)) || _opsNtfPhase(season).ph.idx !== c0.ph.idx) { showNotification('⏱ 確かめている間に時間が進みました。送っていません (画面を合わせたので、もう一度押してください)'); return; }
+            const me = getCurrentIdentity();
+            let sent = 0, skipped = 0, failed = 0;
+            for (const t of targets) {
+                try {
+                    const st = await window.supabaseClaimRaidNotice(season.id, kindKey, t.ref, me?.id);
+                    if (st !== 'claimed') { skipped += 1; continue; }   // 'done' = 送信済み / 'held' = 別の端末が送信中
+                    try {
+                        await window.sendPushNotification({ title: t.title, body: t.body, url: t.url, tag: t.tag, ignoreAvailability: true, playerIds: [t.memberId] }, { senderPlayerId: me?.id || null });
+                        await window.supabaseMarkRaidNoticeSent(season.id, kindKey, t.ref);
+                        sent += 1;
+                    } catch (e) {
+                        console.warn('[ops notify] 送信失敗 (確保を戻す):', e?.message || e);
+                        failed += 1;
+                        await window.supabaseReleaseRaidNotice(season.id, kindKey, t.ref);
+                    }
+                } catch (e) { failed += 1; console.warn('[ops notify] 1人分をskip:', t.memberId, e?.message || e); }
+            }
+            showNotification(`${rebuild ? '⏱ 再編成の始まり' : `🧱 ${blk.short} の始まり`}を ${sent} 人に送りました${skipped ? ` (ほかの運営が送った ${skipped} 人は飛ばしました)` : ''}${failed ? ` — ⚠ ${failed} 人は送れませんでした (もう一度押すと送り直します)` : ''}`);
         }
 
         // ---- GB比較 (しりすこPAD GB のシーズン凍結スナップショット) ----
@@ -10272,6 +10365,8 @@
                 }
                 // 🔄 🧱 組む が見えている間は、ほかの運営が置いた・外した駒を 10 秒ごとに確かめる (2026-11-12)。見えていなければ通信しない・この端末が処理中なら待つ (中で見る)
                 if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active') && typeof _obSyncPins === 'function') _obSyncPins().catch(() => { /* 次の周期で */ });
+                // 📣 当日の知らせは時間で変わる (再編成時間に入った・ブロックが始まった) — 見えている間は 10 秒ごとに描き直す (通信は送った記録の読み直しだけ・30 秒に 1 回まで)
+                if (_opsMode && document.getElementById('opsSecNotify')?.offsetParent != null && typeof renderOpsNotify === 'function') renderOpsNotify();
                 // ⏱ 再編成時間は 🧱 組む を開いていても盤面を取り直す (ヒーローの ✓ の残り・🧱 の始まりの盤面がほかの運営の ✓ を知るように: ⑥ レビュー data-3)。
                 //   👥 などほかのタブでは取り直さない (📸 模擬の取り込みの表・選択を 30 秒ごとに描き直していた: 再レビュー time-4 / ui-4 — そこではヒーローの ✓ の残りは「分からない」)
                 if (_coordPollTick === 2 && _opsMode && document.getElementById('tab-ops')?.classList.contains('active')
@@ -10292,24 +10387,9 @@
                     if (_opsSeasonLoaded) _checkRaidEvents().catch(() => { /* noop */ });
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
                         if (typeof _syncSeasonMeta === 'function') _syncSeasonMeta(r?.season);   // ⏱ 再編成時間・区切りが変わっていたら端末の写しを捨てる (⑥)
-                        // ★ 時間の通知は運営側 (運営タブを読んだ端末 = opsStore あり) だけ。
-                        //   ホームだけの端末は下のボスHPの差し替えだけを受け取る (2026-09-11)
-                        if (_opsSeasonLoaded) {
-                            // ⏰ 戦闘可能時間の始まりを本人に知らせる (当日だけ・運営端末が送り手・二重送信は一意制約で防ぐ)
-                            if (_opsMode && r?.season?.id && typeof _checkAvailReminders === 'function') {
-                                _checkAvailReminders(r.season).catch(() => { /* 次の周期で */ });
-                            }
-                            // 📊 定時の戦況まとめ (当日の 12・18・21・24 時・全員へ・運営端末が送り手・二重送信は一意制約で防ぐ)
-                            if (_opsMode && r?.season?.id && typeof _checkRaidDigest === 'function') {
-                                _checkRaidDigest(r.season).catch(() => { /* 次の周期で */ });
-                            }
-                            // ⏱ 再編成時間の始まりに、そのブロックの凸がまだの人へ (Q13・当日だけ・運営端末が送り手・二重送信は一意制約で防ぐ)
-                            if (_opsMode && r?.season?.id && typeof _checkRebuildStart === 'function') {
-                                _checkRebuildStart(r.season).catch(() => { /* 次の周期で */ });
-                            }
-                            // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
-                            // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
-                        }
+                        // 📣 時間で出していた通知 (参加可能時間・定時の戦況まとめ・再編成の始まり) は 2026-11-27 から自動で送らない —
+                        //   ⚔️ 戦況の「📣 当日の知らせ」で運営が押して送る (ふるり「通知は運営がボタンを押したときだけ」)。
+                        // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         // ホーム側の盤面 (seasonStore) は運営盤面と独立に差し替える (どちらもシーズン一致時のみ)
                         if (r?.season) seasonStore.patchBosses(r.season.id, r.bosses);
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
@@ -12058,6 +12138,7 @@
                 renderOpsBuild();
                 if (snap.season?.id && _ob.pinsSeason === snap.season.id) { _obLoadPins(snap.season.id); _obLoadDecided(snap.season.id); }   // 決定も取り直す (S4 レビュー [27])
             }
+            if (typeof renderOpsNotify === 'function') renderOpsNotify();   // 📣 当日の知らせ (まだの人の数)
         }
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
         async function renderOpsAttackCheck(force = false) {
