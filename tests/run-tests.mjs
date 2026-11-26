@@ -14470,6 +14470,9 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const close = fnS5('        function handleOpsFinishClose() {', '        function handleOpsFinishAttrPick(attrKey) {');
         assert.ok(/_opsCurrentAttr = null;\s*\n\s*_opsFinSync\(\);/.test(close) && /onclick="handleOpsFinishClose\(\)">✕ 閉じる<\/button>/.test(html), '✕ で閉じられない');
         assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);[^\n]*\n[^\n]*\n\s*_opsFinSync\(\);/.test(html), '盤面を描き直したときに出し入れを合わせていない');
+        // Codex 監査 (段階 3 続き) の低 2 件: 取り直しの最中も「済」の 1 行で描き直す / ✕ で閉じたあとに予約済みのスクロールが隠れたカードへ走らない
+        assert.ok(/\(_atkTap\.blk\.idx !== L\.sel \|\| !!L\.showPast !== !!_atkTap\.showPast\)/.test(tap) && /L\.showPast = _atkTap\.showPast;/.test(tap) && /sel, showPast: _atkTap\.showPast \};/.test(tap), '取り直しの最中に「済」の 1 行を押しても描き直さない');
+        assert.ok(/requestAnimationFrame\(\(\) => \{\s*\n\s*if \(_opsCurrentAttr !== attrKey\) return;/.test(pick), '✕ で閉じたあとも隠れたカードへ寄せる');
     });
     test('★ 段階 3 続き (実行): ✓ 凸の記録 は ✓ が全部済んだ過ぎたブロックだけ 1 行に畳む (✓ が残るブロック・選んでいるブロック・これからのブロックはボタン) / 押すと出す / メンバーの盤は畳まない', () => {
         const src = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
@@ -14625,7 +14628,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/if \(u\) _opsTapUndo\(Number\(u\.dataset\.tapUndo\), u, u\.dataset\.planKey \|\| null\);/.test(html), '押した札の凸の鍵を取り消しに渡していない');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
         assert.ok(/if \(!snap\) \{[\s\S]{0,400}const L = _atkTap\.last;[\s\S]{0,300}body\.innerHTML = _decidedBoardHtml\(L\.board, \{ sel: _atkTap\.blk\.idx, blocks: L\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L\.tapRow, busy: _atkTap\.busy, frozen: true, foldPast: true, showPast: _atkTap\.showPast \}\);/.test(r), '取り直しの最中にブロックが切り替わらない (GP-1)');
-        assert.ok(/_atkTap\.last = \{ seasonId: v\.seasonId, board: v\.board, blocks: v\.blocks, tapRow: v\.tapRow, sel \};/.test(r), '最後に描いた盤を控えていない');
+        assert.ok(/_atkTap\.last = \{ seasonId: v\.seasonId, board: v\.board, blocks: v\.blocks, tapRow: v\.tapRow, sel, showPast: _atkTap\.showPast \};/.test(r), '最後に描いた盤を控えていない (畳み方も)');
     });
 }
 

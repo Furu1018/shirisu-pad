@@ -14807,6 +14807,7 @@
             // 2フレーム待つことで描画 (innerHTML + サブカード描画) のレイアウトを確定
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
+                    if (_opsCurrentAttr !== attrKey) return;   // 待つ間に ✕ で閉じた / 別のボスに替えた — 隠れたカードへ寄せない (Codex 段階 3 続き)
                     const rect = target.getBoundingClientRect();
                     // ★ ヘッダーは浮かぶピル (余白がある) ので、隠れる高さは offsetHeight ではなく
                     //   画面上の下端で測る。offsetHeight だと余白ぶん上にずれて見出しが隠れる
@@ -16797,9 +16798,9 @@
             const snap = opsStore.get();
             if (!snap) {   // 取り直しの最中 (✓ のあと) — 完了が描く。その間にブロックを押されたら、最後に描いた盤から描き直して札は押せなくする (盤のレビュー GP-1)
                 const L = _atkTap.last;
-                if (L && _atkTap.blk && String(_atkTap.blk.sid) === String(L.seasonId) && _atkTap.blk.idx !== L.sel) {
+                if (L && _atkTap.blk && String(_atkTap.blk.sid) === String(L.seasonId) && (_atkTap.blk.idx !== L.sel || !!L.showPast !== !!_atkTap.showPast)) {   // 済んだブロックの 1 行を押したときも (Codex 段階 3 続き)
                     body.innerHTML = _decidedBoardHtml(L.board, { sel: _atkTap.blk.idx, blocks: L.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L.tapRow, busy: _atkTap.busy, frozen: true, foldPast: true, showPast: _atkTap.showPast });
-                    L.sel = _atkTap.blk.idx;
+                    L.sel = _atkTap.blk.idx; L.showPast = _atkTap.showPast;
                 }
                 return;
             }
@@ -16841,7 +16842,7 @@
             _atkTap.view = { seasonId: v.seasonId, pubId: v.pub.id, byKey };
             body.innerHTML = nAll ? _decidedBoardHtml(v.board, { sel, blocks: v.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v.tapRow, busy: _atkTap.busy, foldPast: true, showPast: _atkTap.showPast })
                 : '<p class="ops-recent-empty">決定に凸がありません。</p>';
-            _atkTap.last = { seasonId: v.seasonId, board: v.board, blocks: v.blocks, tapRow: v.tapRow, sel };
+            _atkTap.last = { seasonId: v.seasonId, board: v.board, blocks: v.blocks, tapRow: v.tapRow, sel, showPast: _atkTap.showPast };
             if (cnt) cnt.textContent = `いままで 完了 ${nDueDone} / ${nDue} · 全体 ${nDone} / ${nAll}${v.rebuild ? ` · ⏱ 再編成時間 ${v.rebuild.label}` : ''}`;
         }
         async function _opsTapMark(planKey, btn) {
