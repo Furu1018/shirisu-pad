@@ -170,46 +170,11 @@
         return { first: false, changed, unchanged, totalAfter };
     }
 
-    /**
-     * 配信前の確認ダイアログ用の要約文。
-     * @param {Object} diff diffPlans の戻り値
-     * @param {number=} maxNames 名前を並べる上限
-     */
-    function summaryText(diff, maxNames = 8) {
-        if (!diff) return '';
-        if (diff.first) return `初回の配信です (${diff.totalAfter}名に割当があります)。`;
-        const n = diff.changed.length;
-        if (n === 0) return `前回の配信から割当の変わる人はいません (${diff.unchanged.length}名そのまま)。`;
-        const names = diff.changed.slice(0, maxNames).map(c => c.memberName || '?');
-        const rest = n > maxNames ? ` ほか${n - maxNames}名` : '';
-        const byKind = {};
-        diff.changed.forEach(c => { byKind[c.kind] = (byKind[c.kind] || 0) + 1; });
-        const kinds = KIND_ORDER.filter(k => byKind[k]).map(k => `${KIND_JP[k]} ${byKind[k]}名`).join(' / ');
-        return `${n}名の割当が変わります (そのまま ${diff.unchanged.length}名)。\n${kinds}\n対象: ${names.join('、')}${rest}`;
-    }
-
     /** 変わった人の ID 配列 (Push の宛先を絞るのに使う) */
-    function changedIds(diff) {
-        return (diff && Array.isArray(diff.changed) ? diff.changed : []).map(c => c.memberId);
-    }
     /** 変わらなかった人の ID 配列 (plan_acks を新しい plan_id へ引き継ぐ対象) */
-    function unchangedIds(diff) {
-        return (diff && Array.isArray(diff.unchanged) ? diff.unchanged : []).map(c => c.memberId);
-    }
 
     root.planDiffDomain = {
-        KIND_ORDER,
-        KIND_JP,
-        rowsByPlayer,
-        coreKey,
-        timeKey,
-        teamKey,
-        classify,
-        describeRow,
-        describeRows,
-        diffPlans,
-        summaryText,
-        changedIds,
-        unchangedIds,
+        KIND_ORDER, KIND_JP, rowsByPlayer, coreKey, timeKey, teamKey, classify, describeRow,
+        describeRows, diffPlans,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

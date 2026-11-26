@@ -350,43 +350,18 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const bad = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), reservations: [{ ...r, window: { fromIdx: 15, toIdx: 13 } }] });
         assert.ok(bad, '壊れた窓で落ちた');
     });
-    test('🧱 3: ドメイン — ブロックの予約の窓・言い方・解く形・時刻の突き合わせ・範囲・対象外・申請の下書き・ホームの枠', () => {
+    test('🧱 3: ドメイン — ブロックの予約の窓・解く形・範囲 (言い方・突き合わせ・申請の下書き・ホームの枠は 2026-11-26 に撤去 — 見ていた画面は 11/16 に撤去)', () => {
         const rv = globalThis.reservationsDomain, rb = globalThis.raidBlocksDomain;
         const blk = { id: 9, player_id: 3, raid_level: null, boss_number: 2, loadout_slot: 1, status: 'approved', time_mode: 'block', time_slot: null, block_from: 18, block_to: 20, characters_snapshot: ['a'], expected_damage_b: 30 };
         assert.deepEqual(rv.blockWindowOf(blk), { fromIdx: 13, toIdx: 15 });
-        assert.equal(rv.blockLabelOf(blk), '18〜21時');
-        assert.equal(rv.whenOf(blk), '18〜21時のどこか');
-        assert.equal(rv.whenOf({ ...blk, block_from: 0, block_to: 4 }), '翌0〜翌5時のどこか');
         assert.equal(rv.blockWindowOf({ ...blk, time_mode: 'fixed' }), null);
         assert.equal(rv.blockWindowOf({ ...blk, block_from: 20, block_to: 18 }), null, '窓が逆なら読まない');
-        assert.match(rv.describe(blk), /B2 18〜21時のどこか 編成①/);
         const sc = rv.toSolverConstraints([blk])[0];
         assert.deepEqual([sc.timeSlot, sc.flex, sc.window], [null, false, { fromIdx: 13, toIdx: 15 }]);
         assert.ok(!('window' in rv.toSolverConstraints([{ ...blk, time_mode: 'fixed', time_slot: 'h21', block_from: null, block_to: null }])[0]), '時刻の予約に窓を足した (指紋が変わる)');
-        // 古い配信との突き合わせ: 窓の中の行なら「入っている」
-        assert.equal(rv.rowHonorsTime({ hourIdx: 14, flex: false }, blk), true);
-        assert.equal(rv.rowHonorsTime({ hourIdx: 16, flex: false }, blk), false);
         // ブロックのぶんの配信の範囲: 窓が重なれば中
-        assert.equal(rv.inBlockTime({ blockScope: { slots: ['h20', 'h21'] } }, blk), true);
-        assert.equal(rv.inBlockTime({ blockScope: { slots: ['h21', 'h22'] } }, blk), false);
         assert.deepEqual(rb.scopeReservations([blk], { from: 21, to: 23 }), []);
         assert.deepEqual(rb.scopeReservations([blk], { from: 20, to: 23 }).map(r => r.id), [9]);
-        // 対象外の突き合わせは窓で
-        const plan = { outOfScopeReservations: [{ reservationId: 9, memberId: 3, bossNumber: 2, loadoutSlot: 1, window: { fromIdx: 13, toIdx: 15 }, timeSlot: null, flex: false }] };
-        assert.equal(rv.matchesOutOfScope(plan, blk), true);
-        assert.equal(rv.matchesOutOfScope(plan, { ...blk, block_from: 21, block_to: 23 }), false, '窓が違うのに対象外のまま');
-        // 申請の下書き: ブロックなら時刻を持たない / ブロックも時刻も無ければ足りない
-        const bossRow = { boss_number: 2, remaining_hp_raw: 50e9 };
-        const lo = { attribute: 'water', slot: 1, characters: ['a'], dmgB: 30 };
-        const d = rv.buildRequestDraft({ boss: bossRow, loadout: lo, block: { from: 18, to: 20 } });
-        assert.deepEqual([d.ok, d.draft.timeSlot, d.draft.flex, d.draft.block], [true, null, false, { from: 18, to: 20 }]);
-        assert.deepEqual(rv.buildRequestDraft({ boss: bossRow, loadout: lo }).missing, ['time']);
-        // ブロックは隙間・時刻より強い (古い状態が残っていても、ブロックで申請する)
-        const d2 = rv.buildRequestDraft({ boss: bossRow, loadout: lo, block: { from: 18, to: 20 }, flex: true, timeSlot: 'h21' });
-        assert.deepEqual([d2.draft.flex, d2.draft.timeSlot, d2.draft.block], [false, null, { from: 18, to: 20 }]);
-        // ホームの枠: ブロックの言い方と、配信で決まった時刻
-        const hs = rv.homeSlots({ plan: { levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: 3, reservationId: 9, hourIdx: 14, loadoutSlot: 1, dmgB: 30 }] }] }] }, viewerId: 3, reservations: [blk] });
-        assert.deepEqual([hs.slots[0].kind, hs.slots[0].blockLabel, hs.slots[0].placedHourIdx, hs.slots[0].timeSlot], ['fixed', '18〜21時', 14, null]);
     });
     test('★ 配線 (3): SQL 54 と練習の偽サーバと クライアントが同じ形 (列・CHECK・凍結・未適用の案内) / 本人の申請シートは撤去', () => {
         const sql = _fs2b.readFileSync(new URL('../supabase/54_reservation_blocks.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -4202,32 +4177,9 @@ console.log('\n複数案の同時打診:');
         assert.equal(A.ready, true, 'より進んだ返事を採っていない');
     });
 
-    test('★ 落ちた案の人を名指しで返す (黙って流さない)', () => {
-        const p = F.offerProgress([
-            R('A', 1, 'あ', 'accepted', 3),
-            R('B', 2, 'い', 'accepted', 5), R('B', 3, 'う', 'pending'),
-        ], { now: Date.parse(T(10)) });
-        const lose = F.offerLosers(p, 'A');
-        assert.deepEqual(lose.notify.map(m => m.name), ['い', 'う']);
-        assert.equal(lose.missingRowIds, 0);
-        // ★ 落とす行は「知らせる人」とは別 — 落ちた案の行はすべて落とす
-        assert.equal(lose.rowIds.length, 2, '落ちた案の行を落とし切っていない');
-    });
 
-    test('★ 確定: 勝った案にも居る人の「落ちた行」も必ず落とす (知らせないだけ)', () => {
-        // 落ちた案の行を残すと accepted のまま生き続け、確定が記録に出ない (Codex指摘 2026-09-10)
-        const p = F.offerProgress([
-            R('A', 1, 'あ', 'accepted', 3), R('A', 2, 'い', 'accepted', 3),
-            R('B', 2, 'い', 'accepted', 4), R('B', 3, 'う', 'pending'),
-        ], { now: Date.parse(T(10)) });
-        const lose = F.offerLosers(p, 'A');
-        // B案は2行 (い・う) とも落とす
-        assert.equal(lose.rowIds.length, 2, '勝った案にも居る人の行を残している');
-        // ただし知らせるのは「う」だけ
-        assert.deepEqual(lose.notify.map(m => m.name), ['う']);
-    });
 
-    test('★ 同じ人の同じ案に行が2つあっても、落とすときは両方落とす', () => {
+    test('★ 同じ人の同じ案に行が2つあっても、1 人として数えて行は全部覚える', () => {
         // 数えるのは1人でも、行はすべて覚えておく。1行しか持たないと、確定のときに
         // 落とし損ねた行が「確認中」で残り、あとから二重に頼まれる (Codex指摘 2026-09-10)。
         // 44 の一意索引が守っている前提に寄りかからない
@@ -4240,32 +4192,9 @@ console.log('\n複数案の同時打診:');
         assert.equal(B.total, 1, '同じ人を2人として数えている');
         assert.equal(B.members[0].status, 'accepted', 'より進んだ返事を採っていない');
         assert.deepEqual(B.members[0].rowIds.slice().sort((a, b) => a - b), [21, 22], '行を1つしか覚えていない');
-        const lose = F.offerLosers(p, 'A');
-        assert.deepEqual(lose.rowIds.slice().sort((a, b) => a - b), [21, 22], '落とす行が足りない');
-        assert.equal(lose.missingRowIds, 0);
-        assert.deepEqual(lose.notify[0].rowIds.slice().sort((a, b) => a - b), [21, 22]);
     });
 
-    test('★ 行 id が無い古い行が混ざったら数を返す (確定させないため)', () => {
-        const p = F.offerProgress([
-            { plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted', id: 1 },
-            { plan_key: 'B', player_id: 2, name: 'い', status: 'pending' },   // id なし
-        ], { now: 0 });
-        const lose = F.offerLosers(p, 'A');
-        assert.equal(lose.missingRowIds, 1, '落とせない行があることを伝えていない');
-        assert.equal(lose.rowIds.length, 0);
-    });
 
-    test('★ 落ちた案でも「勝った案にも居る人」と「自分で断った人」には出さない', () => {
-        const p = F.offerProgress([
-            R('A', 1, 'あ', 'accepted', 3), R('A', 2, 'い', 'accepted', 3),
-            R('B', 2, 'い', 'accepted', 4), R('B', 3, 'う', 'declined', 4), R('B', 4, 'え', 'pending'),
-        ], { now: Date.parse(T(10)) });
-        const names = F.offerLosers(p, 'A').notify.map(m => m.name);
-        assert.ok(!names.includes('い'), '勝った案にも居る人に「落ちました」と言っている');
-        assert.ok(!names.includes('う'), '自分で断った人に「落ちました」と言っている');
-        assert.deepEqual(names, ['え']);
-    });
 
 
     test('★ 99: 引数付きで関数を引くなら to_regprocedure (to_regproc は常に NULL)', () => {
@@ -4313,31 +4242,12 @@ console.log('\n複数案の同時打診:');
     test('★ 壊れた入力で落ちない', () => {
         assert.doesNotThrow(() => F.offerProgress(null));
         assert.doesNotThrow(() => F.offerProgress([null, {}, { player_id: 1 }]));
-        assert.doesNotThrow(() => F.offerLosers(null, 'A'));
-        assert.deepEqual(F.offerLosers(null, 'A'), { rowIds: [], notify: [], missingRowIds: 0 });
         assert.deepEqual(F.offerProgress([]).plans, []);
         assert.equal(F.offerProgress([]).allDead, false, '案が無いのに全滅と言っている');
     });
 
     // ★ 打診の id を行から拾い直す (読み込み直し・2 人目の運営の端末でも「この案で確定」が押せる — 2026-10-03)
     const O = (id, offer, plan, boss, status) => ({ id, offer_id: offer, plan_key: plan, boss_number: boss, player_id: id, status });
-    test('★ 打診の拾い直し: 返事待ちがあれば、そのボスの打診を拾う。別のボス・閉じた打診は拾わない', () => {
-        const rows = [O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'pending'), O(3, 'o9', 'A', 2, 'pending')];
-        assert.equal(F.latestOpenOffer(rows, 3), 'o1');
-        assert.equal(F.latestOpenOffer(rows, 2), 'o9', '別のボスの打診を混ぜている / 拾えていない');
-        assert.equal(F.latestOpenOffer(rows, 3, new Set(['o1'])), null, 'この端末で閉じた打診を拾っている');
-        assert.equal(F.latestOpenOffer(rows, 3, ['o1']), null, '閉じた一覧が配列でも効くこと');
-        assert.equal(F.latestOpenOffer(rows, 5), null, '打診の無いボスで拾っている');
-    });
-    test('★ 打診の拾い直し: 確定したあと (落ちた案が全部 declined) は拾わない。全員が断った打診も拾わない', () => {
-        // 確定前: A が全員了承・B は落ちていない (accepted が残る) → 生きている案が 2 つ = まだ確定していない
-        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'accepted'), O(3, 'o1', 'B', 3, 'declined')], 3), 'o1', '確定前なのに拾っていない (「確定」が押せない)');
-        // 確定後: B の行は全部 declined → 生きている案は A だけ
-        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'declined'), O(3, 'o1', 'B', 3, 'declined')], 3), null, '確定したあとも拾っている (「この案で確定」が並び続ける)');
-        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'B', 3, 'declined')], 3), null, '全員が断った打診を拾っている');
-        // 1 案だけ残って全員了承 (旧い形) も決着
-        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted')], 3), null);
-    });
     test('★ 打診の状態 (offerState): none / dead / confirmed / open — 成立不能な案に pending が残っても dead (Codex指摘 2026-10-03)', () => {
         assert.equal(F.offerState([]), 'none');
         assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'pending'), O(2, 'o1', 'B', 3, 'pending')]), 'open');
@@ -4347,20 +4257,6 @@ console.log('\n複数案の同時打診:');
         assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'accepted')]), 'confirmed', '1 案だけの打診がそろったら決着');
         assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'A', 3, 'pending'), O(3, 'o1', 'B', 3, 'declined')]), 'dead', '成立不能な案に pending が残るだけなら dead');
         assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'B', 3, 'declined')]), 'dead');
-        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'A', 3, 'pending'), O(3, 'o1', 'B', 3, 'declined')], 3), null, '成立不能な打診を拾っている');
-    });
-    test('★ 打診の拾い直し: 同じボスに打診が 2 回あれば、行 id の大きい (新しい) ほう', () => {
-        const rows = [O(1, 'old', 'A', 3, 'pending'), O(2, 'old', 'B', 3, 'pending'), O(7, 'new', 'A', 3, 'pending'), O(8, 'new', 'B', 3, 'pending')];
-        assert.equal(F.latestOpenOffer(rows, 3), 'new');
-        assert.equal(F.latestOpenOffer([...rows].reverse(), 3), 'new', '行の並びで答えが変わる');
-        assert.equal(F.latestOpenOffer(rows, 3, ['new']), 'old', '新しいほうを閉じたら古いほう (まだ返事待ち) を出す');
-        // offer_id の無い行 (1 案ずつの依頼) は打診ではない
-        assert.equal(F.latestOpenOffer([{ id: 1, boss_number: 3, player_id: 1, status: 'pending' }], 3), null);
-        // id の無い行 (同点) なら行の並びの後ろ
-        const noId = (offer, plan) => ({ offer_id: offer, plan_key: plan, boss_number: 3, player_id: offer + plan, status: 'pending' });
-        assert.equal(F.latestOpenOffer([noId('p', 'A'), noId('p', 'B'), noId('q', 'A'), noId('q', 'B')], 3), 'q', 'id が無いとき並びの後ろを採っていない');
-        assert.doesNotThrow(() => F.latestOpenOffer(null, 3));
-        assert.equal(F.latestOpenOffer(null, 3), null);
     });
 }
 
@@ -5091,6 +4987,19 @@ console.log('\n運営除外の配線 (ソース突合):');
         }
         assert.ok(!/paceDomain|planBoardDomain|mockExclusionDomain/.test(html + client), '消したドメインを参照している');
     });
+    test('★ 段階 3 続き B: 予約の申請・承認・本人の 3 枠の残り / 配信の差分の 3 つ / 締め凸の打診の 2 つ / テストの道具の通信の関数 6 個 は消した — 戻さない', () => {
+        // 2026-11-26 ふるり「見えない所も一緒に片付ける」。見ていた画面は 2026-11-16 に撤去済み
+        const resv = read('js', 'domain', 'reservations.js'), diff = read('js', 'domain', 'planDiff.js'), fin = read('js', 'domain', 'finish.js');
+        for (const n of ['homeSlots', 'pendingRepublish', 'approvalImpact', 'canApprove', 'canRequest', 'buildRequestDraft', 'planRowToDraft', 'findInfeasible', 'fingerprint', 'TRANSITIONS', 'unmetText', 'UNASSIGNED_JP'])
+            assert.ok(!new RegExp('function ' + n + '\\b|const ' + n + ' =').test(resv), 'reservations.js に ' + n + ' が残っている');
+        for (const n of ['summaryText', 'changedIds', 'unchangedIds']) assert.ok(!new RegExp('function ' + n + '\\b').test(diff), 'planDiff.js に ' + n + ' が残っている');
+        for (const n of ['offerLosers', 'latestOpenOffer']) assert.ok(!new RegExp('function ' + n + '\\b').test(fin), 'finish.js に ' + n + ' が残っている');
+        for (const n of ['supabasePublishPlan', 'supabaseGetPublishedPlan', 'supabaseGetPreviousPublishedPlan', 'supabaseDeleteAllPublishedPlans', 'supabaseReservationPinColsMissing', 'supabaseAskPin'])
+            assert.ok(!new RegExp('window\\.' + n + '\\s*=').test(client), '通信の関数 ' + n + ' が残っている');
+        // 残すもの: 🧱 組む の 📌 (canPin・isFixed・解く形)・凸の消し込み・決定の配信・写しを捨てるつなぎ目 (練習のテストが使う)
+        for (const n of ['canPin', 'isFixed', 'toSolverConstraints', 'matchForAttack', 'STATUS_JP']) assert.ok(new RegExp('\\b' + n + '\\b').test(resv.match(/root\.reservationsDomain = \{[\s\S]*?\};/)[0]), n + ' を公開から外した (画面が使う)');
+        assert.ok(/window\.supabasePublishDecidedPlan = async function/.test(client) && /window\.supabaseInvalidatePushAudience = function/.test(client), '決定の配信 / 写しを捨てるつなぎ目が無い');
+    });
     test('除外する操作 (残凸表の 🧹 整理) は 2026-11-16 に撤去・除外の部品 (mockExclusion.js) は 11/26 に撤去した。前に除外した行は読み取りが列を見て外す', () => {
         assert.ok(!html.includes('mockExclusion.js') && !fs.existsSync(path.join(ROOT, 'js', 'domain', 'mockExclusion.js')), '除外の部品が残っている');
         for (const fn of ['handleOpsRemainingTidyToggle', 'handleOpsRemExclude', 'handleOpsRemUnexclude']) assert.ok(!html.includes(fn), `${fn} が残っている`);
@@ -5439,28 +5348,12 @@ console.log('\nreservationsDomain (凸の予約):');
         const withdrawn = { ...res({ id: 5, pid: 'p5', status: 'cancel_requested' }), approved_at: null };
         assert.equal(rv.isFixed(withdrawn), false, '未承認の申請を引っ込めただけで固定になっている');
         assert.deepEqual(rv.toSolverConstraints([withdrawn]), []);
-        assert.equal(rv.fingerprint([withdrawn]), '', '未承認の取り下げが指紋に入っている');
         // 固定されている cancel_requested は自動解除・凸の紐づけの対象
         const fixedCancel = { ...res({ id: 6, pid: 'p6', lv: 1, boss: 1, status: 'cancel_requested' }) };
-        assert.deepEqual(rv.findInfeasible([fixedCancel], { currentLevel: 2, bosses: [] }).map(h => h.id), [6],
-            '取り消し希望中はレベルが終わっても固定のまま残る');
         assert.equal(rv.matchForAttack([{ ...fixedCancel, characters_snapshot: [] }], { playerId: 'p6', level: 1, bossNumber: 1, characters: [] }).id, 6,
             '取り消し希望中に本人が凸しても消し込めない');
     });
 
-    test('★ 予約: 指紋は拘束に効く行だけで作る (申請が増えても変わらない / 承認・解除で変わる)', () => {
-        const base = [res({ id: 1, pid: 'p1', status: 'approved' }), res({ id: 3, pid: 'p3', status: 'requested' })];
-        const fp = rv.fingerprint(base);
-        assert.equal(fp, '1:approved');
-        assert.equal(rv.fingerprint([...base, res({ id: 9, pid: 'p9', status: 'requested' })]), fp, '申請が増えただけで変わっている');
-        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'approved' }), res({ id: 3, pid: 'p3', status: 'approved' })]), fp, '承認で変わらない');
-        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'released' })]), fp, '解除で変わらない');
-        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'cancel_requested' })]), fp, '取り消し希望で変わらない');
-        // 順序に依存しない
-        assert.equal(rv.fingerprint([res({ id: 2, pid: 'a', status: 'approved' }), res({ id: 1, pid: 'b', status: 'approved' })]),
-            rv.fingerprint([res({ id: 1, pid: 'b', status: 'approved' }), res({ id: 2, pid: 'a', status: 'approved' })]));
-        assert.equal(rv.fingerprint(null), '');
-    });
 
     test('予約: ソルバーの拘束になるのは approved / cancel_requested だけ (requested・終端は含めない)', () => {
         const rows = ['requested', 'approved', 'cancel_requested', 'fulfilled', 'released', 'rejected']
@@ -5496,93 +5389,33 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(f[0].timeSlot, 'h21');
     });
 
-    test('予約: 撃破・レベル通過は自動で解除の対象になる / 時間切れは対象外', () => {
-        const rows = [
-            res({ id: 1, lv: 1, boss: 1 }),
-            res({ id: 2, lv: 2, boss: 3 }),
-            res({ id: 3, lv: 2, boss: 4 }),
-            res({ id: 4, lv: 3, boss: 5 }),
-            res({ id: 5, lv: 2, boss: 3, status: 'requested' }),
-        ];
-        const board = { currentLevel: 2, bosses: [
-            { boss_number: 3, remaining_hp_raw: 0 }, { boss_number: 4, remaining_hp_raw: 5e9 }] };
-        const out = rv.findInfeasible(rows, board);
-        assert.deepEqual(out.map(x => [x.id, x.reason]), [[1, 'level_passed'], [2, 'boss_defeated']]);
-        assert.ok(!out.some(x => x.reason === 'no_show'), '時刻を過ぎただけで解除してはいけない');
-    });
 
-    test('★ 予約: findInfeasible は bosses を渡さなければレベル通過だけを外す (手動HP更新の誤認よけ)', () => {
-        // 運営がボスHPを1体ずつ手で更新する運用だと、新レベルの「まだ更新前 = 残HP0」のボスを
-        // 撃破済みと誤認して新レベルの予約まで外してしまう。レベル開放時は bosses: [] で呼ぶ
-        const rows = [
-            res({ id: 1, pid: 'p1', lv: 1, boss: 1, status: 'approved' }),   // 前のレベル → 通過
-            res({ id: 2, pid: 'p2', lv: 2, boss: 3, status: 'approved' }),   // いまのレベル → 残す
-            res({ id: 3, pid: 'p3', lv: 2, boss: 4, status: 'requested' }),  // 承認前は対象外
-            res({ id: 4, pid: 'p4', lv: 3, boss: 3, status: 'approved' }),   // ★ 次のレベルの同じボス → 残す
-        ];
-        const out = rv.findInfeasible(rows, { currentLevel: 2, bosses: [] });
-        assert.deepEqual(out.map(h => [h.id, h.reason]), [[1, 'level_passed']]);
-        // ★ raid_level が無い行は外さない (Number(null) は 0 なので、放っておくと通過扱いになる)
-        const legacy = [{ ...res({ id: 9, pid: 'p9', lv: 1, boss: 1, status: 'approved' }), raid_level: null }];
-        assert.deepEqual(rv.findInfeasible(legacy, { currentLevel: 2, bosses: [] }), [], 'raid_level が無い旧行を外している');
-        // bosses を渡せば撃破も見る。★ ただし「いまのレベル」の撃破だけ —
-        //   B3 が Lv2 で倒れても、Lv3 の B3 の予約はまだ実行できる (次のレベルで復活する)
-        const dead = rv.findInfeasible(rows, { currentLevel: 2, bosses: [{ boss_number: 3, remaining_hp_raw: 0 }] });
-        assert.deepEqual(dead.map(h => [h.id, h.reason]).sort(), [[1, 'level_passed'], [2, 'boss_defeated']],
-            '次のレベルの予約まで外している');
-    });
 
-    test('予約: 残凸の検査は「生きている予約 + 実凸」で数える', () => {
-        const rows = [res({ id: 1, status: 'approved' }), res({ id: 2, status: 'requested', boss: 4 }),
-                      res({ id: 3, status: 'fulfilled', boss: 5 }), res({ id: 4, status: 'released', boss: 1 })];
-        assert.equal(rv.capacityLeft(rows, 'p1', 0), 1, '生きているのは2件なので残り1');
-        assert.equal(rv.capacityLeft(rows, 'p1', 1), 0, '実凸1件を足すと空きなし');
-        assert.equal(rv.capacityLeft(rows, 'p9', 0), 3, '別人は影響しない');
-    });
 
-    test('★ 📌 運営の仮置き (pinned): 拘束にはなるが約束ではない — 指紋・ソルバー・消し込み・本人の3枠', () => {
+    test('★ 📌 運営の仮置き (pinned): 拘束にはなるが約束ではない — ソルバー・消し込み (指紋・本人の 3 枠は 2026-11-26 に撤去)', () => {
         const P = { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, time_mode: 'fixed', time_slot: 'h21', characters_snapshot: ['a'] };
         const pin = { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, time_mode: 'fixed', time_slot: 'h22', characters_snapshot: ['b'], pinned_by: 'ふるり' };
         const asked = { ...pin, id: 3, boss_number: 4, asked_at: '2026-09-11T12:00:00Z', ask_deadline_at: '2026-09-11T12:15:00Z' };
         const req = { id: 4, player_id: 7, status: 'requested', boss_number: 5, loadout_slot: 1 };
         assert.equal(rv.isPromise(P), true); assert.equal(rv.isPromise(pin), false); assert.equal(rv.isPromise(asked), false);
-        assert.equal(rv.isPin(pin), true); assert.equal(rv.isAskedPin(pin), false); assert.equal(rv.isAskedPin(asked), true);
+        assert.equal(rv.isPin(pin), true);
         assert.equal(rv.isFixed(pin), true, '固定はソルバーを拘束する'); assert.equal(rv.isFixed(req), false);
         assert.equal(rv.isActive(pin), false, '固定は残凸の枠 (ACTIVE) に数えない');
         assert.deepEqual([...rv.ACTIVE].sort(), ['approved', 'cancel_requested', 'requested']);
-        assert.equal(rv.STATUS_JP.pinned, '運営の仮置き'); assert.deepEqual(rv.TRANSITIONS.pinned, ['approved', 'released']);
-        // 指紋に入る (配信直前に固定が動いていたら止める) / ソルバーの拘束に pinned の印が付く
-        assert.ok(rv.fingerprint([P, pin]).includes('2:pinned'), '指紋に固定が入らない');
-        // ★ 📌 は置き直せるので、ボス・時刻・編成枠が変われば指紋も変わる (Codex指摘 2026-09-11)。約束は id:status だけ
-        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, time_slot: 'h23' }]), '固定を置き直しても指紋が変わらない (置き直す前の算出を配信できる)');
-        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, boss_number: 5 }]));
-        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, loadout_slot: 1 }]));
-        // 編成・火力だけの置き直し (同じマスのまま) も指紋が変わる (Codex再指摘)
-        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, characters_snapshot: ['b', 'c'] }]), '編成を変えても指紋が変わらない');
-        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, expected_damage_b: 12.5 }]), '火力を変えても指紋が変わらない');
-        assert.equal(rv.fingerprint([P]), '1:approved', '約束の指紋の形が変わっている');
+        assert.equal(rv.STATUS_JP.pinned, '運営の仮置き');
         const cons = rv.toSolverConstraints([P, pin, req]);
         // 並びは仕様化したキー (レベル → ボス → 人 → 枠): 固定 (B2) が約束 (B3) より先
         assert.deepEqual(cons.map(c => [c.reservationId, c.pinned]), [[2, true], [1, false]]);
         // 凸報告の消し込みは約束だけ (RPC も pinned は弾く)
         assert.equal(rv.matchForAttack([pin], { playerId: 7, level: 1, bossNumber: 2, characters: ['b'] }).id, null, '固定を凸報告に紐づけている');
         assert.equal(rv.matchForAttack([P], { playerId: 7, level: 1, bossNumber: 3, characters: ['a'] }).id, 1);
-        // 本人の3枠: 下書きは見せない / お願いされた固定は status: 'pinned' で出る
-        const hs = rv.homeSlots({ plan: null, viewerId: 7, reservations: [pin, asked, P] });
-        assert.deepEqual(hs.slots.filter(s => s.kind === 'fixed').map(s => [s.reservationId, s.status]), [[1, 'approved'], [3, 'pinned']]);
-        assert.equal(hs.slots.find(s => s.reservationId === 3).pinnedBy, 'ふるり');
-        assert.equal(hs.fixedCount, 2);
-        // 配信後の固定は「配信後の予約」に数える (組み直しの合図)
-        assert.equal(rv.pendingRepublish([pin], { levels: [] }).count, 1);
     });
-    test('★ 📌 canPin / pinFor: 本人の予約があるカードには置かない / 残凸 / キャラ被り / 置き直しは自分を数えない', () => {
+    test('★ 📌 canPin: 本人の予約があるカードには置かない / 残凸 / キャラ被り / 置き直しは自分を数えない', () => {
         const rows = [
             { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, characters_snapshot: ['ラピ', 'ドロシー'] },
             { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, characters_snapshot: ['紅蓮'] },
             { id: 3, player_id: 8, status: 'requested', boss_number: 1, loadout_slot: 1, characters_snapshot: ['x'] },
         ];
-        assert.equal(rv.pinFor(rows, { playerId: 7, bossNumber: 2, loadoutSlot: 2 }).id, 2);
-        assert.equal(rv.pinFor(rows, { playerId: 7, bossNumber: 3, loadoutSlot: 1 }), null, '約束を固定として返している');
         assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 3, loadoutSlot: 1, characters: ['z'] }).reason, 'promise_exists');
         assert.equal(rv.canPin(rows, { playerId: 8, bossNumber: 1, loadoutSlot: 1, characters: ['z'] }).reason, 'promise_exists', '申請中のカードにも置かない');
         assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 5, loadoutSlot: 1, characters: ['アニス'], doneAttacks: 1 }).reason, 'no_capacity', '約束1 + 固定1 + 実凸1 = 3');
@@ -5603,11 +5436,11 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';/.test(client), '固定の列が無い');
         // (2026-09-11 実機のあと) 読み直すときに「45 の列が無い」を覚える形になった
         // 🧱 段階 3 (54): 45 と 54 のどちらが欠けていても (両方でも) 読み直す形に (2 つの読み出しとも)
-        assert.ok((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
+        assert.ok((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
         assert.ok((client.match(/if \(withBlock && _isMissingBlockCols\(error\)\) \{ withBlock = false; \}/g) || []).length === 2, '54 未適用で列を落として読み直していない (両方の読み出し)');
         assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
         assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
-        assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
+        assert.ok(!/window\.supabaseAskPin\s*=/.test(client), 'お願いの関数が残っている (📣 お願いは 2026-11-16 に撤去・関数は 11/26)');
         assert.ok(/この仮置きは別の運営が動かしました/.test(client), '0 行更新 (別の運営が動かした) を黙って通している');
     });
     await testAsync('★ #8 📌 の置き直し・お願いは楽観ロック (updated_at) — 別の運営が先に動かした行を古い画面から上書きしない (実行)', async () => {
@@ -5623,7 +5456,7 @@ console.log('\nreservationsDomain (凸の予約):');
                 return { fn: w[name], conds };
             };
         };
-        const move = fnOf('supabaseMovePin'), ask = fnOf('supabaseAskPin');
+        const move = fnOf('supabaseMovePin');
         // 置き直し: updated_at を渡さないと拒む / 渡すと条件に入る / 0 行なら「別の運営が動かした」
         await assert.rejects(() => move([{ id: 1 }]).fn(1, { bossNumber: 2 }), /expectUpdatedAt/, 'updated_at 無しで動かせてしまう');
         const m = move([{ id: 1 }]);
@@ -5631,13 +5464,6 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(m.conds.some(c => c[0] === 'eq' && c[1] === 'updated_at' && c[2] === '2026-09-14T00:00:00+00:00'), '置き直しが updated_at を条件にしていない');
         assert.ok(m.conds.some(c => c[1] === 'status' && c[2] === 'pinned'));
         await assert.rejects(() => move([]).fn(1, { bossNumber: 2, expectUpdatedAt: 'x' }), /別の運営が動かしました/);
-        // お願い: updated_at + asked_at IS NULL。二人が同時に押しても片方だけ通る
-        await assert.rejects(() => ask([{ id: 1 }]).fn(1, { deadlineAt: 'd' }), /expectUpdatedAt/);
-        const a = ask([{ id: 1 }]);
-        await a.fn(1, { deadlineAt: 'd', expectUpdatedAt: 'u1' });
-        assert.ok(a.conds.some(c => c[0] === 'eq' && c[1] === 'updated_at' && c[2] === 'u1'), 'お願いが updated_at を条件にしていない');
-        assert.ok(a.conds.some(c => c[0] === 'is' && c[1] === 'asked_at' && c[2] === null), 'お願いが asked_at IS NULL を条件にしていない (二人が同時にお願いできる)');
-        await assert.rejects(() => ask([]).fn(1, { deadlineAt: 'd', expectUpdatedAt: 'u1' }), /すでにお願い済み/);
         // 読み出しが鍵 (updated_at) を持って帰る / 呼び出し側が押した時点の行の updated_at を渡す
         for (const name of ['supabaseLoadReservations', 'supabaseLoadMyReservations']) {
             const body = _client.match(new RegExp(`window\\.${name} = async function[\\s\\S]*?\\n\\};\\n`))?.[0] || '';
@@ -5731,34 +5557,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const nd = mk(data, '普通', 600, TABLE, null);
         assert.equal(nd.simError.style.display, 'block'); assert.match(nd.simError.textContent, /slvSim\.js/, 'ドメイン未読込を実績のせいにしている');
     });
-    test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
-        assert.equal(rv.canTransition('requested', 'approved'), true);
-        assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');
-        assert.equal(rv.canTransition('approved', 'released'), true);
-        assert.equal(rv.canTransition('cancel_requested', 'approved'), true, '運営が却下したら承認済みへ戻る');
-        for (const t of ['fulfilled', 'released', 'rejected']) {
-            assert.deepEqual(rv.TRANSITIONS[t], [], `${t} は終端であるべき`);
-        }
-    });
 
-    test('予約: 承認前の影響は主指標2つ + 他人への波及を出す', () => {
-        const plan = (o) => ({
-            fullyClearedThrough: o.clear, unusedAttacks: o.unused, totalCreditedB: o.credited,
-            levels: [{ level: 2, bosses: [{ bossNumber: 3, attacks: o.attacks || [] }] }],
-        });
-        const base = plan({ clear: 3, unused: 12, credited: 700, attacks: [{ memberId: 1, loadoutSlot: 1 }] });
-        const worse = plan({ clear: 2, unused: 14, credited: 690, attacks: [{ memberId: 2, loadoutSlot: 1 }] });
-        const bad = rv.approvalImpact(base, worse, globalThis.planDiffDomain);
-        assert.equal(bad.blocking, true);
-        assert.ok(bad.warnings.some(w => w.includes('完全攻略の見込みが消えます')));
-        assert.ok(bad.warnings.some(w => w.includes('未消化の凸が 12 → 14')));
-        assert.equal(bad.creditedDiffB, -10);
-        assert.equal(bad.movedCount, 2, '割当が変わる人数を出していない');
-        const same = rv.approvalImpact(base, plan({ clear: 3, unused: 12, credited: 700, attacks: [{ memberId: 1, loadoutSlot: 1 }] }), globalThis.planDiffDomain);
-        assert.deepEqual(same.warnings, []);
-        assert.equal(same.blocking, false);
-        assert.equal(same.movedCount, 0);
-    });
 
     // ---- ⑧ 申請UI 用の純ロジック ----------------------------------------------
     {
@@ -5770,89 +5569,26 @@ console.log('\nreservationsDomain (凸の予約):');
             flex: !!o.flex, hourIdx: o.flex ? null : (o.idx ?? 16),
         });
 
-        test('★ ⑧ 申請: 配信の行をそのまま予約の内容にする (時刻・編成・ダメージ)', () => {
-            const r = rv.planRowToDraft(planRow(), hourKeyOf);
-            assert.equal(r.ok, true);
-            assert.equal(r.draft.raidLevel, null, 'レベルは本人が選ばない (2026-09-08) — 予約に載せない');
-            assert.equal(r.draft.bossNumber, 3);
-            assert.equal(r.draft.loadoutSlot, 1);
-            assert.equal(r.draft.flex, false);
-            assert.equal(r.draft.timeSlot, 'h21', 'hourIdx 16 は 21時');
-            assert.deepEqual(r.draft.characters, ['a', 'b', 'c', 'd', 'e'], '承認時の写しを載せていない');
-            assert.equal(r.draft.expectedDamageB, 33.4);
-            assert.equal(r.draft.sourceType, 'plan');
-        });
 
-        test('★ ⑧ 申請: ⏳隙間型は時刻を約束しない / 時刻不明は申請にしない', () => {
-            const f = rv.planRowToDraft(planRow({ flex: true }), hourKeyOf);
-            assert.equal(f.ok, true);
-            assert.equal(f.draft.flex, true);
-            assert.equal(f.draft.timeSlot, null, '隙間型に時刻を入れてはいけない');
-            // ★ 時刻不明を fixed のまま出すと DB の CHECK で弾かれる = 押しても何も起きない
-            const n = rv.planRowToDraft({ ...planRow(), hourIdx: null }, hourKeyOf);
-            assert.equal(n.ok, false);
-            assert.equal(n.reason, 'no_time');
-        });
 
-        test('⑧ 申請: 範囲外のレベル・ボス・編成枠は下書きにしない', () => {
-            assert.equal(rv.planRowToDraft(planRow({ lv: 0 }), hourKeyOf).ok, false);
-            assert.equal(rv.planRowToDraft(planRow({ lv: 5 }), hourKeyOf).ok, false);
-            assert.equal(rv.planRowToDraft(planRow({ boss: 6 }), hourKeyOf).ok, false);
-            assert.equal(rv.planRowToDraft(planRow({ slot: 4 }), hourKeyOf).ok, false);   // 2026-10-24 から 3 は正 (上限は SLOT_MAX)
-            assert.equal(rv.planRowToDraft(null, hourKeyOf).ok, false);
-        });
 
-        test('★ ⑧ 申請: 同じ枠の生きている予約は「申請済み」— 時刻違いを別物にしない', () => {
-            const rows = [res({ id: 1, pid: 'p1', lv: 2, boss: 3, status: 'requested' })];
-            const key = { playerId: 'p1', level: 2, bossNumber: 3, loadoutSlot: 1 };
-            assert.ok(rv.findActiveFor(rows, key), '見つからない');
-            // ★ 時刻が違っても同じ枠 (DB の部分一意索引と同じ4つで突き合わせる)
-            const other = [res({ id: 2, pid: 'p1', lv: 2, boss: 3, slot: 'h05', status: 'approved' })];
-            assert.ok(rv.findActiveFor(other, key), '時刻違いを別物にしている (二重申請できてしまう)');
-            // 終わった予約は枠を持たない
-            for (const st of ['fulfilled', 'released', 'rejected']) {
-                assert.equal(rv.findActiveFor([res({ id: 3, pid: 'p1', lv: 2, boss: 3, status: st })], key), null, st);
-            }
-            // ★ レベル違いも同じ枠 (2026-09-08: 同じカードは1日1回。DB の索引もレベルを含まない)
-            assert.ok(rv.findActiveFor(rows, { ...key, level: 3 }), 'レベル違いを別物にしている (二重申請できてしまう)');
-            // 別人・別ボス・別編成は別物
-            assert.equal(rv.findActiveFor(rows, { ...key, playerId: 'p2' }), null);
-            assert.equal(rv.findActiveFor(rows, { ...key, bossNumber: 4 }), null);
-            assert.equal(rv.findActiveFor(rows, { ...key, loadoutSlot: 2 }), null);
-        });
 
-        test('★ ⑧ 申請: 予約中の編成とキャラが被る編成は申請できない (同じキャラは1日1回 — 2026-09-08 実機で発覚)', () => {
+        test('★ 予約中の編成とキャラが被る編成は 📌 も置けない (同じキャラは 1 日 1 回 — 判定は conflictingReservation・canPin が使う。申請の画面は 2026-11-16 に撤去)', () => {
             const rows = [{ ...res({ id: 1, pid: 'p1', boss: 3, team: ['A', 'B', 'C', 'D', 'E'], status: 'approved' }), raid_level: null }];
-            const key = { playerId: 'p1', bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 };
-            const r = rv.canRequest(rows, { ...key, characters: ['E', 'x', 'y', 'z', 'w'] });
-            assert.equal(r.ok, false); assert.equal(r.reason, 'char_conflict'); assert.equal(r.with.id, 1);
-            assert.equal(rv.canRequest(rows, { ...key, characters: ['v', 'w', 'x', 'y', 'z'] }).ok, true, '被らなければ申請できる');
-            assert.equal(rv.canRequest(rows, { ...key, characters: [] }).ok, true, '編成が分からなければ止めない');
-            // 表記ゆれ (全角/空白/大小) は同じキャラとみなす
-            assert.equal(rv.canRequest(rows, { ...key, characters: [' e '] }).reason, 'char_conflict');
-            // 終わった予約・別人の予約とは被らない
-            assert.equal(rv.canRequest([{ ...rows[0], status: 'released' }], { ...key, characters: ['A'] }).ok, true);
-            assert.equal(rv.canRequest([{ ...rows[0], player_id: 'p2' }], { ...key, characters: ['A'] }).ok, true);
-            assert.equal(rv.conflictingReservation(rows, { playerId: 'p1', characters: ['A'], excludeId: 1 }), null, '自分自身は除ける');
+            const hit = (chars, o = {}) => rv.conflictingReservation(o.rows || rows, { playerId: 'p1', characters: chars, excludeId: o.excludeId });
+            assert.equal(hit(['E', 'x', 'y', 'z', 'w'])?.id, 1, 'キャラが被るのに見逃した');
+            assert.equal(hit(['v', 'w', 'x', 'y', 'z']), null, '被らないのに止めた');
+            assert.equal(hit([]), null, '編成が分からなければ止めない');
+            assert.equal(hit([' e '])?.id, 1, '表記ゆれ (全角/空白/大小) は同じキャラ');
+            assert.equal(hit(['A'], { rows: [{ ...rows[0], status: 'released' }] }), null, '終わった予約と被った');
+            assert.equal(hit(['A'], { rows: [{ ...rows[0], player_id: 'p2' }] }), null, '別人の予約と被った');
+            assert.equal(hit(['A'], { excludeId: 1 }), null, '自分自身は除ける');
             // 壊れた写し (オブジェクト・空白だけ・null) を "[object Object]" や '' として一致させない (Codex指摘)
             const broken = [{ ...rows[0], characters_snapshot: [{}, '   ', null, 'Z'] }];
-            assert.equal(rv.canRequest(broken, { ...key, characters: ['[object Object]', '', ' '] }).ok, true, '壊れた写しが一致している');
-            assert.equal(rv.canRequest(broken, { ...key, characters: [{}, 'z'] }).reason, 'char_conflict', '文字列の部分は見る');
+            assert.equal(hit(['[object Object]', '', ' '], { rows: broken }), null, '壊れた写しが一致している');
+            assert.equal(hit([{}, 'z'], { rows: broken })?.id, 1, '文字列の部分は見る');
         });
 
-        test('★ ⑧ 申請: 残凸を超える申請はボタンを出さない (DBで弾かれる前に止める)', () => {
-            const key = { playerId: 'p1', level: 2, bossNumber: 3, loadoutSlot: 1 };
-            assert.equal(rv.canRequest([], { ...key, doneAttacks: 0 }).ok, true);
-            // 生きている予約2件 + 実凸1件 = 3 → もう申請できない
-            const full = [res({ id: 1, pid: 'p1', lv: 1, boss: 1 }), res({ id: 2, pid: 'p1', lv: 1, boss: 2 })];
-            const r = rv.canRequest(full, { ...key, doneAttacks: 1 });
-            assert.equal(r.ok, false);
-            assert.equal(r.reason, 'no_capacity');
-            // 同じ枠を二重に申請させない
-            const dup = rv.canRequest([res({ id: 9, pid: 'p1', lv: 2, boss: 3 })], { ...key, doneAttacks: 0 });
-            assert.equal(dup.ok, false);
-            assert.equal(dup.reason, 'already');
-        });
     }
 
 
@@ -5860,42 +5596,6 @@ console.log('\nreservationsDomain (凸の予約):');
     {
         const B = (o = {}) => ({ boss_number: o.n ?? 3, name: 'アニヒリオ', attribute: 'iron', weakness: 'wind', remaining_hp_raw: o.hp ?? 100 });
         const LO = (o = {}) => ({ slot: o.slot ?? 2, characters: o.team ?? ['a', 'b', 'c', 'd', 'e'], dmgB: o.dmg ?? 13.1 });
-        test('★ 申請シート: ボス・時刻・編成が揃えば下書きになる (時刻 fixed / ⏳ flex) — レベルは聞かない', () => {
-            const r = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
-            assert.equal(r.ok, true);
-            assert.deepEqual(r.draft, { raidLevel: null, bossNumber: 3, loadoutSlot: 2, flex: false, timeSlot: 'h23',
-                characters: ['a', 'b', 'c', 'd', 'e'], expectedDamageB: 13.1, sourceType: 'self' });
-            assert.equal(r.note, '', '開いているレベルに注記は要らない');
-            const f = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: null, flex: true, loadout: LO(), currentLevel: 2 });
-            assert.equal(f.ok, true); assert.equal(f.draft.flex, true); assert.equal(f.draft.timeSlot, null);
-        });
-        test('★ 申請シート: 足りないものを名指しで返す (押せるのに弾かれる、を作らない)', () => {
-            const base = { boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 };
-            assert.deepEqual(rv.buildRequestDraft({ ...base, boss: null }).missing, ['boss']);
-            // ★ 倒れたボスは次のレベルにもいる — 申請は通し、本人に注記だけ出す (2026-09-08)
-            assert.equal(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).ok, true, '倒れたボスへの申請を止めている');
-            assert.match(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).note, /次のレベル/);
-            // レベルは聞かないので、無くても範囲外でも足りないものにならない
-            assert.equal(rv.buildRequestDraft({ ...base, level: null }).ok, true);
-            assert.equal(rv.buildRequestDraft({ ...base, level: 5 }).ok, true);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: null }).missing, ['time'], '時刻未選択 (⏳でもない) を通している');
-            assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: 'あ' }).missing, ['time'], '形式が違う時刻を通している (DB の CHECK で弾かれる)');
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: null }).missing, ['loadout']);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ dmg: 0 }) }).missing, ['loadout'], 'ダメージ未保存の編成を通している');
-            // 編成③ (SQL 55・2026-10-24) は通る。上限を超える / 整数でない枠は不足 (Codex 監査 §10 2 回目: ここが ①② 限定のまま残っていた)
-            assert.equal(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).ok, true, '編成③の申請を止めている');
-            assert.equal(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).draft.loadoutSlot, 3);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 4 }) }).missing, ['loadout'], '上限を超える編成を通している');
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 2.5 }) }).missing, ['loadout']);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 0 }) }).missing, ['loadout']);
-            assert.deepEqual(rv.buildRequestDraft({ boss: null, level: null, timeSlot: null, loadout: null }).missing, ['boss', 'time', 'loadout'], '複数まとめて返す');
-        });
-        test('申請シート: レベルは聞かない — 指定しても下書きに載らず、注記も出ない (2026-09-08)', () => {
-            const r = rv.buildRequestDraft({ boss: B(), level: 3, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
-            assert.equal(r.ok, true);
-            assert.equal(r.draft.raidLevel, null);
-            assert.equal(r.note, '');
-        });
     }
 
     test('★ 算出は渡された予約 (🧱 組む の駒) を固定制約としてソルバーに渡す (2026-09-07 実機で発覚: 渡していなかった)', () => {
@@ -6119,11 +5819,6 @@ console.log('\nreservationsDomain (凸の予約):');
         // 壊れたレベル (範囲外) は今までどおり落とす
         assert.equal(rv.toSolverConstraints([{ ...res({ status: 'approved' }), raid_level: 9 }]).length, 0);
     });
-    test('予約: describe はレベルが無ければ Lv を出さない', () => {
-        const bn = new Map([[3, 'ボス3']]);
-        assert.equal(rv.describe({ ...res(), raid_level: null }, bn), 'ボス3 21時 編成①');
-        assert.equal(rv.describe(res({ lv: 2 }), bn), 'Lv2 ボス3 21時 編成①');
-    });
     test('★ 予約: レベルの無い予約はどのレベルの凸にも紐づく (消し込み) — ただし編成が違えば紐づけない', () => {
         const rows = [{ ...res({ id: 5, status: 'approved', boss: 3, team: ['a', 'b', 'c', 'd', 'e'] }), raid_level: null }];
         const m = rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 3, characters: [] });
@@ -6143,47 +5838,6 @@ console.log('\nreservationsDomain (凸の予約):');
         const noSnap = [{ ...res({ id: 6, status: 'approved', boss: 3, team: [] }), raid_level: null }];
         assert.equal(rv.matchForAttack(noSnap, { playerId: 'p1', level: 3, bossNumber: 3, characters: ['f', 'g'] }).id, 6);
     });
-    test('★ 予約: 置けない理由はすべて日本語 (コードのまま出さない) / 見込み時刻を添える', () => {
-        for (const k of Object.keys(rv.UNMET_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNMET_JP[k]), k);
-        for (const k of Object.keys(rv.UNASSIGNED_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNASSIGNED_JP[k]), k);
-        assert.equal(rv.unmetText({ reason: 'time_passed' }), '予約した時間を過ぎています');
-        const t = rv.unmetText({ reason: 'no_boss_at_time', detail: { level: 2, killedLabel: '9時', nextOpenLabel: '11時' } });
-        assert.match(t, /そのボスがいない見込み/);
-        assert.match(t, /Lv2 は 9時に撃破の見込み/);
-        assert.match(t, /Lv3 の開放は 11時/);
-        assert.equal(rv.unmetText({ reason: 'zzz' }), '置けませんでした', '未知の理由でもコードを出さない');
-    });
-    test('★ 予約: 承認すると固定済みの予約が置けなくなるなら止める (同じ人 = 承認不可 / 他人 = 強く警告)', () => {
-        const plan = (unmet) => ({ fullyClearedThrough: 3, unusedAttacks: 10, totalCreditedB: 700, levels: [], unmetReservations: unmet });
-        // 候補 (id 42, p1) を足すと、p1 の固定済み id 41 が置けなくなる = キャラ被り
-        const r = rv.approvalImpact(plan([]), plan([{ reservationId: 41, memberId: 'p1', memberName: 'A', bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }]), null, 42, 'p1');
-        assert.equal(r.blocking, true);
-        assert.equal(r.blockingHard, true, '同じ人のキャラ被りを承認できてしまう');
-        assert.equal(r.breaks.length, 1);
-        assert.match(r.breaksText, /A の予約 \(B3 編成①\) が置けなくなります: ほかの凸とキャラが被るため置けません/);
-        assert.ok(r.warnings.some(w => w.includes('承認済みの予約が置けなくなります')));
-        // 他人の予約が置けなくなる = 止めないが警告
-        const o = rv.approvalImpact(plan([]), plan([{ reservationId: 41, memberId: 'p2', memberName: 'B', bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }]), null, 42, 'p1');
-        assert.equal(o.blockingHard, false); assert.equal(o.blocking, true); assert.equal(o.breaks.length, 1);
-        // もともと置けていなかった予約は「承認で壊れた」に数えない
-        const already = plan([{ reservationId: 41, memberId: 'p1', reason: 'conflict' }]);
-        assert.equal(rv.approvalImpact(already, already, null, 42, 'p1').breaks.length, 0);
-    });
-    test('★ 予約: 承認前の影響は「候補そのものが置けない」を最初の警告にして止める', () => {
-        const plan = (unmet) => ({ fullyClearedThrough: 3, unusedAttacks: 10, totalCreditedB: 700, levels: [], unmetReservations: unmet });
-        const r = rv.approvalImpact(plan([]), plan([{ reservationId: 42, reason: 'no_boss_at_time' }]), null, 42);
-        assert.equal(r.blocking, true);
-        assert.equal(r.cannotPlace, true);
-        assert.match(r.warnings[0], /この予約は置けません: 予約した時間には、そのボスがいない見込みです/);
-        // 別の予約が新たに置けなくなるのは「候補が置けない」ではなく「固定済みが壊れる」(breaks) — 承認不可ではないが警告
-        const ok = rv.approvalImpact(plan([]), plan([{ reservationId: 41, reason: 'conflict' }]), null, 42);
-        assert.equal(ok.cannotPlace, false, '別の予約の未達で候補を止めてはいけない');
-        assert.equal(ok.blockingHard, false, '本人が分からないのに承認不可にしている');
-        assert.equal(ok.breaks.length, 1); assert.equal(ok.blocking, true);
-        // 何も壊れなければ blocking も false
-        const calm = rv.approvalImpact(plan([]), plan([]), null, 42, 'p1');
-        assert.equal(calm.blocking, false); assert.equal(calm.breaks.length, 0); assert.equal(calm.breaksText, '');
-    });
 
     // ===== 本人のホーム = 3枠 (2026-09-08) =====
     {
@@ -6192,155 +5846,15 @@ console.log('\nreservationsDomain (凸の予約):');
                 attacks: attacks.map(a => ({ memberId: 'p1', loadoutSlot: 1, hourIdx: 8, hourLabel: '13時', team: ['a', 'b', 'c', 'd', 'e'], dmgB: 30, ...a })) }] }],
             unassigned,
         });
-        test('★ ホーム3枠: 予約したカードが先頭・配信の割当が続き・空きには理由 (日本語)', () => {
-            const resv = [{ ...res({ id: 1, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            const plan = mkPlan([{ reservationId: 1, hourIdx: 16, hourLabel: '21時' }, { loadoutSlot: 2, hourIdx: 4, hourLabel: '9時' }],
-                                [{ memberId: 'p1', reason: 'char_conflict' }]);
-            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(h.slots.length, 3);
-            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].inPlan, true); assert.equal(h.slots[0].timeSlot, 'h21');
-            assert.equal(h.slots[0].level, 2, '配信に入っていればそのレベルを添える');
-            assert.equal(h.slots[1].kind, 'plan'); assert.equal(h.slots[1].loadoutSlot, 2);
-            assert.equal(h.slots[2].kind, 'empty');
-            assert.equal(h.slots[2].text, 'ほかの凸とキャラが被って、使える編成が残っていません');
-            assert.equal(h.stale, false);
-        });
-        test('★ ホーム3枠: 配信が予約を知らなければ stale (運営が組み直し中) / 3枠を超える配信は落とす', () => {
-            const resv = [{ ...res({ id: 9, status: 'approved', boss: 3, slot: 'h21', lo: 2 }), raid_level: null, approved_at: 'x' }];
-            // 配信は編成① だけ = 予約 (編成②) を知らない
-            const plan = mkPlan([{ loadoutSlot: 1 }, { loadoutSlot: 1, hourIdx: 10 }, { loadoutSlot: 1, hourIdx: 12 }]);
-            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(h.stale, true, '配信が予約を知らないのに stale でない');
-            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].inPlan, false);
-            assert.equal(h.slots.filter(x => x.kind === 'plan').length, 2, '予約1 + 配信2 で3枠。4枚目を出してはいけない');
-        });
-        test('★ ホーム3枠: 配信が「置けなかった」予約は stale (組み直し中) にせず unmet で理由を持つ / 配信後の予約にも数えない', () => {
-            const resv = [{ ...res({ id: 5, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            const plan = mkPlan([{ loadoutSlot: 2, hourIdx: 4, hourLabel: '9時' }]);
-            plan.unmetReservations = [{ reservationId: 5, memberId: 'p1', reason: 'conflict' }];
-            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(h.stale, false, '置けなかったのを組み直し待ちにしている');
-            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].unmet, 'conflict');
-            assert.equal(h.slots[0].unmetText, 'ほかの凸とキャラが被るため置けません');
-            assert.equal(rv.pendingRepublish(resv, plan).count, 0, '置けない予約を「配信後の予約」に数えている');
-        });
         const _htmlB = (await import('node:fs')).default.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-        test('★ 🧱 ブロックのぶんの配信 (2026-10-22): 対象外の人の予約は「配信後の予約」に数えない / 空き枠は「次のブロック以降で組みます」', () => {
-            const scope = { idx: 0, name: '朝', label: '朝 5〜8時', from: 5, to: 8, slots: ['h05', 'h06', 'h07', 'h08'] };
-            const plan = { ...mkPlan([]), blockScope: scope };   // 朝のぶんの配信 (p1 の割当なし)
-            // ① ソルバーが「対象外」と返した予約 (ブロックの時間の中でも = 本人の時間の外に運営が置いた等) → 催促しない
-            const inTime = [{ ...res({ id: 5, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            plan.outOfScopeReservations = [{ reservationId: 5, memberId: 'p1', bossNumber: 3, loadoutSlot: 1, reason: 'out_of_scope', timeSlot: 'h06', flex: false }];   // ソルバーの出力と同じ形 (人・ボス・編成枠・時刻)
-            assert.equal(rv.pendingRepublish(inTime, plan).count, 0, '対象外の人の予約を「配信後の予約」に数えている');
-            // ★ id だけで見ない (Codex指摘): 同じ id のまま置き直した 📌 (時刻が変わった) は対象外のままにしない = 催促する
-            const moved = [{ ...inTime[0], time_slot: 'h07' }];
-            assert.equal(rv.pendingRepublish(moved, plan).count, 1, '置き直した 📌 が配信時の対象外のままになっている');
-            assert.equal(rv.pendingRepublish([{ ...inTime[0], boss_number: 4 }], plan).count, 1);
-            assert.equal(rv.matchesOutOfScope(plan, inTime[0]), true); assert.equal(rv.matchesOutOfScope(plan, moved[0]), false);
-            assert.equal(rv.matchesOutOfScope(plan, { ...inTime[0], time_mode: 'flex', time_slot: null }), false, '⏳隙間型を時刻つきの対象外と同じにしている');
-            // ホーム 3 枠: 範囲の中で対象外の人 → 中立 (組み直し待ちにしない・stale にしない)
-            const ho = rv.homeSlots({ plan, viewerId: 'p1', reservations: inTime, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(ho.stale, false, '対象外の予約を組み直し待ちにしている'); assert.equal(ho.slots[0].kind, 'fixed'); assert.equal(ho.slots[0].outOfScope, true); assert.equal(ho.slots[0].laterBlock, false);
-            // 置き直した 📌 は従来どおり組み直し待ち
-            const hm = rv.homeSlots({ plan, viewerId: 'p1', reservations: moved, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(hm.stale, true); assert.equal(hm.slots[0].outOfScope, false);
-            delete plan.outOfScopeReservations;
-            // ② 配信のあとに承認された (配信は知らない) が、ブロックの時間の外 → 数えない
-            const resv = [{ ...res({ id: 8, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            assert.equal(rv.pendingRepublish(resv, plan).count, 0, 'ブロックの時間の外の予約を「配信後の予約」に数えている');
-            // ★ Codex指摘 (高): ホーム 3 枠は 1 日ぶんの予約を受けるので、あとのブロックの約束を「🔒 予約 (組み直し待ち)」+ 帯「運営が組み直し中」にしていた
-            const hl = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(hl.stale, false, 'あとのブロックの約束を組み直し待ちにしている');
-            assert.deepEqual(hl.slots.map(s => [s.kind, s.laterBlock ?? null, s.outOfScope ?? null, s.inPlan ?? null]), [['fixed', true, false, false], ['empty', null, null, null], ['empty', null, null, null]], '後ろのブロックの約束は 🔒 (あとのブロック) として残す');
-            assert.equal(hl.slots[0].timeSlot, 'h21');
-            assert.equal(rv.inBlockTime(plan, resv[0]), false); assert.equal(rv.inBlockTime(plan, { ...resv[0], time_mode: 'flex', time_slot: null }), true); assert.equal(rv.inBlockTime(mkPlan([]), resv[0]), true);
-            // 1 日ぶんの配信で入っていなければ従来どおり組み直し待ち
-            assert.equal(rv.homeSlots({ plan: mkPlan([]), viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 }).stale, true);
-            // ★ Codex指摘 (3a0ced5): blockScope の無い配信 (「今動ける人だけ」で組んだもの) でも、対象外の予約は中立 (以前は誤って「⚠ キャラ被り」) = 意図
-            const nowPlan = { ...mkPlan([]), outOfScopeReservations: [{ reservationId: 5, memberId: 'p1', bossNumber: 3, loadoutSlot: 1, reason: 'out_of_scope', timeSlot: 'h06', flex: false }] };
-            const hn = rv.homeSlots({ plan: nowPlan, viewerId: 'p1', reservations: inTime, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(hn.stale, false); assert.equal(hn.slots[0].outOfScope, true); assert.equal(hn.slots[0].laterBlock, false); assert.equal(hn.slots[0].unmet, null);
-            assert.equal(rv.pendingRepublish(inTime, nowPlan).count, 0, '「今動ける人だけ」の配信で対象外の予約を催促している');
-            assert.equal(rv.pendingRepublish([{ ...inTime[0], time_slot: 'h07' }], nowPlan).count, 1, '置き直した 📌 は催促する');
-            // ③ ブロックの時間の中なのに入っていない → 従来どおり数える / ⏳隙間型 (時刻なし) も数える
-            assert.equal(rv.pendingRepublish([{ ...res({ id: 6, status: 'approved', boss: 3, slot: 'h06', lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
-            assert.equal(rv.pendingRepublish([{ ...res({ id: 7, status: 'approved', boss: 3, flex: true, lo: 1 }), raid_level: null, approved_at: 'x' }], plan).count, 1);
-            // 1 日ぶんの配信 (blockScope 無し) は時間で絞らない
-            assert.equal(rv.pendingRepublish(resv, mkPlan([])).count, 1);
-            // ④ 空き枠の文: ブロックのぶんの配信では「出番なし」でなく次のブロック以降 (実機 2026-10-22: 朝+夕方の人の 3 凸目に「出番がありません」が出た)
-            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
-            assert.deepEqual(h.slots.map(s => [s.kind, s.reason]), [['empty', 'later_block'], ['empty', 'later_block'], ['empty', 'later_block']]);
-            assert.equal(h.slots[0].text, 'このブロック (朝) にはあなたの割当がありません。残りの凸は次のブロック以降で組みます');
-            const plan1 = { ...mkPlan([{ loadoutSlot: 1, hourIdx: 0, hourLabel: '5時' }], [{ memberId: 'p1', reason: 'not_needed' }]), blockScope: scope };
-            const h1 = rv.homeSlots({ plan: plan1, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(h1.slots[0].kind, 'plan');
-            assert.equal(h1.slots[1].text, 'このブロック (朝) の割当はここまでです。残りの凸は次のブロック以降で組みます');
-            // 本人の模擬に起因する理由はそのまま伝える
-            for (const r of ['no_loadout', 'cards_used_up']) {
-                const hp = rv.homeSlots({ plan: { ...mkPlan([], [{ memberId: 'p1', reason: r }]), blockScope: scope }, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
-                assert.equal(hp.slots[0].reason, r); assert.equal(hp.slots[0].text, rv.UNASSIGNED_JP[r]);
-            }
-            // 1 日ぶんの配信 (blockScope 無し) は従来どおり
-            const h0 = rv.homeSlots({ plan: mkPlan([], [{ memberId: 'p1', reason: 'no_target' }]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(h0.slots[0].reason, 'no_target'); assert.equal(h0.slots[0].text, rv.UNASSIGNED_JP.no_target);
-            assert.equal(rv.homeSlots({ plan: mkPlan([]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 }).slots[0].reason, 'not_needed');
-        });
-        test('ホーム3枠: 配信が無ければ空きは「算出待ち」/ プラン外の実凸は枠を消費 / 取り消し希望中も固定', () => {
-            const h0 = rv.homeSlots({ plan: null, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
-            assert.deepEqual(h0.slots.map(x => x.kind), ['empty', 'empty', 'empty']);
-            assert.equal(h0.slots[0].text, '運営の算出待ちです');
-            assert.equal(h0.stale, false, '配信が無いのは stale ではない');
-            const h1 = rv.homeSlots({ plan: mkPlan([{}]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 2 });
-            assert.deepEqual(h1.slots.map(x => x.kind), ['plan', 'done', 'done']);
-            const cr = [{ ...res({ id: 3, status: 'cancel_requested', boss: 3 }), raid_level: null, approved_at: 'x' }];
-            assert.equal(rv.homeSlots({ plan: null, viewerId: 'p1', reservations: cr, doneCounts: new Map() }).slots[0].kind, 'fixed');
-            const req = [{ ...res({ id: 4, status: 'requested', boss: 3 }), raid_level: null }];
-            assert.equal(rv.homeSlots({ plan: null, viewerId: 'p1', reservations: req, doneCounts: new Map() }).fixedCount, 0, '承認前は固定ではない');
-        });
-        test('★ 配信後の予約: 配信に入っていない固定予約だけ数える (運営ホームの「確認して下さい」の根拠)', () => {
-            const rows = [
-                { ...res({ id: 1, status: 'approved', boss: 3, lo: 1 }), raid_level: null },        // 配信に入っている (reservationId)
-                { ...res({ id: 2, status: 'approved', boss: 3, lo: 2 }), raid_level: null },        // 入っていない
-                { ...res({ id: 3, status: 'requested', boss: 4 }), raid_level: null },              // 承認前は数えない
-                { ...res({ id: 4, status: 'approved', boss: 4, pid: 'p2' }), raid_level: null },    // 別人・入っていない
-            ];
-            const plan = mkPlan([{ reservationId: 1 }]);
-            const p = rv.pendingRepublish(rows, plan);
-            assert.deepEqual(p.items.map(x => x.id), [2, 4]);
-            assert.equal(p.count, 2);
-            assert.equal(rv.pendingRepublish(rows, null).count, 3, '配信が無ければ固定予約は全部「配信後」');
-            // reservationId が無い古い配信でも、同じカード (誰が・ボス・編成枠) が**同じ時刻**で入っていれば数えない
-            const old = mkPlan([{ reservationId: undefined, loadoutSlot: 1, hourIdx: 16, hourLabel: '21時' }]);
-            assert.deepEqual(rv.pendingRepublish(rows, old).items.map(x => x.id), [2, 4]);
-            // ★ 時刻が違えば「入っている」とみなさない (Codex指摘 2026-09-08: 9時の古い割当が 21時の予約を満たしたことになる)
-            const oldWrongTime = mkPlan([{ reservationId: undefined, loadoutSlot: 1, hourIdx: 4, hourLabel: '9時' }]);
-            assert.deepEqual(rv.pendingRepublish(rows, oldWrongTime).items.map(x => x.id), [1, 2, 4]);
-        });
-        test('★ ホーム3枠: reservationId の無い古い配信は、時刻まで揃うときだけ予約を満たしたことにする', () => {
-            const resv = [{ ...res({ id: 1, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
-            // 同じカードだが 9時 → 予約 (21時) は配信に入っていない = stale
-            const wrong = rv.homeSlots({ plan: mkPlan([{ hourIdx: 4, hourLabel: '9時' }]), viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(wrong.stale, true, '時刻違いの古い割当で予約が満たされたことになっている');
-            assert.equal(wrong.slots[0].inPlan, false);
-            // 21時なら満たしている
-            const right = rv.homeSlots({ plan: mkPlan([{ hourIdx: 16, hourLabel: '21時' }]), viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
-            assert.equal(right.stale, false);
-            assert.equal(right.slots[0].inPlan, true);
-            // ⏳隙間型の予約は flex の行だけが満たす
-            const fx = [{ ...res({ id: 2, status: 'approved', boss: 3, flex: true, lo: 1 }), raid_level: null, approved_at: 'x' }];
-            assert.equal(rv.homeSlots({ plan: mkPlan([{ flex: true, hourIdx: null, hourLabel: null }]), viewerId: 'p1', reservations: fx, doneCounts: new Map() }).stale, false);
-            assert.equal(rv.homeSlots({ plan: mkPlan([{ hourIdx: 16 }]), viewerId: 'p1', reservations: fx, doneCounts: new Map() }).stale, true);
-            assert.equal(rv.slotIdxOf('h21'), 16); assert.equal(rv.slotIdxOf('h05'), 0); assert.equal(rv.slotIdxOf('h00'), 19); assert.equal(rv.slotIdxOf('x'), null);
-        });
     }
 
-    test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
+    test('予約: SQL (39 / 45) の状態と遷移表が揃っている (JS 側の写しは 2026-11-26 に撤去)', () => {
         // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる。
         //   最新の定義は 45 (📌 運営の固定で pinned を足した)。39 の CHECK は 45 が DROP/ADD で置き換える
         const m = _sqlPins.match(/ADD CONSTRAINT plan_reservations_status_check\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
         assert.ok(m, '45 の status の CHECK が見つからない');
         const sqlStatuses = [...m[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort();
-        assert.deepEqual(sqlStatuses, [...rv.STATUS].sort(), 'SQL と JS で状態の集合が違う');
         // 39 の元の集合 + pinned であること (45 が 39 を取りこぼしていない)
         const m39 = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
         assert.deepEqual(sqlStatuses, [...[...m39[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]), 'pinned'].sort(), '45 の集合が 39 + pinned でない');
@@ -6348,9 +5862,8 @@ console.log('\nreservationsDomain (凸の予約):');
             const mm = _sqlPins.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
             return mm ? [...mm[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort() : null;
         };
-        for (const from of ['requested', 'approved', 'cancel_requested', 'pinned']) {
-            assert.deepEqual(pick(from), [...rv.TRANSITIONS[from]].sort(), `${from} の遷移が SQL と違う`);
-        }
+        // JS 側の状態と遷移表 (reservationsDomain.STATUS / TRANSITIONS) は 2026-11-26 に撤去した (使う画面が無い)。SQL と練習の偽サーバの突き合わせは tests/practice.mjs
+        assert.ok(['requested', 'approved', 'cancel_requested', 'pinned'].every(from => Array.isArray(pick(from))), '45 から遷移表を読めない');
         // 45 の関数は 39 の遷移をそのまま持っている (置き換えで落としていない)
         for (const from of ['requested', 'approved', 'cancel_requested']) {
             const mm = _sqlRes.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
@@ -6404,32 +5917,6 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/'47_approval_counts_pins'[\s\S]*?pg_get_functiondef\(oid\) LIKE '%NOT IN \(''pinned'', ''approved''\)%'/.test(check99), '99 に 47 の判定行が無い');
         const clientPins = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/約束が残凸を超え/.test(clientPins), 'DB の拒否 (約束) を日本語にしていない');
-    });
-    test('★ canApprove: 約束を作ってよいか = 約束 + 📌 + 実凸 + 1 ≤ 3 (SQL 47 と同じ式)。申請は数えない / 同じカードの 📌 は数えない', () => {
-        const P = (id, status, boss = 1, slot = 1, extra = {}) => ({ id, player_id: 7, status, boss_number: boss, loadout_slot: slot, ...extra });
-        const pins3 = [P(1, 'pinned', 1), P(2, 'pinned', 2), P(3, 'pinned', 3)];
-        // 締め凸の了承 (approved を新規に作る): 📌 が 3 件 → 4 件目は不可 (これが監査 #2)
-        const r1 = rv.canApprove(pins3, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 });
-        assert.equal(r1.ok, false); assert.equal(r1.reason, 'no_capacity'); assert.match(r1.label, /📌/);
-        assert.equal(r1.held, 3);
-        // 同じカードの 📌 は数えない → 2 件 + 自分 = 3 で OK
-        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 0 }).ok, true, '同じカードの 📌 を数えている');
-        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 2, doneAttacks: 0 }).ok, false, '編成枠が違えば別カード');
-        // 本人が 📌 を引き受ける (pinned → approved): 自分は excludeId で外す → 他 2 件 + 自分 = 3 で OK
-        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 0, excludeId: 3 }).ok, true);
-        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 1, excludeId: 3 }).ok, false, '実凸を数えていない');
-        // 申請 (requested) は数えない (📌 に塞がれない、の裏返し: 承認の瞬間に初めて枠を取る)
-        const req3 = [P(1, 'requested', 1), P(2, 'requested', 2), P(3, 'requested', 3)];
-        assert.equal(rv.canApprove(req3, { playerId: 7, bossNumber: 1, loadoutSlot: 1, doneAttacks: 0, excludeId: 1 }).ok, true);
-        // 約束 (approved / 承認済み起点の cancel_requested) は数える。未承認起点の cancel_requested は数えない
-        const prom = [P(1, 'approved', 1), P(2, 'cancel_requested', 2, 1, { approved_at: 'x' }), P(3, 'cancel_requested', 3, 1, { approved_at: null })];
-        assert.equal(rv.canApprove(prom, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 }).ok, true, '未承認起点の cancel_requested を数えている');
-        assert.equal(rv.canApprove(prom, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 1 }).ok, false);
-        // 別人は影響しない / 終端は数えない
-        assert.equal(rv.canApprove([...pins3.map(r => ({ ...r, player_id: 8 })), P(9, 'released', 5), P(10, 'fulfilled', 6)], { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 }).ok, true);
-        // 空・不正な入力で落ちない
-        assert.equal(rv.canApprove(null, { playerId: 7, bossNumber: 1, loadoutSlot: 1 }).ok, true);
-        assert.equal(rv.canApprove([null, undefined], { playerId: 7, bossNumber: 1, loadoutSlot: 1 }).ok, true);
     });
     test('★ 47 (修正後の Codex 指摘): 早期 return は状態・人・シーズンが不変のときだけ / approved の瞬間に同じカードの 📌 を RPC が外す / RPC は 45 の写し', () => {
         const sql47 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '47_approval_counts_pins.sql'), 'utf8').replace(/\r\n/g, '\n');
@@ -6540,17 +6027,6 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(!/attack_id\s+BIGINT/.test(_sqlRes), 'plan_reservations.attack_id を作ってはいけない');
     });
 
-    test('予約: 時刻を確約できない凸が増える候補は警告する', () => {
-        const plan = (attacks) => ({
-            fullyClearedThrough: 3, unusedAttacks: 12, totalCreditedB: 700,
-            levels: [{ level: 2, bosses: [{ bossNumber: 3, attacks }] }],
-        });
-        const base = plan([{ memberId: 1, loadoutSlot: 1 }]);
-        const risky = plan([{ memberId: 1, loadoutSlot: 1, flex: true }]);
-        const r = rv.approvalImpact(base, risky, globalThis.planDiffDomain);
-        assert.ok(r.warnings.some(w => w.includes('時刻を確約できない凸が増えます')), JSON.stringify(r.warnings));
-        assert.equal(r.blocking, false, '時間リスクだけでは承認を止めない (鈍らせるだけ)');
-    });
 }
 
 // ---- L1: ソルバーの安定化 (前回の約束を守る) ----------------------------------
@@ -6877,18 +6353,12 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.equal(u.memberName, 'C', '運営の画面で名前を出すため');
         assert.equal(u.detail?.killed, true);
         assert.equal(u.detail?.nextOpenLabel, '9時', `次の開放見込み: ${JSON.stringify(u.detail)}`);
-        const t = rv.unmetText(u);
-        assert.match(t, /そのボスがいない見込み/);
-        assert.match(t, /Lv1 ではもう倒れています/);
-        assert.match(t, /Lv2 の開放は 9時/);
-        assert.ok(!/no_boss_at_time/.test(t), 'コードが日本語に混ざっている');
     });
 
     test('★ L2: 予約の時刻を過ぎたレベル無しの予約は time_passed / ⏳隙間型は倒れていれば次のレベルへ', () => {
         const past = compute(mkInput(tl(), { bosses: smallB(), currentSlot: 'h13',
             reservations: [free({ id: 4, member: 3, boss: 1, slot: 'h07' })] }));
         assert.equal(past.unmetReservations[0]?.reason, 'time_passed', JSON.stringify(past.unmetReservations));
-        assert.equal(rv.unmetText(past.unmetReservations[0]), '予約した時間を過ぎています');
         const fx = compute(mkInput(tl(), { bosses: smallB(0), reservations: [free({ id: 5, member: 3, boss: 1, flex: true })] }));
         assert.deepEqual(rowOf(fx, 3), ['L2/B1/1/flex'], `倒れたボスの隙間予約は次のレベルへ: ${JSON.stringify(rowOf(fx, 3))} / ${JSON.stringify(fx.unmetReservations)}`);
     });
@@ -6899,7 +6369,6 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         // Lv1 の窓の時刻に Lv2 を指定 = 開放前 → 置かず before_open
         const q = compute(mkInput(tl(), { bosses: smallB(), reservations: [resv({ id: 7, member: 3, boss: 1, lv: 2, slot: 'h07' })] }));
         assert.equal(q.unmetReservations[0]?.reason, 'before_open', JSON.stringify(q.unmetReservations));
-        assert.match(rv.unmetText(q.unmetReservations[0]), /Lv2 の開放は 9時/);
     });
 
     test('★ L2: 後のレベルに予約がある人の残り凸は、手前のレベルの貪欲に使わせない (別編成でも)', () => {
@@ -6993,7 +6462,6 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.equal(by.get(1)?.reason, 'cards_used_up', JSON.stringify(p.unassigned));
         assert.equal(by.get(5)?.reason, 'char_conflict', JSON.stringify(p.unassigned));
         assert.equal(by.get(4)?.memberName, 'D');
-        for (const u of p.unassigned) assert.ok(rv.UNASSIGNED_JP[u.reason], `日本語が無い理由: ${u.reason}`);
     });
 
     test('L2: 予約を渡さなければ unassigned 以外の出力は従来どおり (指紋テストが割当を固定)', () => {
@@ -7408,7 +6876,7 @@ console.log('\nplanDiffDomain (配信プランの差分):');
         const d = pd.diffPlans(base, plan([{ level: 2, bosses: [{ n: 3, a: [atk(1), atk(2)] }, { n: 5, a: [atk(3)] }] }]));
         assert.equal(d.first, false);
         assert.deepEqual(d.changed, []);
-        assert.deepEqual(pd.unchangedIds(d).sort(), [1, 2, 3]);
+        assert.deepEqual(d.unchanged.map(c => c.memberId).sort(), [1, 2, 3]);
     });
     test('planDiff: 初回配信は first=true (全員を「変わった」に積まない)', () => {
         const d = pd.diffPlans(null, base);
@@ -7420,14 +6888,14 @@ console.log('\nplanDiffDomain (配信プランの差分):');
         // P1 が B3 → B5 へ移動。P2/P3 はそのまま
         const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(2)] }, { n: 5, a: [atk(3), atk(1)] }] }]);
         const d = pd.diffPlans(base, next);
-        assert.deepEqual(pd.changedIds(d), [1]);
-        assert.deepEqual(pd.unchangedIds(d).sort(), [2, 3]);
+        assert.deepEqual(d.changed.map(c => c.memberId), [1]);
+        assert.deepEqual(d.unchanged.map(c => c.memberId).sort(), [2, 3]);
         assert.equal(d.changed[0].kind, 'boss');
     });
     test('planDiff: 時刻だけ変わっても「変わった」に数える (時刻は約束の一部 — 2026-09-07 決定)', () => {
         const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { hourIdx: 18, hourLabel: '23時' }), atk(2)] }, { n: 5, a: [atk(3)] }] }]);
         const d = pd.diffPlans(base, next);
-        assert.deepEqual(pd.changedIds(d), [1]);
+        assert.deepEqual(d.changed.map(c => c.memberId), [1]);
         assert.equal(d.changed[0].kind, 'time');
         assert.match(d.changed[0].afterText, /23時/);
     });
@@ -7461,7 +6929,7 @@ console.log('\nplanDiffDomain (配信プランの差分):');
         const after  = plan([{ level: 1, bosses: [{ n: 1, a: [atk(5, { hourIdx: 18, hourLabel: '23時' })] }] },
                              { level: 2, bosses: [{ n: 3, a: [atk(5, { hourIdx: 16, hourLabel: '21時' })] }] }]);
         const d = pd.diffPlans(before, after);
-        assert.deepEqual(pd.changedIds(d), [5], `時刻の入れ替えを検出できていない: ${JSON.stringify(d.changed)}`);
+        assert.deepEqual(d.changed.map(c => c.memberId), [5], `時刻の入れ替えを検出できていない: ${JSON.stringify(d.changed)}`);
         assert.equal(d.changed[0].kind, 'time');
     });
     test('planDiff: 凸数が減った/増えたは boss 扱い (時刻や編成の比較に落とさない)', () => {
@@ -7475,23 +6943,11 @@ console.log('\nplanDiffDomain (配信プランの差分):');
         const f2 = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { flex: true, hourLabel: '21時', hourIdx: 16 })] }] }]);
         assert.deepEqual(pd.diffPlans(f1, f2).changed, [], 'flex 同士は時刻差で変化にしない');
     });
-    test('planDiff: summaryText は人数・種類・名前を出す / 変化なしも言い切る', () => {
-        const same = pd.summaryText(pd.diffPlans(base, base));
-        assert.match(same, /変わる人はいません/);
-        const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(2)] }, { n: 5, a: [atk(3), atk(1)] }] }]);
-        const s = pd.summaryText(pd.diffPlans(base, next));
-        assert.match(s, /1名の割当が変わります/);
-        assert.match(s, /そのまま 2名/);
-        assert.match(s, /P1/);
-        assert.match(pd.summaryText(pd.diffPlans(null, base)), /初回の配信です/);
-    });
     test('planDiff: 壊れた入力でも落ちない (null / levels なし / attacks なし)', () => {
         assert.equal(pd.rowsByPlayer(null).size, 0);
         assert.equal(pd.rowsByPlayer({}).size, 0);
         assert.equal(pd.rowsByPlayer({ levels: [{ level: 1 }] }).size, 0);
         assert.equal(pd.diffPlans(null, null).totalAfter, 0);
-        assert.deepEqual(pd.changedIds(null), []);
-        assert.deepEqual(pd.unchangedIds(undefined), []);
         // memberId が無い凸は落とす (集計に nullish な鍵を作らない)
         const broken = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ dmgB: 5 }] }] }] };
         assert.equal(pd.rowsByPlayer(broken).size, 0);
@@ -7541,24 +6997,18 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // 凍結中は同じボタンが「解除」になる (状態で意味が変わるので文言も変える)
         assert.ok(html.includes("btn.textContent = frozen ? '▶️ 組み直し中を解除' : '⏳ 組み直し中にする'"));
     });
-    test('L3: 配信は旧行を消さない (前回との差分を後から引けるようにする)', () => {
-        const fn = client.match(/window\.supabasePublishPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
-        assert.ok(!/\.delete\(\)/.test(fn), `配信が旧行を削除している: ${fn.slice(0, 160)}`);
-        assert.ok(fn.includes('旧配信は**消さない**'));
+    test('L3: 配信は旧行を消さない (前回との差分を後から引けるようにする) — いまの配信は ✅ 決定 (supabasePublishDecidedPlan・RPC で insert)。従来の配信の関数は 2026-11-26 に撤去', () => {
+        const fn = client.match(/window\.supabasePublishDecidedPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(fn && !/\.delete\(\)/.test(fn), '決定の配信が旧行を削除している');
+        assert.ok(!/window\.supabase(PublishPlan|DeleteAllPublishedPlans|GetPreviousPublishedPlan)\s*=/.test(client), '従来の配信・全削除・1 つ前を引く関数が残っている');
     });
     test('L3: 最新の配信は id 降順だけで選ぶ (端末の時計ずれで最新が入れ替わらない) — 🧱 段階 7: 一覧 (supabaseGetPublishedPlans) が本体', () => {
         const fn = client.match(/window\.supabaseGetPublishedPlans = async function[\s\S]*?\n};\n/)?.[0] || '';
-        assert.ok(/window\.supabaseGetPublishedPlan = async function \(\) \{\s*\n\s*const rows = await window\.supabaseGetPublishedPlans\(1\);/.test(client), '最新の 1 行は一覧の先頭');
+        assert.ok(!/window\.supabaseGetPublishedPlan\s*=/.test(client), '最新の 1 行だけを読む関数が残っている (読むのは一覧 = ブロックごとに効いている配信)');
         assert.ok(!/order\('published_at'/.test(fn), 'published_at で並べると時計ずれに弱い');
         assert.ok(/order\('id', \{ ascending: false \}\)/.test(fn));
         // 38未適用環境では frozen 列を落として再試行 = 「常に配信中」に静かに劣化
         assert.ok(/_isMissingColumnErr\(r\.error, 'frozen_at'\)/.test(fn));
-    });
-    test('L3: 1つ前の配信を引ける (本人への「前回から変わったか」の材料)', () => {
-        assert.ok(/window\.supabaseGetPreviousPublishedPlan = async function/.test(client));
-        const fn = client.match(/window\.supabaseGetPreviousPublishedPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
-        assert.ok(/\.lt\('id', cur\)/.test(fn), '「いまより古い中で最大の id」で引く');
-        assert.ok(/order\('id', \{ ascending: false \}\)\.limit\(1\)/.test(fn));
     });
     test('L3: 凍結の読み書きは 38 未適用で静かに劣化し、操作だけ適用を案内する', () => {
         const fn = client.match(/window\.supabaseSetPlanFrozen = async function[\s\S]*?\n};\n/)?.[0] || '';
@@ -7824,8 +7274,8 @@ console.log('\nclientGateDomain (互換ゲート):');
         // ★ 凸報告は4つある呼び出し口 (本人・一括・代理・代理一括) を supabaseAddAttack 1箇所で止める
         assert.ok(/window\.supabaseAddAttack = async function[\s\S]{0,400}_gateGuard\('attack'\)/.test(client),
             '凸報告を1箇所で止めていない');
-        assert.ok(/window\.supabasePublishPlan = async function[\s\S]{0,200}_gateGuard\('publish'\)/.test(client),
-            '配信を止めていない');
+        assert.ok(/window\.supabasePublishDecidedPlan = async function[\s\S]{0,200}_gateGuard\('publish'\)/.test(client),
+            '配信 (✅ 決定) を止めていない');
         assert.ok(/!_gateAllows\('plan'\)/.test(html), 'プラン表示を止めていない');
         // ★ 起動時に、他の取得より**先に**読む。止められている操作を掴んでから画面を作る。
         //   handleSetClientGate 内の呼び出しと取り違えないよう、起動の並びごと固定する
@@ -7835,8 +7285,8 @@ console.log('\nclientGateDomain (互換ゲート):');
         // 🧱 配信に付ける版はプランで決める (blockScope があれば 3・従来どおりなら 2)
         assert.ok(/const _planSchemaOf = \(plan\) => \(plan && plan\.decided\) \? 4 : \(\(plan && plan\.blockScope\) \? 3 : 2\);/.test(html), '版の付け方が無い (決定 = 4 / ブロック = 3 / 従来 = 2)');
         assert.ok(/planReadable\(\{[\s\S]{0,120}supportedSchema: PLAN_SCHEMA/.test(html));
-        // 41未適用でも配信は止めない (列を落として入れ直す)
-        assert.ok(/_isMissingColumnErr\(error, 'plan_schema'\)/.test(client));
+        // 配信 (✅ 決定) は RPC (56) で入れる = 41 の列がある前提。従来の配信の「41 未適用で列を落として入れ直す」は 2026-11-26 に関数ごと撤去
+        assert.ok(/supabase\.rpc\('publish_decided_plan', \{[\s\S]{0,200}p_plan_schema/.test(client), '決定の配信が版を載せていない');
     });
     test('★ ⑦配線: 締めた直後の端末にも届く (復帰時に取り直す)', () => {
         const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
@@ -10399,9 +9849,8 @@ console.log('\ngrowthDomain:');
         const pgrst = { code: 'PGRST204', message: "Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache" };
         assert.ok(isTbl(pgrst), '前提が変わった: このエラーが 39 未適用の判定に当たらなくなっている (順序のガードの理由を確かめること)');
         // ② 読み出しが列の有無を覚え、置く前に止める
-        assert.equal((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}[\s\S]{0,260}if \(!error\) \{ if \(withPins\) _resvPinColsMissing = false; \}/g) || []).length, 2,
-            '両方の読み出しで 45 の列の有無を覚えていない');
-        assert.ok(/window\.supabaseReservationPinColsMissing = \(\) => _resvPinColsMissing;/.test(client), '画面から読めない');
+        // ② 45 の列が無いことを画面へ知らせる口 (supabaseReservationPinColsMissing) は 2026-11-26 に撤去 (読む画面 = 従来の算出の盤は 11/16 に撤去)。読み出しは列を落として読み直す
+        assert.ok(!/_resvPinColsMissing|supabaseReservationPinColsMissing/.test(client), '45 の列の有無を覚える変数 / 口が残っている');
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
         const iLoad = place.indexOf('await window.supabaseLoadReservations(snap.season.id)');
         const iGate = place.search(/if \(window\.supabaseReservationPinColsMissing\?\.\(\) === true\) \{ showNotification\('📌 仮置きを置くには supabase\/45_reservation_pins\.sql/);
@@ -12940,21 +12389,19 @@ console.log('\n編成 3 つ (SQL 55):');
         assert.ok(/if \(\/chk_player_damages_slot\/\.test\(String\(res\.error\?\.message\)\) && withSlot\.some\(r => Number\(r\.slot\) >= 3\)\) \{\s*\n\s*throw new Error\('編成③を保存するには supabase\/55_player_damages_slots_3\.sql/.test(client), '55 未適用の DB に編成③を書いたときの案内が無い');
         assert.ok(/const MY_TEAM_SLOTS = \[1, 2, 3\];/.test(html) && /const SLOT_JP = \{ 1: '①', 2: '②', 3: '③' \};/.test(html), '本人の提出の枠が 3 つでない');
         assert.ok(/\$\{btn\(1\)\}\$\{btn\(2\)\}\$\{btn\(3\)\}/.test(html) && /_myDmgPreviewData\.slot = \[2, 3\]\.includes\(Number\(n\)\) \? Number\(n\) : 1;/.test(html), '📸 取り込みの保存先に ③ が無い');
-        assert.ok(/const slotMark = \(s\) => \(\{ 1: '①', 2: '②', 3: '③' \}\)\[Number\(s\)\] \|\| '①';/.test(resv) && /編成\$\{slotMark\(r\.loadout_slot\)\}/.test(resv) && /編成\$\{slotMark\(b\.loadoutSlot\)\}/.test(resv), '予約の文の編成の印が ③ に対応していない');
+        assert.ok(!/slotMark/.test(resv), '予約の文 (describe・本人の 3 枠) は 2026-11-26 に撤去したのに印の関数が残っている');
         assert.equal(globalThis.mockIntakeDomain.defaultSlot({ existing: [{ slot: 1, team: ['a'], dmgB: 1 }, { slot: 2, team: ['b'], dmgB: 1 }], characters: [] }), 3);
         // Codex 監査 §10 C: ③を選んだのに①へ保存 / 予約の③が DB・ドメイン・ソルバーで捨てられる / 印が①に化ける
         assert.ok(/damageB, slot: MY_TEAM_SLOTS\.includes\(Number\(d\.slot\)\) \? Number\(d\.slot\) : 1,/.test(html), '📸 取り込みで選んだ編成③が①として保存される');
         assert.ok(/ALTER TABLE plan_reservations\s*\n\s*ADD CONSTRAINT chk_plan_reservations_loadout_slot CHECK \(loadout_slot IN \(1, 2, 3\)\);/.test(sql) && /pg_get_constraintdef\(oid\) LIKE '%loadout_slot%' LOOP/.test(sql), '55 が予約の loadout_slot の CHECK を広げていない');
         assert.ok(/to_regclass\('public\.plan_reservations'\) AND contype = 'c'/.test(chk), '99 が予約の CHECK を見ていない');
-        assert.ok(/const SLOT_MAX = 3;/.test(resv) && /loadoutSlot > SLOT_MAX\) return;/.test(resv) && /loadoutSlot > SLOT_MAX\) return \{ ok: false, reason: 'bad_slot' \};/.test(resv), '予約のドメインが③を捨てる');
+        assert.ok(/const SLOT_MAX = 3;/.test(resv) && /loadoutSlot > SLOT_MAX\) return;/.test(resv), '予約のドメインが③を捨てる (解く形で ④ 以上だけ落とす。申請の下書きの bad_slot は 2026-11-26 に撤去)');
         assert.ok(/const MOCK_SLOT_MAX_STICKY = 3;/.test(rd('js', 'optimal-plan.js')), '前回尊重が③の約束を捨てる');
         assert.ok(!/=== 2 \? '②'/.test(html), '③を②/①と誤表示する所が残っている');
         const rv = globalThis.reservationsDomain, HK = (h) => `h${String(h).padStart(2, '0')}`;
         const row3 = { id: 9, season_id: 1, player_id: 7, boss_number: 3, loadout_slot: 3, status: 'approved', time_mode: 'fixed', time_slot: 'h21', raid_level: null, characters_snapshot: ['a', 'b'], expected_damage_b: 10 };
         assert.equal(rv.toSolverConstraints([row3]).length, 1, '③の予約を拘束にしていない');
         assert.equal(rv.toSolverConstraints([{ ...row3, loadout_slot: 4 }]).length, 0, '④を通している');
-        assert.equal(rv.planRowToDraft({ memberId: 7, bossNumber: 3, loadoutSlot: 3, level: 1, hourIdx: 16 }, HK).ok, true, '③の下書きが bad_slot');
-        assert.equal(rv.planRowToDraft({ memberId: 7, bossNumber: 3, loadoutSlot: 4, level: 1, hourIdx: 16 }, HK).reason, 'bad_slot');
         // Codex 監査 §10 B: 区切りを変える前の配信 (鍵が合わない) は消さずに運営へ知らせる
         const pp = globalThis.publishedPlansDomain, blocks = globalThis.raidBlocksDomain.blocksOfSeason(null);
         const P = (id, scope) => ({ id, season_id: 1, plan: scope ? { blockScope: scope, levels: [] } : { levels: [] } });
@@ -12962,9 +12409,6 @@ console.log('\n編成 3 つ (SQL 55):');
         assert.deepEqual(stray.map(x => [x.row.id, x.key, x.label]), [[1, '18-20', '夕方 18〜20時'], [4, '21-23', '夜']], '区切りに合わない配信を拾えていない / 1 日ぶんや合う行を拾った');
         assert.deepEqual(pp.strayRows(null, blocks), []); assert.deepEqual(pp.strayRows([P(1, { from: 18, to: 20 })], []).length, 1);
         // Codex 監査 §10 2 回目 (2026-10-24): 予約の作成入口 / 凍結中の文 / 結果の取り込みの印 / 旧版のタブでテストシーズンを始めると③が消える
-        assert.ok(!/slot !== 1 && slot !== 2/.test(resv) && /!\(Number\.isInteger\(slot\) && slot >= 1 && slot <= SLOT_MAX\)/.test(resv), '予約の作成入口 (buildRequestDraft) が ①② 限定のまま');
-        const d3 = rv.buildRequestDraft({ boss: { boss_number: 2, remaining_hp_raw: 10 }, block: { from: 17, to: 20 }, loadout: { slot: 3, dmgB: 20.5, characters: ['a', 'b', 'c', 'd', 'e'] } });
-        assert.equal(d3.ok, true, 'ブロックの予約で編成③が下書きにならない'); assert.equal(d3.draft.loadoutSlot, 3); assert.deepEqual(d3.draft.block, { from: 17, to: 20 });
         assert.ok(/loadout_slot: Number\(o\.loadoutSlot\) \|\| 1,/.test(client), '予約の保存 payload が loadoutSlot をそのまま loadout_slot に書いていない');
         assert.ok(/const SLOT_JP = \{ 1: '①', 2: '②', 3: '③' \};/.test(rd('js', 'domain', 'resultIntake.js')), '結果の取り込みが編成③を「編成3」と出す');
         const ri = globalThis.resultIntakeDomain;
@@ -13579,7 +13023,7 @@ console.log('\n▶︎ 模擬ダメージ表 (シンプル化 S1):');
         assert.ok(/class="mk-chip\$\{c\.dup \? ' dup' : ''\}"/.test(r), '被りの赤い枠が無い');
         // 名前 → ✏️ まとめて入力 (第46期メモ §3)。押すとファイル選択が開く 2 つ目の入口 (2026-10-29 に消した) は戻さない
         assert.ok(/<td><button type="button" class="mk-name btn" onclick="openOpsMockBulk\(\$\{Number\(r\.id\)\}\)"[^>]*>\$\{escapeHtml\(r\.name\)\}<\/button>/.test(r) && !html.includes('_opsMockIntakePickFromList'), '名前が まとめて入力 を開かない');
-        assert.ok(/list\.length < MY_TEAM_SLOTS\.length \? `<button type="button" class="mk-plus"/.test(r), '3 編成そろったマスにも ＋ が出る');
+        assert.ok(/const plus = \(list\.length === 0 \|\| \(a === b5Weak && r\.b5Short > 0 && list\.length < MY_TEAM_SLOTS\.length\)\) \? `<button type="button" class="mk-plus"/.test(r), '埋まったマスにも ＋ が出る / 3 編成そろったマスにも出る (段階 3 続き: 空のマスと、ボス 5 の 2 編成目が足りない人のマスだけ)');
         // 手で入力の入口は表のマスの ＋ / 編成のチップ (カードの「✏️ 手で入力」は同じ操作の 2 つ目だった — 2026-10-29 ボタンの監査)
         assert.ok(!/onclick="_opsMockManual\(\)"/.test(html) && /_opsMockManual\(\$\{Number\(r\.id\)\}/.test(html), '✏️ 手で入力 が 2 つある / 表から手入力できない');
         const m = html.slice(html.indexOf('function _opsMockManual(playerId, attr, slot)'), html.indexOf('async function handleOpsMockIntakeUpload'));
@@ -14227,16 +13671,6 @@ console.log('\n🧱 Lv4 の盤面 (S4 レビュー [1]):');
         assert.equal(bb.inBlockOf({ plan_key: '5-8|L1|B3|7|S1', reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), false, '夕方に押した朝の ✓ を夕方に数えた');
         assert.equal(bb.inBlockOf({ reported_at: '2026-10-31T08:30:00Z' }, blocks[3]), true, '数字の報告は報告の時刻 (17:30 JST = 夕方)');
     });
-    test('★ S4 レビュー [23] inBlockTime: 決定の行は決めたブロックの窓と重なる予約だけ「中」(決めていないブロックの 🔒 / 📌 を組み直し中・配信後の予約にしない)', () => {
-        const rv = globalThis.reservationsDomain;
-        const dec = { levels: [], decided: { blocks: [{ key: '5-8', from: 5, to: 8 }, { key: '9-12', from: 9, to: 12 }] } };
-        assert.equal(rv.inBlockTime(dec, { time_mode: 'block', block_from: 21, block_to: 0 }), false, '夜の約束を朝・午前の決定の中にした');
-        assert.equal(rv.inBlockTime(dec, { time_mode: 'block', block_from: 9, block_to: 12 }), true);
-        assert.equal(rv.inBlockTime(dec, { time_mode: 'fixed', time_slot: 'h07' }), true);
-        assert.equal(rv.inBlockTime(dec, { time_mode: 'fixed', time_slot: 'h18' }), false);
-        assert.equal(rv.inBlockTime(dec, { time_mode: 'flex' }), true);
-        assert.equal(rv.pendingRepublish([{ id: 1, status: 'approved', player_id: 7, boss_number: 3, loadout_slot: 1, time_mode: 'block', block_from: 21, block_to: 0, approved_at: 'x' }], dec).count, 0, '決めていないブロックの約束を配信後の予約に数えた');
-    });
     test('★ S4 レビュー [16] publishedPlans: 決定の行は決めたブロックにだけ効く (1 日ぶんとして全部のブロックに効かせない)', () => {
         const pd = globalThis.publishedPlansDomain;
         const dec = { id: 10, plan: { levels: [], decided: { blocks: [{ key: '5-8' }] } } }, eve = { id: 11, plan: { blockScope: { from: 17, to: 20 } } };
@@ -14734,7 +14168,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/if \(a\.plan_key && a\.source && !\(Number\(a\.damage_raw\) > 0\)\) tapRow\.set/.test(v), '取り消しを数字のある凸にも出す');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
         const brd2 = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
-        assert.ok(/_decidedBoardHtml\(v\.board, \{ sel, blocks: v\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v\.tapRow, busy: _atkTap\.busy \}\)/.test(r)
+        assert.ok(/_decidedBoardHtml\(v\.board, \{ sel, blocks: v\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v\.tapRow, busy: _atkTap\.busy, foldPast: true, showPast: _atkTap\.showPast \}\)/.test(r)
             && /data-tap-done="\$\{esc\(e\.planKey\)\}"/.test(brd2) && /data-tap-undo="\$\{Number\(t\.id\)\}"/.test(brd2) && !/onclick=/.test(r) && !/onclick=/.test(brd2), '名前の escape / 委譲の鍵 (盤の駒)');
         assert.ok(/case 'tap': _opsJump\('opsSecAttackTap'\); break;/.test(html), 'ヒーローの行き先');
         assert.ok(/attack_tap:   \{ label: '✓ 凸 \(運営\)'/.test(html) && /types: \['attack', 'attack_tap'\]/.test(html), '活動ログの種類と絞り込み');
@@ -14876,7 +14310,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const r = fnS5('async function renderRaidTab(identity)', '// ========== Player Identity');
         assert.ok(/if \(!st && syncKey && _raidAckSyncFor !== syncKey && typeof renderMyPublishedPlan === 'function'\) \{\s*\n\s*_raidAckSyncFor = syncKey;\s*\n\s*Promise\.resolve\(renderMyPublishedPlan\(identity\)\)\.then/.test(r), '✅ のためにホームの配信カードを読ませていない (RT-1)');
         assert.ok(/const unreadable = _planUnreadable\(decRow \|\| top\);/.test(r) && /if \(!decRow \|\| unreadable\) \{ tCard\.style\.display = 'none'; \}/.test(r), '互換ゲートを通していない (RT-2)');
-        assert.ok(/if \(mkHtml !== _raidMkLast\) \{/.test(r) && /sc\.scrollLeft = sl;/.test(r) && /#raidMocksBody \.mk-tbl th:first-child, #raidMocksBody \.mk-tbl td:first-child \{ position: sticky;/.test(html), '横スクロールが 30 秒ごとに左端に戻る (RT-3)');
+        assert.ok(/if \(_raidMkIsOpen\(\) && mkHtml !== _raidMkLast\) \{/.test(r) && /sc\.scrollLeft = sl;/.test(r) && /#raidMocksBody \.mk-tbl th:first-child, #raidMocksBody \.mk-tbl td:first-child \{ position: sticky;/.test(html), '横スクロールが 30 秒ごとに左端に戻る (RT-3)');
         assert.ok(/const anyMock = tbl\.rows\.some\(r => tbl\.attrs\.some\(a => \(r\.cells\[a\] \|\| \[\]\)\.length\)\);/.test(r), '模擬が 0 件でも表を出す (RT-5)');
         assert.ok(/#raidMocksBody \.mk-row-me td \{ box-shadow: inset 0 2px 0 var\(--ops\), inset 0 -2px 0 var\(--ops\); \}/.test(html), '自分の行の強調 (RT-6)');
         assert.ok(/const season = \(board\?\.season && ctx\?\.season && String\(board\.season\.id\) === String\(ctx\.season\.id\)\) \? board\.season : \(ctx\?\.season \|\| board\?\.season \|\| null\);/.test(r) && /if \(name === 'raid'\) \{ seasonStore\.invalidate\(\);/.test(html), 'シーズンの読み込みの失敗から戻れない (RT-7)');
@@ -15005,6 +14439,65 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         // ボスが読めないときは 凸のあるボスだけ
         assert.deepEqual(dp.boardView({ blocks, plan, nowIdx: 0, bosses: [] })[0].rows.map(r => r.bossNumber), [1]);
     });
+    test('★ 段階 3 続き (配線): 説明の「？」(_qh)・🧱 組む の過ぎたブロックの 1 行・📅 みんなの模擬の開け閉め (端末に覚える)・⚔️ 締め凸検索はボスから開く・模擬の表の ＋', () => {
+        // 2026-11-26 ふるり「改修をお願いします」(見本の決めごと 1〜5 は全部おすすめ)
+        const qh = fnS5('        function _qh(key, sum, body) {', '        // toggle は泡立たないので');
+        assert.ok(qh && /_qh\.open \|\| \(_qh\.open = new Set\(\)\)/.test(qh) && !/localStorage/.test(qh), '「？」の開いた状態を端末に覚えている (覚えない決め) / 描き直しで閉じる');
+        assert.ok(/document\.addEventListener\('toggle', \(e\) => \{[\s\S]{0,300}d\.classList\.contains\('qh'\)[\s\S]{0,300}\}, true\);/.test(html), 'toggle を捕まえる段で受けていない (泡立たない)');
+        assert.ok(/\.qh > summary \{[^}]*min-height: 40px;/.test(html), '「？」の行が 40px 未満 (押すもの)');
+        // 🧱 組む: 過ぎたブロック (再編成中は除く) は押せない 1 行の文字・決定 / 盤 / ピースの説明は「？」
+        const ob = fnS5('        function renderOpsBuild(', '        // 🧭 ピースのガイド (2026-11-12');
+        assert.ok(/if \(o\.past && rbNow && rbNow\.idx === i\) return/.test(ob) && /if \(o\.past\) \{ pastNames\.push\(b\.short\); return ''; \}/.test(ob), '再編成中のブロックまで 1 行にしている / 過ぎたブロックがボタンのまま');
+        assert.ok(/_qh\('ob-decide', '決定すると、メンバーに届きます', decideHint\)/.test(ob) && /_qh\('ob-same', '変更なしで決定し直すと', decideHint\)/.test(ob) && /_qh\('ob-tray', 'ピースの印と置き方'/.test(ob), '決定・ピースの説明が「？」になっていない');
+        assert.ok(/const stateNote = o\.level >= 4 \?/.test(ob) && /\(stateNote \? `<p class="ob-note">\$\{stateNote\}<\/p>` : ''\)/.test(ob), 'Lv4 / 撃破済み の状態の文まで「？」に隠している (状態は出したまま)');
+        assert.ok(/<b class="ob-stale">前のブロックが変わりました/.test(ob), '要組み直しの知らせが消えた');
+        // ✓ 凸の記録: 運営の ✓ のときだけ畳む (📅 レイド予定表 = メンバーの盤は畳まない)
+        const tap = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
+        assert.equal((tap.match(/foldPast: true, showPast: _atkTap\.showPast/g) || []).length, 2, '✓ 凸の記録の 2 つの描き方 (いつも / 取り直しの最中) で畳む指定をしていない');
+        assert.ok(/if \(ev\.target\.closest\('\[data-tap-past\]'\)\) \{ _atkTap\.showPast = !_atkTap\.showPast; renderOpsAttackTap\(\); return; \}/.test(tap), '済んだブロックの 1 行を押しても開かない');
+        const raidR = fnS5('async function renderRaidTab(identity)', '        // ========== Player Identity');
+        assert.ok(!/foldPast/.test(raidR), 'メンバーの 📅 レイド予定表 の盤まで畳んでいる (決めたのは ✓ 凸の記録 だけ)');
+        // 📅 みんなの模擬: 見出しがボタン・既定は閉じる・開いたかは端末に覚える・表は開いたときだけ画面に入れる
+        assert.ok(/<button type="button" class="rt-card-h rt-fold" id="raidMocksToggle" aria-expanded="false" aria-controls="raidMocksBody" onclick="_raidMkToggle\(\)">/.test(html) && /<div id="raidMocksBody" hidden><\/div>/.test(html), 'みんなの模擬の見出しが開け閉めのボタンでない / 既定で開いている');
+        assert.ok(/const _RAID_MK_KEY = 'shirisuko_raid_mk_open_v1';/.test(html) && /localStorage\.getItem\(_RAID_MK_KEY\) === '1'/.test(html), '開いたかを端末に覚えていない (既定は閉じる)');
+        const paint = fnS5('        function _raidMkPaintOpen() {', '        function _raidDoneKeys(');
+        assert.ok(/body\.hidden = !open;/.test(paint) && /if \(!open\) \{ if \(_raidMkLast !== null\) \{ body\.innerHTML = ''; _raidMkLast = null; \} return; \}/.test(paint), '閉じているのに表を画面に残している (描く部品が減らない)');
+        assert.ok(/_raidMkHtml = mkHtml;/.test(raidR) && /_raidMkPaintOpen\(\);   \/\/ 開閉の印/.test(raidR), '閉じている間に表の HTML を作っていない (開いたときに読み直しになる) / 描いたあとに開閉を合わせていない');
+        // ⚔️ 締め凸検索: ボスの「締凸検索」を押したときだけ (#tab-ops.fin-on)・✕ で閉じる・隠している間はボス状況を全幅
+        assert.ok(html.includes('#tab-ops:not(.fin-on) #opsSecFinish { display: none !important; }') && html.includes('@media (min-width: 700px) { #tab-ops:not(.fin-on) #opsSecBoss { grid-column: span 12; } }'), '締め凸検索を隠す CSS / ボス状況を全幅にする CSS が無い');
+        const pick = fnS5('        function handleOpsFinishAttrPick(attrKey) {', '        function renderOpsFinishList(attrKey) {');
+        assert.ok(/_opsCurrentAttr = attrKey;\s*\n\s*_opsFinSync\(\);/.test(pick) && pick.indexOf('_opsFinSync()') < pick.indexOf("expandOpsCard('opsSecFinish')"), 'ボスを選んでもカードを出していない (出す前に開いて寄せている)');
+        const close = fnS5('        function handleOpsFinishClose() {', '        function handleOpsFinishAttrPick(attrKey) {');
+        assert.ok(/_opsCurrentAttr = null;\s*\n\s*_opsFinSync\(\);/.test(close) && /onclick="handleOpsFinishClose\(\)">✕ 閉じる<\/button>/.test(html), '✕ で閉じられない');
+        assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);[^\n]*\n[^\n]*\n\s*_opsFinSync\(\);/.test(html), '盤面を描き直したときに出し入れを合わせていない');
+    });
+    test('★ 段階 3 続き (実行): ✓ 凸の記録 は ✓ が全部済んだ過ぎたブロックだけ 1 行に畳む (✓ が残るブロック・選んでいるブロック・これからのブロックはボタン) / 押すと出す / メンバーの盤は畳まない', () => {
+        const src = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
+        const qhSrc = fnS5('        function _qh(key, sum, body) {', '        // toggle は泡立たないので');
+        const esc = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const draw = new Function('escapeHtml', 'PT_ATTRS', '_bbFill', '_obHours', 'SLOT_JP', qhSrc + '\n' + src + '\nreturn _decidedBoardHtml;')(esc, [{ key: 'fire', name: '灼熱' }], () => ['#111', '#fff'], () => '5〜9時', { 1: '①' });
+        const E = (n) => Array.from({ length: n }, (_, i) => ({ planKey: 'k' + i }));
+        const V = (idx, short, state, decided, n, done) => ({ idx, short, state, decided, entries: E(n), doneN: done, rows: [], level: 1, hpExact: true });
+        const view = [V(0, 'A 朝', 'past', true, 9, 9), V(1, 'B 午前', 'past', true, 9, 8), V(2, 'C 午後', 'past', true, 0, 0), V(3, '<b>D</b>', 'now', true, 6, 0), V(4, 'E 夜', 'later', false, 0, 0), V(5, 'F 深夜', 'past', false, 0, 0)];
+        const blocks = Array.from({ length: 6 }, () => ({}));
+        const out = draw(view, { sel: 3, blocks, blkAttr: 'data-tap-blk', ops: true, foldPast: true, showPast: false, tapRow: new Map(), busy: new Set() });
+        const line = (out.match(/<button type="button" class="obb-past" data-tap-past aria-expanded="false">([\s\S]*?)<\/button>/) || [])[1] || '';
+        assert.ok(line.includes('A 朝 9/9') && line.includes('C 午後 0/0') && line.includes('F 深夜 決定なし') && line.includes('▸ 開く'), '✓ が済んだ過ぎたブロックの 1 行が違う: ' + line);
+        assert.ok(!line.includes('B 午前'), '✓ が残る過ぎたブロックまで畳んだ');
+        for (const i of [1, 3]) assert.ok(out.includes(`data-tap-blk="${i}"`), 'ボタンで残すブロックが無い: ' + i);
+        for (const i of [0, 2]) assert.ok(!out.includes(`data-tap-blk="${i}"`), '畳んだブロックのボタンが残っている: ' + i);
+        assert.ok(out.includes('&lt;b&gt;D&lt;/b&gt;') && !out.includes('<b>D</b>'), 'ブロック名を escape していない');
+        assert.ok(/<details class="qh" data-qh="tap-legend"><summary>札の押し方と帯の見方/.test(out), '運営の盤の札の説明が「？」になっていない');
+        // 選んでいる過ぎたブロックは畳まない
+        const sel0 = draw(view, { sel: 0, blocks, blkAttr: 'data-tap-blk', ops: true, foldPast: true, showPast: false, tapRow: new Map(), busy: new Set() });
+        assert.ok(sel0.includes('data-tap-blk="0"'), '選んでいる過ぎたブロックを畳んだ');
+        // 押して出したあと = 全部ボタン + 「済んだブロックを畳む」
+        const shown = draw(view, { sel: 3, blocks, blkAttr: 'data-tap-blk', ops: true, foldPast: true, showPast: true, tapRow: new Map(), busy: new Set() });
+        assert.ok([0, 1, 2, 3].every(i => shown.includes(`data-tap-blk="${i}"`)) && /data-tap-past aria-expanded="true">済んだブロックを畳む/.test(shown), '出したあとに全部のボタン / 畳む 1 行が無い');
+        // メンバーの盤 (foldPast なし) は今までどおり全部ボタン・説明もそのまま
+        const mem = draw(view, { sel: 3, blocks, blkAttr: 'data-raid-blk', tapRow: null, busy: null });
+        assert.ok(!mem.includes('obb-past') && [0, 1, 2, 3].every(i => mem.includes(`data-raid-blk="${i}"`)) && !mem.includes('data-qh="tap-legend"'), 'メンバーの盤まで畳んだ / 説明を「？」にした');
+    });
     test('★ 実行 (盤の見え方): _decidedBoardHtml — 名前は escape・運営の駒は押せる (まだ = ✓ / 運営の ✓ = 取り消し / 数字の報告 = 案内)・過ぎたブロックも押せる・メンバーは読むだけ (★ と枠)', () => {
         const dp = globalThis.decidePlanDomain, rbx = globalThis.raidBlocksDomain;
         const blocks = rbx.normalize(rbx.DEFAULT_BLOCKS).blocks;
@@ -15016,7 +14509,8 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         const view = dp.boardView({ blocks, plan, nowIdx: 2, done: new Set([key(2), key(3)]), viewerId: 1, bosses: [{ boss_number: 1, name: '<b>x</b>', weakness: 'fire', tier: 'lord' }] });
         const src = fnS5('function _decidedBoardHtml(', 'function _decidedBoardSel(');
         const esc = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const draw = new Function('escapeHtml', 'PT_ATTRS', '_bbFill', '_obHours', 'SLOT_JP', src + '\nreturn _decidedBoardHtml;')(esc, [{ key: 'fire', name: '灼熱' }], () => ['#111', '#fff'], () => '5〜8時', { 1: '①' });
+        const qhSrc = fnS5('        function _qh(key, sum, body) {', '        // toggle は泡立たないので');   // 説明の「？」(段階 3 続き) は本物
+        const draw = new Function('escapeHtml', 'PT_ATTRS', '_bbFill', '_obHours', 'SLOT_JP', qhSrc + '\n' + src + '\nreturn _decidedBoardHtml;')(esc, [{ key: 'fire', name: '灼熱' }], () => ['#111', '#fff'], () => '5〜8時', { 1: '①' });
         const ops = draw(view, { sel: 0, blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: new Map([[key(2), { id: 77 }]]), busy: new Set() });
         assert.ok(!ops.includes('<img') && ops.includes('&lt;img') && !ops.includes('<b>x</b>'), '名前・ボス名を escape していない');
         assert.ok(ops.includes(`data-tap-done="${esc(key(1))}"`), 'まだの駒を押して ✓ にできない');
@@ -15130,7 +14624,7 @@ console.log('\n📅 シンプル化 S5 (レイド予定表 / ✓ は運営 / 予
         assert.ok(/const ent = planKey && _atkTap\.view \? _atkTap\.view\.byKey\.get\(planKey\) : null;/.test(u) && /if \(!\(await padConfirm\(`\$\{what\}✓ を取り消しますか？/.test(u), '取り消しの確認に名前・ボスを出していない (OP-3)');
         assert.ok(/if \(u\) _opsTapUndo\(Number\(u\.dataset\.tapUndo\), u, u\.dataset\.planKey \|\| null\);/.test(html), '押した札の凸の鍵を取り消しに渡していない');
         const r = fnS5('function renderOpsAttackTap(', 'async function _opsTapMark(');
-        assert.ok(/if \(!snap\) \{[\s\S]{0,400}const L = _atkTap\.last;[\s\S]{0,300}body\.innerHTML = _decidedBoardHtml\(L\.board, \{ sel: _atkTap\.blk\.idx, blocks: L\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L\.tapRow, busy: _atkTap\.busy, frozen: true \}\);/.test(r), '取り直しの最中にブロックが切り替わらない (GP-1)');
+        assert.ok(/if \(!snap\) \{[\s\S]{0,400}const L = _atkTap\.last;[\s\S]{0,300}body\.innerHTML = _decidedBoardHtml\(L\.board, \{ sel: _atkTap\.blk\.idx, blocks: L\.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L\.tapRow, busy: _atkTap\.busy, frozen: true, foldPast: true, showPast: _atkTap\.showPast \}\);/.test(r), '取り直しの最中にブロックが切り替わらない (GP-1)');
         assert.ok(/_atkTap\.last = \{ seasonId: v\.seasonId, board: v\.board, blocks: v\.blocks, tapRow: v\.tapRow, sel \};/.test(r), '最後に描いた盤を控えていない');
     });
 }
@@ -15179,7 +14673,7 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
         assert.equal((after.match(/onclick="openOpsPushCheckModal\(\)"/g) || []).length, 1, '🔔 疎通確認のいつもある入口が無い');
         assert.ok(!html.includes('handleOpsMemberPhase') && !html.includes('opsMbPhasePre'), '👥 メンバー状況の「前日 / 当日」が残っている');
         assert.ok(!html.includes('id="settingsRestoreBtn"') && html.includes('いまは画面から復元できません'), '本番で必ず止まる「復元」がボタンのまま');
-        assert.ok(/if \(o\.past\) return `<div class="obb past" aria-disabled="true"/.test(html), '過ぎたブロックがずっと押せないボタン');
+        assert.ok(/if \(o\.past\) \{ pastNames\.push\(b\.short\); return ''; \}/.test(html) && /const pastHtml = pastNames\.length \? `<p class="obb-past">過ぎた: /.test(html) && !/<button[^>]*class="obb-past"[^>]*>過ぎた/.test(html), '過ぎたブロックがずっと押せないボタン (段階 3 続き: 押せない 1 行の文字にまとめる)');
         assert.ok(html.includes('${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset"'), 'やり直すものが無くても「このブロックをやり直す」を出す');
         assert.ok(/if \(!_opsMode && typeof _memberLite === 'function' && _memberLite\(\) && document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) switchTab\('mypage'\);/.test(html), '運営タブで 🛠 OFF にしてもメンバーに無いページに残る');
         const rd = fnB('        async function handleOpsResetDamages() {', '            try {');
@@ -15246,7 +14740,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/return `<button type="button" class="obpc pin\$\{pin \? ' hand' : ''\}\$\{over\}\$\{flash\}" \$\{box\} \$\{pin \? `data-ob-unpin="\$\{Number\(a\.reservationId\)\}"` : `data-ob-drop="\$\{pieceKey\}"`\}/.test(r), '駒がボタンでない / 自動の駒に外す印が無い');
         assert.ok(/const pieceKey = escapeHtml\(`\$\{a\.memberId\}:\$\{r\.weakness\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\);/.test(r), '駒の鍵がピースの鍵と違う');
         assert.ok(/<span class="obpc-x" aria-hidden="true">✕<\/span><\/button>/.test(r) && /aria-label="\$\{nm\} の駒を外す"/.test(r), '✕ が見えない / 読み上げの名前が無い');
-        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の ✕ で 1 個ずつ外せます') && /\$\{pinHint\}\$\{err\}/.test(r), '盤の近くの案内が無い');
+        assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の ✕ で 1 個ずつ外せます') && /const howBody = \[[^\n]*pinHint\]/.test(r) && /_qh\('ob-board', stateNote \? '駒の外し方' : \(pinHint \? '幅 = ダメージ · 駒の ✕ で外す'/.test(r) && /\$\{boardHelp\}/.test(r), '盤の近くの案内が無い (段階 3 続き: 盤のすぐ上の「？」の中)');
         assert.ok(/button\.obpc \{ min-width: 34px;/.test(html) && /button\.obpc\.hand \{ border-bottom:/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
         // 最小幅の駒が並ぶと行の右で切れて ✕ に届かない (overflow: hidden) → 🧱 組む の盤だけ折り返す (Codex 指摘)
         assert.ok(/#opsBuild \.obr-bar \{ flex-wrap: wrap; height: auto; min-height: 28px; \}/.test(html) && /#opsBuild \.obpc \{ height: 28px; \}/.test(html), '行に収まらない駒が切れて ✕ を押せない');
@@ -15653,7 +15147,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const r = fnR('function renderOpsBuild()', 'function _obDecideRange(');
         assert.ok(/const rbNow = _raidRebuildNow\(snap\.season, blocks\);\s*\n\s*_ob\.phaseKey = _obPhaseKey\(snap\.season, blocks\);/.test(r), '再編成中を見ていない / 段の鍵を覚えていない');
         assert.ok(/if \(o\.past && rbNow && rbNow\.idx === i\) return `<div class="obb past rebuild" aria-disabled="true"/.test(r) && /⏱ 再編成中<\/span><\/div>`;/.test(r), '再編成中の札が無い (押せない札のまま)');
-        assert.ok(/host\.innerHTML = `\$\{rbHtml\}<div id="obSync">\$\{_obSyncHtml\(\)\}<\/div><div class="obb-grid"/.test(r), '再編成時間の帯が無い');
+        assert.ok(/host\.innerHTML = `\$\{rbHtml\}<div id="obSync">\$\{_obSyncHtml\(\)\}<\/div>\$\{pastHtml\}<div class="obb-grid"/.test(r), '再編成時間の帯が無い / 過ぎたブロックの 1 行がボタンの上に無い');
         assert.ok(/return `\$\{_raidNowIdx\(season, blocks\)\}\|\$\{rb \? rb\.idx : -1\}`;/.test(fnOf('function _obPhaseKey(season, blocks)')), '段の鍵が無い');
         assert.ok(/if \(_opsMode && typeof _ob !== 'undefined' && _ob\.phaseKey != null && !_ob\.busy\n/.test(html) && /if \(s && _obPhaseKey\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\) !== _ob\.phaseKey\) \{\s*\n[^\n]*\n\s*if \(_ob\.sel && Number\.isInteger\(_ob\.idx\) && _ob\.idx < _obFirstIdx\(s, window\.raidBlocksDomain\.blocksOfSeason\(s\)\)\) \{ _ob\.sel = null; showNotification\(/.test(html), '段が変わっても描き直さない / 組んでいる最中に描き直す / 選んだピースを残す (⑥ レビュー now-4) / 再編成が終わっただけで外す (再レビュー ui-3)');
         assert.ok(/if \(!\(await padConfirm\(msg, \{ ok: '決定して配信する' \}\)\)\) return;\s*\n\s*if \(!_obSame\(epoch, sid\)\) return;\s*\n\s*\/\/[^\n]*\n\s*if \(_obFirstIdx\(snap2\.season, blocks\) !== first\) \{ padAlert\(/.test(html), '確認の間に「いま」が進んでも決定している');

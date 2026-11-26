@@ -2681,65 +2681,6 @@ window.supabaseQuickCreateTestSeason = async function (opts = {}) {
     return { ...r, rehearsal: { start, from: spec.from, placeholder: !poster && spec.placeholder, poster } };
 };
 
-// ============ 凸プラン配信 ============
-// 運営が算出したプランを published_plans に保存 → 全メンバーのマイページに表示。
-// テーブルは supabase/17_published_plans.sql を SQL Editor で適用しておくこと。
-// seasonId を渡すとそのシーズンへ配信する。省略時のみアクティブシーズンを引く。
-// 呼び出し側が「事前に読んだ確認済み一覧」と同じシーズンへ確実に配信するために必要
-// (シーズン切替と競合すると、旧シーズンの確認者へ新シーズンの更新通知を送ってしまう)
-window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName, seasonId = null, planSchema = null) {
-    await _gateGuard('publish');   // 互換ゲート (L2 ⑦)
-    let sid = seasonId;
-    if (!sid) {
-        const { data: season, error: sErr } = await supabase
-            .from('seasons').select('id').eq('is_active', true).maybeSingle();
-        if (sErr) throw sErr;
-        if (!season) throw new Error('アクティブなシーズンがありません');
-        sid = season.id;
-    }
-    // ★ 配信の版を載せる (41)。読む側が「自分には新しすぎる配信」を判定できるようにする。
-    //   41未適用の環境は列が無いので、列を落として入れ直す (配信自体は止めない)
-    const row = {
-        season_id: sid,
-        plan: planObj,
-        published_by: publishedBy || null,
-        published_by_name: publishedByName || null,
-    };
-    if (planSchema != null) row.plan_schema = Math.max(0, Math.floor(Number(planSchema) || 0));
-    let { data, error } = await supabase.from('published_plans').insert(row)
-        .select('id, published_at').single();
-    if (error && _isMissingColumnErr(error, 'plan_schema')) {
-        const { plan_schema, ...legacy } = row;
-        ({ data, error } = await supabase.from('published_plans').insert(legacy)
-            .select('id, published_at').single());
-    }
-    if (error) throw error;
-    // ★ 旧配信は**消さない** (L3・2026-09-07)。以前は自分より古い行を削除していたが、
-    //   「前回の配信と比べて誰の割当が変わったか」を後から再現できず、
-    //   更新通知を確認済み全員へ送るしかなかった (= 第44回の振り回しの一因)。
-    //   読む側は常に「season_id が同じ中で id 最大の1件」を選ぶので、行が増えても表示は変わらない。
-    //   運営が2人同時に配信しても、後から入った行が勝つ (id は BIGSERIAL = 単調増加)。
-    //   行数はシーズンあたり数件〜十数件で、JSONB も小さいので保持コストは無視できる
-    window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
-    return data;
-};
-
-// そのシーズンで「いまの配信の1つ前」を取る (L3: 本人へ「前回から何が変わったか」を出すため)。
-// 履歴を消さなくなったので引ける。1つ前が無い (初回配信) なら null
-window.supabaseGetPreviousPublishedPlan = async function (seasonId, currentPlanId) {
-    const sid = Number(seasonId), cur = Number(currentPlanId);
-    if (!sid || !cur) return null;
-    const cols = 'id, season_id, plan, published_by_name, published_at';
-    const run = async (sel) => await supabase
-        .from('published_plans').select(sel)
-        .eq('season_id', sid).lt('id', cur)
-        .order('id', { ascending: false }).limit(1).maybeSingle();
-    let r = await run(`${cols}, frozen_at`);
-    if (r.error && _isMissingColumnErr(r.error, 'frozen_at')) r = await run(cols);
-    if (r.error) { console.warn('[plan] 前回配信の取得skip:', r.error.message); return null; }
-    return r.data || null;
-};
-
 // 配信の凍結 / 解除 (38_published_plans_freeze.sql)。
 // 「組み直すので今のプランでは動かないでほしい」を、**消さずに**伝えるための操作。
 // 消すとメンバーは自分の割当を見られなくなり、plan_acks も失われる (第44回の実害)。
@@ -2774,30 +2715,6 @@ window.supabaseSetPlanFrozen = async function (planId, frozen, actorName = null)
         stale = !!(latest && Number(latest.id) !== pid);
     } catch { /* 確認できないときは黙って成功扱い (操作自体は通っている) */ }
     return { ok: true, stale };
-};
-
-// 配信の中止 (取り下げ): そのシーズンの配信プランを全削除し、メンバーの画面から消す。
-// plan_acks は published_plans への FK を持たない (28_plan_acks.sql) ので、
-// 宙に浮いた「確認済み」を残さないよう同シーズンぶんを一緒に掃除する。
-// 戻り値: 削除した配信の件数 (0 = もともと配信なし)。
-// 配信の完全削除。**通常の運用では使わない** — 中止は supabaseSetPlanFrozen による「凍結」に
-// 変えた (L3・2026-09-07)。消すとメンバーは自分の割当を見られなくなり、plan_acks も失われる。
-// シーズンの後片付けなど、履歴ごと消してよい場面のためだけに残してある
-window.supabaseDeleteAllPublishedPlans = async function (seasonId, actorName = null) {
-    const sid = Number(seasonId);
-    if (!sid) throw new Error('シーズンが特定できないため削除できません');
-    const { data, error } = await supabase
-        .from('published_plans').delete().eq('season_id', sid).select('id');
-    if (error) throw error;
-    // acks の掃除は「いま消した配信ぶん」に限定する。season 全体で消すと、
-    // 2人目の運営がこの2リクエストの間に配信していた場合その確認済みまで巻き込む (Codex指摘)
-    const removedIds = (data || []).map(r => r.id);
-    if (removedIds.length > 0) {
-        const ackRes = await supabase.from('plan_acks').delete().eq('season_id', sid).in('plan_id', removedIds);
-        if (ackRes.error) console.warn('[unpublish] 確認済みの掃除に失敗:', ackRes.error.message);
-    }
-    window.supabaseLogActivity?.('ops', '凸プランの配信履歴を削除', { actorName: actorName || null });
-    return (data || []).length;
 };
 
 // 模擬戦の提出状況 (前日運用): プレイヤーごとの提出属性数と最終更新
@@ -2943,12 +2860,6 @@ window.supabaseGetPublishedPlans = async function (limit = 60) {
     }
     if (r.error) throw r.error;
     return (Array.isArray(r.data) ? r.data : []).map(x => ({ ...x, month_key: season.month_key }));
-};
-// シーズンの最新の 1 行 (従来の読み方)。練習の案内・配信の無いときの判定など「どれか 1 つ」でよい所だけに使う。
-//   ブロックごとに見る所 (メンバーの配信カード・運営の配信の状況・算出の基準・配信時の照合) は supabaseGetPublishedPlans + publishedPlansDomain
-window.supabaseGetPublishedPlan = async function () {
-    const rows = await window.supabaseGetPublishedPlans(1);
-    return rows[0] || null;
 };
 
 // ============ 戦況の通知 (撃破 / レベル開放) ============
@@ -3171,8 +3082,6 @@ const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';
 const _isMissingPinCols = (error) => ['pinned_by', 'pinned_at', 'asked_at', 'ask_deadline_at'].some(c => _isMissingColumnErr(error, c));
 // ★ 45 の列が無い環境かを読み出しで覚える (null = まだ読んでいない)。画面は置く前にこれを見て「45 を適用してください」を出す —
 //   insert まで行くと PostgREST の「列が schema cache に無い」が plan_reservations の名を含み、39 未適用と誤読する (2026-09-11 実機)
-let _resvPinColsMissing = null;
-window.supabaseReservationPinColsMissing = () => _resvPinColsMissing;
 // 🧱 段階 3 (54): ブロックで約束した予約の列。未適用なら落として読み直す (ブロックの予約は存在しないので欠けても正しい)
 const _RESV_BLOCK_COLS = 'block_from, block_to';
 const _isMissingBlockCols = (error) => ['block_from', 'block_to'].some(c => _isMissingColumnErr(error, c));
@@ -3190,11 +3099,10 @@ window.supabaseLoadReservations = async function (seasonId) {
     let { data, error } = await run(withPins, withBlock);
     for (let k = 0; k < 2 && error; k++) {   // ★ 45 と 54 のどちらが欠けていても (両方でも) 読める
         if (withBlock && _isMissingBlockCols(error)) { withBlock = false; }
-        else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
+        else if (withPins && _isMissingPinCols(error)) { withPins = false; }
         else break;
         ({ data, error } = await run(withPins, withBlock));
     }
-    if (!error) { if (withPins) _resvPinColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3218,11 +3126,10 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
     let { data, error } = await run(withPins, withBlock);
     for (let k = 0; k < 2 && error; k++) {
         if (withBlock && _isMissingBlockCols(error)) { withBlock = false; }
-        else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
+        else if (withPins && _isMissingPinCols(error)) { withPins = false; }
         else break;
         ({ data, error } = await run(withPins, withBlock));
     }
-    if (!error) { if (withPins) _resvPinColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3313,23 +3220,6 @@ window.supabaseMovePin = async function (id, o = {}) {
         throw error;
     }
     if (!Array.isArray(data) || data.length === 0) throw new Error('この仮置きは別の運営が動かしました。画面を更新してから、もう一度お試しください');
-    return data[0];
-};
-// 📣 お願いする: 下書きを本人に見せる (asked_at)。期限は表示だけ (過ぎても自動で外さない)
-window.supabaseAskPin = async function (id, o = {}) {
-    if (!id) throw new Error('固定が指定されていません');
-    // ★ 楽観ロック (全体監査 2026-09-14 #8): updated_at が一致し、まだお願いしていない (asked_at IS NULL) 行だけ。
-    //   二人の運営が同時に押すと、以前は両方通って本人に 2 通届いた
-    if (!o.expectUpdatedAt) throw new Error('expectUpdatedAt (画面で見ていた行の updated_at) を渡してください');
-    const { data, error } = await supabase.from('plan_reservations')
-        .update({ asked_at: new Date().toISOString(), ask_deadline_at: o.deadlineAt || null, updated_at: new Date().toISOString() })
-        .eq('id', Number(id)).eq('updated_at', o.expectUpdatedAt).is('asked_at', null).eq('status', 'pinned').select('*');
-    if (error) {
-        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
-        if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
-        throw error;
-    }
-    if (!Array.isArray(data) || data.length === 0) throw new Error('この仮置きは別の運営が動かしたか、すでにお願い済みです。画面を更新してから、もう一度お試しください');
     return data[0];
 };
 

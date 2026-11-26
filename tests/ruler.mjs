@@ -41,7 +41,8 @@ const DONE = {
     // 📅 レイド予定表 (2026-11-21): メンバーの前日 = まだ配信されていません + みんなの模擬 / 途中の課題 (報告) = 決定 (夕方・夜) の盤・★ あなたの凸 /
     //   当日の運営役 = ✅ 確認しました のボタン・完了 / 未完了 の札。:board = 決定の盤と模擬の表が見えていること (決定が無くなると盤が出ず、測らずに通る)。1366px = 模擬の表の名前の列 (全体の tbody td が PC 幅だけ 13px)
     //   場面ごとの状態も求める (2026-11-21 Codex 監査: 盤と他人の札が残れば、状態の分岐だけ消えても通っていた): :mine = ★ あなたの凸の箱 / :nomine = 「あなたの凸はありません」/ :ack = ✅ 確認しました のボタン / :acked = ✅ 確認済み
-    raid: ['member:390', 'member&start=report:390:board+mine+acked', 'member&start=report:1366:board+mine+acked', 'ops-day:390:board+ack+nomine', 'ops-day:320:board+ack+nomine', 'ops-day:1366:board+ack+nomine'],
+    // 📅 みんなの模擬は押したら開く (段階 3 続き・2026-11-26): 畳んだまま (board) と、開いた表 (mkopen = 見出しを押す) の両方を測る
+    raid: ['member:390:mkopen', 'member&start=report:390:board+mine+acked', 'member&start=report:1366:board+mine+acked+mkopen', 'ops-day:390:board+ack+nomine', 'ops-day:320:board+ack+nomine+mkopen', 'ops-day:1366:board+ack+nomine+mkopen'],
     // 分析 1 回目 (2026-11-24): 📊 実績 = 順位表・グラフの切り替え・結果まとめ (押すと出る)・NIKKE編成 (開くと出る・キャラの顔 315 枚) / ⚡ ふるり値 = 順位表・属性別・モード /
     //   🧪 シミュレータ = プレイヤーを選んで目標 SLv → 予測と順位表・逆引き (目標ダメージ → SLv) / ふるり値試算 (属性・ダメージ → 算出と順位表)。分析の画面は 'slv-ranking/<画面>' (セグメントのボタンで開く)
     //   汎用の動作 click= / pick= / type= / need= (選択子に : と + は使えない)。need= で、押した・選んだ結果が出ていることを確かめる (出ないまま外れ 0 で通さない)
@@ -398,8 +399,15 @@ const runScene = async (tab, scene) => {
                     else if (await ev(`[...document.querySelectorAll('.tab-content.active details:not([open])')].some(d => d.getClientRects().length)`)) active = 'details が開かない (' + n + ' 個開いた)';
                 } else if (a === 'board') {
                     // 📅 レイド予定表: 決定の状態の行・盤 (ブロックのボタン・ボスの行・名前の札)・みんなの模擬の表 が見えていること (DOM にあるだけでは通さない — 隠れた部品は CHECK が飛ばすので、測らずに外れ 0 になる)
-                    const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return ['#raidStatusBody .rt-state', '#raidTimetableBody .obb', '#raidTimetableBody .obr', '#raidTimetableBody .db-tag', '#raidMocksBody table'].every(q => vis(document.querySelector(q))); })()`);
-                    if (!ok) active = '決定の盤・模擬の表が見えない';
+                    const ok = await ev(`(() => { const vis = (e) => !!e && e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility !== 'hidden'; return ['#raidStatusBody .rt-state', '#raidTimetableBody .obb', '#raidTimetableBody .obr', '#raidTimetableBody .db-tag', '#raidMocksToggle'].every(q => vis(document.querySelector(q))); })()`);
+                    if (!ok) active = '決定の盤・みんなの模擬の見出しが見えない';
+                } else if (a === 'mkopen') {
+                    // 📅 みんなの模擬の見出しを押して開く (指で押せること = HITTABLE)。開いたら表が見えること
+                    const ok = await ev(`(() => { const hittable = ${HITTABLE}; const b = document.getElementById('raidMocksToggle'); if (!b || !hittable(b)) return false; if (b.getAttribute('aria-expanded') !== 'true') b.click(); return true; })()`);
+                    if (!ok) { active = 'みんなの模擬の見出しを押せない'; break; }
+                    await settle();
+                    const shown = await ev(`(() => { const t = document.querySelector('#raidMocksBody table, #raidMocksBody .rt-note'); return document.getElementById('raidMocksToggle').getAttribute('aria-expanded') === 'true' && !!t && t.getClientRects().length > 0; })()`);
+                    if (!shown) active = 'みんなの模擬を開いても表が見えない';
                 } else if (a === 'mine' || a === 'nomine' || a === 'ack' || a === 'acked') {
                     // 📅 の場面ごとの状態 (その分岐だけが消えたら落ちる): 部品が見えていること (文は中身も見る)
                     const want = { mine: ['#raidTimetableBody .db-mine', '★ あなたの凸: '], nomine: ['#raidTimetableBody .rt-note', '決まったブロックに、あなたの凸はありません'], ack: ['#raidStatusBody .rt-ack', '✅ 確認しました'], acked: ['#raidStatusBody .rt-acked', '✅ 確認済み'] }[a];

@@ -606,11 +606,11 @@ console.log = origLog;
 const W = globalThis;
 const DB = () => W.PAD_PRACTICE.db.tables;
 
-test('本物のクライアント: 通信の関数 (123 個・2026-11-26 に使われていない 9 個を消した) がそろい、本物のクライアントは作らない / 通信は キャラ表の GET 1 回だけ', async () => {
+test('本物のクライアント: 通信の関数 (117 個・2026-11-26 に使われていない 15 個を消した) がそろい、本物のクライアントは作らない / 通信は キャラ表の GET 1 回だけ', async () => {
     const fns = Object.keys(W).filter(k => k.startsWith('supabase') && typeof W[k] === 'function');
     const declared = (rd('js/supabase-client.js').match(/^window\.supabase[A-Za-z0-9_]* = /gm) || []).length;
     assert.equal(fns.length, declared, '練習モードで定義されない関数がある');
-    assert.ok(declared >= 120);
+    assert.ok(declared >= 110);
     assert.equal(fetched.length, 1, `本物への通信が ${fetched.length} 回`);
     assert.match(fetched[0].url, /\/rest\/v1\/nikke_characters\?select=\*$/);
     assert.ok(!fetched[0].o.method && !fetched[0].o.body, 'GET 以外・本文つきの通信をしている');
@@ -622,6 +622,13 @@ test('本物のクライアント: 通信の関数 (123 個・2026-11-26 に使�
     assert.equal(board.bosses.length, 5);
     assert.equal(board.season.id, IDS.season);
 });
+// 従来の形の配信の行を偽のサーバに入れる (アプリの従来の配信 supabasePublishPlan は 2026-11-26 に撤去。決定より前の行は本番に残り得るので、読む側の確かめに使う)
+const insertLegacyPlan = async (plan, seasonId) => {
+    const sb = (await imp('js/supabase-client.js')).supabase;
+    const { data, error } = await sb.from('published_plans').insert({ season_id: seasonId, plan, published_by: IDS.ops, published_by_name: OPS_NAME, plan_schema: 2 }).select('id, published_at').single();
+    if (error) throw error;
+    return data;
+};
 test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承認 → 配信 → 凸報告 が偽のサーバで最後まで動く', async () => {
     const S = IDS.season, ME = IDS.me;
     // ① 今期の時間の確認
@@ -645,8 +652,8 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
     await assert.rejects(() => W.supabaseSetReservationStatus(rid, 'approved', { expectFrom: 'requested', actor: OPS_NAME }), /この予約は別の運営が操作しました/);
     await assert.rejects(() => W.supabaseSetReservationStatus(rid, 'rejected', { expectFrom: 'approved', actor: OPS_NAME }), /この予約はもう変更できません/);
     // ⑤ 配信
-    const pub = await W.supabasePublishPlan({ levels: [], seasonId: S }, IDS.ops, OPS_NAME, S, 2);
-    const got = await W.supabaseGetPublishedPlan();
+    const pub = await insertLegacyPlan({ levels: [], seasonId: S }, S);
+    const got = (await W.supabaseGetPublishedPlans(1))[0];
     assert.deepEqual([got.season_id, got.published_by_name, got.plan.seasonId], [S, OPS_NAME, S]);
     assert.ok(pub);
     // ⑥ 凸報告 (予約つき) → 予約は実行済み・ボスの残りが減る
@@ -703,9 +710,9 @@ test('本物のクライアント: 撃破の通知の宛先 — ブロックご�
     const S = IDS.season, A = IDS.firstMember + 1, B = IDS.firstMember + 2, C = IDS.firstMember + 3, D = IDS.firstMember + 4;
     const before = DB().published_plans.length;
     // 1 日ぶん (朝 6 時 = hourIdx 1 に A が B2) → そのあと夜のぶん (21 時 = hourIdx 16 に B が B2。朝の予想 (C・hourIdx 1) も JSON に入っている = 約束ではない)
-    await W.supabasePublishPlan({ seasonId: S, levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: A, hourIdx: 1, dmgB: 10 }, { memberId: D, flex: true, hourIdx: null, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);   // D は時刻の無い凸 (⏳ flex)
-    await W.supabasePublishPlan({ seasonId: S, blockScope: { idx: 4, name: '夜', label: '夜 21〜翌0時', from: 21, to: 0, slots: ['h21', 'h22', 'h23', 'h00'] },
-        levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: B, hourIdx: 16, dmgB: 10 }, { memberId: C, hourIdx: 1, dmgB: 10 }] }] }] }, IDS.ops, OPS_NAME, S, 2);
+    await insertLegacyPlan({ seasonId: S, levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: A, hourIdx: 1, dmgB: 10 }, { memberId: D, flex: true, hourIdx: null, dmgB: 10 }] }] }] }, S);   // D は時刻の無い凸 (⏳ flex)
+    await insertLegacyPlan({ seasonId: S, blockScope: { idx: 4, name: '夜', label: '夜 21〜翌0時', from: 21, to: 0, slots: ['h21', 'h22', 'h23', 'h00'] },
+        levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: B, hourIdx: 16, dmgB: 10 }, { memberId: C, hourIdx: 1, dmgB: 10 }] }] }] }, S);
     const ids = (await W.supabaseBossDefeatNotifyTargets(S, 2, null, 1)).map(Number).sort((x, y) => x - y);
     assert.deepEqual(ids, [A, B, D], '朝の担当 (1 日ぶんの配信) と夜の担当 (夜のぶんの配信) と時刻の無い凸の担当 の 3 人が宛先 — 全体の最新 1 行だけだと朝の担当が落ち、範囲で絞るだけだと時刻の無い凸が落ちる');
     assert.ok(!ids.includes(C), '夜のぶんの配信に入っている朝の予想を宛先にした');

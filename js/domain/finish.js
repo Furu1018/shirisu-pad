@@ -373,49 +373,6 @@
     }
 
     /**
-     * 確定したときに「落ちた案の人」を返す。★ 黙って流さないための材料。
-     * 勝った案にも入っている人は除く (その人には別途お願いが立っている)。
-     */
-    /**
-     * 確定したときの後始末。**「見送りにする行」と「知らせる人」は別物**なので分けて返す
-     * (Codex指摘 2026-09-10 — 一緒にしていたため、勝った案にも居る人の落ちた行が
-     *  accepted のまま残り、DB 上で確定が表せていなかった)。
-     *
-     * @returns {{rowIds:(number|string)[], notify:{id,name,rowIds}[], missingRowIds:number}}
-     *   rowIds        落ちた案の行**すべて** (勝った案に居る人のぶんも含む)
-     *   notify        「今回は見送り」を知らせる人。勝った案にも居る人と、自分で断った人は除く
-     *   missingRowIds 行 id が分からなかった数。0 でなければ確定してはいけない
-     */
-    function offerLosers(progress, winnerKey) {
-        const empty = { rowIds: [], notify: [], missingRowIds: 0 };
-        if (!progress || !Array.isArray(progress.plans)) return empty;
-        const win = progress.plans.find(p => p.key === winnerKey);
-        const winIds = new Set((win ? win.members : []).map(m => String(m.id)));
-        const rowIds = [];
-        let missingRowIds = 0;
-        const out = new Map();
-        for (const p of progress.plans) {
-            if (p.key === winnerKey) continue;
-            for (const m of p.members) {
-                // ★ 行は**誰のものでも・何行でも**落とす。勝った案に居る人の行を残すと、
-                //   その案が accepted のまま生き続けて「確定した」ことが記録に出ない
-                const mine = Array.isArray(m.rowIds) ? m.rowIds : (m.rowId != null ? [m.rowId] : []);
-                for (const rid of mine) rowIds.push(rid);
-                missingRowIds += Number(m.missingRowIds) || (mine.length === 0 ? 1 : 0);
-                if (winIds.has(String(m.id))) continue;     // 勝った案にも居る = 見送りではない
-                if (m.status === 'declined') continue;      // 断った人に「落ちました」は要らない
-                const k = String(m.id);
-                // ★ 同じ人が落ちた案に2つ居ることがある。**行はすべて**返す
-                //   (1行だけ落とすと、もう片方が「確認中」のまま残って二重に頼める)
-                const cur = out.get(k) || { id: m.id, name: m.name, rowIds: [] };
-                for (const rid of mine) cur.rowIds.push(rid);
-                out.set(k, cur);
-            }
-        }
-        return { rowIds, notify: [...out.values()], missingRowIds };
-    }
-
-    /**
      * 打診 1 回ぶんの行から、その打診がいまどの状態かを返す (判定は offerProgress と同じ材料で)。
      *   'none'      行が無い (撃破で消えた・まだ出していない)
      *   'dead'      どの案も成立しない (1 人でも断った案しか無い)
@@ -432,44 +389,8 @@
         return 'open';
     }
 
-    /**
-     * そのボスで**まだ決着していない** (offerState が 'open') いちばん新しい打診の id。無ければ null。
-     *
-     * ★ なぜ要るか: 打診の id は送った端末のメモリにしか無かった。読み込み直す (iOS は裏に回ると落ちる) と
-     *   「📣 打診中」の箱ごと消えて**「この案で確定」が押せなくなる**し、2 人目の運営の端末にはそもそも出ない
-     *   (練習モード「運営編・当日」を作っていて発覚 2026-10-03)。行には offer_id が残っているので、そこから拾い直す。
-     * ★ 確定すると落ちた案の行は全部 declined になる ('confirmed') ので拾わない (拾うと「この案で確定」が確定のあとも並ぶ)。
-     *   全員が断った打診 ('dead') も拾わない (🔁 直近の動き に残る)。
-     * ★ closed = この端末で「閉じる」を押した打診 (また出さない)
-     *
-     * @param {{offer_id?:string, boss_number:any, status:string, id?:any}[]} rows その回の依頼の行
-     * @param {number} bossNumber
-     * @param {Iterable<string>} [closed]
-     * @returns {string|null}
-     */
-    function latestOpenOffer(rows, bossNumber, closed) {
-        const skip = new Set([...(closed || [])].map(String));
-        const byOffer = new Map();
-        for (const r of (Array.isArray(rows) ? rows : [])) {
-            if (!r || !r.offer_id || Number(r.boss_number) !== Number(bossNumber)) continue;
-            const k = String(r.offer_id);
-            if (skip.has(k)) continue;
-            if (!byOffer.has(k)) byOffer.set(k, []);
-            byOffer.get(k).push(r);
-        }
-        let best = null;
-        for (const [k, rs] of byOffer) {
-            if (offerState(rs) !== 'open') continue;
-            // いちばん新しい = 行 id の最大 (採番は増えるだけ)。id が無ければ (同点なら) 行の並びの後ろ
-            const top = rs.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
-            if (!best || top >= best.top) best = { k, top };
-        }
-        return best ? best.k : null;
-    }
-
     root.finishDomain = {
-        computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
-        FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments,
-        offerProgress, offerLosers, offerState, latestOpenOffer,
+        computeFinishPlans, buildFinishLeaderTimeline, filterByWindow, FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments, offerProgress,
+        offerState,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

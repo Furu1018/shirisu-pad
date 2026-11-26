@@ -2894,6 +2894,23 @@
         .ob-rebuild, .rt-rebuild, .mt-rebuild { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-deep); font-size: 12px; font-weight: 700; line-height: 1.6; }
         .obb.past.rebuild .lv { color: var(--warn-deep); }
         .obb-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+        /* 過ぎたブロックは 1 行に (段階 3 続き・2026-11-26)。🧱 組む = 押せない文字 / ✓ 凸の記録 = 押すと畳んだブロックを出す (✓ が残るブロックは畳まない) */
+        .obb-past { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--t-muted); background: var(--s1); border-radius: 8px; padding: 9px 12px; }
+        button.obb-past { display: block; width: 100%; text-align: left; font: inherit; font-size: 12px; font-weight: 700; color: var(--t-body); border: 0; min-height: 40px; cursor: pointer; }
+        button.obb-past .o { color: var(--ops-deep); font-weight: 800; white-space: nowrap; }
+        button.obb-past:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+        /* 説明の「？」(段階 3 続き): 1 行 + ？ を押すとその場に開く。開いたかは覚えない (読み込み直すと閉じる・描き直しでは開いたまま = _qh) */
+        .qh { margin: 0; }
+        .qh > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; min-height: 40px; font-size: 12px; font-weight: 700; color: var(--t-body); }
+        .qh > summary::-webkit-details-marker { display: none; }
+        .qh > summary:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; border-radius: 8px; }
+        .qh-q { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--s2); color: var(--t-body); font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; }
+        .qh[open] .qh-q { background: var(--t-ink); color: var(--card); }
+        .qh-b { font-size: 11px; color: var(--t-muted); line-height: 1.6; padding: 0 0 8px; }
+        /* ⚔️ 締め凸検索はボスの「締凸検索」を押したときだけ (段階 3 続き)。隠している間はボス状況を全幅に (PC の 7 + 5 の行を独りにしない) */
+        #tab-ops:not(.fin-on) #opsSecFinish { display: none !important; }
+        @media (min-width: 700px) { #tab-ops:not(.fin-on) #opsSecBoss { grid-column: span 12; } }
+        .ops-fin-close { margin-left: auto; font: inherit; font-size: 12px; font-weight: 800; min-height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--s2); color: var(--t-ink); cursor: pointer; }
         @media (max-width: 760px) { .obb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         .obb { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 9px 10px 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
         @media (max-width: 359px) { .obb { padding-left: 6px; padding-right: 6px; } }   /* 幅 320〜350px: 3 列のボタンの 11px の時刻・凸数 (翌1〜翌5時・完了 12 / 15) を 1 行に保つ */
@@ -3079,11 +3096,17 @@
         .ob-decide-st { font-size: 12px; color: var(--t-sub, var(--t-ink)); min-width: 0; overflow-wrap: anywhere; }
         .ob-same { display: flex; align-items: center; gap: 6px; margin: 14px 0 0; font-size: 12px; font-weight: 700; color: var(--t-body); cursor: pointer; }
         .ob-same input { width: 16px; height: 16px; margin: 0; flex: none; accent-color: var(--ops); }
+        .ob-decide .qh { margin-top: 12px; }   /* すぐ上の「変更なしでも…通知」(hit40) の押せる範囲と重ねない (段階 3 続き) */
         .ob-skip button { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-ink); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .ob-skip:has(> button) { min-height: 40px; }   /* 「✕ 外す」(hit40) のある札は 40px — 折り返した次の段の札と押せる範囲を取り合わない */
         /* ▶︎ 模擬ダメージ表 (S1・2026-10-26): 人 × 属性。色はトークン (属性の薄い地) */
         /* 📅 レイド予定表 (S5)。色はトークンだけ (時間割の .mt-* と模擬表の .mk-* を使い回す) */
         .rt-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        /* 📅 みんなの模擬は押したら開く (段階 3 続き・2026-11-26)。見出しそのものがボタン */
+        button.rt-card-h.rt-fold { font: inherit; color: inherit; background: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer; min-height: 40px; align-items: center; margin-bottom: 0; }
+        button.rt-card-h.rt-fold[aria-expanded="true"] { margin-bottom: 8px; }
+        button.rt-card-h.rt-fold:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; border-radius: 8px; }
+        .rt-fold-ic { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--ops-deep); white-space: nowrap; }
         .rt-title { font-size: 14px; font-weight: 800; color: var(--t-ink); letter-spacing: 0.2px; }
         .rt-meta { font-size: 11px; font-weight: 700; color: var(--t-muted); }
         .rt-note { margin: 4px 0; font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.6; }
@@ -3632,8 +3655,9 @@
                 <div id="raidTimetableBody"></div>
             </div>
             <div class="dc-card" data-span="12" id="raidMocksCard">
-                <div class="rt-card-h"><div class="rt-title">みんなの模擬</div><span id="raidMocksMeta" class="rt-meta"></span></div>
-                <div id="raidMocksBody"></div>
+                <!-- 段階 3 続き (2026-11-26): 見出しを押すと開く (31 人 × 5 属性の表は開いたときだけ画面に入れる)。開いたかは端末に覚える (_raidMkToggle) -->
+                <button type="button" class="rt-card-h rt-fold" id="raidMocksToggle" aria-expanded="false" aria-controls="raidMocksBody" onclick="_raidMkToggle()"><span class="rt-title">みんなの模擬</span><span id="raidMocksMeta" class="rt-meta"></span><span class="rt-fold-ic">▸ 開く</span></button>
+                <div id="raidMocksBody" hidden></div>
             </div>
         </div>
     </div>
@@ -3671,7 +3695,8 @@
 
             <!-- 締め凸候補検索 -->
             <div class="dc-card">
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:8px;">締め凸検索</div>
+                <!-- 段階 3 続き (2026-11-26): ボスの「締凸検索」を押したときだけ出す (#tab-ops.fin-on)。✕ で閉じる -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">締め凸検索</div><button type="button" class="ops-fin-close" onclick="handleOpsFinishClose()">✕ 閉じる</button></div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);">ボス状況の各ボスの「締め凸検索」を押すと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
@@ -3692,9 +3717,7 @@
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">✓ 凸の記録</div>
                     <span id="opsAtkTapCounts" style="font-size:11px;font-weight:800;color:var(--t-muted);"></span>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
-                    Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと「未完了」が「✓ 完了」になります。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し。
-                </p>
+                <details class="qh" data-qh="tap-card"><summary>Discord の報告を見て、名前の札を押す<span class="qh-q" aria-hidden="true">？</span></summary><div class="qh-b">Discord の凸の報告 (結果の画面のスクショ) を見て、盤のその人の<strong>名前の札</strong>を押すと「未完了」が「✓ 完了」になります。数字は入れません (ボスの残り HP は 🎯 で BlaBlaLINK の画像から合わせます)。押し間違えたら、「✓ 完了」の札をもう一度押して取り消し。</div></details>
                 <div id="opsAtkTapBody"></div>
             </div>
 
@@ -3768,7 +3791,7 @@
                 <!-- ▶︎ 模擬ダメージ表 (シンプル化 S1・2026-10-26): 人 × 属性 (ボス 1〜5 の順)。マスの ＋ で手入力、編成を押すと直す。赤い枠 = 同じ人の別の編成とキャラが被る -->
                 <!-- 未完のみ / 全員 (👥 状況と共通の _mb.filter)。未完 = 模擬が届いていない人 (mockIntakeDomain.missingRows) -->
                 <div id="opsMiFilter" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;"></div>
-                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。<strong>名前を押すと 5 属性をまとめて入力</strong> (プリセットから編成を選んでダメージだけ)。空のマスの ＋ で 1 属性ずつ手入力・編成を押すと直す。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
+                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">模擬ダメージ表 <span style="font-weight:700;">(列はボス 1〜5 の順。<strong>名前を押すと 5 属性をまとめて入力</strong> (プリセットから編成を選んでダメージだけ)。空のマスの ＋ で 1 属性ずつ手入力・編成を押すと直す・2 つ目の編成は名前から。<span class="mk-dup-sample">赤い枠</span> = 同じ人の別の編成とキャラが被る。〆 = 自分が最初に出られるブロックの前)</span></div>
                 <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
@@ -6253,19 +6276,37 @@
         // 後方互換の外皮: inline onclick (bottom-nav/tab-button/drawer 等) と既存呼び出しはこのまま
         function switchTab(tabName) { TabController.activate(tabName); }
 
+        // 説明の「？」(段階 3 続き・2026-11-26 ふるり「長い説明は 1 行 +「？」で」): 押すとその場に開く。開いたかは端末に覚えない (読み込み直すと閉じる)。
+        //   描き直し (見回り・同期) では開いたまま — 開いている鍵は _qh.open (この画面を開いているあいだだけ)。sum / body は HTML (呼ぶ側で escape 済みの文)
+        function _qh(key, sum, body) {
+            const open = (_qh.open || (_qh.open = new Set())).has(String(key));
+            return `<details class="qh" data-qh="${escapeHtml(String(key))}"${open ? ' open' : ''}><summary>${sum}<span class="qh-q" aria-hidden="true">？</span></summary><div class="qh-b">${body}</div></details>`;
+        }
+        // toggle は泡立たないので document の捕まえる段で受ける (静的な <details class="qh"> も同じ)
+        document.addEventListener('toggle', (e) => {
+            const d = e.target;
+            if (!d || !d.classList || !d.classList.contains('qh') || !d.dataset.qh) return;
+            const set = _qh.open || (_qh.open = new Set());
+            if (d.open) set.add(d.dataset.qh); else set.delete(d.dataset.qh);
+        }, true);
+
         // ========== 決定を「凸プランを組む」と同じ盤で描く (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28 ふるり「組むの見え方の方が分かりやすい」) ==========
         //   材料は decidePlanDomain.boardView (ブロックごとのボスの行と駒・幅 = ダメージ・物差しは決定したときのブロックの始まりの HP)。
         //   部品は組むと同じ (.obb ブロックのボタン / .obr ボスの行 / .obpc 駒)。組むと違い、過ぎたブロックも押せる (✓ を付けに戻る・見返す)
         //   opts: sel = 選んでいるブロックの添字 / blkAttr = ブロックのボタンの data 属性 / ops = 名前の札を押して ✓ (運営) / tapRow = planKey → ✓ の行 / busy = 押している最中の planKey
         //   doneKnown = 完了 / 未完了 を読めたか (📅 で凸の記録を読めないと全員「未完了」と言い切っていた: 2026-10-28 見落とし点検 DL-1)
-        function _decidedBoardHtml(view, { sel, blocks, blkAttr, ops = false, tapRow = null, busy = null, frozen = false, doneKnown = true, rebuild = null } = {}) {
+        function _decidedBoardHtml(view, { sel, blocks, blkAttr, ops = false, tapRow = null, busy = null, frozen = false, doneKnown = true, rebuild = null, foldPast = false, showPast = false } = {}) {
             const esc = escapeHtml;
             const pt = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
             const fillOf = (w) => _bbFill(w) || ['var(--s2)', 'var(--t-ink)'];
             const lvOf = (lv) => Number(lv) >= 4 ? 'Lv4 (B5)' : 'Lv' + Number(lv);
+            // 過ぎて ✓ が全部済んだブロック (決定に入っていない過ぎたブロックも) は 1 行に畳む (✓ 凸の記録だけ・段階 3 続き)。✓ が残るブロックと選んでいるブロックは畳まない
+            const foldable = (v) => foldPast && v.idx !== sel && v.state === 'past' && (!v.decided || v.doneN >= v.entries.length);
+            const folded = [];
             const btns = view.map(v => {
                 const blk = blocks[v.idx];
                 const on = v.idx === sel;
+                if (!showPast && foldable(v)) { folded.push(v); return ''; }
                 // ⏱ 再編成時間 (凸しない時間) は、メンバーの盤で次のブロックに「いま」でなく「9:00 から」(⑥ レビュー flow-6)。運営の ✓ の盤は今までどおり
                 const chip = v.state === 'now' ? (!ops && rebuild && v.idx === rebuild.next ? `<span class="mt-chip now">${esc(rebuild.to)} から</span>` : '<span class="mt-chip now">いま</span>') : '';
                 const cls = `obb${on ? ' on' : ''}${v.state === 'past' ? ' was' : ''}`;
@@ -6325,9 +6366,13 @@
                         : '★ と太い枠 = あなたの凸。帯の幅 = ダメージ (決定したときの見積もり)。<b>完了 / 未完了 を読めませんでした</b> (下に引いて更新してください)');
                 const allDone = v.entries.length > 0 && v.doneN === v.entries.length;
                 panel = `<div class="ob-panel db"><div class="ob-head"><b>${esc(v.short || v.name || '')} ${esc(_obHours(blocks[v.idx]))} — ${lvOf(v.level)}</b><span class="mt-hr">${ops ? `完了 ${v.doneN} / ${v.entries.length}${allDone ? ' (全部完了)' : ''}` : (doneKnown ? `完了 ${v.doneN} / ${v.entries.length} 凸` : `${v.entries.length} 凸`)}</span></div>`
-                    + `<p class="ob-note">${legend}${v.hpExact ? '' : ' (古い決定のため、物差しはそのレベルの最大 HP)'}${frozen ? ' — <b>取り直し中…</b>' : ''}</p><div class="ob-board">${rows || '<p class="ob-note">このブロックの凸はありません。</p>'}${others}</div></div>`;
+                    + (ops ? `${_qh('tap-legend', '札の押し方と帯の見方', legend)}${!v.hpExact || frozen ? `<p class="ob-note">${v.hpExact ? '' : '古い決定のため、物差しはそのレベルの最大 HP。'}${frozen ? '<b>取り直し中…</b>' : ''}</p>` : ''}`
+                        : `<p class="ob-note">${legend}${v.hpExact ? '' : ' (古い決定のため、物差しはそのレベルの最大 HP)'}${frozen ? ' — <b>取り直し中…</b>' : ''}</p>`) + `<div class="ob-board">${rows || '<p class="ob-note">このブロックの凸はありません。</p>'}${others}</div></div>`;
             }
-            return `<div class="obb-grid" role="group" aria-label="ブロック" style="margin-bottom:10px;">${btns}</div>${panel}`;
+            const pastLine = folded.length
+                ? `<button type="button" class="obb-past" data-tap-past aria-expanded="false">済: ${folded.map(v => `${esc(v.short || v.name || '')} ${v.decided ? `${v.doneN}/${v.entries.length}` : '決定なし'}`).join(' · ')} <span class="o">▸ 開く</span></button>`
+                : (showPast && view.some(foldable) ? '<button type="button" class="obb-past" data-tap-past aria-expanded="true">済んだブロックを畳む <span class="o">▴</span></button>' : '');
+            return `${pastLine}<div class="obb-grid" role="group" aria-label="ブロック" style="margin-bottom:10px;">${btns}</div>${panel}`;
         }
         // 最初に開くブロック: 選んだブロックがあればそれ (決定に入っているブロックのボタンなら何でも)。無ければ prefer の順に探す
         function _decidedBoardSel(view, chosen, prefer) {
@@ -6367,6 +6412,28 @@
         }
         let _raidAckSyncFor = null;   // ✅ のためにホームの配信カードを 1 回だけ読ませた鍵 (名乗り|決定の id)。同じ決定で何度も読ませない (S5 レビュー RT-1)
         let _raidMkLast = null;       // みんなの模擬の表に最後に入れた HTML。同じなら描き直さない (横スクロールを左端に戻さない: S5 レビュー RT-3)
+        let _raidMkHtml = null;       // みんなの模擬の表の HTML (閉じている間も作っておく = 開いたらすぐ出す・読み直さない)
+        // 📅 みんなの模擬の開け閉め (段階 3 続き・2026-11-26 ふるり「開いたかどうかを端末に覚える」)。既定は閉じる
+        const _RAID_MK_KEY = 'shirisuko_raid_mk_open_v1';
+        function _raidMkIsOpen() {
+            if (_raidMkToggle.open === undefined) { try { _raidMkToggle.open = localStorage.getItem(_RAID_MK_KEY) === '1'; } catch { _raidMkToggle.open = false; } }
+            return _raidMkToggle.open;
+        }
+        function _raidMkToggle() {
+            _raidMkToggle.open = !_raidMkIsOpen();
+            try { localStorage.setItem(_RAID_MK_KEY, _raidMkToggle.open ? '1' : '0'); } catch { /* 覚えられなくても開け閉めはできる */ }
+            _raidMkPaintOpen();
+        }
+        // 開いていれば表を入れる・閉じていれば外す (描く部品を減らす)。印 (aria-expanded・▸ 開く / ▾ 閉じる) もここで
+        function _raidMkPaintOpen() {
+            const open = _raidMkIsOpen();
+            const btn = document.getElementById('raidMocksToggle'), body = document.getElementById('raidMocksBody');
+            if (btn) { btn.setAttribute('aria-expanded', open ? 'true' : 'false'); const ic = btn.querySelector('.rt-fold-ic'); if (ic) ic.textContent = open ? '▾ 閉じる' : '▸ 開く'; }
+            if (!body) return;
+            body.hidden = !open;
+            if (!open) { if (_raidMkLast !== null) { body.innerHTML = ''; _raidMkLast = null; } return; }
+            if (_raidMkHtml != null && _raidMkHtml !== _raidMkLast) { body.innerHTML = _raidMkHtml; _raidMkLast = _raidMkHtml; }
+        }
         function _raidDoneKeys(board, blocks, plan) {
             const dp = window.decidePlanDomain;
             const keys = new Set(), loose = new Map();
@@ -6484,9 +6551,9 @@
             // ③ みんなの模擬 (人 × 属性・読むだけ。運営の ▶︎ 模擬ダメージ表と同じ並びと色)
             mCard.style.display = '';
             if (!boardOk) {
-                mBody.innerHTML = '<p class="rt-note">模擬を読めませんでした。下に引いて更新してください。</p>';
-                _raidMkLast = null;
+                _raidMkHtml = '<p class="rt-note">模擬を読めませんでした。下に引いて更新してください。</p>';
                 if (mMeta) mMeta.textContent = '';
+                _raidMkPaintOpen();
                 return;
             }
             const b5Weak = (board.bosses || []).find(b => Number(b.boss_number) === 5)?.weakness || null;
@@ -6517,7 +6584,8 @@
                 ? `<p class="rt-note">赤い枠 = 同じ人の別の編成とキャラが被っている (1 日に両方は使えません)。</p><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" data-no-swipe data-raid-mk-scroll><table class="mk-tbl"><thead><tr><th>名前</th>${head}</tr></thead><tbody>${bodyRows}</tbody></table></div>`
                 : '<p class="rt-note">まだ模擬が登録されていません。</p>';
             // 30 秒ごとの描き直しで横スクロールが左端に戻っていた (S5 レビュー RT-3): 中身が同じなら触らない・変わったら位置を戻す
-            if (mkHtml !== _raidMkLast) {
+            _raidMkHtml = mkHtml;
+            if (_raidMkIsOpen() && mkHtml !== _raidMkLast) {
                 const sl = mBody.querySelector('[data-raid-mk-scroll]')?.scrollLeft || 0;
                 mBody.innerHTML = mkHtml;
                 _raidMkLast = mkHtml;
@@ -6525,6 +6593,7 @@
                 if (sc && sl) sc.scrollLeft = sl;
             }
             if (mMeta) mMeta.textContent = `5 属性そろった人 ${ready} / ${tbl.rows.length}`;
+            _raidMkPaintOpen();   // 開閉の印・閉じていれば表を外す
         }
 
         // ========== Player Identity (Phase 2a) ==========
@@ -11913,6 +11982,7 @@
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">ボス状況カードから対象ボスをタップしてください。</p>';
+            _opsFinSync();
             _applyOpsCardStates();     // フェーズ (前日/当日) が確定したので既定の開閉を反映
             _renderOpsCockpitSoon();
         }
@@ -12448,7 +12518,7 @@
                     const list = r.cells[a] || [];
                     const chips = list.map(c => `<button type="button" class="mk-chip${c.dup ? ' dup' : ''}" onclick="_opsMockManual(${Number(r.id)}, '${a}', ${Number(c.slot)})" title="${c.dup ? '同じ人の別の編成とキャラが被っています (1 日に両方は使えません)。' : ''}押すと直す${c.team.length ? ' — ' + escapeHtml(c.team.join('・')) : ' (キャラ未登録)'}">${c.dmgB > 0 ? c.dmgB.toFixed(1) : '—'}<small>B 編成${SLOT_JP[c.slot] || c.slot}${c.team.length ? '' : ' ?'}</small></button>`).join('');
                     const b5n = (a === b5Weak && r.b5Short > 0 && list.length) ? `<span class="mk-b5">2 編成目も</span>` : '';
-                    const plus = list.length < MY_TEAM_SLOTS.length ? `<button type="button" class="mk-plus" onclick="_opsMockManual(${Number(r.id)}, '${a}')" title="${escapeHtml(r.name)} の ${escapeHtml(PT_ATTRS.find(x => x.key === a)?.name || a)}PT を手で入力">＋</button>` : '';
+                    const plus = (list.length === 0 || (a === b5Weak && r.b5Short > 0 && list.length < MY_TEAM_SLOTS.length)) ? `<button type="button" class="mk-plus" onclick="_opsMockManual(${Number(r.id)}, '${a}')" title="${escapeHtml(r.name)} の ${escapeHtml(PT_ATTRS.find(x => x.key === a)?.name || a)}PT を手で入力">＋</button>` : '';
                     return `<td style="background:${C[a].bg};">${chips}${b5n}${plus}</td>`;
                 }).join('');
                 // 名前 → ✏️ その人の 5 属性をまとめて入力 (第46期メモ §3)。「このブロックのみ」の人は文字で印 (その人の模擬を先に埋める — ② とのつながり)
@@ -14707,12 +14777,23 @@
             } catch (e) { padAlert(`更新失敗: ${e?.message || e}`); }
         }
 
+        // ⚔️ 締め凸検索のカードはボスを選んだときだけ出す (段階 3 続き・2026-11-26 ふるり)。出し入れは #tab-ops の class (CSS)
+        function _opsFinSync() { document.getElementById('tab-ops')?.classList.toggle('fin-on', !!_opsCurrentAttr); }
+        function handleOpsFinishClose() {
+            _opsCurrentAttr = null;
+            _opsFinSync();
+            renderOpsBossSummary();
+            const plans = document.getElementById('opsFinishPlans'); if (plans) plans.innerHTML = '';
+            const list = document.getElementById('opsFinishList'); if (list) list.innerHTML = '<p style="color:var(--t-body);font-size:14px;">ボス状況カードから対象ボスをタップしてください。</p>';
+            _renderOpsCockpitSoon();
+        }
         function handleOpsFinishAttrPick(attrKey) {
             // 保険: 運営OFFでは締め凸候補カードが非表示 (data-ops-only) のため、描画しても
             // 何も見えず「押したのに動かない」に見える。ボタン自体もOFF時は隠しているが、
             // 別経路で呼ばれた場合に無言で終わらないよう案内を出す
             if (!_opsMode) { showNotification('🛠 締め凸検索は運営モードON中に使えます (右上の 🛠運営)'); return; }
             _opsCurrentAttr = attrKey;
+            _opsFinSync();   // 締め凸検索のカードを出す (段階 3 続き)
             renderOpsBossSummary();
             renderOpsFinishList(attrKey);
             expandOpsCard('opsSecFinish');   // 畳まれていても結果が見えるように開く (座標計算より前に)
@@ -15572,11 +15653,12 @@
             // ⏱ 再編成時間 (⑥): 凸の時間が終わったブロック (first の 1 つ前) は「再編成中」— 組むのは次のブロック。帯で手順を言う
             const rbNow = _raidRebuildNow(snap.season, blocks);
             _ob.phaseKey = _obPhaseKey(snap.season, blocks);
-            // ① ブロックの大きなボタン
+            // ① ブロックの大きなボタン。過ぎたブロック (再編成中のブロックは除く) は 1 行の文字にまとめる (押せない・段階 3 続き)
+            const pastNames = [];
             const btns = blocks.map((b, i) => {
                 const o = ov[i];
                 if (o.past && rbNow && rbNow.idx === i) return `<div class="obb past rebuild" aria-disabled="true" title="${escapeHtml(`${b.short} の凸の時間は ${rbNow.from} で終わりました (再編成時間 ${rbNow.label})。✓ と結果は ⚔️ 戦況で`)}"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">⏱ 再編成中</span></div>`;
-                if (o.past) return `<div class="obb past" aria-disabled="true" title="時間が過ぎたブロック"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span><span class="lv idle">過ぎた</span></div>`;   // 押せない札 (ずっと押せないボタンにしない — 2026-10-29 ボタンの監査)
+                if (o.past) { pastNames.push(b.short); return ''; }   // 押せない札 (ずっと押せないボタンにしない — 2026-10-29 ボタンの監査)
                 const built = _ob.plans.has(i);
                 const lvTxt = o.level >= 4 ? 'Lv4 (ボス 5・∞)' : (o.allDone ? `Lv${o.level} 撃破 ✓` : (o.attacks ? `Lv${o.level} を組み中` : `Lv${o.level} から`));
                 const minis = o.rows.map(r => `<i title="B${r.bossNumber} ${escapeHtml(r.name)} ${r.infinite ? '∞' : 'あと ' + r.remB.toFixed(1) + 'B'}"><b style="width:${r.infinite ? (r.gotB > 0 ? 100 : 0) : Math.min(100, r.startB > 0 ? r.gotB / r.startB * 100 : 100)}%;background:${(_bbFill(r.weakness) || [])[0] || 'var(--ops)'};"></b></i>`).join('');
@@ -15587,6 +15669,7 @@
                 return `<button type="button" class="obb${i === idx ? ' on' : ''}${lk && lk.ng ? ' lk-ng' : ''}" data-ob-blk="${i}" aria-pressed="${i === idx}"><span class="nm">${escapeHtml(b.short)}</span><span class="hr">${escapeHtml(_obHours(b))}</span>`
                     + `<span class="lv${o.allDone ? ' done' : (o.attacks ? '' : ' idle')}">${lvTxt}</span><span class="ct">${o.attacks ? `${o.attacks} 凸・${o.people} 人${built ? ' · 自動済み' : ''}` : 'まだ空'}${_ob.stale.has(i) ? ' · <b class="ob-stale">要組み直し</b>' : ''}</span>${lkHtml}<span class="minis">${minis}</span></button>`;
             }).join('');
+            const pastHtml = pastNames.length ? `<p class="obb-past">過ぎた: ${pastNames.map(n => escapeHtml(n)).join(' · ')}</p>` : '';
             const lockHtml = _obLockHtml(lock, blocks, idx, pt);
             // ② 選んだブロックの盤
             const o = ov[idx], blk = blocks[idx];
@@ -15631,9 +15714,13 @@
                 return `<span class="ob-skip">${nm} B${Number(a.bossNumber)} ${(Number(a.dmgB) || 0).toFixed(1)}B${act}</span>`;
             }).join('');
             const skippedHtml = skipped ? `<p class="ob-note ob-warn">⚠ このブロックで実行されない駒 (3 凸済み・キャラ被り・撃破のあと・Lv4 のボス 5 以外): ${skipped}</p>` : '';
-            const pinHint = o.rows.some(r => r.pieces.length) ? '<p class="ob-note"><b>駒の ✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)</p>' : '';
-            const note = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
-                : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`);
+            const pinHint = o.rows.some(r => r.pieces.length) ? '<b>駒の ✕ で 1 個ずつ外せます</b> (ほかの駒はそのまま)。下線 = 手で置いた駒 (🧮 でも動かない)' : '';
+            // 状態の文 (Lv4 / 撃破済み) は出したまま。決まった読み方 (幅 = ダメージ・駒の外し方) は「？」の中 (段階 3 続き)
+            const stateNote = o.level >= 4 ? 'Lv3 まで踏破の見込み。ボス 5 (HP 無限) だけに置く'
+                : (o.allDone ? `Lv${o.level} の 5 体を撃破 ✓ — このブロックの残りの人は使わず、Lv${o.level + 1} は次のブロックから` : '');
+            const howBody = [stateNote ? '' : `幅 = ダメージ。置くほど残りが減ります。5 体とも撃破すると次のブロックが Lv${o.level + 1}`, pinHint].filter(Boolean).join('<br>');
+            const boardHelp = (stateNote ? `<p class="ob-note">${stateNote}</p>` : '')
+                + (howBody ? _qh('ob-board', stateNote ? '駒の外し方' : (pinHint ? '幅 = ダメージ · 駒の ✕ で外す' : '幅 = ダメージ'), howBody) : '');
             // ③ ピース (このブロックに出られる人の模擬だけ)
             const people = new Set(tray.map(p => String(p.memberId))).size;
             const free = tray.filter(p => p.placedIdx == null && !p.blocked && p.remaining > 0).length;
@@ -15680,18 +15767,18 @@
                 : '駒を手で置くか「残りを自動で組む」で組むと決定できます');
             const sameOpt = same ? `<label class="ob-same hit40"><input type="checkbox" onchange="_obSetNotifySame(this.checked)"${_ob.notifySame ? ' checked' : ''}${_ob.busy ? ' disabled' : ''}>変更なしでも、割当のある人に「変わりません」と通知する</label>` : '';
             const decNote = _ob.decNote ? `<p class="ob-note ob-warn">⚠ ${escapeHtml(_ob.decNote)}</p>` : '';
-            const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${sameOpt}${decNote}<p class="ob-note">${decideHint}</p></div>`;
+            const decideHtml = `<div class="ob-decide"><div class="ob-decide-h">${decideBtn}<span class="ob-decide-st">${decState}</span></div>${sameOpt}${decNote}${fresh.length ? _qh('ob-decide', '決定すると、メンバーに届きます', decideHint) : (same ? _qh('ob-same', '変更なしで決定し直すと', decideHint) : `<p class="ob-note">${decideHint}</p>`)}</div>`;
             const rbHtml = rbNow && blocks[rbNow.idx] && blocks[rbNow.next]
                 ? `<p class="ob-rebuild">⏱ <b>再編成時間 ${escapeHtml(rbNow.label)}</b> — ${escapeHtml(blocks[rbNow.idx].short)} の凸の時間は終わりました。${escapeHtml(blocks[rbNow.next].short)} (${escapeHtml(rbNow.to)} から) を組んで ✅ 決定します: ⚔️ HP → ✓ 凸の記録 → 🧱 組む → ✅ 決定。${escapeHtml(blocks[rbNow.idx].short)} で済んでいない凸は、${escapeHtml(blocks[rbNow.next].short)} に出られる人なら ${escapeHtml(blocks[rbNow.next].short)} のピースに出ます</p>`
                 : '';
-            host.innerHTML = `${rbHtml}<div id="obSync">${_obSyncHtml()}</div><div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${lockHtml}${decideHtml}
+            host.innerHTML = `${rbHtml}<div id="obSync">${_obSyncHtml()}</div>${pastHtml}<div class="obb-grid" role="group" aria-label="組むブロック">${btns}</div>${lockHtml}${decideHtml}
                 <div class="ob-panel">
                     <div class="ob-head"><b>${escapeHtml(blk.short)} ${escapeHtml(_obHours(blk))} を組む — Lv${o.level}</b>
                         <span class="ob-acts"><button type="button" class="ob-auto" onclick="_obAuto()"${_ob.busy ? ' disabled' : ''}>🧮 残りを自動で組む</button>${(_ob.plans.has(idx) || o.rows.some(r => r.pieces.some(a => a.pinned && a.reservationId != null))) ? `<button type="button" class="ob-reset" onclick="_obReset()"${_ob.busy ? ' disabled' : ''}>このブロックをやり直す</button>` : ''}</span></div>
-                    <p class="ob-note">${note}${_ob.stale.has(idx) ? ' — <b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b>' : ''}</p>${pinHint}${err}${skippedHtml}
+                    ${boardHelp}${_ob.stale.has(idx) ? '<p class="ob-note"><b class="ob-stale">前のブロックが変わりました。もう一度「残りを自動で組む」を押してください</b></p>' : ''}${err}${skippedHtml}
                     <div class="ob-wrap"><div class="ob-main"><div class="ob-board">${rows}</div><div class="ob-guide" id="obGuide">${_obGuideHtml(ctx, _obGuideKey(ctx))}</div></div>
                         <div class="ob-tray"><div class="ob-tray-h">この時間帯に出られる人の模擬 <span>${people} 人・置ける ${free}</span></div>
-                            <p class="ob-note">「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます</p>
+                            ${_qh('ob-tray', 'ピースの印と置き方', '「このブロックのみ」「このブロックで最後」の人を先に置きます。赤く塗ったピース (⚠ 置けない) は、いまは置けません (相手のボスがいない・撃破済み)。赤い枠だけのピースは別の編成とキャラが被る印で、置けます。ピースを押してからボスの行を押す (PC はドラッグ)。置いたピースをもう一度押すと外せます')}
                             <div class="ob-tray-list">${trayHtml}</div></div></div>
                 </div>`;
             _obDelegate(host);
@@ -16659,7 +16746,7 @@
         //   ★ 自分では load しない (取り直しは中央の _opsReloadBoardCards だけ: 結果の取り込みと同じ決まり)。押したあとは中央で取り直す。
         //   view = 最後に描いた表の控え (planKey → 凸)。押したあとの取り直しの間 (盤面が null) も、続けて押せるようにここから引く (S5 レビュー TP-2)。
         //   gen = 運営 OFF・シーズンの切り替えで進む。押してから書くまでの await のあとに照合する (S5 レビュー TP-8)
-        const _atkTap = { gen: 0, busy: new Set(), bound: false, view: null, blk: null, last: null };   // blk = 盤で選んだブロック ({ sid, idx }・自動で選んだ分も覚える) / last = 最後に描いた盤の材料 (取り直しの間に描く)
+        const _atkTap = { gen: 0, busy: new Set(), bound: false, view: null, blk: null, last: null, showPast: false };   // showPast = 畳んだ過ぎたブロックを出している (この画面のあいだだけ)   // blk = 盤で選んだブロック ({ sid, idx }・自動で選んだ分も覚える) / last = 最後に描いた盤の材料 (取り直しの間に描く)
         function _opsTapView(snap) {
             const dp = window.decidePlanDomain, rbd = window.raidBlocksDomain;
             if (!dp || !rbd || !snap?.season) return null;
@@ -16699,6 +16786,7 @@
                     if (ev.target.closest('[data-tap-reload]')) { _reloadFresh(); return; }   // 互換ゲートで止めたとき (S5 レビュー RT-2)
                     const bk = ev.target.closest('[data-tap-blk]');
                     if (bk) { _atkTap.blk = { sid: _atkTap.view ? _atkTap.view.seasonId : null, idx: Number(bk.dataset.tapBlk) }; renderOpsAttackTap(); return; }   // 盤のブロックを選ぶ
+                    if (ev.target.closest('[data-tap-past]')) { _atkTap.showPast = !_atkTap.showPast; renderOpsAttackTap(); return; }   // 済んだブロックの 1 行 (段階 3 続き)
                     const d = ev.target.closest('[data-tap-done]');
                     if (d) { _opsTapMark(d.dataset.tapDone, d); return; }
                     const u = ev.target.closest('[data-tap-undo]');
@@ -16710,7 +16798,7 @@
             if (!snap) {   // 取り直しの最中 (✓ のあと) — 完了が描く。その間にブロックを押されたら、最後に描いた盤から描き直して札は押せなくする (盤のレビュー GP-1)
                 const L = _atkTap.last;
                 if (L && _atkTap.blk && String(_atkTap.blk.sid) === String(L.seasonId) && _atkTap.blk.idx !== L.sel) {
-                    body.innerHTML = _decidedBoardHtml(L.board, { sel: _atkTap.blk.idx, blocks: L.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L.tapRow, busy: _atkTap.busy, frozen: true });
+                    body.innerHTML = _decidedBoardHtml(L.board, { sel: _atkTap.blk.idx, blocks: L.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: L.tapRow, busy: _atkTap.busy, frozen: true, foldPast: true, showPast: _atkTap.showPast });
                     L.sel = _atkTap.blk.idx;
                 }
                 return;
@@ -16751,7 +16839,7 @@
                 for (const e of r.entries) byKey.set(e.planKey, e);
             }
             _atkTap.view = { seasonId: v.seasonId, pubId: v.pub.id, byKey };
-            body.innerHTML = nAll ? _decidedBoardHtml(v.board, { sel, blocks: v.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v.tapRow, busy: _atkTap.busy })
+            body.innerHTML = nAll ? _decidedBoardHtml(v.board, { sel, blocks: v.blocks, blkAttr: 'data-tap-blk', ops: true, tapRow: v.tapRow, busy: _atkTap.busy, foldPast: true, showPast: _atkTap.showPast })
                 : '<p class="ops-recent-empty">決定に凸がありません。</p>';
             _atkTap.last = { seasonId: v.seasonId, board: v.board, blocks: v.blocks, tapRow: v.tapRow, sel };
             if (cnt) cnt.textContent = `いままで 完了 ${nDueDone} / ${nDue} · 全体 ${nDone} / ${nAll}${v.rebuild ? ` · ⏱ 再編成時間 ${v.rebuild.label}` : ''}`;
