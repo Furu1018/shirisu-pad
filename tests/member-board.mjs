@@ -141,6 +141,116 @@ test('当日: 凸 L1 表示・代理バッジ (行に代理凸のボタン・締
     assert.ok(!/undefined|NaN/.test(out));
 });
 
+// ★ 1 人 1 行 (段階 3・2026-11-26 ふるり・見本 ④): 行 = 名前 (押すと開く)・ブロックのタイル・今期の確認 (当日は 残 n)・🔔・⏰ / 開いた中 = 理由・模擬・SLv・凸数・時刻・催促・📸 模擬を見る
+const rowsOf = (out) => out.split('<div class="dc-mb-row one ').slice(1).map(x => {
+    const id = Number(/data-mb-id="(\d+)"/.exec(x)?.[1]);
+    const [head, det = ''] = x.split('<div class="mb1-det">');
+    return { id, head, det, raw: x };
+});
+test('★ 1 人 1 行: 行に出すのは 名前・タイル・今期の確認・🔔・⏰ だけ / 理由・模擬・SLv・催促・📸 模擬を見る は開いた中', () => {
+    _mb.filter = 'all'; _mb.open = new Set();
+    const ps = [...players, P({ id: 5, name: '未確認さん', availableSlots: ['h20'], damagesByAttr: { fire: 1 } })];
+    _mb.rows = dom.buildRows({ players: ps, extras: { ...extras, pushPlayerIds: [2, 3, 4, 5] }, phase: 'pre' });
+    _mb.players = ps;
+    _mbPaint('pre');
+    const rows = rowsOf(el('opsMbRows').innerHTML);
+    assert.equal(rows.length, ps.length, '1 人 1 行になっていない');
+    for (const r of rows) {
+        assert.ok(r.head.includes(`onclick="_mbToggle(${r.id})"`) && r.head.includes('aria-expanded="false"'), '名前が開くボタンでない: ' + r.id);
+        assert.ok(r.head.includes(`openOpsAvailModal(${r.id})`), '行に ⏰ が無い');
+        assert.ok(!/dc-mb-why|模擬 \d\/5|SLv |催促|setOpsMv/.test(r.head.replace(/ title="[^"]*"/g, '')), '行に開いた中のものが出ている: ' + r.id);   // title (押すと何が開くかの説明) は見ない
+        assert.ok(r.det.includes('dc-mb-why') && /模擬 \d\/5/.test(r.det) && r.det.includes(`setOpsMv('mock', ${r.id})`), '開いた中が足りない: ' + r.id);
+    }
+    const byId = Object.fromEntries(rows.map(r => [r.id, r]));
+    assert.ok(byId[5].head.includes('>未確認<'), '今期の確認がまだの人が 未確認 でない');
+    assert.ok(byId[2].head.includes('>確認済<'), '確認した人が 確認済 でない');
+    assert.ok(byId[2].det.includes('class="dc-mb-tz"') && !byId[2].head.includes('dc-mb-tz'), '時刻の文字は開いた中');
+    assert.ok(byId[2].det.includes('SLv 600'));
+    assert.ok(byId[2].det.includes('✓ 完了'), '完了の人の開いた中に ✓ 完了 が無い');
+    assert.ok(byId[1].head.includes('🔕'), '購読なしの 🔕 が行に無い');
+    // 開いている人は描き直しても開いたまま
+    _mb.open = new Set([2]);
+    _mbPaint('pre');
+    const r2 = rowsOf(el('opsMbRows').innerHTML).find(r => r.id === 2);
+    assert.ok(/^(todo|done) open"/.test(r2.raw) && r2.head.includes('aria-expanded="true"'), '開いた人が描き直しで閉じる');
+    _mb.open = new Set();
+    // 当日: 確認の所が 残 n (L1 の内訳と代理は開いた中)
+    _mb.rows = dom.buildRows({ players: ps, extras, phase: 'day' });
+    _mbPaint('day');
+    const d = Object.fromEntries(rowsOf(el('opsMbRows').innerHTML).map(r => [r.id, r]));
+    assert.ok(d[3].head.includes('>残 2<') && !d[3].head.includes('class="d"'), '当日の行が 残 n でない / 凸の内訳が行に出ている');
+    assert.ok(d[3].det.includes('<i class="d">L1</i>') && d[3].det.includes('代理'), '凸の内訳・代理が開いた中に無い');
+    assert.ok(d[4].head.includes('>3凸 ✓<'), '3 凸済みの人が 3凸 ✓ でない');
+    assert.ok(d[1].head.includes('>残 3<'));
+    _mb.players = null;
+});
+test('★ 1 人 1 行: _mbToggle は描き直さずに class と aria-expanded だけ変える・_mb.open に覚える', () => {
+    const _mbToggle = eval(`(${extract('        function _mbToggle(').trim()})`);
+    const cls = new Set(); const attrs = {};
+    const row = { classList: { toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); } }, querySelector: () => ({ setAttribute: (k, v) => { attrs[k] = v; } }) };
+    const origDoc = globalThis.document;
+    let asked = '';
+    globalThis.document = { ...origDoc, querySelector: (q) => { asked = q; return row; } };
+    try {
+        delete _mb.open;
+        const before = el('opsMbRows').innerHTML;
+        _mbToggle('7');
+        assert.ok(_mb.open instanceof Set && _mb.open.has(7) && cls.has('open') && attrs['aria-expanded'] === 'true');
+        assert.ok(asked.includes('data-mb-id="7"'), '開く行の探し方が違う');
+        assert.equal(el('opsMbRows').innerHTML, before, '開くときに描き直している');
+        _mbToggle(7);
+        assert.ok(!_mb.open.has(7) && !cls.has('open') && attrs['aria-expanded'] === 'false');
+    } finally { globalThis.document = origDoc; _mb.open = new Set(); }
+});
+// ★ 👥 状況 / 📸 模擬 の切り替え: 開いたときは 前日 (準備・前日) = 模擬 / 当日・終了 = 状況。切り替えたら同じ段階のあいだ覚える (端末ごと)
+test('★ 切り替え: 既定は段階で決まる / 切り替えたら同じ段階のあいだ覚える / 覚えられない端末でも動く / 数の印', () => {
+    const store = {}; let lsThrow = false;
+    globalThis.localStorage = { getItem: (k) => { if (lsThrow) throw new Error('x'); return k in store ? store[k] : null; }, setItem: (k, v) => { if (lsThrow) throw new Error('x'); store[k] = String(v); } };
+    const slots = [{ innerHTML: '' }, { innerHTML: '' }];
+    const tab = { dataset: {} };
+    const origDoc = globalThis.document;
+    globalThis.document = { ...origDoc, getElementById: (id) => id === 'tab-ops' ? tab : null, querySelectorAll: (q) => q === '#tab-ops .ops-mv-slot' ? slots : [] };
+    globalThis.requestAnimationFrame = (fn) => fn();
+    try {
+        const src = `(() => { const _OPS_MV_KEY = 'shirisuko_ops_mv_v1'; let _opsMvStored = null; let _opsStage = null; const _mockIntake = { missingCount: 3 };
+            ${extract('        function _opsMvNow(')}
+            ${extract('        function setOpsMv(')}
+            ${extract('        function _opsMvPaint(')}
+            return { _opsMvNow, setOpsMv, _opsMvPaint, stage: (s) => { _opsStage = s ? { stage: s } : null; }, reset: () => { _opsMvStored = null; }, mi: _mockIntake }; })()`;
+        const env = eval(src);
+        for (const [st, want] of [['prep', 'mock'], ['pre', 'mock'], ['day', 'status'], ['end', 'status'], [null, 'mock']]) {
+            env.stage(st); assert.equal(env._opsMvNow(), want, `段階 ${st} の既定が ${want} でない`);
+        }
+        env.stage('pre');
+        env.setOpsMv('status');
+        assert.equal(env._opsMvNow(), 'status', '切り替えた見え方を覚えていない');
+        assert.deepEqual(JSON.parse(store.shirisuko_ops_mv_v1), { view: 'status', stage: 'pre' });
+        env.reset();   // 読み込み直し
+        assert.equal(env._opsMvNow(), 'status', '端末に覚えていない');
+        env.stage('day');
+        assert.equal(env._opsMvNow(), 'status');
+        env.setOpsMv('mock');
+        env.stage('end');
+        assert.equal(env._opsMvNow(), 'status', '別の段階なのに前の段階の選択を使っている');
+        env.setOpsMv('nope');
+        assert.equal(env._opsMvNow(), 'status', '変な値で切り替わった');
+        // 描画: #tab-ops の data-mv・両方の置き場に同じ切り替え・数 (未完 / 模擬が届いていない)
+        _mb.rows = [{ todo: true }, { todo: true }, { todo: false }]; _mb.players = [];
+        env._opsMvPaint();
+        assert.equal(tab.dataset.mv, 'status');
+        assert.ok(slots[0].innerHTML === slots[1].innerHTML && slots[0].innerHTML.includes(`aria-selected="true" onclick="setOpsMv('status')"`), '置き場の描画が違う');
+        assert.ok(/👥 状況 <span class="n bad">2<\/span>/.test(slots[0].innerHTML) && /📸 模擬 <span class="n bad">3<\/span>/.test(slots[0].innerHTML), '数の印が違う');
+        env.mi.missingCount = 0; _mb.players = null;
+        env._opsMvPaint();
+        assert.ok(!/👥 状況 <span/.test(slots[0].innerHTML) && /📸 模擬 <span class="n">0<\/span>/.test(slots[0].innerHTML), '読めていない数を 0 と出している / 0 を赤にしている');
+        // 覚えられない端末 (プライベート等) でも切り替えはできる
+        lsThrow = true; env.reset(); env.stage('pre');
+        assert.equal(env._opsMvNow(), 'mock');
+        env.setOpsMv('status');
+        assert.equal(env._opsMvNow(), 'status', '覚えられない端末で切り替わらない');
+    } finally { globalThis.document = origDoc; delete globalThis.localStorage; _mb.rows = []; _mb.players = null; }
+});
+
 // 👥 行の時間はブロックのタイル (2026-10-31 ふるり「ホームは 5 時スタートなのに 24 時スタートで見づらい。24 時間分の点をやめて A や B のブロックに」)
 const paintOne = (slots, phase = 'pre', over = {}) => {
     _mb.filter = 'all';

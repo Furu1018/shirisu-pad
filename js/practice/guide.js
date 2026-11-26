@@ -327,6 +327,8 @@
                     }
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('members')) return stray(c, []) || opsTab('members');
+                    // 👥 は 👥 状況 / 📸 模擬 の切り替え (段階 3)。前日は 📸 模擬 から開くが、切り替えて覚えていたら戻してもらう
+                    if (typeof window._opsMvNow === 'function' && window._opsMvNow() !== 'mock') return stray(c, []) || { text: '上の切り替えの「📸 模擬」を押して、模擬ダメージ表を出します。', target: q('#tab-ops .ops-mv button[onclick="setOpsMv(\'mock\')"]') };
                     return stray(c, []) || { text: '前日、メンバーは模擬のスクショを Discord に貼ります。運営が PAD に登録します。▶︎ 模擬ダメージ表で、まだ模擬の無いコトラさんの行の「＋」を押します。',
                         real: '本番はスクショを「📷 スクショを選ぶ」で読み取れます (PC はカードに落とすだけ)。読めないときに手で入れます。', target: q('#opsMockIntakeBody .mk-plus[onclick^="_opsMockManual(' + Number(who.id) + ',"]') };
                 } },

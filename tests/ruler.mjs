@@ -27,7 +27,10 @@ const DONE = {
     mypage: ['member:390', 'member&start=schedule:390', 'member&start=report:390', 'ops-eve:390', 'ops-day:390', 'member&start=report:1366', 'ops-day:1366'],
     // 🧱 組む (2026-11-17): 前日は「このブロックのみ」の段が開いている (PC 幅の見出しは 1 行 = hit40 が効く) / 当日は盤に駒・置いた札・やり直す。:piece = ピースを押して 🧭 ガイドを出した所
     'ops/組む': ['ops-eve:390', 'ops-eve:1366', 'ops-day:390', 'ops-day:1366', 'ops-eve:390:piece', 'ops-day:390:piece', 'ops-day:1366:piece'],
-    'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366'],   // 運営タブの小タブ (段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面)
+    // 👥 メンバー (段階 3・2026-11-26): 👥 状況 / 📸 模擬 の切り替えで 1 枚ずつ。前日は 📸 模擬 / 当日は 👥 状況 から開く。1 人 1 行 (押すと開く) は前日・当日・320px・PC (2 列) で測る
+    'ops/メンバー': ['ops-eve:390', 'ops-day:390', 'ops-day:1366',
+        'ops-eve:390:click=[onclick="setOpsMv(\'status\')"]+need=#opsMbRows .dc-mb-row.one+gone=#opsSecMockIntake .mk-tbl', 'ops-eve:390:click=[onclick="setOpsMv(\'status\')"]+click=#opsMbRows .dc-mb-who+need=#opsMbRows .dc-mb-row.open .mb1-det', 'ops-day:390:click=#opsMbRows .dc-mb-who+need=#opsMbRows .dc-mb-row.open .mb1-det',
+        'ops-day:320:click=#opsMbRows .dc-mb-who+need=#opsMbRows .dc-mb-row.open .mb1-det+fit=#opsMbRows .dc-mb-row.one', 'ops-eve:1366:click=[onclick="setOpsMv(\'status\')"]+click=#opsMbRows .dc-mb-who+need=#opsMbRows .dc-mb-row.open .mb1-det', 'ops-day:390:click=[onclick="setOpsMv(\'mock\')"]+need=#opsMockIntakeBody .mk-tbl+gone=#opsMbRows .dc-mb-row'],   // 段階のバー・ヒーロー・👥 メンバー状況・📸 模擬の取り込み・一斉通知・Discord 用の文面
     // ⚔️ 戦況 (2026-11-17): 当日は 締め凸検索・結果の取り込み が畳まれて出る → 開かない場面 1 つ (畳んだ見出し) + :open (全部開く)。前日は空の文。
     //   :finish = ボスの「締め凸検索」を押した所 (候補・🏁・プラン・📋 コピー) / :intake = 取り込みの下書き (ボス・ダメージ・Lv・やめる / 登録する)
     //   320px = 📥 の行のボタンが折り返して上下に並ぶ幅 (2026-11-20 Codex 監査: 「凸していない」が「📥 取り込む」の真下に来て押せる範囲が重なっていた → 行の row-gap)
@@ -96,7 +99,7 @@ const DONE = {
     //   320px = まとめて入力の顔 (40px × 5) とダメージの欄・参加可能時間の数のステッパー (40px) が詰まる幅 — fit= で行からはみ出していないことも見る
     'ops/メンバー@シート': ['ops-eve:390:click=[onclick="openOpsPushCheckModal()"]+sheet=#opsPushCheckModal', 'ops-eve:390:click=[onclick="openOpsPushSendModal()"]+sheet=#opsPushSendModal',
         'ops-eve:390:click=[onclick="openOpsPushSendModal()"]+type=#opsPushTitle=テスト+type=#opsPushBody=本文+click=[onclick="handleOpsPushSend()"]+sheet=#pushPreviewModal',
-        'ops-eve:390:click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal', 'ops-eve:320:click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal+fit=#mypageAvailGroup .avail-blocks',
+        'ops-eve:390:click=[onclick="setOpsMv(\'status\')"]+click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal', 'ops-eve:320:click=[onclick="setOpsMv(\'status\')"]+click=[onclick^="openOpsAvailModal"]+sheet=#myAvailModal+fit=#mypageAvailGroup .avail-blocks',
         'ops-eve:390:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal', 'ops-eve:1366:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal',
         'ops-eve:320:click=[onclick^="openOpsMockBulk"]+sheet=#opsMockBulkModal+fit=#opsMockBulkBody .mkb-slots',
         'ops-eve:390:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal', 'ops-eve:320:click=[onclick^="_opsMockManual"]+sheet=#myDmgPreviewModal+fit=#myDmgPreviewChars'],

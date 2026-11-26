@@ -552,7 +552,7 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.deepEqual(out[0].blockCaps, [{ fromIdx: 4, toIdx: 7, max: 0 }, { fromIdx: 12, toIdx: 15, max: 2 }]);
         assert.equal(out[1], ps[1], '凸数の無い人を作り直している');
         assert.ok(!('blockCaps' in ps[0]), '盤面の players を書き換えている (ストアを汚す)');
-        assert.ok(/凸数 \$\{escapeHtml\(lbl\)\}/.test(html) && /\$\{strip\(r\)\}\$\{counts\(r\)\}/.test(html), '運営のメンバー表に凸数の列が無い');
+        assert.ok(/凸数 \$\{escapeHtml\(lbl\)\}/.test(html) && /const detCols = isDay \? [^\n]*\$\{counts\(r\)\}[^\n]* : [^\n]*\$\{counts\(r\)\}/.test(html), '運営のメンバー表に凸数の列が無い (段階 3 から 1 人 1 行の開いた中)');
     });
 }
 
@@ -4645,6 +4645,31 @@ console.log('\nopsStageDomain:');
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
     const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
+    test('★ 段階 3 ④: 👥 メンバーのタブは 👥 状況 / 📸 模擬 の切り替えで 1 枚ずつ (2 つのカードに同じ切り替え・見出しの下・CSS で片方を隠す・未完のみ / 全員 は共通)', () => {
+        // 2026-11-26 ふるり「模擬の提出を見たいときと、メンバーの状況を見たいときの 2 つの使い方がある・2 つ並んでいるのは見づらい」→ 見本 ④
+        assert.ok(html.includes('#tab-ops[data-mv="status"] #opsSecMockIntake, #tab-ops[data-mv="mock"] #opsSecMembers { display: none !important; }'), '片方のカードを隠す CSS が無い');
+        assert.equal((html.match(/<div class="ops-mv-slot"><\/div>/g) || []).length, 2, '切り替えの置き場が 2 つのカードに 1 つずつでない');
+        // ★ カードの先頭の子は折りたたみの見出しになる (_initOpsTabStructure) → 置き場は見出しの下
+        assert.ok(/<div class="dc-card" data-ops-only id="opsSecMockIntake">\s*<div style="[^"]*">\s*<div style="[^"]*">📸 模擬の取り込み<\/div>/.test(html), '模擬の取り込みカードの先頭が見出しでない');
+        assert.ok(/<div class="dc-card" data-ops-only>\s*<div style="[^"]*">\s*<div style="[^"]*">👥 メンバー状況<\/div>[\s\S]{0,200}?<\/div>\s*<div class="ops-mv-slot"><\/div>/.test(html), 'メンバー状況カードの切り替えが見出しの下に無い');
+        const st = html.match(/function _renderOpsStage\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsMvPaint\(\);/.test(st), '段階を描くときに切り替えを描いていない (既定は段階で変わる)');
+        const mbp = html.match(/function _mbPaint\(phase\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsMvPaint\(\)/.test(mbp), 'メンバー状況を描いたあと 👥 状況 の数を描き直していない');
+        const jump = html.match(/function _opsJump\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(id === 'opsSecMockIntake' \|\| id === 'opsSecMembers'\) setOpsMv\(id === 'opsSecMockIntake' \? 'mock' : 'status'\);/.test(jump), '👥 のカードへ飛ぶときに見え方を切り替えていない (隠れたカードへ飛ぶ)');
+        // 未完のみ / 全員 は共通: 押すと両方を描き直す / 模擬ダメージ表は届いていない人だけ (未完のみ) — ✏️ まとめて入力 の「次の人 →」の並びは絞らない
+        const flt = html.match(/function handleOpsMemberFilter\(f\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_mb\.filter = f; _mbPaint\(_mbCurrentPhase\(\)\);/.test(flt) && /renderOpsMockIntake\(\)/.test(flt), '未完のみ / 全員 を模擬の表と共有していない');
+        const mi = html.match(/async function renderOpsMockIntake\([^)]*\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(mi && /_mockIntake\.order = tbl\.rows\.map\(r => Number\(r\.id\)\);/.test(mi), '「次の人 →」の並びを絞った表から作っている');
+        assert.ok(/const shownRows = onlyTodo \? tbl\.rows\.filter\(r => missIds\.has\(Number\(r\.id\)\)\) : tbl\.rows;/.test(mi) && /const body2 = shownRows\.map\(/.test(mi), '模擬の表を 未完のみ で絞っていない');
+        assert.ok(/_mockIntake\.missingCount = rows\.length;/.test(mi), '切り替えの 📸 模擬 の数 (届いていない人) を控えていない');
+        // 📸 模擬の取り込みへの導線も 📸 模擬 の見え方に
+        assert.ok(/setOpsTab\('members'\);[^\n]*\n\s*if \(typeof setOpsMv === 'function'\) setOpsMv\('mock'\);/.test(html), '取り込みカードへの導線が 📸 模擬 の見え方にしていない');
+        // 1 人 1 行の行は 物差しの「1 人 1 行の一覧」の例外 (.dc-mb-row) のまま
+        assert.ok(/<div class="dc-mb-row one \$\{r\.todo \? 'todo' : 'done'\}/.test(mbp), '1 人 1 行の行が .dc-mb-row でない (物差しの例外から外れる)');
+    });
     test('★ 配線: 運営タブは段階で出し分ける (段階ヘッダ・ヒーロー・チェックリスト・その他・設定タブの運営ブロックの移動)', () => {
         assert.ok(html.includes('<script defer src="./js/domain/opsStage.js"></script>'), 'opsStage.js を読み込んでいない');
         const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -9669,7 +9694,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/body:not\(\.member-lite\) \[data-member-input-lite\] \{ display: none !important; \}/.test(css) && !/\[data-member-input\]|\[data-member-resv\]|\[data-member-report\]/.test(css), 'メンバーにだけ出す案内の出し分けが無い / 撤去した目印の規則が残っている');
         // 📸 模擬の取り込みへの導線: 「その他」の中へ移されたカードは親を開く / 予約未対応の空き枠の導線も同じ (Codex指摘 7cbfa94)
         // 段階 2.5: 取り込みカードはいつも 👥 メンバーのタブ (「その他」には入らない) → タブを切り替えてから開く
-        assert.ok(/if \(typeof setOpsTab === 'function'\) setOpsTab\('members'\);[^\n]*\n\s*const card = document\.getElementById\('opsSecMockIntake'\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '取り込みカードのタブへ切り替えていない');
+        assert.ok(/if \(typeof setOpsTab === 'function'\) setOpsTab\('members'\);[^\n]*\n\s*if \(typeof setOpsMv === 'function'\) setOpsMv\('mock'\);[^\n]*\n\s*const card = document\.getElementById\('opsSecMockIntake'\);\s*\n\s*if \(card && typeof _setOpsCardOpen === 'function'\) _setOpsCardOpen\(card, true\);/.test(html), '取り込みカードのタブへ切り替えていない');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         // 👑 ホームの切替チップ (マスター運営だけ): 🛠 と同じ toggleOpsMode・文字は _applyOpsMode が合わせる (2026-10-22 ユーザー要望)
         assert.ok(/<button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode\(\)"/.test(html), 'ホームの切替チップが無い / マスターだけ (data-master-only) でない');
