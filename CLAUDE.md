@@ -59,7 +59,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   見回りは 締め凸依頼・調整中一覧・予約を読まない / ホームの配信カードはシーズンの全部の凸を読まない (時間割が無い = 使っていなかった) / 撃破の検知は予約・依頼の後片付けをしない (対象をもう作れない) /
   撃破の通知の宛先は 配信の割当 (未報告) だけ / `_renderOpsCockpit(Soon)` は名前だけ残る (段階の UI とカードの見出しの 1 行の描き直し) / 画面から起こす予約の遷移は 📌 を外す (pinned → released) だけ。
   ★ **通信の関数 (js/supabase-client.js) を消したら `node scripts/cleanup/undefined-api.mjs .`** — 状態の読み取りを消したとき、撃破の通知の宛先を決める関数がそれを呼んでいた (index.html の参照だけ見ても出ない。出していたら撃破のたびに通知が落ちていた)。
-  残したもの (次の候補・ふるりに聞いてから): 段階のチェックリストの描画 (CSS でいつも隠す)・`opsStageDomain` / `memberStatusDomain` の予約と締め凸の引数・⚔️ ボス状況の「交戦者なし」の見た目・画面から呼ばれなくなったドメイン (pace / planBoard / planDiff / mockExclusion / finish の打診) と通信の関数 (`supabasePublishPlan` ほか)・
+  ★ **段階 3 B (2026-11-26・ふるり「見えない所も一緒に片付ける」) で消したもの**: 段階のチェックリストの描画 (`_opsStageListHtml` / `#opsStageList`・判定 `opsStageDomain.checklist` はヒーローの材料で残る)・⚔️ ボスのカードの 交戦中 / 待機中 / 交戦者のアバター (札は 撃破済 / Lv4 / スコアレース だけ)・
+  👥 の「締め凸 未返答」(memberStatus の理由・集計・催促の文・`finishRequests` の形・ヒーローの `finPending`)・ドメイン `pace.js` / `planBoard.js` / `mockExclusion.js` (前に除外した行は読み取りが列 `excluded_at` を直に見て外す)・どこからも呼ばれていない通信の関数 9 個。**戻さない** (run-tests「段階 3 B」が見張る)。
+  まだ残しているもの: ドメイン planDiff / finish の打診・`opsStageDomain` / `memberStatusDomain` の予約の引数・通信の関数のうちテストと練習の偽サーバの確かめが道具に使うもの (`supabasePublishPlan` / `supabaseGetPublishedPlan` / `supabaseGetPreviousPublishedPlan` / `supabaseDeleteAllPublishedPlans` / `supabaseReservationPinColsMissing` / `supabaseAskPin` / `supabaseInvalidatePushAudience`)・コンソールの確かめ (`supabaseTest` / `supabaseTestAi`)・
   表 `finish_requests` / `finish_coordinations` (バックアップ・復元は扱い続ける)。🔒 承認済みの予約をいまのアプリは作れず、取り下げる画面も無い (前の版のものが残っていたら SQL で `released` に)。
   撤去の手順と道具は `scripts/cleanup/README.md` (到達できない関数 → 孤立した変数・関数の外の状態 → CSS → 検算 → テストの仕分け)、記録は `docs/撤去_従来の画面_2026-11-16.md` (後半が撤去 2)
 - **画面・通知・ヘルプ・ツアー・練習の文言は `docs/用語集.md` の呼び方で書く** (2026-10-23 ユーザー決定「語句と機能の呼び方を統一」)。
@@ -504,6 +506,18 @@ rm -f .claude/hooks/.codex-on      # OFF
     alert のあとに再読み込み・画面の切り替えをするなら `await padAlert(...)` (待たないと文が読めないまま消える)。同時に呼ばれたら列・Esc / 外 / Android の戻る = キャンセル (alert は答えなし)。
     残っていてよいブラウザのダイアログは run-tests「段階 2 の後半: ブラウザの alert / confirm / prompt は…」が固定する (`<head>` の練習の起動の失敗・`_padDlgNext` の倒す先だけ。11/25 に全部直したので `ROUND2` は空)。実行テスト `tests/pad-dialog.mjs`。練習の通し (practice-e2e) はアプリの確認も OK を押す
   - **👑 › メンバー管理のページ (`tab-member-admin`) も物差しの検査に入っている** (`DONE` の `member-admin`・11/25 — 11/24 にタブを揃えたとき数えていなかった)。`switchTab` で開く別のページを足したら、`DONE` に入れること
+  - **★ 段階 3 = シンプル化 (2026-11-26・ふるり「全部お勧めで OK」・見本 `docs/` には置いていない — 決定は ROADMAP の「⏸ 2026-11-26 (11) 時点」)**:
+    ① **運営タブの頭**: 段階の札と 🛠 は見出し `#opsHead` の中 (上の「運営モードの段階」)。手で切り替えるのは 👑 › シーズン制御だけ。サブタブはスマホで縦 (アイコンの下に名前)。
+    ② **ヘルプは章ごとに畳む** (`_initHelpChapters` が起動で 1 回・h2 を `button.help-head` (aria-expanded) にして本文を `.help-body` で包む・いくつでも開ける)。組 (はじめに / メンバー / 運営 / そのほか) は `.help-grp`、各章に `data-sum` (1 行の要約)。
+      **章へ飛ぶ所は必ず開いてから寄せる** = `openHelpSection(id)` (目次・本文の `#help-` のリンクは document の click で捕まえる・設定の入口 `openHelpFromSettings`・ホームの更新履歴)。章を足すときは `data-sum` と組を決める (テストが見張る)。練習とガイドの入口は章の上の「使い方を体験する」。
+    ③ **ホームの 📅 きょうの凸**: まだ決まっていない (凸も割当も無い・過ぎていない・配信に覆われていない) ブロックは行にせず、続く区間をまとめて 1 行「まだ決まっていない: C 午後〜F 深夜」(`renderMyTodayBlocks` の `und`)。「いま」の札はその行の頭に。
+    ④ **👥 メンバー = 「👥 状況 / 📸 模擬」の切り替えで 1 枚ずつ** (`#tab-ops[data-mv]` の CSS で メンバー状況 / 模擬の取り込み のどちらかを隠す・切り替えは両方のカードの見出しの下 `.ops-mv-slot` に `_opsMvPaint` が描く)。
+      既定は 前日 (準備・前日) = 📸 模擬 / 当日・終了 = 👥 状況、切り替えたら同じ段階のあいだ覚える (`_opsMvNow` / `setOpsMv`・localStorage `shirisuko_ops_mv_v1` = {view, stage})。
+      ★ **隠れているカードへ飛ぶ・隠れているボタンを指す経路を作らない** — `_opsJump('opsSecMockIntake' | 'opsSecMembers')` と `_gotoOpsMockIntake` は見え方を切り替えてから飛ぶ。練習の案内・物差しの検査の場面も、⏰ など 👥 状況の中のボタンを押す前に `setOpsMv('status')` を押す。
+      👥 状況は **1 人 1 行** (`.dc-mb-row.one`・約 44px): 名前 (押すと開く `_mbToggle` = class と aria-expanded だけ・描き直さない・`_mb.open` に覚える)・ブロックのタイル・今期の確認 (当日は 残 n / 3凸 ✓)・🔔・⏰。
+      開いた中 `.mb1-det` = 理由・得意属性・模擬・SLv・凸数・時刻 (当日は凸の Lv・代理)・催促 / ✓ 完了・📸 模擬を見る (`setOpsMv('mock', id)` = 未完のみで隠れている人なら 全員 にしてその行へ)。スマホはアバターを出さない・PC (900px〜) は 2 列。
+      **未完のみ / 全員 (`_mb.filter`) は両方の見え方で共通** (`handleOpsMemberFilter` が両方を描き直す)。模擬ダメージ表の 未完のみ = 模擬が届いていない人 (`missingRows`)・✏️ まとめて入力 の「次の人 →」(`_mockIntake.order`) は絞らない全員の並び。
+    ⑤ 見えない所の片付け = 上の「従来の画面」の節の ★ 段階 3 B。
   - Chart.js は版を固定して読む (テストが見張る)。上げるときは URL を書き換えて分析タブを確かめる
   - `_syncOpsRole` は役割が変わっても、開いていない設定タブは描かない (`_invalidateTabRenderCache('settings')` で次に開いたとき描き直す)
   - 運営タブの `data-stage` の出し分けは「自動判定が準備 (= シーズン無し) の間は準備の部品を必ず出す」(b431ce7: 段階を手動で変えた端末で「シーズン作成」が消えていた)
@@ -557,8 +571,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 段階は自動 (`detect`: シーズン無し=準備 / ハード日前=前日 / ハード日 5時〜翌4時=当日 / 翌日 5時以降でまだアクティブ=終了)。
   テスト用に運営が手動で上書きできる (`handleOpsStageOverride`・localStorage `shirisuko_ops_stage_override_v1`・端末とシーズンごと。
   自動と同じ段階を選んだら記憶しない)。**カードの前日/当日の既定と👥メンバー状況の前日/当日も段階に従う** (`_opsCardPhase` / `_mbCurrentPhase`)。
-  ★ 運営タブの先頭は 🛠トグル → 段階ヘッダ (`_opsStageBarHtml`) → ヒーロー (`_opsStageHeroHtml`) → チェックリスト (`_opsStageListHtml`・前日と終了だけ)
-  → コックピット (当日だけ)。すべて `_renderOpsStage` が `_renderOpsCockpit` と同じ材料 (盤面・_mb.rows・_resv.rows・配信) で描く。
+  ★ 運営タブの先頭は (2026-11-26 段階 3 から) 見出し `#opsHead` = 「運営」+ 2 行目に月・ハード日と段階の札 (`_opsStageBarHtml`・手で切り替え中は黄色い「自動に戻す」) + 右に 🛠 →
+  サブタブ → (⚔️ 戦況だけ) 見出しの 1 行 → ヒーロー (`_opsStageHeroHtml`)。段階を手で切り替える所は 👑 › シーズン制御の `#opsStageOverride` (`_opsStageOverrideHtml`・マスターだけ)。
+  チェックリストの描画とコックピットは撤去済み (判定 `checklist` はヒーローの材料)。`_renderOpsStage` が盤面・_mb.rows・配信を材料に描く。
   ★ 段階外のカードは消さず末尾の「その他」(`#opsEtc`) へ移す — **`opsLayout.CARDS` の `stages` が唯一の定義** (`[]` = 常にその他)。
   DOM は残るので各 renderer はそのまま更新し続ける。運営OFF (メンバー) は何もせずカードを元の並びに戻す (`_applyOpsStageCards(null)`)。
   ★ **設定タブの運営ブロックのうち「運営の作業」(通知状況・アクティビティ・キャラマスタ・バックアップ保存) は
@@ -678,11 +693,11 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **👥 メンバー状況ボード** (戦況タブ・運営ONのみ・運営改修 #1 2026-09-01) — ★ 行の時間は**ブロックのタイル** (2026-10-31 ふるり「ホームは 5 時スタートなのに 24 時スタートで見づらい。24 時間分の点をやめて A や B のブロックに」):
   シーズンのブロックを A から順に (= 5 時始まり) 並べ、`raidBlocksDomain.blockStates` の on = 紫 / partial = 薄い紫 (古い 1 時間刻みの登録・title に N/M 時間) / off = 無地。当日はいまのブロックに赤枠 (`_mbNowBlk`)。
   下の時刻はホームの ⏰ と同じ読み方 (`availabilityDomain.rangesOf` + `rangeLabel`)。列の数は `--mb-n` (ブロックは最大 12 個・320px 幅でも収まる)。実行テスト `tests/member-board.mjs`。前日 (模擬/SLv/時間帯/通知) と
-  当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
+  当日 (凸Lv/代理) を1人1行に (締め凸返答は 2026-11-26 に撤去・2026-11-26 から行は押すと開く 1 人 1 行 = 上の「★ 段階 3」の ④)。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
   (★ **当日は 3 凸を済ませた人はそこで完了** (`row.finished`・2026-10-31 ふるり「3回凸が完了した時点でその人の凸は終了としたい」) — 模擬・SLv・時間帯・通知・締め凸の返事が残っていても理由を積まない・未完の数にも催促にも入れない。SLv はレイドのあとに月次 JSON で一気に取り込む。前日は従来どおり)
   (模擬は「キャラ被りなしで3属性」が必要範囲 — 5属性は加点で強制しない・2026-09-01 ユーザー判断)
   (画面側で判定を書き足さない)。盤面は opsStore を再利用し、追加取得は `supabaseLoadMemberStatusExtras`
-  の4クエリ (通知購読・今期SLv・締め凸依頼・代理凸ログ)。代理凸は attacks に印が無いので activity_log の
+  のクエリ (通知購読・今期SLv・代理凸ログ・今期の確認・疎通確認・端末。締め凸依頼は 11/16 に読むのをやめた)。代理凸は attacks に印が無いので activity_log の
   proxy_attack を数える (v2 で attacks.is_proxy/reported_by を足す予定)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
