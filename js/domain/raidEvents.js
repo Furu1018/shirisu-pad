@@ -96,7 +96,7 @@
      * @param {number} a.level        いまのレベル
      * @param {{boss_number:number, name?:string, total_hp_raw:number, remaining_hp_raw:number}[]} a.bosses
      * @param {number} a.done         報告された凸の数
-     * @param {number} a.capacity     定員 (「今回は難しい」でない人 × 3。paceDomain と同じ数え方)
+     * @param {number} a.capacity     定員 (「今回は難しい」でない人 × 3)
      * @returns {{title:string, body:string}}
      */
     function digestText({ hourJst, level, bosses, done, capacity } = {}) {

@@ -606,11 +606,11 @@ console.log = origLog;
 const W = globalThis;
 const DB = () => W.PAD_PRACTICE.db.tables;
 
-test('本物のクライアント: 132 の関数がそろい、本物のクライアントは作らない / 通信は キャラ表の GET 1 回だけ', async () => {
+test('本物のクライアント: 通信の関数 (123 個・2026-11-26 に使われていない 9 個を消した) がそろい、本物のクライアントは作らない / 通信は キャラ表の GET 1 回だけ', async () => {
     const fns = Object.keys(W).filter(k => k.startsWith('supabase') && typeof W[k] === 'function');
     const declared = (rd('js/supabase-client.js').match(/^window\.supabase[A-Za-z0-9_]* = /gm) || []).length;
     assert.equal(fns.length, declared, '練習モードで定義されない関数がある');
-    assert.ok(declared >= 130);
+    assert.ok(declared >= 120);
     assert.equal(fetched.length, 1, `本物への通信が ${fetched.length} 回`);
     assert.match(fetched[0].url, /\/rest\/v1\/nikke_characters\?select=\*$/);
     assert.ok(!fetched[0].o.method && !fetched[0].o.body, 'GET 以外・本文つきの通信をしている');

@@ -101,7 +101,7 @@
      * 1人1行の状態を組み立てる。
      * @param {Object} args
      * @param {Object[]} args.players  opsStore 盤面の players
-     * @param {{pushPlayerIds?:any, pushCheck?:({sentAt:string|null, confirmed:{player_id:number, at?:string}[]}|null), slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras
+     * @param {{pushPlayerIds?:any, pushCheck?:({sentAt:string|null, confirmed:{player_id:number, at?:string}[]}|null), slvThisSeasonIds?:any, proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras
      *   ★ 各項目は 配列 = 分かっている ([] は本当に誰もいない) / null・省略 = 取得できなかった (分からない)。
      *     分からないものは理由に積まない・集計にも数えない (availConfirmations が先に採っていた契約。全体監査 2026-09-14 #4)
      * @param {'pre'|'day'} args.phase
@@ -110,22 +110,13 @@
     function buildRows({ players, extras, phase } = {}) {
         const ex = extras || {};
         // ★ null・省略 = 取得できなかった (分からない)。[] = 本当に誰もいない。
-        //   分からないものは「未登録」と言わない — [] に潰すと通信断のたびに全員が未登録・未返答 0 に化ける (全体監査 2026-09-14 #4)
+        //   分からないものは「未登録」と言わない — [] に潰すと通信断のたびに全員が未登録に化ける (全体監査 2026-09-14 #4)
         const known = (v) => Array.isArray(v) || v instanceof Set;
         const pushKnown = known(ex.pushPlayerIds);
         const slvListKnown = known(ex.slvThisSeasonIds);
-        const finishKnown = Array.isArray(ex.finishRequests);
         const proxyKnown = Array.isArray(ex.proxyEvents);
         const pushSet = toIdSet(ex.pushPlayerIds);
         const slvSet = toIdSet(ex.slvThisSeasonIds);
-        const finishBy = new Map();
-        for (const r of (Array.isArray(ex.finishRequests) ? ex.finishRequests : [])) {
-            const pid = Number(r?.player_id);
-            if (!Number.isFinite(pid)) continue;
-            // pending が1件でもあれば「未返答」で固定。無ければ最後に見たステータス
-            if (r.status === 'pending') finishBy.set(pid, 'pending');
-            else if (finishBy.get(pid) !== 'pending') finishBy.set(pid, r.status);
-        }
         // 今期の戦闘可能時間の確認 (37)。★ 未確認は「空欄」と同じ **未確定** として扱う —
         // 前月の設定が残っているだけの人を「登録済み」と数えると、当日いない人が候補に出る。
         // ★★ availConfirmations が null = **機能そのものが未適用**。この場合は
@@ -175,15 +166,13 @@
             const atkCount = Math.min(attacks.length, MAX_ATTACKS);
             const push = pushKnown ? pushSet.has(id) : null;          // null = 分からない
             const proxyCount = proxyKnown ? (proxyBy.get(id) || 0) : 0;
-            const finish = finishKnown ? (finishBy.get(id) || null) : null;
             // ★ 当日は 3 凸を済ませた時点でその人は終わり (2026-10-31 ふるり「3回凸が完了した時点でその人の凸は終了としたい」)。
-            //   模擬・SLv・時間帯・通知・締め凸の返事が残っていても当日の要対応にしない (SLv はレイドのあとに月次 JSON で一気に取り込む)。
+            //   模擬・SLv・時間帯・通知が残っていても当日の要対応にしない (SLv はレイドのあとに月次 JSON で一気に取り込む)。
             //   前日 (pre) は従来どおり。チップ (模擬・SLv など) は事実なのでそのまま出す
             const finished = isDay && atkCount >= MAX_ATTACKS;
 
             const reasons = [];
             if (isDay && atkCount < MAX_ATTACKS) reasons.push({ key: 'attacks', label: `凸 残${MAX_ATTACKS - atkCount}` });
-            if (isDay && finishKnown && finish === 'pending') reasons.push({ key: 'finish', label: '締め凸 未返答' });
             if (!mockOk) {
                 reasons.push({
                     key: 'mock',
@@ -246,9 +235,9 @@
                 availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
                 push, pushCheck, pushCheckAt: checkBy.get(id) || null,
                 device, pushDenied, deviceUnknown: !devKnown,
-                attacks, atkCount, proxyCount, finish,
+                attacks, atkCount, proxyCount,
                 // 取得できなかった項目 (画面は「?」を出し、集計は「—」にする)
-                pushUnknown: !pushKnown, slvUnknown: !slvListKnown, finishUnknown: !finishKnown, proxyUnknown: !proxyKnown,
+                pushUnknown: !pushKnown, slvUnknown: !slvListKnown, proxyUnknown: !proxyKnown,
                 finished,
                 reasons: finished ? [] : reasons, todo: !finished && reasons.length > 0,
             };
@@ -274,12 +263,10 @@
         if (phase === 'day') {
             const done = cnt(r => r.atkCount >= MAX_ATTACKS);
             const remaining = rs.reduce((s, r) => s + (MAX_ATTACKS - r.atkCount), 0);
-            const pending = cnt(r => r.finish === 'pending');
             return [
                 { key: 'done', label: '3凸 完了', value: done, total: n, bad: done < n },
                 { key: 'remaining', label: '残凸 合計', value: remaining, total: null, bad: remaining > 0 },
                 { key: 'proxy', label: '代理 登録', ...(unknown('proxyUnknown') ? na : { value: cnt(r => r.proxyCount > 0), total: null, bad: false }) },
-                { key: 'finish', label: '締め凸 未返答', ...(unknown('finishUnknown') ? na : { value: pending, total: null, bad: pending > 0 }) },
             ];
         }
         const mock = cnt(r => r.mockOk);
@@ -341,9 +328,6 @@
         const keys = new Set((row.reasons || []).map(r => r.key));
         if (phase === 'day' && keys.has('attacks')) {
             return { title: '📷 凸の結果のお願い', body: `凸が残り${MAX_ATTACKS - row.atkCount}件です。凸したら結果のスクショを Discord に貼ってください🙏 (運営が PAD に登録します)`, url: './?tab=mypage' };
-        }
-        if (phase === 'day' && keys.has('finish')) {
-            return { title: '🔔 締め凸依頼の返答をお願いします', body: '締め凸の依頼が届いています。ホームから 受ける / 見送る を選んでください🙏', url: './?tab=mypage' };
         }
         const parts = [];
         if (keys.has('mock')) {

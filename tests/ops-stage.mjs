@@ -1,5 +1,5 @@
 // ============================================================================
-// 運営タブの段階ヘッダ・ヒーロー・チェックリスト (_opsStageBarHtml / _opsStageHeroHtml / _opsStageListHtml) の実行テスト
+// 運営タブの段階ヘッダ・ヒーロー (_opsStageBarHtml / _opsStageHeroHtml) の実行テスト (チェックリストの描画は 2026-11-26 に撤去・判定はヒーローの材料)
 //   node tests/ops-stage.mjs
 // ----------------------------------------------------------------------------
 // index.html から関数本体を切り出し、依存をスタブして**実際に実行**する。
@@ -35,13 +35,13 @@ function cut(marker) {
     }
     console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
 }
-const SRC = [cut('        function _opsStageBarHtml('), cut('        function _opsStageOverrideHtml('), cut('        function _opsStageHeroHtml('), cut('        function _opsStageListHtml(')].join('\n');
+const SRC = [cut('        function _opsStageBarHtml('), cut('        function _opsStageOverrideHtml('), cut('        function _opsStageHeroHtml(')].join('\n');
 const env = {
     window: { opsStageDomain: dom },
     escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
 };
 const keys = Object.keys(env);
-const fns = new Function(...keys, `${SRC}\nreturn { bar: _opsStageBarHtml, ov: _opsStageOverrideHtml, hero: _opsStageHeroHtml, list: _opsStageListHtml };`)(...keys.map(k => env[k]));
+const fns = new Function(...keys, `${SRC}\nreturn { bar: _opsStageBarHtml, ov: _opsStageOverrideHtml, hero: _opsStageHeroHtml };`)(...keys.map(k => env[k]));
 
 let pass = 0, fail = 0;
 function test(name, f) {
@@ -98,24 +98,18 @@ test('★ ヒーロー: 文言・理由・導線 (onclick に action) / 無け�
     noUndef(out); noUndef(day);
 });
 
-test('★ チェックリスト: 済み/未完/読み込み中/任意 の印、値、催促ボタンは未完で催促できる行だけ', () => {
+test('★ チェックリストの描画は撤去した (段階 3・2026-11-26 — CSS でいつも隠していた)。判定 (dom.checklist) はヒーローの材料として残る', () => {
+    assert.ok(!html.includes('function _opsStageListHtml(') && !html.includes('id="opsStageList"') && !html.includes('.ops-stage-list'), 'チェックリストの描画・置き場・CSS が残っている');
     const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, attribute: 'fire', weakness: 'water', total_hp_raw: 100 }));
     const mbRows = [
         { mockOk: true, availSupported: true, availConfirmed: true, push: true, reasons: [] },
         { mockOk: false, availSupported: true, availConfirmed: false, push: false, reasons: [{ key: 'mock' }, { key: 'availConfirm' }] },
     ];
     const rows = dom.checklist({ stage: 'pre', season, bosses, mbRows, reservations: null, published: false });
-    const out = fns.list(rows, 'pre');
-    assert.ok(out.includes('配信までにやること'));
-    assert.ok(/class="row done"[\s\S]*?ボスの属性と HP[\s\S]*?5\/5/.test(out), 'ボス設定が済みになっていない');
-    assert.ok(/class="row todo"[\s\S]*?模擬の提出[\s\S]*?1\/2[\s\S]*?_opsStageAct\('nudge:mock'\)/.test(out), '模擬の行に催促が無い');
-    assert.ok(/class="row pending"[\s\S]*?予約の承認[\s\S]*?—/.test(out), '未ロードの予約が「—」でない');
-    assert.equal((out.match(/>催促</g) || []).length, 2, '催促ボタンは 模擬 と 時間帯 の2つ');
-    assert.ok(!/class="row done"[^]*?>催促</.test(out.split('模擬の提出')[0]), '済みの行に催促が付いている');
-    const end = fns.list(dom.checklist({ stage: 'end', season }), 'end');
-    assert.ok(end.includes('終了までにやること') && /class="row opt"/.test(end), '終了のリストに任意の行が無い');
-    assert.equal(fns.list([], 'day'), '');
-    noUndef(out); noUndef(end);
+    assert.ok(rows.length > 0, 'チェックリストの判定が空');
+    const out = fns.hero(dom.hero({ stage: 'pre', rows, reservations: null }), 'pre');
+    assert.ok(out.length > 0, 'チェックリストの判定からヒーローが出ない');
+    noUndef(out);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

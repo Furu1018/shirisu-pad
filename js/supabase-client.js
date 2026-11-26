@@ -776,8 +776,7 @@ async function _upsertPlayerDamages(rows) {
 // 本人が行を保存し直したときに運営除外 (35_player_damages_exclusion.sql) を解除する payload。
 // 列が無い環境 (35未適用) では _upsertPlayerDamages が落として再試行する
 function _exclusionClear() {
-    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
-    return ex ? ex.clearPatch() : { excluded_at: null, excluded_by: null, excluded_reason: null };
+    return { excluded_at: null, excluded_by: null, excluded_reason: null };
 }
 
 // プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
@@ -826,9 +825,6 @@ async function _loadPlayerDamagesRaw(playerId) {
 window.supabaseLoadPlayerDamages = async function (playerId) {
     return (await _loadPlayerDamagesRaw(playerId)).rows;
 };
-// 「提出が無い」と「読めなかった」を区別したい画面用 (編集モーダルのように
-// 画面の内容で全置換するところは、この区別を誤ると測定を消してしまう)
-window.supabaseLoadPlayerDamagesResult = _loadPlayerDamagesRaw;
 
 // 模擬の編成スロット上限 (supabase/32 で DB の CHECK も 1|2)。
 // ★ 32 未適用の環境には slot=3 の行が残りうる。読み取り時にここで切り落として
@@ -850,14 +846,13 @@ window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 // slot 列が無い環境 (21未適用) では列を落として再試行する — その世界は全行が実質 slot1
 async function _selectUsableDamages(cols, tune) {
     const run = (c) => { const q = supabase.from('player_damages').select(c); return tune ? tune(q) : q; };
-    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
-    // 運営除外 (35) の行も「使えない行」として外す。列が無い環境 (35未適用) は除外なしで読む
+    // 運営除外 (35) の行も「使えない行」として外す (除外する操作は 2026-11-16 に撤去。前に付いた印の守り)。列が無い環境 (35未適用) は除外なしで読む
     let r = await run(`${cols}, slot, excluded_at`);
     if (r.error && _isMissingColumnErr(r.error, 'excluded_at')) r = await run(`${cols}, slot`);
     if (r.error && /slot/i.test(String(r.error?.message))) return await run(cols);
     if (r.error) return r;
     const rows = (r.data || []).filter(d => isUsableSlot(d.slot));
-    return { data: rows.filter(d => (ex ? !ex.isExcluded(d) : d.excluded_at == null)), error: null };
+    return { data: rows.filter(d => d.excluded_at == null), error: null };
 }
 
 // 模擬のボスレベル: 1〜4 の整数だけを通し、それ以外 (未指定・不正値) は null に倒す。
@@ -1254,16 +1249,6 @@ window.supabaseSaveAvailability = async function (playerId, slots, opts = {}) {
         .from('availability')
         .insert(rows);
     if (iErr) throw iErr;
-};
-
-// プレイヤーの属性別ダメージを1件削除
-window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
-    const { error } = await supabase
-        .from('player_damages')
-        .delete()
-        .eq('player_id', playerId)
-        .eq('attribute', attribute);
-    if (error) throw error;
 };
 
 // ===== 🧪 テストのシーズンを見せる相手 (2026-11-12 ふるり「テストと本番は明確に切り分け」) =====
@@ -1863,7 +1848,6 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         memberDevices: Array.isArray(devices) ? devices : null,
         pushPlayerIds: Array.isArray(subs) ? subs.map(s => s.player_id) : null,
         slvThisSeasonIds: Array.isArray(slv) ? slv.map(s => s.player_id) : null,
-        finishRequests: [],   // 締め凸の依頼は無い (2026-11-16 撤去)。memberStatus に渡す形だけ残す
         proxyEvents: Array.isArray(proxy) ? proxy : null,
         // 今期の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
@@ -2160,46 +2144,6 @@ window.supabaseLoadSeasonTeams = async function (seasonId) {
     return (data || []).filter(a => Array.isArray(a.characters) && a.characters.length > 0);
 };
 
-// 育成の読み出し (比較用)。seasonId が null なら、その人たちの**いちばん新しい**シーズンを使う
-// (取り込みは終わったレイドに対して行うので、アクティブシーズンとは限らない)
-window.supabaseLoadMemberGrowth = async function (seasonId, playerIds) {
-    const ids = (Array.isArray(playerIds) ? playerIds : [playerIds]).filter(v => v != null);
-    if (!ids.length) return [];
-    let sid = seasonId;
-    if (sid == null) {
-        // ★ **両者そろっているいちばん新しいシーズン**を選ぶ (Codex指摘 2026-09-09)。
-        //   単に最大のシーズンを採ると、片方だけ新しい回を取り込んでいるときに
-        //   もう片方が全部「—」になり、「育っていない」と読めてしまう。
-        //   そろっているシーズンが無ければ、いちばん新しいシーズンで出す (相手だけでも見える)
-        const r = await supabase.from('member_growth').select('season_id, player_id')
-            .in('player_id', ids).order('season_id', { ascending: false }).limit(2000);
-        if (r.error) {
-            if (_isMissingTableErr(r.error, 'member_growth')) return null;
-            throw r.error;
-        }
-        if (!r.data || !r.data.length) return [];
-        const bySeason = new Map();
-        for (const x of r.data) {
-            const k = String(x.season_id);
-            if (!bySeason.has(k)) bySeason.set(k, new Set());
-            bySeason.get(k).add(String(x.player_id));
-        }
-        const seasons = [...bySeason.keys()].map(Number).filter(Number.isFinite).sort((a, b) => b - a);
-        const want = new Set(ids.map(String)).size;
-        sid = seasons.find(sn => bySeason.get(String(sn)).size >= want);
-        if (sid == null) sid = seasons[0];
-    }
-    const { data, error } = await supabase.from('member_growth')
-        .select('season_id, player_id, character_name, grade, core, lv, skill1_lv, skill2_lv, ulti_skill_lv,'
-            + ' combat, attractive_lv, harmony_cube_lv, favorite_item_lv, overload')
-        .eq('season_id', sid).in('player_id', ids);
-    if (error) {
-        if (_isMissingTableErr(error, 'member_growth')) return null;
-        throw error;
-    }
-    return data || [];
-};
-
 // 取り込み対象を決める材料: そのシーズンで実際に使われたキャラ (凸記録の characters)
 window.supabaseLoadSeasonAttackCharacters = async function (seasonId) {
     const { data, error } = await supabase.from('attacks')
@@ -2483,15 +2427,6 @@ window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
     if (error && /reservation_id/.test(String(error.message || ''))) ({ data, error } = await load(base));
     if (error) throw error;
     return data || [];
-};
-
-// 凸のボスを変更
-window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode) {
-    const { error } = await supabase
-        .from('attacks')
-        .update({ boss_number: bossNumber, boss_code: bossCode })
-        .eq('id', attackId);
-    if (error) throw error;
 };
 
 // 新規シーズンを作成（既存アクティブシーズンは自動で非アクティブ化）
@@ -3241,8 +3176,6 @@ window.supabaseReservationPinColsMissing = () => _resvPinColsMissing;
 // 🧱 段階 3 (54): ブロックで約束した予約の列。未適用なら落として読み直す (ブロックの予約は存在しないので欠けても正しい)
 const _RESV_BLOCK_COLS = 'block_from, block_to';
 const _isMissingBlockCols = (error) => ['block_from', 'block_to'].some(c => _isMissingColumnErr(error, c));
-let _resvBlockColsMissing = null;   // null = まだ読んでいない / true = 54 未適用 (申請シートはブロックで申請できないと案内する)
-window.supabaseReservationBlockColsMissing = () => _resvBlockColsMissing;
 const RESV_BLOCK_SQL_HINT = 'ブロックで予約するには supabase/54_reservation_blocks.sql の適用が必要です (運営に伝えてください)';
 window.supabaseLoadReservations = async function (seasonId) {
     if (!seasonId) return [];
@@ -3256,12 +3189,12 @@ window.supabaseLoadReservations = async function (seasonId) {
     let withPins = true, withBlock = true;
     let { data, error } = await run(withPins, withBlock);
     for (let k = 0; k < 2 && error; k++) {   // ★ 45 と 54 のどちらが欠けていても (両方でも) 読める
-        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; _resvBlockColsMissing = true; }
+        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; }
         else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
         else break;
         ({ data, error } = await run(withPins, withBlock));
     }
-    if (!error) { if (withPins) _resvPinColsMissing = false; if (withBlock) _resvBlockColsMissing = false; }
+    if (!error) { if (withPins) _resvPinColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3284,12 +3217,12 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
     let withPins = true, withBlock = true;
     let { data, error } = await run(withPins, withBlock);
     for (let k = 0; k < 2 && error; k++) {
-        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; _resvBlockColsMissing = true; }
+        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; }
         else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
         else break;
         ({ data, error } = await run(withPins, withBlock));
     }
-    if (!error) { if (withPins) _resvPinColsMissing = false; if (withBlock) _resvBlockColsMissing = false; }
+    if (!error) { if (withPins) _resvPinColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3431,19 +3364,6 @@ window.supabaseSetReservationStatus = async function (id, to, o = {}) {
         throw error;
     }
     return data;
-};
-
-// 予約の履歴 (誰がいつ何をしたか)。監査はこちらが正 — status 列は「いまの状態」のキャッシュ。
-// ⚠ **呼び出し元はまだ無い** — 予約の詳細を開いたときに出す (実装順⑧ と同時)
-window.supabaseLoadReservationEvents = async function (reservationId) {
-    if (!reservationId) return [];
-    const { data, error } = await supabase
-        .from('plan_reservation_events')
-        .select('id, from_status, to_status, actor_name, reason, created_at')
-        .eq('reservation_id', Number(reservationId))
-        .order('id', { ascending: true });
-    if (error) { console.warn('[reservation] 履歴の取得skip:', error.message); return []; }
-    return data || [];
 };
 
 // このシーズンで「確認しました」を押した人の一覧 (再配信時の通知対象)。
@@ -4080,34 +4000,6 @@ window.supabaseRegisterNikkeCharName = async function (name, burst = null, meta 
     return { canonical_name: clean, inserted: true, needsReview: true };
 };
 
-// 要確認の行を確定する (登録者とは別の運営が根拠を見て押す。本人可否の判定は charMasterDomain.canVerify)
-window.supabaseVerifyCharacterMasterEntry = async function (canonicalName, { verifiedBy } = {}) {
-    const name = (canonicalName || '').trim();
-    if (!name) throw new Error('canonical_name 必須');
-    const by = (typeof verifiedBy === 'string' && verifiedBy.trim()) ? verifiedBy.trim() : null;
-    if (!by) throw new Error('確認者を特定できません (ホームで自分を選択してから操作してください)');
-    const full = { is_confirmed: true, verified_by: by, verified_at: new Date().toISOString() };
-    let { error } = await supabase.from('nikke_characters').update(full).eq('canonical_name', name);
-    if (error && (_isMissingColumnErr(error, 'verified_by') || _isMissingColumnErr(error, 'verified_at'))) {
-        ({ error } = await supabase.from('nikke_characters').update({ is_confirmed: true }).eq('canonical_name', name));
-    }
-    if (error) throw error;
-    return { canonical_name: name, verified: true };
-};
-
-// 画像パスから canonical_name を逆引き
-window.supabaseFindCharacterByIconPath = async function (iconPath) {
-    if (!iconPath) return null;
-    try {
-        const { data } = await supabase
-            .from('nikke_characters')
-            .select('canonical_name')
-            .contains('icon_paths', [iconPath])
-            .maybeSingle();
-        return data?.canonical_name || null;
-    } catch { return null; }
-};
-
 // PostgREST が「そんな列は無い」と言っているかの判定 (25_nikke_burst_alt.sql 未適用環境の検出用)
 // テーブルそのものが無い (= マイグレーション未適用)。列欠損 (_isMissingColumnErr) とは別物で、
 // 「静かに劣化してよい唯一のエラー」。通信断・RLS・タイムアウトをこれに混ぜないこと (Codex指摘 2026-09-07)
@@ -4682,12 +4574,11 @@ window.supabaseLoadOpsDashboardData = async function (opts = {}) {
     // 事前比較・メンバー状況・SLv推定の全部から一括で外れる。残凸表の「除外」表示と解除にだけ使う
     const excludedByPlayer = new Map();
     const mlDom = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
-    const exDom = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
     (dmgs || []).forEach(d => {
         // 32未適用環境に残る slot=3 はここでも締め出す。
         // 落とさないと「ソルバーは③を使うのに模擬タブは編集できない」不整合になる
         if (!isUsableSlot(d.slot)) return;
-        if (exDom ? exDom.isExcluded(d) : d.excluded_at != null) {
+        if (d.excluded_at != null) {
             if (!excludedByPlayer.has(d.player_id)) excludedByPlayer.set(d.player_id, {});
             const em = excludedByPlayer.get(d.player_id);
             if (!em[d.attribute]) em[d.attribute] = [];
@@ -4921,17 +4812,6 @@ window.supabaseSetAttackConfirmed = async function (attackId, on, byName) {
     if (!data || data.length === 0) throw new Error('その凸報告は見つかりません (消された可能性)。画面を更新してください');
     window.supabaseLogActivity?.('attack_confirm', `${on ? '✓ 凸報告を確認' : '凸報告の確認を外す'}: B${data[0].boss_number}`, { playerId: data[0].player_id, actorName: byName || null });
     return patch;
-};
-
-// プレイヤーを ID で取得（存在チェック用）
-window.supabaseGetPlayerById = async function (playerId) {
-    const { data, error } = await supabase
-        .from('players')
-        .select('id, name')
-        .eq('id', playerId)
-        .single();
-    if (error) return null;
-    return data;
 };
 
 // 接続テスト用ヘルパー: ブラウザコンソールで window.supabaseTest() を実行

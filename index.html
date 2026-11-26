@@ -109,7 +109,6 @@
     <script defer src="./js/domain/slvLine.js"></script>         <!-- 分析 › 実績 の SLv 順のグラフの中央値の線 (2026-11-25) -->
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
-    <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
     <script defer src="./js/domain/publishedPlans.js"></script>
@@ -127,11 +126,9 @@
     <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/domain/opsLayout.js"></script>
-    <script defer src="./js/domain/pace.js"></script>
     <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
     <script defer src="./js/domain/notifyPolicy.js"></script> <!-- 🔔 通知の宛先 (あなた宛 / チームの状況 / テスト) の判定 -->
     <script defer src="./js/domain/releaseNotes.js"></script> <!-- 🆕 新しくなったこと (更新履歴) の判定 -->
-    <script defer src="./js/domain/planBoard.js"></script>
     <script defer src="./js/domain/slvSim.js"></script>
     <script defer src="./js/domain/raidReview.js"></script>   <!-- レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) -->      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
@@ -774,17 +771,6 @@
         .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 14px; font-weight: 900; color: var(--ops-deep); background: var(--card); cursor: pointer}
         .ops-stage-hero.day .b { color: var(--t-ink)}
         .ops-stage-hero.end .b { color: var(--ok-deep)}
-        .ops-stage-list { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 14px; padding: 9px 12px; background: var(--card); margin-bottom: 10px}
-        .ops-stage-list .tt { font-size: 11px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); margin-bottom: 4px}
-        .ops-stage-list .row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-        .ops-stage-list .row + .row { border-top: 1px solid rgba(var(--ink-rgb), 0.05); }
-        .ops-stage-list .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 900; border: 2px solid var(--track); color: var(--t-muted)}
-        .ops-stage-list .row.done .dot { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--ok-ink)}
-        .ops-stage-list .row.todo .dot { border-color: var(--warn-solid); background: rgba(245,158,11,0.16); color: var(--warn-deep)}
-        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12px; font-weight: 800; color: var(--t-ink); background: none; border: none; padding: 0; cursor: pointer}
-        .ops-stage-list .row.done .lbl { color: var(--t-muted)}
-        .ops-stage-list .cnt { font-size: 12px; font-weight: 900; color: var(--t-body); font-variant-numeric: tabular-nums; white-space: nowrap}
-        .ops-stage-list .act { flex: none; font: inherit; font-size: 11px; font-weight: 900; color: var(--ops-deep); background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer}
         .ops-etc { margin-top: 16px; }
         .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: var(--t-body); background: var(--s2); border: none; border-radius: 12px; padding: 11px; cursor: pointer}
         .ops-etc-label { font-size: 11px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
@@ -1094,7 +1080,7 @@
         /* 🧱 段階 2.5 (2026-10-22): メンバー (lite) の下メニューは ホーム · 分析 · 設定。戦況タブはなくす (運営は「運営」として出る) */
         body.member-lite [data-tab="ops"] { display: none !important; }
         /* 運営タブのサブタブ (👥 メンバー / 🧱 組む / ⚔️ 戦況 / 👑 マスター)。段階のチェックリスト・グループ見出しは出さない */
-        body.ops-mode #opsStageList, body.ops-mode #tab-ops .ops-group-label { display: none !important; }
+        body.ops-mode #tab-ops .ops-group-label { display: none !important; }
         .ops-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 6px; }
         .ops-subtabs button { font: inherit; min-height: 40px; font-size: 14px; font-weight: 800; border: 1.5px solid var(--line); background: var(--card); color: var(--t-strong);
             border-radius: 999px; padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
@@ -2546,20 +2532,6 @@
             background: var(--s1); border-radius: 14px; padding: 14px;
             border: 1px solid rgba(var(--ink-rgb), 0.05);
             position: relative}
-        /* HomeMind基調 (2026-07-24): 交戦中 = 黒カード (アクティブの対比表現)。
-           テンプレートのインライン色に勝つため !important — 状態はポーリング中の
-           _patchOpsBossCard の class 切替だけで色が追随する */
-        .dc-boss-card.has-combat {
-            background: var(--t-ink);
-            border-color: transparent;
-            box-shadow: 0 0 0 1px var(--_attr-c, var(--attr-fire-solid)),
-                        0 8px 20px -4px color-mix(in srgb, var(--_attr-c, var(--attr-fire-solid)) 45%, transparent)}
-        .dc-boss-card.has-combat .js-bnum { color: var(--card) !important}
-        .dc-boss-card.has-combat .js-name { color: var(--on-ink-soft) !important; }
-        .dc-boss-card.has-combat .js-pct { color: var(--card) !important}
-        .dc-boss-card.has-combat .js-hptext { color: var(--on-ink-soft) !important; }
-        .dc-boss-card.has-combat .js-bartrack { background: rgba(var(--paper-rgb), 0.16) !important; }
-        .dc-boss-card.has-combat [data-action="boss-edit"] { background: var(--t-ink) !important; color: var(--on-ink-soft) !important}
         .dc-boss-chip {
             width: 34px; height: 34px; flex: none; border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
@@ -2569,23 +2541,10 @@
             height: 100%; border-radius: 99px;
             transition: width 0.3s ease-out;
         }
+        .dc-boss-card .js-status:empty { display: none; }
         .dc-boss-status-tag {
             display: inline-flex; align-items: center; font-size: 11px; font-weight: 800; letter-spacing: 0.3px;
             padding: 3px 9px; border-radius: 999px; white-space: nowrap;
-        }
-        .dc-boss-status-tag.is-combat { font-weight: 900; }
-        .dc-combat-dot {
-            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-            margin-right: 5px; background: currentColor;
-            animation: dc-combat-pulse 1.25s ease-in-out infinite;
-        }
-        @keyframes dc-combat-pulse {
-            0%   { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); opacity: 1; }
-            70%  { box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 0%, transparent); opacity: 0.6; }
-            100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent); opacity: 1; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .dc-combat-dot { animation: none; }
         }
 
         /* === 共通: 詰めカード + テーブル === */
@@ -14529,9 +14488,7 @@
             });
         }
 
-        function _opsBossCardParts(b, coordsByBoss, lv4Live = false) {
-            const inCombat = coordsByBoss.has(b.boss_number);
-            const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
+        function _opsBossCardParts(b, lv4Live = false) {
             const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);   // 締め凸で持っていくPT属性 (弱点)
             const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
             const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
@@ -14540,41 +14497,31 @@
             const dead = !lv4B5 && remainPct <= 0.01;
             // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
             const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
-            const active = inCombat && !dead;
+            // 状態の札は 撃破済 / Lv4 / スコアレース だけ。交戦中・待機中・交戦者のアバターは 2026-11-26 に撤去 (戦闘中の状態ボタンは 11/16 に撤去済み = いつも「待機中」「交戦者なし」だった)
             const statusTag = lv4B5
-                ? `<span class="dc-boss-status-tag" style="color:var(--ops);background:rgba(123,91,214,0.12);">🏁 スコアレース中${active ? ` · ${combatList.length}名` : ''}</span>`
+                ? '<span class="dc-boss-status-tag" style="color:var(--ops);background:rgba(123,91,214,0.12);">🏁 スコアレース中</span>'
                 : dead
                     ? (lv4Live
-                        ? `<span class="dc-boss-status-tag" style="color:var(--t-muted);background:var(--s2);">Lv4 · 凸対象外</span>`
-                        : `<span class="dc-boss-status-tag" style="color:var(--ok);background:rgba(24,194,107,0.12);">💀 撃破済</span>`)
-                    : active
-                        ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
-                        : `<span class="dc-boss-status-tag" style="color:var(--t-muted);background:var(--s2);">待機中</span>`;
-            const avatarsHtml = active
-                ? combatList.slice(0, 4).map((x, i) => {
-                    const av = renderAvatarHtml(x.player_id, x.name, 24);
-                    return `<span style="margin-left:${i === 0 ? 0 : -6}px;position:relative;z-index:${10 - i};display:inline-block;border:2px solid var(--card);border-radius:50%;">${av}</span>`;
-                  }).join('')
-                : '<span style="font-size:11px;font-weight:700;color:var(--t-muted);">交戦者なし</span>';
-            const reqs = '';   // 締め凸の依頼は無い (2026-11-16 撤去)
+                        ? '<span class="dc-boss-status-tag" style="color:var(--t-muted);background:var(--s2);">Lv4 · 凸対象外</span>'
+                        : '<span class="dc-boss-status-tag" style="color:var(--ok);background:rgba(24,194,107,0.12);">💀 撃破済</span>')
+                    : '';
             const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
             const iconAlt = ATTR_VISUAL[b.attribute]?.name || (b.attribute || '');
             return {
-                ptInfo, totalB, remB, remainPct, dead, active, c, lv4B5,
+                ptInfo, totalB, remB, remainPct, dead, c, lv4B5,
                 // カードの薄化: 撃破済は 0.65 / Lv4中の凸対象外 (B1〜B4) はさらに薄く
                 cardOpacity: lv4B5 ? '' : (dead ? (lv4Live ? '0.45' : '0.65') : ''),
                 // 締凸検索: 撃破済は無効。♾️ボスも「残HPぴったり」の概念が無いので無効
                 finDisabled: dead || lv4B5,
                 pctText: lv4B5 ? '♾️' : (dead ? '撃破' : `${remainPct.toFixed(0)}%`),
-                pctColor: lv4B5 ? '#7A5BD6' : (dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')),
+                pctColor: lv4B5 ? '#7A5BD6' : (dead ? '#18C26B' : '#C9CED3'),
                 statusTag,
                 barColor: lv4B5 ? 'linear-gradient(90deg,#9B4DFF,#7A5AF8)' : (dead ? '#18C26B' : c),
                 hpText: lv4B5 ? 'HP無限 — 与ダメ全額計上' : `${remB.toFixed(2)} / ${totalB.toFixed(2)} B`,
-                avatarsHtml, reqs,
                 // チップ・ボス名・締凸ボタンもターゲット更新の対象 (別の運営者による
                 // 名前変更やシーズン編集が、編集パネルを開いている人の画面にも反映されるように)
                 nameText: b.name || b.boss_code,
-                chipStyle: (active || dead)
+                chipStyle: dead
                     ? `background:${c};box-shadow:0 3px 8px ${c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
                     : `background:${c}1F;`,
                 chipTitle: `${iconAlt}ボス${ptInfo ? ` / 弱点 ${ptInfo.name}PT` : ''}`,
@@ -14584,8 +14531,8 @@
             };
         }
 
-        function _opsBossCardHtml(b, coordsByBoss, lv4Live = false) {
-            const P = _opsBossCardParts(b, coordsByBoss, lv4Live);
+        function _opsBossCardHtml(b, lv4Live = false) {
+            const P = _opsBossCardParts(b, lv4Live);
             const editing = _opsBossEditingNum === b.boss_number;
             // HP編集パネル (折り畳み)。ボタンは data-action (コンテナの委譲リスナーが拾う)
             const editPanel = editing
@@ -14606,7 +14553,7 @@
                 </div>`
                 : '';
             return `
-                <div class="dc-boss-card ${P.active ? 'has-combat' : ''}" data-boss-card="${b.boss_number}" style="--_attr-c:${P.c};${P.cardOpacity ? `opacity:${P.cardOpacity};` : ''}">
+                <div class="dc-boss-card" data-boss-card="${b.boss_number}" style="--_attr-c:${P.c};${P.cardOpacity ? `opacity:${P.cardOpacity};` : ''}">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                         <div class="dc-boss-chip js-chip" style="${P.chipStyle}" title="${escapeHtml(P.chipTitle)}">${P.chipIconHtml}</div>
                         <div class="js-pct" style="font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${P.pctColor};">${P.pctText}</div>
@@ -14620,7 +14567,6 @@
                         <div class="dc-boss-bar js-bar" style="background:${P.barColor};width:${P.remainPct}%;"></div>
                     </div>
                     <div class="js-hptext" style="font-size:11px;font-variant-numeric:tabular-nums;color:var(--t-muted);margin-top:4px;">${P.hpText}</div>
-                    <div class="js-avatars" style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${P.avatarsHtml}</div>
                     ${editPanel}
                     <!-- 操作ボタン行は運営専用: OFF時に「押せるのに何も起きない」を防ぐ (実機FB)。
                          押した先の締め凸検索カード自体が data-ops-only のため -->
@@ -14628,18 +14574,16 @@
                         <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:40px;height:40px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
                         <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;min-height:40px;border-radius:8px;border:none;background:${P.finDisabled ? 'var(--s2)' : P.c};color:${P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c)};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締め凸検索'}</button>
                     </div>
-                    <div class="js-reqs">${P.reqs}</div>
                 </div>`;
         }
 
         // 入力中のターゲット更新: カードの DOM を壊さず、表示領域 (%・状態・バー・HP・アバター・
         // 依頼状況・締凸ボタン) だけを書き換える。編集パネルの input には一切触れない →
         // 10秒ポーリング中でもフォーカス・入力値・カーソル位置が保たれる (リアーキ ステップ4)
-        function _patchOpsBossCard(el, b, coordsByBoss, lv4Live = false) {
+        function _patchOpsBossCard(el, b, lv4Live = false) {
             const card = el.querySelector(`[data-boss-card="${b.boss_number}"]`);
             if (!card) return;
-            const P = _opsBossCardParts(b, coordsByBoss, lv4Live);
-            card.classList.toggle('has-combat', P.active);
+            const P = _opsBossCardParts(b, lv4Live);
             card.style.opacity = P.cardOpacity || '';
             card.style.setProperty('--_attr-c', P.c);
             // ボス名・属性チップも更新 (別の運営者による名前変更・シーズン編集を編集中の画面にも反映)
@@ -14655,10 +14599,6 @@
             if (bar) { bar.style.width = `${P.remainPct}%`; bar.style.background = P.barColor; }
             const hp = card.querySelector('.js-hptext');
             if (hp) hp.textContent = P.hpText;
-            const av = card.querySelector('.js-avatars');
-            if (av) av.innerHTML = P.avatarsHtml;
-            const reqs = card.querySelector('.js-reqs');
-            if (reqs) reqs.innerHTML = P.reqs;
             const fin = card.querySelector('.js-finish');
             if (fin) {
                 fin.disabled = P.finDisabled;
@@ -14698,8 +14638,6 @@
                 lvEl.innerHTML = season ? `Lv${season.current_level || 1} · 5体 ${_hpFreshHtml(bosses)}` : '';
             }
 
-            // 戦闘中 (状態ボタン) は 2026-11-16 に撤去した = 交戦者はいつも無し (カードの「待機中」「交戦者なし」は見た目のまま)
-            const coordsByBoss = new Map();
             const sorted = [...(bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
 
             // 入力保護: 編集パネルが開いている / カード内で入力中 は innerHTML 全置換をやめ、
@@ -14710,10 +14648,10 @@
             const editingPanelAlive = _opsBossEditingNum !== null && document.getElementById(`opsBossEditRem-${_opsBossEditingNum}`);
             const typingInside = _userIsTyping() && el.contains(document.activeElement);
             if (editingPanelAlive || typingInside) {
-                sorted.forEach(b => _patchOpsBossCard(el, b, coordsByBoss, lv4Live));
+                sorted.forEach(b => _patchOpsBossCard(el, b, lv4Live));
                 return;
             }
-            el.innerHTML = sorted.map(b => _opsBossCardHtml(b, coordsByBoss, lv4Live)).join('');
+            el.innerHTML = sorted.map(b => _opsBossCardHtml(b, lv4Live)).join('');
         }
 
         // Lv4開幕バナー: ボスカード列 (横スクロール行) の外側・直前に置く。
@@ -18501,7 +18439,7 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         try { const v = localStorage.getItem('shirisuko_rr_apt_v1'); if (v === 'scatter' || v === 'bars') _rrAptView = v; } catch { /* 既定のまま */ }
         let _rrSeq = 0, _rrLastApt = null, _rrCfgCache = null;
         let _rrPick = null, _rrLastProgress = null;   // 帯で選んだ凸 {attr, level, i} と、その元になった行 (選び直しで描き直すため)
-        const _rrAttrJp = (attr) => (window.planBoardDomain?.ATTR_JP || { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' })[attr] || attr;
+        const _rrAttrJp = (attr) => ({ fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' })[attr] || attr;
         const _rrAttrOf = (bossCode) => ((BOSS_ATTRIBUTES[bossCode] || {}).attribute || '').toLowerCase() || null;
         const _rrB = (v) => `${(Number(v) / 1e9).toFixed(1)}B`;
         // raid-config.json (ボスのHP表) を読む。in-flight ごとキャッシュし、失敗は覚えない (_loadGbExport と同じ作り)
@@ -21905,14 +21843,14 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
         }
         function _renderOpsStage() {
             const dom = window.opsStageDomain, lay = window.opsLayoutDomain;
-            const bar = document.getElementById('opsStageBar'), heroEl = document.getElementById('opsStageHero'), listEl = document.getElementById('opsStageList');
-            if (!dom || !lay || !bar || !heroEl || !listEl) return;
+            const bar = document.getElementById('opsStageBar'), heroEl = document.getElementById('opsStageHero');
+            if (!dom || !lay || !bar || !heroEl) return;
             if (!_opsMode) {
                 // メンバー: 段階の UI は出さず、カードは元の並びに戻す
                 dom.STAGES.forEach(s => document.body.classList.remove(`ops-stage-${s}`));
                 document.body.classList.remove('ops-stage-overridden');
                 if (_opsStageApplied !== null) { _opsStageApplied = null; _applyOpsStageCards(null); }
-                bar.innerHTML = ''; heroEl.innerHTML = ''; listEl.innerHTML = '';
+                bar.innerHTML = ''; heroEl.innerHTML = '';
                 const ovEl = document.getElementById('opsStageOverride'); if (ovEl) ovEl.innerHTML = '';
                 return;
             }
@@ -21949,7 +21887,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             const ovEl = document.getElementById('opsStageOverride');
             if (ovEl) ovEl.innerHTML = _opsStageOverrideHtml(st);
             heroEl.innerHTML = _opsStageHeroHtml(h, st.stage);
-            listEl.innerHTML = _opsStageListHtml(rows, st.stage);
             // 🧱 段階 2.5: カードは段階ではなくタブで出し入れする (いつも同じタブ)。開いたときのタブだけ段階で決める
             const tab = _opsTabNow(st.stage);
             if (_opsStageApplied !== `${st.stage}|${tab}`) {
@@ -22016,20 +21953,6 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             return `<div class="ops-stage-hero ${esc(stage)}"><div class="k">📌 いちばん先に</div><div class="h">${esc(h.lead)}</div>`
                 + (h.why ? `<div class="s">${esc(h.why)}</div>` : '')
                 + foot + '</div>';
-        }
-        function _opsStageListHtml(rows, stage) {
-            if (!Array.isArray(rows) || !rows.length) return '';
-            const esc = escapeHtml;
-            const title = stage === 'end' ? '終了までにやること' : '配信までにやること';
-            const li = rows.map(r => {
-                const cls = r.pending ? 'pending' : r.done ? 'done' : r.optional ? 'opt' : 'todo';
-                const mark = r.done ? '✓' : r.pending ? '…' : r.optional ? '·' : '!';
-                const val = r.pending ? '—' : (r.total != null ? `${r.value}/${r.total}` : esc(String(r.value ?? '')));
-                const nudge = (!r.done && !r.pending && r.nudge) ? `<button type="button" class="act" onclick="_opsStageAct('nudge:${esc(r.nudge)}')">催促</button>` : '';
-                const open = r.action ? ` onclick="_opsStageAct('${esc(r.action)}')"` : '';
-                return `<div class="row ${cls}"><span class="dot">${mark}</span><button type="button" class="lbl"${open}>${esc(r.label)}</button><span class="cnt">${val}</span>${nudge}</div>`;
-            }).join('');
-            return `<div class="ops-stage-list"><div class="tt">${title}</div>${li}</div>`;
         }
         // ===== 🧱 段階 2.5: 運営タブのサブタブ (👥 メンバー / 🧱 組む / ⚔️ 戦況 / 👑 マスター・2026-10-22 ユーザー決定) =====
         // メンバー (lite = 運営 OFF) には戦況タブを出さない (状況は BlaBlaLINK で見る)
@@ -22391,12 +22314,11 @@ PAD の中で入力するものはありません (時間・模擬・希望・�
             if (container && !document.getElementById('opsTopBar')) {
                 const top = document.createElement('div');
                 top.id = 'opsTopBar';
-                // 運営ON: サブタブ → (⚔️ 戦況だけ) 見出しの 1 行 → ヒーロー (いちばん急ぐ1つ) → チェックリスト (CSS でいつも隠す)。
+                // 運営ON: サブタブ → (⚔️ 戦況だけ) 見出しの 1 行 → ヒーロー (いちばん急ぐ1つ)。段階のチェックリストの描画は 2026-11-26 に撤去 (CSS でいつも隠していた)。
                 //   🛠 と段階の札は上の見出し (#opsHead) に置く (段階 3・2026-11-26: 本文までを詰めた)
                 top.innerHTML = `<div id="opsSubTabs" class="ops-subtabs" data-ops-only role="tablist" aria-label="運営のタブ"></div>
                     <div id="opsTabLine" class="ops-tab-line" data-ops-only></div>
-                    <div id="opsStageHero" data-ops-only></div>
-                    <div id="opsStageList" data-ops-only></div>`;
+                    <div id="opsStageHero" data-ops-only></div>`;
                 const first = container.querySelector('.ops-group-label, .dc-card');
                 if (first) first.insertAdjacentElement('beforebegin', top);
                 else container.prepend(top);

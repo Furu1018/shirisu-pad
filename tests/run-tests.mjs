@@ -14,7 +14,6 @@ import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベ�
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/slvLine.js';      // globalThis.slvLineDomain (分析 › 実績 の SLv 順のグラフの中央値の線・2026-11-25)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
-import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
 import '../js/domain/availability.js';    // globalThis.availabilityDomain (参加可能時間の読み方)
@@ -30,8 +29,6 @@ import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テス�
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
-import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化のペース / 🔁直近の動き — 運営ボード 当日・段階4)
-import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸プランの条件と盤の読みやすさ — パズル盤 ①②)
 import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営担当: master / ops / メンバー)
 import '../js/domain/notifyPolicy.js';  // globalThis.notifyPolicyDomain (🔔 通知の宛先: あなた宛 / チームの状況 / テスト)
 import '../js/domain/releaseNotes.js';  // globalThis.releaseNotesDomain (🆕 新しくなったこと / 更新履歴)
@@ -409,7 +406,6 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         assert.ok(/if \(blk && \(_isMissingBlockCols\(error\) \|\| \/time_mode_check\|chk_plan_reservations_time\/\.test/.test(client), '54 未適用の申請で 54 を案内しない');
         const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(!/_resvReqPick|myResvRequestModal/.test(html), '本人の申請シート (2026-11-16 に撤去) が残っている');
-        assert.ok(/r\.time_mode === 'block' \? \(\(root\.reservationsDomain && root\.reservationsDomain\.whenOf\(r\)\) \|\| null\)/.test(_fs2b.readFileSync(new URL('../js/domain/planBoard.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')), 'ピース箱がブロックの予約の時刻を空にする');
     });
     // ---- 変異テストで生き残った壊し方を捕まえる (2026-10-22) ----
     const LO = (list) => list.map((dmgB, j) => ({ dmgB, team: [`c${dmgB}_${j}`], slot: j + 1, level: null, levels: null }));
@@ -4673,7 +4669,7 @@ console.log('\nopsStageDomain:');
     test('★ 配線: 運営タブは段階で出し分ける (段階ヘッダ・ヒーロー・チェックリスト・その他・設定タブの運営ブロックの移動)', () => {
         assert.ok(html.includes('<script defer src="./js/domain/opsStage.js"></script>'), 'opsStage.js を読み込んでいない');
         const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/id="opsStageHero"/.test(init) && /id="opsStageList"/.test(init), 'ヒーロー・チェックリストの置き場が無い');
+        assert.ok(/id="opsStageHero"/.test(init) && !/id="opsStageList"/.test(init) && !html.includes('function _opsStageListHtml('), 'ヒーローの置き場が無い / 撤去したチェックリストの描画が残っている (段階 3・2026-11-26)');
         //   段階の札と 🛠 は見出し (#opsHead) の 2 行目 / 右 (段階 3・2026-11-26 ふるり「運営タブの頭を詰める」)。手で切り替える所は 👑 › シーズン制御 (#opsStageOverride・マスターだけ)
         assert.ok(/<div id="opsHead"[\s\S]{0,900}?<span id="opsStageBar" data-ops-only><\/span>[\s\S]{0,300}?<button class="dc-nav-chip" id="opsModeBtn"/.test(html), '段階の札・🛠 が見出しに無い');
         assert.ok(!/id="opsStageBar"/.test(init) && !/id="opsModeBtn"/.test(init), '段階の札・🛠 を見出しの下 (#opsTopBar) にも作っている (二重)');
@@ -4880,20 +4876,20 @@ console.log('\nmemberStatusDomain:');
         assert.ok(keys([on]).includes('availConfirm'));
     });
 
-    test('buildRows(当日): 凸残・締め凸未返答が先頭に来る / 代理は activity_log から数える / 推定SLvは未登録扱い', () => {
+    test('buildRows(当日): 凸残が先頭に来る (締め凸 未返答 は 2026-11-26 に撤去) / 代理は activity_log から数える / 推定SLvは未登録扱い', () => {
         const players = [P({ id: 1, name: 'A', attacks: [{ level: 1, boss_number: 2 }, { level: 2, boss_number: 3 }], syncLevel: 500, syncLevelEstimated: true, availableSlots: ['h20'] })];
         const extras = { pushPlayerIds: [1], slvThisSeasonIds: [1], finishRequests: [{ player_id: 1, status: 'pending' }], proxyEvents: [{ player_id: 1 }, { player_id: 1 }],
             availConfirmations: [{ player_id: 1 }] };
         const [r] = dom.buildRows({ players, extras, phase: 'day' });
-        assert.deepEqual(r.reasons.map(x => x.key), ['attacks', 'finish', 'mock', 'slv'], '当日の理由順 (凸→締め凸→模擬→SLv。時間帯・通知は満たしている)');
+        assert.deepEqual(r.reasons.map(x => x.key), ['attacks', 'mock', 'slv'], '当日の理由順 (凸→模擬→SLv。時間帯・通知は満たしている・締め凸の依頼を渡されても積まない)');
+        assert.ok(!('finish' in r) && !('finishUnknown' in r), '撤去した締め凸の欄が行に残っている');
         assert.equal(r.reasons[0].label, '凸 残1');
         assert.equal(r.atkCount, 2); assert.equal(r.proxyCount, 2);
         assert.equal(r.slvNow, null, '推定SLv (syncLevelEstimated) は登録扱いにしない');
         assert.ok(r.reasons.some(x => x.key === 'slv'));
         const [r0] = dom.buildRows({ players: [P({ id: 1, syncLevel: 0, syncLevelEstimated: false })], extras: { slvThisSeasonIds: [1] }, phase: 'pre' });
         assert.equal(r0.slvNow, null, '今期行があっても sync_level=0 は未登録扱い');
-        const [r2] = dom.buildRows({ players, extras: { ...extras, finishRequests: [{ player_id: 1, status: 'accepted' }, { player_id: 1, status: 'pending' }] }, phase: 'day' });
-        assert.equal(r2.finish, 'pending', 'pending が1件でもあれば未返答');
+        assert.ok(!dom.summarize([r], 'day').some(x => x.key === 'finish'), '集計に「締め凸 未返答」が残っている');
     });
     test('★ buildRows(当日): 3 凸を済ませた人は完了 — 模擬・SLv・時間帯・通知・締め凸の返事が残っていても要対応にしない (2026-10-31 ふるり) / 前日と 2 凸の人は従来どおり', () => {
         const three = [{ level: 1, boss_number: 3 }, { level: 1, boss_number: 2 }, { level: 1, boss_number: 5 }];
@@ -4915,7 +4911,7 @@ console.log('\nmemberStatusDomain:');
         // 当日でも 2 凸の人は従来どおり 凸残 + ほかの理由
         const [two] = dom.buildRows({ players: [P({ ...p, attacks: three.slice(0, 2) })], extras, phase: 'day' });
         assert.equal(two.finished, false);
-        assert.deepEqual(two.reasons.map(x => x.key).slice(0, 2), ['attacks', 'finish']);
+        assert.deepEqual(two.reasons.map(x => x.key).slice(0, 1), ['attacks']);
         assert.ok(two.reasons.some(x => x.key === 'slv'), '2 凸の人の SLv の理由まで消えている');
         // 3 凸を超える記録 (重複など) でも完了
         const [four] = dom.buildRows({ players: [P({ ...p, attacks: [...three, { level: 2, boss_number: 1 }] })], extras, phase: 'day' });
@@ -5036,48 +5032,6 @@ console.log('\ncharMasterDomain:');
 }
 
 // ---- 運営による模擬提出の除外 (35_player_damages_exclusion.sql) ------------------
-console.log('\nmockExclusionDomain (運営除外):');
-{
-    const ex = globalThis.mockExclusionDomain;
-    test('isExcluded: excluded_at がある行だけ true (null / undefined / 空文字 / 行なしは false)', () => {
-        assert.equal(ex.isExcluded({ excluded_at: '2026-09-05T01:00:00.000Z' }), true);
-        assert.equal(ex.isExcluded({ excluded_at: null }), false);
-        assert.equal(ex.isExcluded({}), false);
-        assert.equal(ex.isExcluded({ excluded_at: '' }), false);
-        assert.equal(ex.isExcluded(null), false);
-    });
-    test('splitExcluded: 使える行と除外行に分ける (順序維持・配列以外は空)', () => {
-        const rows = [{ id: 1 }, { id: 2, excluded_at: 'x' }, { id: 3, excluded_at: null }];
-        const r = ex.splitExcluded(rows);
-        assert.deepEqual(r.usable.map(x => x.id), [1, 3]);
-        assert.deepEqual(r.excluded.map(x => x.id), [2]);
-        assert.deepEqual(ex.splitExcluded(null), { usable: [], excluded: [] });
-    });
-    test('exclusionPatch: 除外は excluded_at(ISO) + by + 理由 (空白正規化・80字上限)、解除は3列とも null', () => {
-        const now = new Date('2026-09-05T03:04:05.000Z');
-        const p = ex.exclusionPatch({ excluded: true, by: ' ふるり ', reason: '  桁が\n違う   可能性 ', now });
-        assert.deepEqual(p, { excluded_at: '2026-09-05T03:04:05.000Z', excluded_by: 'ふるり', excluded_reason: '桁が 違う 可能性' });
-        const long = ex.exclusionPatch({ excluded: true, reason: 'あ'.repeat(200), now });
-        assert.equal(long.excluded_reason.length, ex.REASON_MAX);
-        assert.equal(long.excluded_by, '運営', '運営名が空なら「運営」');
-        assert.equal(ex.exclusionPatch({ excluded: true, reason: '   ', now }).excluded_reason, null, '空理由は null');
-        assert.deepEqual(ex.exclusionPatch({ excluded: false, reason: 'x', by: 'y' }), { excluded_at: null, excluded_by: null, excluded_reason: null });
-        assert.deepEqual(ex.clearPatch(), { excluded_at: null, excluded_by: null, excluded_reason: null });
-    });
-    test('exclusionLabel: 理由・運営名・時刻が入る / 通常行は空文字', () => {
-        const row = { excluded_at: '2026-09-05T01:02:00.000Z', excluded_by: 'ふるり', excluded_reason: '桁違い' };
-        const s = ex.exclusionLabel(row);
-        assert.ok(s.startsWith('運営が除外 (桁違い) — ふるり '), s);
-        assert.match(s, /\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, s);
-        assert.ok(ex.exclusionLabel({ excluded_at: '2026-09-05T01:02:00.000Z' }).startsWith('運営が除外 — '), '理由も運営名も無いときは時刻だけ');
-        assert.equal(ex.exclusionLabel({}), '');
-    });
-    test('stripExclusion: 3列だけ落として他は保持 (35未適用フォールバック用)', () => {
-        const r = ex.stripExclusion({ player_id: 1, slot: 2, excluded_at: 'x', excluded_by: 'y', excluded_reason: 'z' });
-        assert.deepEqual(r, { player_id: 1, slot: 2 });
-    });
-}
-
 console.log('\n運営除外の配線 (ソース突合):');
 {
     const fs = await import('node:fs');
@@ -5093,7 +5047,7 @@ console.log('\n運営除外の配線 (ソース突合):');
     test('盤面ローダは excluded_* を最優先 select で読み、除外行を盤面から外して excludedByAttr に別立てする', () => {
         assert.ok(client.includes("['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason', ['player_id', 'attribute', 'slot']]"));
         assert.ok(client.includes('excludedByAttr: excludedByPlayer.get(p.id) || {}'));
-        assert.match(client, /exDom \? exDom\.isExcluded\(d\) : d\.excluded_at != null/);
+        assert.match(client, /if \(d\.excluded_at != null\) \{/);
     });
     test('35 の部分適用 (excluded_at だけ) でも除外行が盤面・本人画面・スナップショットから漏れない中間 select がある', () => {
         // 3列版 → excluded_at 単独版 → 無し の順 (Codex指摘 2026-09-05: 中間段が無いと部分適用で除外がプランに漏れる)
@@ -5119,7 +5073,7 @@ console.log('\n運営除外の配線 (ソース突合):');
     test('_selectUsableDamages (提出状況・人気編成・活動) も除外行を落とす', () => {
         const body = client.match(/async function _selectUsableDamages[\s\S]*?\n}\n/)?.[0] || '';
         assert.ok(body.includes('excluded_at'), body);
-        assert.ok(/isExcluded\(d\)/.test(body));
+        assert.ok(/rows\.filter\(d => d\.excluded_at == null\)/.test(body), '除外の印のある行を外していない');
         assert.ok(/_isMissingColumnErr\(r\.error, 'excluded_at'\)/.test(body), '列欠損の判定は _isMissingColumnErr');
     });
     test('本人の保存し直し (提出・単値保存・測定削除) は除外解除 payload を含む', () => {
@@ -5133,8 +5087,15 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(!/\/excluded_\/i/.test(body), '文言の緩い正規表現で列欠損を判定しない (列欠損以外のエラーを隠す)');
         assert.ok(/const legacy = rows2\.map\(\(\{ slot, boss_level, levels, excluded_at, excluded_by, excluded_reason, \.\.\.rest \}\) => rest\)/.test(body));
     });
-    test('index.html: mockExclusion.js を読み込む (前に除外した行は読み取りが外す)。除外する操作 (残凸表の 🧹 整理) は 2026-11-16 に撤去した', () => {
-        assert.ok(html.includes('<script defer src="./js/domain/mockExclusion.js"></script>'));
+    test('★ 段階 3 B: 画面から使われなくなったドメイン (pace・planBoard・mockExclusion) は消した — 戻さない', () => {
+        for (const m of ['pace', 'planBoard', 'mockExclusion']) {
+            assert.ok(!fs.existsSync(path.join(ROOT, 'js', 'domain', m + '.js')), m + '.js が残っている');
+            assert.ok(!html.includes('./js/domain/' + m + '.js'), m + '.js を読み込んでいる');
+        }
+        assert.ok(!/paceDomain|planBoardDomain|mockExclusionDomain/.test(html + client), '消したドメインを参照している');
+    });
+    test('除外する操作 (残凸表の 🧹 整理) は 2026-11-16 に撤去・除外の部品 (mockExclusion.js) は 11/26 に撤去した。前に除外した行は読み取りが列を見て外す', () => {
+        assert.ok(!html.includes('mockExclusion.js') && !fs.existsSync(path.join(ROOT, 'js', 'domain', 'mockExclusion.js')), '除外の部品が残っている');
         for (const fn of ['handleOpsRemainingTidyToggle', 'handleOpsRemExclude', 'handleOpsRemUnexclude']) assert.ok(!html.includes(fn), `${fn} が残っている`);
         assert.ok(!/window\.supabaseSetMockExclusion\s*=/.test(client), '除外の通信の関数が残っている');
         assert.ok(/mock_exclude:\s*\{/.test(html), '設定タブのログ種別 (前の記録を読めるように残す)');
@@ -5301,8 +5262,6 @@ console.log('\n運営除外の配線 (ソース突合):');
         const ex2 = await mk({ push_subscriptions: ok, player_sync_levels: bad, finish_requests: bad, activity_log: new Error('boom') })(1, '2026-09-01T00:00:00Z', 1);
         assert.equal(ex2.slvThisSeasonIds, null, 'SLv の取得失敗を [] にしている (全員「未登録」になる)');
         assert.equal(ex2.proxyEvents, null, 'activity_log が投げたときも null');
-        // ★ 締め凸だけ **fetch が投げる** 経路 (r.error ではなく catch に入る) — 変異で穴が見つかった
-        const ex2b = await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: new Error('fetch failed'), activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
         assert.deepEqual(ex2.pushPlayerIds, [1]);
         const ex3 = await mk({ push_subscriptions: { data: [], error: null }, player_sync_levels: { data: [], error: null }, finish_requests: { data: [], error: null }, activity_log: { data: [], error: null } })(1, '2026-09-01T00:00:00Z', 1);
         assert.deepEqual(ex3.pushPlayerIds, [], '本当に誰もいないときは []');
@@ -5312,10 +5271,7 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.equal((await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: ok, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1)).pushCheck, null, '疎通確認の取得失敗を「未送信」にしている');
         pushCheckAns = { sentAt: '2026-10-08T03:00:00Z', confirmed: [{ player_id: 1, at: '2026-10-08T03:05:00Z' }] };
         assert.equal((await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: ok, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1)).pushCheck.confirmed.length, 1);
-        assert.deepEqual(ex3.finishRequests, []);
-        // 締め凸依頼だけテーブル未適用 (22 未適用) → [] (従来どおり)
-        const ex4 = await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: { data: null, error: { code: '42P01', message: 'relation "finish_requests" does not exist' } }, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
-        assert.deepEqual(ex4.finishRequests, [], 'テーブル未適用は [] のまま');
+        assert.ok(!('finishRequests' in ex3), '締め凸の依頼を渡している (2026-11-16 に撤去・11/26 に形も外した)');
     });
     test('★ buildRows: 取得できなかった項目は「未登録」と言わない (null・省略 = 分からない / [] = 本当に誰もいない)', () => {
         const ms = globalThis.memberStatusDomain;
@@ -5337,16 +5293,10 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.equal(sNull.slvNow, null); assert.equal(sNull.slvPrev, null, '「前回 600」とも言わない (今季かどうか分からない)'); assert.equal(sNull.slvUnknown, true);
         const sEmpty = one({ pushPlayerIds: [7], slvThisSeasonIds: [], availConfirmations: [] });
         assert.ok(keys(sEmpty).includes('slv'), '[] なら未登録 (前回値つき)'); assert.equal(sEmpty.slvPrev, 600);
-        // 締め凸 (当日)
-        const fNull = one({ pushPlayerIds: [7], slvThisSeasonIds: [7], finishRequests: null, availConfirmations: [] }, 'day');
-        assert.ok(!keys(fNull).includes('finish')); assert.equal(fNull.finish, null); assert.equal(fNull.finishUnknown, true);
+        // 締め凸 (当日): 依頼は撤去した — 古い形の extras を渡されても理由・集計に出さない
         const fPend = one({ pushPlayerIds: [7], slvThisSeasonIds: [7], finishRequests: [{ player_id: 7, status: 'pending' }], availConfirmations: [] }, 'day');
-        assert.ok(keys(fPend).includes('finish')); assert.equal(fPend.finishUnknown, false);
+        assert.ok(!keys(fPend).includes('finish') && !ms.summarize([fPend], 'day').some(x => x.key === 'finish'), '撤去した「締め凸 未返答」が出ている');
         // 集計: 分からない欄は「—」+ 取得失敗 (0 だと「全員済み」に見える)
-        const sumDay = ms.summarize([fNull], 'day');
-        assert.equal(sumDay.find(x => x.key === 'finish').value, '—');
-        assert.equal(sumDay.find(x => x.key === 'finish').sub, '取得失敗');
-        assert.equal(ms.summarize([fPend], 'day').find(x => x.key === 'finish').value, 1);
         const sumPre = ms.summarize([pNull], 'pre');
         assert.equal(sumPre.find(x => x.key === 'push').value, '—');
         assert.equal(ms.summarize([pEmpty], 'pre').find(x => x.key === 'push').value, 0, '[] は 0 人 (数える)');
@@ -5657,7 +5607,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // (2026-09-11 実機のあと) 読み直すときに「45 の列が無い」を覚える形になった
         // 🧱 段階 3 (54): 45 と 54 のどちらが欠けていても (両方でも) 読み直す形に (2 つの読み出しとも)
         assert.ok((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
-        assert.ok((client.match(/if \(withBlock && _isMissingBlockCols\(error\)\) \{ withBlock = false; _resvBlockColsMissing = true; \}/g) || []).length === 2, '54 未適用で列を落として読み直していない (両方の読み出し)');
+        assert.ok((client.match(/if \(withBlock && _isMissingBlockCols\(error\)\) \{ withBlock = false; \}/g) || []).length === 2, '54 未適用で列を落として読み直していない (両方の読み出し)');
         assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
         assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
         assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
@@ -6078,7 +6028,7 @@ console.log('\nreservationsDomain (凸の予約):');
         // CSS: 消した部品の規則は無い。段階のチェックリストとグループ見出しは今までどおり隠す
         const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
         assert.ok(!/\.ops-cockpit|\.plan-board|\.plan-cond|\.plan-tray|\.bb-row|\.ops-pace|\.dc-rem-|\.dc-resv-|#opsPlanLegacy|\.ob-legacy|resv-live/.test(css), '消した部品の CSS が残っている');
-        assert.ok(/body\.ops-mode #opsStageList, body\.ops-mode #tab-ops \.ops-group-label \{ display: none !important; \}/.test(css) && /#opsTabHold \{ display: none !important; \}/.test(css), '段階のチェックリスト / タブの置き場を隠していない');
+        assert.ok(/body\.ops-mode #tab-ops \.ops-group-label \{ display: none !important; \}/.test(css) && /#opsTabHold \{ display: none !important; \}/.test(css) && !/#opsStageList|\.ops-stage-list/.test(css), 'グループ見出し / タブの置き場を隠していない・撤去したチェックリストの CSS が残っている');
         // カードの定義: 画面から外すカード (tab: null) は無い = どのカードもどれかのタブにある。🧱 組む は「凸プランを組む」だけ
         const L = globalThis.opsLayoutDomain;
         assert.deepEqual(L.CARDS.filter(c => !L.TAB_KEYS.includes(c.tab)).map(c => c.id), [], 'タブの無いカードがある');
@@ -6105,7 +6055,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(bd.length > 800 && !/finish_coordinations|Coordination/.test(bd) && /window\.supabaseGetPublishedPlans\(\)/.test(bd) && /if \(excludePlayerId != null\) targets\.delete\(excludePlayerId\);/.test(bd), '撃破の通知の宛先の形が違う');
         // 👥 メンバー状況の追加取得: 締め凸依頼は読まない (形だけ [] を返す)
         const ex = client.match(/window\.supabaseLoadMemberStatusExtras = async function[\s\S]*?\n\};/)?.[0] || '';
-        assert.ok(/finishRequests: \[\],/.test(ex) && !/from\('finish_requests'\)/.test(ex), '👥 メンバー状況が締め凸依頼を読んでいる');
+        assert.ok(!/finishRequests/.test(ex) && !/from\('finish_requests'\)/.test(ex), '👥 メンバー状況が締め凸依頼を読んでいる / 渡す形が残っている (2026-11-26 に形も外した)');
         // 表は残す: バックアップ・復元・シーズン削除は finish_requests / finish_coordinations を扱い続ける
         assert.ok(/finish_requests/.test(client) && /finish_coordinations/.test(client), 'バックアップ・復元の表の一覧から締め凸の表が消えた');
         // ヘルプ: 消した入口を案内しない
@@ -10452,7 +10402,7 @@ console.log('\ngrowthDomain:');
         const pgrst = { code: 'PGRST204', message: "Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache" };
         assert.ok(isTbl(pgrst), '前提が変わった: このエラーが 39 未適用の判定に当たらなくなっている (順序のガードの理由を確かめること)');
         // ② 読み出しが列の有無を覚え、置く前に止める
-        assert.equal((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}[\s\S]{0,260}if \(!error\) \{ if \(withPins\) _resvPinColsMissing = false; if \(withBlock\) _resvBlockColsMissing = false; \}/g) || []).length, 2,
+        assert.equal((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}[\s\S]{0,260}if \(!error\) \{ if \(withPins\) _resvPinColsMissing = false; \}/g) || []).length, 2,
             '両方の読み出しで 45 の列の有無を覚えていない');
         assert.ok(/window\.supabaseReservationPinColsMissing = \(\) => _resvPinColsMissing;/.test(client), '画面から読めない');
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
@@ -10943,122 +10893,6 @@ console.log('\ngrowthDomain:');
             for (const a of Object.keys(idx.attrs)) assert.ok(idx.attrs[a].attackMedianFururi > 0 && idx.attrs[a].baseDamage > 0, `${f} ${a}: 中央値か基準ダメージが無い`);
         }
     });
-    // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
-    test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {
-        const dom = globalThis.paceDomain;
-        assert.equal(typeof dom?.paceModel, 'function', 'paceDomain.paceModel が無い');
-        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
-        const jst = (iso) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return null;
-            return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d)); };
-        const now = Date.parse('2026-09-11T12:30:00Z');   // JST 21:30
-        const players = [
-            { id: 1, name: 'A' }, { id: 2, name: 'B' }, { id: 3, name: 'C' },
-            { id: 4, name: 'D', unavailableThisSeason: true },   // 今回は難しい → 定員に数えない
-        ];
-        const attacks = [
-            { boss_number: 1, reported_at: '2026-09-11T11:10:00Z' },   // JST 20:10
-            { boss_number: 2, reported_at: '2026-09-11T11:40:00Z' },   // JST 20:40
-            { boss_number: 3, reported_at: '2026-09-11T12:05:00Z' },   // JST 21:05
-            { boss_number: 1, reported_at: 'こわれてる' },              // 時刻不明
-        ];
-        const m = dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: Date.parse('2026-09-11T20:00:00Z') });
-        assert.equal(m.done, 4); assert.equal(m.capacity, 9, '定員は参加できる人 × 3'); assert.equal(m.remaining, 5);
-        assert.equal(m.unknownTime, 1, '時刻の読めない凸を黙って捨てている');
-        assert.equal(m.byHour.length, 24);
-        assert.equal(m.byHour.find(x => x.hour === 20).count, 2);
-        assert.equal(m.byHour.find(x => x.hour === 21).count, 1);
-        assert.equal(m.byHour.find(x => x.hour === 21).now, true, 'いまの時間帯に印が無い');
-        assert.equal(m.byHour.find(x => x.hour === 22).future, true, 'これからの時間帯を薄くする印が無い');
-        assert.equal(m.byHour.find(x => x.hour === 20).future, false);
-        // ★ 窓は最初の凸より前に遡らない: 20:10〜21:30 の 80 分で 3 凸 = 2.25 凸/時
-        assert.equal(m.recentCount, 3);
-        assert.ok(Math.abs(m.windowHours - 80 / 60) < 1e-9, `窓の幅が違う ${m.windowHours}`);
-        assert.ok(Math.abs(m.perHour - 2.25) < 1e-9, `ペースが違う ${m.perHour}`);
-        // 残り 5 凸 ÷ 2.25 = 2.22 時間 → 23:43 ごろ
-        assert.ok(Math.abs(m.etaMs - (now + 5 / 2.25 * 3600e3)) < 1, '使い切る時刻の見込みが違う');
-        assert.equal(m.exhausted, false); assert.equal(m.overrun, false);
-        // レイド日の終わりを越えるなら「使い切れない」
-        assert.equal(dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: now + 3600e3 }).overrun, true, '翌5時までに使い切れないことを言っていない');
-        assert.equal(dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: null }).overrun, false, '終わりが分からないときに決めつけている');
-        // 直近に凸が無ければペース 0 → 見込みは出さない (0 割りしない)
-        const stale = dom.paceModel({ attacks: [{ boss_number: 1, reported_at: '2026-09-11T05:00:00Z' }], players, hourOrder: HO, hourOf: jst, now });
-        assert.equal(stale.perHour, 0); assert.equal(stale.etaMs, null);
-        // 全部消化
-        const full = dom.paceModel({ attacks: Array.from({ length: 9 }, (_, i) => ({ boss_number: 1, reported_at: `2026-09-11T12:0${i}:00Z` })), players, hourOrder: HO, hourOf: jst, now });
-        assert.equal(full.exhausted, true); assert.equal(full.remaining, 0); assert.equal(full.etaMs, null);
-        // ★ 「難しい」と申告した人が結局凸した → 定員を凸数に合わせる (34/33 のような数字にしない)
-        const over = dom.paceModel({ attacks: [1, 2, 3, 4].map(() => ({ boss_number: 1, reported_at: '2026-09-11T12:00:00Z' })), players: [{ id: 1 }, { id: 4, unavailableThisSeason: true }], hourOrder: HO, hourOf: jst, now });
-        assert.equal(over.capacity, 4); assert.equal(over.remaining, 0);
-        // 壊れた入力で落ちない
-        const e = dom.paceModel();
-        assert.equal(e.done, 0); assert.equal(e.capacity, 0); assert.deepEqual(e.byHour, []); assert.equal(e.etaMs, null);
-        assert.equal(dom.paceModel({ attacks: [null, {}, { boss_number: null }], players: null, hourOrder: HO, hourOf: jst, now }).done, 0, 'ボス番号の無い行を数えている');
-    });
-    test('★ recentModel: 締め凸の打診の状態 (主役) + 直近の凸 (添え)。運営の交代は扱わない', () => {
-        const dom = globalThis.paceDomain;
-        const now = Date.parse('2026-09-11T12:30:00Z');
-        const iso = (dMin) => new Date(now + dMin * 60e3).toISOString();
-        const reqs = [
-            // 同時打診 o1 の案 p1: A 返事待ち / B 了承 (期限はまだ先)
-            { id: 1, boss_number: 3, player_id: 11, name: 'A', status: 'pending',  requested_at: iso(-10), offer_id: 'o1', plan_key: 'p1', deadline_at: iso(5), raid_level: 2 },
-            { id: 2, boss_number: 3, player_id: 12, name: 'B', status: 'accepted', requested_at: iso(-10), offer_id: 'o1', plan_key: 'p1', deadline_at: iso(5), raid_level: 2 },
-            // 同じ人が2行 (古い pending と新しい accepted) → 1人として数え、進んだほうを採る
-            { id: 3, boss_number: 3, player_id: 11, name: 'A', status: 'accepted', requested_at: iso(-9),  offer_id: 'o1', plan_key: 'p2', deadline_at: iso(5), raid_level: 2 },
-            { id: 4, boss_number: 3, player_id: 11, name: 'A', status: 'pending',  requested_at: iso(-9),  offer_id: 'o1', plan_key: 'p2', deadline_at: iso(5), raid_level: 2 },
-            // 1案ずつの依頼 (offer 無し): B2 に C 不可 → dead
-            { id: 5, boss_number: 2, player_id: 13, name: 'C', status: 'declined', requested_at: iso(-30), raid_level: 2 },
-            // ★ 同じボス・同じレベルでも**別の回** (別の requested_at) の依頼は別の案 (Codex指摘 2026-09-11)。
-            //   同じ回なら1組 (F と G は同じ文の insert = 同じ時刻)
-            { id: 8, boss_number: 2, player_id: 16, name: 'F', status: 'pending', requested_at: iso(-2), raid_level: 2 },
-            { id: 9, boss_number: 2, player_id: 17, name: 'G', status: 'pending', requested_at: iso(-2), raid_level: 2 },
-            // 同じ人 C が新しい回で確認中 → 古い回の「不可」に上書きされない
-            { id: 10, boss_number: 2, player_id: 13, name: 'C', status: 'pending', requested_at: iso(-2), raid_level: 2 },
-            // 期限切れ: B1 に D 返事待ちのまま期限を過ぎた
-            { id: 6, boss_number: 1, player_id: 14, players: { name: 'D' }, status: 'pending', requested_at: iso(-40), deadline_at: iso(-1), raid_level: 2 },
-            // 揃った: B4 に E 了承
-            { id: 7, boss_number: 4, player_id: 15, name: 'E', status: 'accepted', requested_at: iso(-3), raid_level: 2 },
-        ];
-        const attacks = [
-            { boss_number: 1, level: 2, damage_raw: 31e9, reported_at: iso(-50), name: 'X' },
-            { boss_number: 2, level: 2, damage_raw: 42e9, reported_at: iso(-5),  players: { name: 'Y' } },
-            { boss_number: 3, level: 2, damage_raw: 0,    reported_at: 'こわれてる', name: 'Z' },
-        ];
-        const m = dom.recentModel({ finishRequests: reqs, attacks, now });
-        assert.equal(m.asksTotal, 6);
-        assert.equal(m.waiting, 5, '返事待ちの人数 (A の p1 / D / F・G・C の新しい回)');
-        // 手を打つべきもの (返事待ち・期限切れ) が上、その中では新しい順。次に揃ったもの、最後に不可
-        assert.deepEqual(m.asks.map(a => a.state), ['waiting', 'waiting', 'expired', 'ready', 'ready', 'dead']);
-        // ★ 別の回の依頼は混ざらない: B2 の新しい回 (F・G・C 確認中) と古い回 (C 不可) は別の案
-        const b2 = m.asks.filter(a => a.boss === 2);
-        assert.equal(b2.length, 2, '同じボス・レベルの別の回を1つに束ねている');
-        assert.deepEqual(b2.map(a => a.state), ['waiting', 'dead']);
-        assert.deepEqual(b2[0].members.map(mm => `${mm.name}:${mm.status}`).sort(), ['C:pending', 'F:pending', 'G:pending'], '新しい回の C が古い「不可」に上書きされている');
-        assert.equal(b2[0].members.length, 3, '同じ回の人数が違う');
-        const p1 = m.asks.find(a => a.key === 'o:o1:p1');
-        assert.ok(p1 && p1.offer, '同時打診の印が無い');
-        assert.deepEqual(p1.members.map(mm => `${mm.name}:${mm.status}`), ['A:pending', 'B:accepted']);
-        assert.equal(p1.deadlineMs, now + 5 * 60e3);
-        const p2 = m.asks.find(a => a.key === 'o:o1:p2');
-        assert.equal(p2.members.length, 1, '同じ人を2人に数えている');
-        assert.equal(p2.members[0].status, 'accepted', '進んだ返事を採っていない');
-        assert.equal(p2.state, 'ready');
-        assert.equal(m.asks.find(a => a.boss === 1).state, 'expired');
-        assert.equal(m.asks.find(a => a.boss === 1).members[0].name, 'D', 'players.name から名前を取れていない');
-        assert.equal(m.asks.filter(a => a.boss === 2).at(-1).state, 'dead');
-        // 添えの凸: 新しい順・時刻の読めないものは数だけ
-        assert.deepEqual(m.attacks.map(a => a.name), ['Y', 'X']);
-        assert.equal(m.attacks[0].damageRaw, 42e9); assert.equal(m.attacks[0].level, 2);
-        assert.equal(m.unknownTime, 1);
-        // 件数の上限と「ほか N 件」の材料
-        const few = dom.recentModel({ finishRequests: reqs, attacks, now, limit: 1, askLimit: 2 });
-        assert.equal(few.asks.length, 2); assert.equal(few.asksTotal, 6); assert.equal(few.attacks.length, 1);
-        // 壊れた入力で落ちない
-        const e = dom.recentModel();
-        assert.deepEqual(e.asks, []); assert.equal(e.waiting, 0); assert.deepEqual(e.attacks, []);
-        assert.equal(dom.recentModel({ finishRequests: [null, {}, { boss_number: null }], attacks: [null], now }).asksTotal, 0);
-        // ★ 交代 (誰が当番か) を持ち込まない (ユーザー決定 2026-09-11)
-        assert.ok(!Object.keys(m).some(k => /shift|handover|duty|交代/i.test(k)), '運営の交代をモデルに持ち込んでいる');
-    });
     // ===== ホームの空きに オンライン / ボス状況 (2026-09-11 ユーザー要望) + ナビの「戦況」⇄「運営」 =====
     test('★ homeStatusCounts: オンライン / 模擬中 / 戦闘中 の人数と名前 (同じ人は1人・自分は「あなた」で先頭)', () => {
         const f = globalThis.homeStatusCounts;
@@ -11132,148 +10966,6 @@ console.log('\ngrowthDomain:');
         assert.ok(/const navLabel = _opsMode \? '運営' : '戦況';/.test(fn), '文字の入れ替えが _applyOpsMode に無い (ON/OFF・名乗り直しの両方が通る唯一の場所)');
         assert.ok(/\.tab-button\[data-tab="ops"\], \.bottom-nav-btn\[data-tab="ops"\]/.test(fn) && /querySelector\('\.nav-lb, \.tab-lb'\)/.test(fn), '両方のナビの文字を入れ替えていない');
         assert.ok(/btn\.title = navLabel/.test(fn) && /setAttribute\('aria-label', navLabel\)/.test(fn), 'title / aria-label も入れ替えていない');
-    });
-    // ===== 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②・2026-09-11) =====
-    test('★ planBoard: 条件の正規化と要約 (壊れた値は既定へ / 0 のものは省く・予約は常に出す)', () => {
-        const d = globalThis.planBoardDomain;
-        assert.equal(typeof d?.conditionsOf, 'function', 'planBoardDomain が無い');
-        const c = d.conditionsOf({ who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: '2', unavailable: -1, publishedBy: ' A ', publishedAt: 'x', computedBy: '', computedAt: '2026-09-11T12:04:00Z' });
-        assert.deepEqual(c, { who: 'now', block: null, from: 'day', prev: 'fresh', time: 'damage', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
-        // ★ 時間 (2026-10-10): 古い焼き込み (無印) と壊れた値は「ダメージ優先」(= それまでの動き) として読む
-        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', block: null, from: 'now', prev: 'keep', time: 'damage', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
-        // 🧱 ブロック (2026-10-18): who='block' のときだけブロック名を持つ。他の who では捨てる
-        assert.deepEqual(d.conditionsOf({ who: 'block', block: ' 夕方 18〜20時 ' }).block, '夕方 18〜20時');
-        assert.equal(d.conditionsOf({ who: 'now', block: '夕方' }).block, null, 'ブロック以外の対象にブロック名が残っている');
-        assert.equal(d.conditionsOf({ who: 'block' }).who, 'block');
-        assert.equal(d.conditionsOf({ from: 'block' }).from, 'block'); assert.equal(d.conditionsOf({ from: 'x' }).from, 'now');
-        assert.ok(d.conditionSummary({ who: 'block', block: '夕方 18〜20時', from: 'block', reservations: 0 }).includes(' · ブロックの頭から · '), '起点「ブロックの頭から」が無い');
-        assert.equal(d.conditionSummary({ who: 'block', block: '夕方 18〜20時', time: 'strict', reservations: 0 }), '🧱 夕方 18〜20時 に出られる人 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0');
-        assert.ok(d.conditionSummary({ who: 'block', reservations: 0 }).startsWith('🧱 ブロックに出られる人 ·'), 'ブロック名が無いときの言い方');
-        assert.equal(d.conditionsOf({ time: 'strict' }).time, 'strict');
-        assert.equal(d.conditionSummary(c), '今動ける人だけ · 朝5時から · ⚡ダメージ優先 · ゼロから · 🔒予約 3 · 🚫除外 2');
-        assert.equal(d.conditionSummary({ who: 'all', time: 'strict', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
-        assert.equal(d.conditionSummary(null), '全員 · 今から · ⚡ダメージ優先 · 前回を尊重 · 🔒予約 0');
-    });
-    test('★ planBoard: 参加可能時間 → 行番号 / 動かせる幅 (硬い・狭い・柔らかい) / 模擬の更新数', () => {
-        const d = globalThis.planBoardDomain;
-        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
-        const w = d.windowOf({ availableSlots: ['h21', 'h22', 'h00', 'x', 'h99', 7] }, HO);
-        assert.deepEqual([...w].sort((a, b) => a - b), [16, 17, 19], '読めない値を捨てていない / 添字が違う');
-        assert.equal(d.windowOf({ flexTime: true, availableSlots: [] }, HO).size, 24, '隙間型はいつでも');
-        assert.equal(d.windowOf(null, HO).size, 0);
-        // 動かせる幅は「これから」(fromIdx 以降) だけ数える
-        assert.deepEqual(d.stiffness(w, 16), { count: 3, label: '狭い', rigid: false });
-        assert.deepEqual(d.stiffness(w, 17), { count: 2, label: '狭い', rigid: false });
-        assert.deepEqual(d.stiffness(w, 19), { count: 1, label: '硬い', rigid: true });
-        assert.deepEqual(d.stiffness(w, 20), { count: 0, label: '出られない', rigid: true });
-        assert.equal(d.stiffness(new Set([0, 1, 2, 3, 4]), 0).label, '柔らかい');
-        assert.equal(d.stiffness(null, 0).count, 0);
-        // 模擬の更新数: since より後だけ。since が読めなければ null (きっかけを出さない)
-        const rows = [{ updated_at: '2026-09-11T12:05:00Z' }, { updated_at: '2026-09-11T12:03:00Z' }, { updated_at: null }, null, { updated_at: 'x' }];
-        assert.equal(d.mockUpdatesSince(rows, '2026-09-11T12:04:00Z'), 1);
-        assert.equal(d.mockUpdatesSince(rows, '2026-09-11T11:00:00Z'), 2);
-        assert.equal(d.mockUpdatesSince(rows, null), null);
-        assert.equal(d.mockUpdatesSince(null, '2026-09-11T12:04:00Z'), 0);
-    });
-    // ===== パズル盤 ③④: 📌 運営の固定 / 🧩 模擬ピース / 📣 お願い → 🔒 (2026-09-11) =====
-    test('★ swapOptions: 3凸が埋まっている人にピースを置くとき、どれが外れるか (約束は不可 / 固定は不可 / 同じキャラは必ず外れる / 自由は選べる)', () => {
-        // 2026-09-12 実機FB「3凸分自動で埋まっている → 1つピースより移動で、キャンセルする凸は何を基準に選ぶのか？」
-        const dom = globalThis.planBoardDomain;
-        assert.equal(typeof dom?.swapOptions, 'function', 'planBoardDomain.swapOptions が無い');
-        const plan = { levels: [
-            { level: 1, bosses: [
-                { bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 20, team: ['x1', 'x2'], hourIdx: 0, hourLabel: '5時', fromReservation: true }] },
-                { bossNumber: 2, name: 'B', weakness: 'water', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 18, team: ['y1', 'y2'], hourIdx: 1, hourLabel: '6時' },
-                                                                            { memberId: 8, loadoutSlot: 1, dmgB: 30, team: ['z1'] }] },
-            ] },
-            { level: 2, bosses: [
-                { bossNumber: 3, name: 'C', weakness: 'electric', attacks: [{ memberId: 7, loadoutSlot: 2, dmgB: 15, team: ['w1', 'W2 '], hourIdx: 2, flex: true }] },
-            ] },
-        ] };
-        // 自由 2 + 約束 1 (残凸 3) にピースを置く → 1 つ外す。約束は選べない。同じキャラが無ければ自由の 2 つから選ぶ
-        let sw = dom.swapOptions({ plan, memberId: 7, team: ['q1', 'q2'], doneAttacks: 0 });
-        assert.deepEqual(sw.rows.map(r => [r.key, r.status]), [['1:1:1', 'promise'], ['1:2:1', 'free'], ['2:3:2', 'free']]);
-        assert.equal(sw.capacity, 3); assert.equal(sw.over, 1); assert.equal(sw.pickable, true); assert.equal(sw.ask, true);
-        assert.deepEqual(sw.free.map(r => r.key), ['1:2:1', '2:3:2']);
-        assert.equal(sw.rows[0].label, '🔒 本人の予約 — 入れ替えられません');
-        assert.deepEqual([sw.rows[1].hourLabel, sw.rows[2].hourLabel, sw.rows[2].flex, sw.rows[2].bossName, sw.rows[2].weakness], ['6時', null, true, 'C', 'electric']);
-        // 同じキャラ (全角/空白/大文字の違いは同じ) の凸は必ず外れる → over は 0 になり、選ばせない
-        sw = dom.swapOptions({ plan, memberId: 7, team: ['ｗ2', 'q9'], doneAttacks: 0 });
-        assert.deepEqual(sw.conflicts.map(r => r.key), ['2:3:2']);
-        assert.equal(sw.over, 0); assert.equal(sw.pickable, false); assert.equal(sw.ask, true, '被りがあるので確認は出す');
-        assert.equal(sw.rows[2].label, '同じキャラ — 必ず外れます');
-        // 📌 固定は選べない
-        const pinnedPlan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 20, team: ['x1'], pinned: true, fromReservation: true }] }] }] };
-        sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 2 });
-        assert.deepEqual(sw.rows.map(r => r.status), ['pinned']); assert.equal(sw.over, 1); assert.equal(sw.pickable, false, '固定しか無いのに選ばせている');
-        assert.equal(sw.rows[0].label, '📌 仮置き — 外すなら仮置きを外してから');
-        // 空きがある (残凸 3 に 1 凸) なら聞かない / その人の凸がプランに無ければ聞かない
-        sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 0 });
-        assert.equal(sw.ask, false, '空きがあるのに聞いている');
-        assert.equal(dom.swapOptions({ plan, memberId: 99, team: ['x1'], doneAttacks: 0 }).ask, false);
-        assert.equal(dom.swapOptions({ plan: null, memberId: 7 }).ask, false);
-        // 実凸が増えて 2 つ多い → 選ばせない (算出に任せる)
-        sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 1 });
-        assert.equal(sw.over, 2); assert.equal(sw.pickable, false);
-        // ★ 本人の申請中のカード (requested) は選べない・📌 にもしない (canPin が本人の申請と同じカードの固定を禁じる: Codex指摘)。
-        //   生きていない予約 (released) は関係ない。判定は isActive を渡す (無ければ既定の集合)
-        const resv = [{ player_id: 7, boss_number: 2, loadout_slot: 1, status: 'requested' }, { player_id: 7, boss_number: 3, loadout_slot: 2, status: 'released' }];
-        sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv, isActive: globalThis.reservationsDomain.isActive });
-        assert.deepEqual(sw.rows.map(r => r.status), ['promise', 'requested', 'free']);
-        assert.deepEqual(sw.free.map(r => r.key), ['2:3:2']); assert.equal(sw.pickable, true);
-        assert.equal(sw.rows[1].label, '📝 本人の予約 (承認待ち) — 承認か却下で決めます (仮置きはしません)');
-        assert.deepEqual(dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv }).rows.map(r => r.status), ['promise', 'requested', 'free'], 'isActive 無しの既定でも同じ');
-        // 同じキャラなら申請中でも「必ず外れる」(置けないものは置けない)
-        assert.equal(dom.swapOptions({ plan, memberId: 7, team: ['y1'], doneAttacks: 0, reservations: resv }).rows[1].status, 'conflict');
-    });
-    test('★ 🔒📌 だけ表示: chipCounts の数え方 / 時間割の「表示」の切り替え (CSS で絞る・描き直さない・ピース箱には効かない)', () => {
-        // 2026-09-12 ユーザー要望「🔒ロックしたカードの表示や 📌仮ぐみのカードのみ表示できる？」
-        const dom = globalThis.planBoardDomain;
-        assert.equal(typeof dom?.chipCounts, 'function');
-        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, pinned: true, fromReservation: true }, { memberId: 2, fromReservation: true }, { memberId: 3 }, { memberId: 4, fromReservation: true }] }] },
-                                { level: 2, bosses: [{ bossNumber: 2, attacks: [{ memberId: 5, pinned: true }] }] }] };
-        assert.deepEqual(dom.chipCounts(plan), { promise: 2, pinned: 2, auto: 1 }, '📌 は fromReservation でも 📌 に数える');
-        assert.deepEqual(dom.chipCounts(null), { promise: 0, pinned: 0, auto: 0 });
-        assert.deepEqual(dom.CHIP_FILTERS, ['all', 'promise', 'pinned', 'fixed']);
-        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
-    });
-    test('★ piecesOf: 模擬ピースは 残凸が多い人 → 強い順、置かれているものは placed + どこにあるか', () => {
-        const d = globalThis.planBoardDomain;
-        const players = [
-            { id: 1, name: 'A', attackCount: 2, loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['x'] }], water: [{ slot: 1, dmgB: 20, team: [] }] } },
-            { id: 2, name: 'B', attackCount: 0, loadoutsByAttr: { iron: [{ slot: 1, dmgB: 36, team: ['y'] }, { slot: 2, dmgB: 12, team: [] }] } },
-            { id: 3, name: 'C', attackCount: 0, unavailableThisSeason: true, loadoutsByAttr: { iron: [{ slot: 1, dmgB: 99, team: [] }] } },   // 難しい人は出さない
-            { id: 4, name: 'D', attackCount: 3, loadoutsByAttr: { wind: [{ slot: 1, dmgB: 40, team: [] }, { slot: 1, dmgB: 0, team: [] }] } },   // 0 のピースは出さない
-        ];
-        const plan = { levels: [{ level: 1, bosses: [
-            { bossNumber: 3, weakness: 'fire', attacks: [{ memberId: 1, loadoutSlot: 1, hourIdx: 16, hourLabel: '21時', pinned: true, fromReservation: true }] },
-            { bossNumber: 5, weakness: 'iron', attacks: [] },
-        ] }] };
-        const rv = globalThis.reservationsDomain;
-        const resv = [{ id: 9, player_id: 2, status: 'approved', boss_number: 5, loadout_slot: 2, time_slot: 'h22' }];
-        const out = d.piecesOf({ players, plan, reservations: resv, isFixed: rv.isFixed });
-        assert.deepEqual(out.map(x => `${x.name}:${x.attr}${x.slot}`), ['B:iron1', 'B:iron2', 'A:fire1', 'A:water1', 'D:wind1'], '並びが 残凸 → 強い順 でない / 難しい人や 0 を出している');
-        assert.deepEqual(out.map(x => x.remaining), [3, 3, 1, 1, 0]);
-        const a = out.find(x => x.name === 'A' && x.attr === 'fire');
-        assert.equal(a.placed, true); assert.deepEqual(a.where, { bossNumber: 3, hourIdx: 16, hourLabel: '21時', pinned: true, promise: false });
-        const b2 = out.find(x => x.name === 'B' && x.slot === 2);
-        assert.equal(b2.placed, true, '約束 (予約) で置かれている編成を placed にしていない'); assert.equal(b2.where.promise, true); assert.equal(b2.where.hourLabel, '22時');
-        assert.equal(out.find(x => x.name === 'B' && x.slot === 1).placed, false);
-        assert.deepEqual(d.piecesOf(), []);
-        assert.deepEqual(d.piecesOf({ players: [null, {}], plan: null }), []);
-    });
-    test('★ canPlace: 有利属性のボスだけ / その人の参加可能時間だけ (⏳隙間型は例外)。レベルは見ない', () => {
-        const d = globalThis.planBoardDomain;
-        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
-        const p = { name: 'A', availableSlots: ['h21', 'h22'] };
-        const boss = { boss_number: 3, weakness: 'water' };
-        assert.equal(d.canPlace({ player: p, attr: 'water', boss, hourIdx: 16, hourOrder: HO }).ok, true);
-        assert.equal(d.canPlace({ player: p, attr: 'fire', boss, hourIdx: 16, hourOrder: HO }).reason, 'attr');
-        assert.ok(d.canPlace({ player: p, attr: 'fire', boss, hourIdx: 16, hourOrder: HO }).label.includes('水冷PT'), '理由が日本語でない');
-        assert.equal(d.canPlace({ player: p, attr: 'water', boss, hourIdx: 18, hourOrder: HO }).reason, 'time');
-        assert.equal(d.canPlace({ player: { ...p, flexTime: true, availableSlots: [] }, attr: 'water', boss, hourIdx: 3, hourOrder: HO }).ok, true, '隙間型はいつでも');
-        assert.equal(d.canPlace({ player: null, attr: 'water', boss, hourIdx: 16, hourOrder: HO }).reason, 'no_player');
-        assert.equal(d.canPlace({ player: p, attr: 'water', boss: null, hourIdx: 16, hourOrder: HO }).reason, 'no_boss');
     });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。
@@ -12172,20 +11864,6 @@ console.log('\ngrowthDomain:');
         assert.ok(/window\.supabaseLoadPlanAcks = async function \(seasonId, \{ nullOnError = false \} = \{\}\)/.test(client) && /return nullOnError \? null : \[\];/.test(client), 'supabaseLoadPlanAcks が取れなかったことを伝えられない (9h)');
         assert.ok(html.includes('✅ 確認済み — 運営に「見た」と伝わりました。割当が変わったら通知が届きます') && html.includes('押していなくても、あなたの割当が変わったときは通知が届きます。'), '✅ 確認しました の説明が「押した人だけ通知」のまま (9h)');
     });
-    test('★ 🗣 9d planBoardDomain.noPlaceReason: 置ける所が 1 つも無い理由 (3 凸を使い切った → 属性のボスがいない → 時刻のマスが無い → 参加可能時間に合わない) / 置けるなら null / ⏳隙間型は時間を見ない', () => {
-        const d = globalThis.planBoardDomain;
-        const HO = Array.from({ length: 24 }, (_, i) => i);   // 添字 = 時
-        const p = { id: 7, name: 'あお', availableSlots: ['h18', 'h19'], flexTime: false };
-        const bosses = [{ boss_number: 1, weakness: 'iron' }, { boss_number: 3, weakness: 'fire' }];
-        assert.equal(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18, 19, 20], hourOrder: HO, remaining: 2 }), null, '置けるのに理由を出した');
-        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO, remaining: 0 }), { reason: 'spent', label: 'あお は 3 凸を使い切っています' });
-        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'water', bosses, hourIdxs: [18], hourOrder: HO, remaining: 2 }), { reason: 'attr', label: '水冷PT のボス (弱点が 水冷) がこの盤にいません' });
-        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [], hourOrder: HO, remaining: 2 }), { reason: 'no_hours', label: 'このブロックに置ける時刻のマスがありません' });
-        assert.deepEqual(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [20, 21], hourOrder: HO, remaining: 2 }), { reason: 'time', label: 'あお の参加可能時間に合う時刻のマスがありません' });
-        assert.equal(d.noPlaceReason({ player: { ...p, flexTime: true, availableSlots: [] }, attr: 'fire', bosses, hourIdxs: [20], hourOrder: HO, remaining: 1 }), null, '⏳隙間型は時間を見ない (canPlace と同じ)');
-        assert.equal(d.noPlaceReason({ player: p, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO }), null, 'remaining 無しは上限を見ない');
-        assert.deepEqual(d.noPlaceReason({ player: null, attr: 'fire', bosses, hourIdxs: [18], hourOrder: HO }), { reason: 'no_player', label: 'メンバーが盤面にいません' });
-    });
     test('★ 配線: 🗣 9e ボス HP の照合 — 読み取り → いまの値との差分 → 「⏬ 読み取った値を保存」/ PC は貼り付け・落とすでも読み取る (行き先が 1 つに決まるときだけ)', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const open = html.match(/async function openOpsBossHpModal\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -12223,67 +11901,6 @@ console.log('\ngrowthDomain:');
         assert.ok(/\} finally \{\s*\n\s*if \(gen === _opsBossHpGen && input\) input\.disabled = false;[^\n]*\n\s*\}\s*\n\s*\}\n$/.test(ocr), '読み取りが終わっても (失敗しても) 受け口を戻していない / 別の世代の受け口を戻している');
         // Codex 9e E: アプリ内の Discord 文面にも 9h の「プランが変わったら もう一度 ✅」(強調の入れ子で壊さない)
         assert.ok(html.includes('**「🔄 あなたの凸が変わりました」の通知が来たら、もう一度 📅 レイド予定表 を見て ✅** (✅ を押していなくても、変わった人には届きます)'), 'Discord 文面に 9h の再確認の手順が無い / 強調が入れ子 (S5: 見る先は 📅 レイド予定表)');
-    });
-    test('★ 🧱 段階 6 ブロック盤: blockBoardRows (ブロックの凸だけ・枠 = 残り HP・撃破は時刻の順に足して届いた凸・倒れたボスは出さない) / boardCandidates / blockSteps', () => {
-        const d = globalThis.planBoardDomain;
-        // 夕方 (18〜20時 = idx 13〜15) のぶん。Lv2 の B3 は 60B・B4 は 50B (B1 はもう倒れている)。Lv3 は B3 にだけ 20時の凸
-        const plan = { startLevel: 2, levels: [
-            { level: 2, bosses: [
-                { bossNumber: 1, name: 'B1', weakness: 'iron', targetHpB: 0, attacks: [] },
-                { bossNumber: 3, name: 'B3', attribute: 'wind', weakness: 'fire', targetHpB: 60, attacks: [
-                    { memberId: 7, memberName: 'あお', dmgB: 30, hourIdx: 14, loadoutSlot: 1 },
-                    { memberId: 8, memberName: 'きい', dmgB: 35, hourIdx: 13, loadoutSlot: 1, pinned: true, fromReservation: true },
-                    { memberId: 9, memberName: 'あか', dmgB: 25, hourIdx: 16, loadoutSlot: 1 },   // 21時 = ブロックの外
-                    { memberId: 11, memberName: 'くろ', dmgB: 10, hourIdx: 15, loadoutSlot: 1 }] },   // 撃破のあとの凸 (撃破の時刻はこれにしない)
-                { bossNumber: 4, name: 'B4', attribute: 'electric', weakness: 'iron', targetHpB: 50, attacks: [
-                    { memberId: 9, memberName: 'あか', dmgB: 20, hourIdx: 15, loadoutSlot: 2, fromReservation: true }] }] },
-            { level: 3, bosses: [{ bossNumber: 3, name: 'B3', weakness: 'fire', targetHpB: 200, attacks: [{ memberId: 10, memberName: 'しろ', dmgB: 40, hourIdx: 15, loadoutSlot: 1 }] }] },
-            { level: 4, infinite: true, bosses: [{ bossNumber: 5, name: 'B5', weakness: 'water', infinite: true, targetHpB: 0, attacks: [] }] },
-        ] };
-        const rows = d.blockBoardRows(plan, { fromIdx: 13, toIdx: 15 });
-        assert.deepEqual(rows.map(r => [r.level, r.bossNumber]), [[2, 3], [2, 4], [3, 3]], '倒れたボス / 凸の無いレベル (Lv4) を出した / ブロックの凸があるレベルを出していない');
-        const b3 = rows[0];
-        assert.deepEqual(b3.pieces.map(p => [p.memberName, p.kind]), [['きい', 'pin'], ['あお', 'auto'], ['くろ', 'auto']], 'ブロックの外の凸を入れた / 時刻の順でない / 種類 (📌) が違う');
-        assert.deepEqual([b3.remainB, b3.sumB, b3.gapB, b3.overB, b3.killed, b3.killHourIdx], [60, 75, 0, 15, true, 14], '撃破の時刻は時刻の順に足して届いた凸 (あおの 19時・あとの くろ ではない)');
-        const b4 = rows[1];
-        assert.deepEqual([b4.pieces[0].kind, b4.gapB, b4.killed, b4.killHourIdx], ['promise', 30, false, null]);
-        // ブロックの範囲を渡さなければ全部 (Lv4 の無限の行も・凸が無くても始まりのレベルではないので出さない)
-        assert.equal(d.blockBoardRows(plan).find(r => r.bossNumber === 3 && r.level === 2).pieces.length, 4);
-        const withInf = d.blockBoardRows({ startLevel: 4, levels: [{ level: 4, infinite: true, bosses: [{ bossNumber: 5, weakness: 'water', infinite: true, targetHpB: 0, attacks: [{ memberId: 1, memberName: 'x', dmgB: 50, hourIdx: 14 }] }] }] }, { fromIdx: 13, toIdx: 15 });
-        assert.deepEqual(withInf.map(r => [r.infinite, r.gapB, r.killed, r.pieces.length]), [[true, 0, false, 1]], '無限のボスの行');
-        assert.deepEqual(d.blockBoardRows(null), []);
-        // 候補: あと 30B の B4 (鉄甲) に置ける未配置のピース
-        const players = [
-            { id: 1, name: 'ひ', availableSlots: ['h18', 'h19'] }, { id: 2, name: 'ふ', availableSlots: ['h20'] },
-            { id: 3, name: 'み', availableSlots: ['h22'] }, { id: 4, name: 'よ', availableSlots: ['h18'] }, { id: 5, name: 'い', availableSlots: ['h18'] }, { id: 9, name: 'あか', availableSlots: ['h18', 'h19', 'h20'] }];
-        const pieces = [
-            { memberId: 5, name: 'い', attr: 'iron', slot: 2, dmgB: 12, remaining: 3, placed: false },    // 埋まらない候補を先に (並べ替えが効いているか)
-            { memberId: 1, name: 'ひ', attr: 'iron', slot: 1, dmgB: 34, remaining: 3, placed: false },
-            { memberId: 2, name: 'ふ', attr: 'iron', slot: 1, dmgB: 31, remaining: 1, placed: false },
-            { memberId: 3, name: 'み', attr: 'iron', slot: 1, dmgB: 40, remaining: 3, placed: false },    // 22時しか出られない = ブロックの外
-            { memberId: 4, name: 'よ', attr: 'fire', slot: 1, dmgB: 50, remaining: 3, placed: false },    // 属性が違う
-            { memberId: 9, name: 'あか', attr: 'iron', slot: 2, dmgB: 20, remaining: 2, placed: true },  // 置いてある
-            { memberId: 1, name: 'ひ', attr: 'iron', slot: 2, dmgB: 9, remaining: 0, placed: false },     // 残凸なし
-        ];
-        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
-        const cands = d.boardCandidates(b4, { pieces, players, hourIdxs: [15, 13, 14], hourOrder: HO, plan: { levels: [{ bosses: [{ attacks: [{ memberId: 2 }] }] }] } });
-        assert.deepEqual(cands.map(c => [c.piece.name, c.hourIdx, c.killed, Number(c.overB.toFixed(1)), Number(c.gapAfterB.toFixed(1)), c.needsSwap]), [
-            ['ふ', 15, true, 1, 0, true], ['ひ', 13, true, 4, 0, false], ['い', 13, false, 0, 18, false]],
-            '並び (埋まる → 余りの小さい順 → 埋まらない) / 時刻 (出られる最初の時刻) / 入れ替えが要る (置いてある数 >= 残凸)');
-        assert.deepEqual(d.boardCandidates(b3, { pieces, players, hourIdxs: [13], hourOrder: HO }), [], '埋まっている行に候補を出した');
-        assert.deepEqual(d.boardCandidates(rows[2], { pieces, players, hourIdxs: [13], hourOrder: HO }).map(c => c.piece.name), ['よ'], 'Lv3 の B3 (灼熱が弱点) に灼熱のピースだけを出していない');
-        // 手順: いま = 済んでいない最初 (締凸検索は任意で数えない)
-        const st = (o) => d.blockSteps(o).map(x => (x.done ? '✓' : x.current ? '▶' : '·') + x.key);
-        assert.deepEqual(st({ hpFreshMin: 50, missing: 2 }), ['▶hp', '·result', '·build', '·publish', '·finish']);
-        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true }), ['✓hp', '✓result', '✓build', '▶publish', '·finish']);
-        assert.deepEqual(st({ hpFreshMin: 5, missing: 0, built: true, published: true }), ['✓hp', '✓result', '✓build', '✓publish', '·finish'], '全部済んだのに任意の締め凸検索を「いま」にした');
-        assert.deepEqual(st({ hpFreshMin: null, missing: null }), ['▶hp', '·result', '·build', '·publish', '·finish'], '分からないのを済んだにした');
-        assert.deepEqual(st({ hpFreshMin: 30, missing: 0 }).slice(0, 2), ['▶hp', '✓result'], '30 分ちょうど (HP 更新のピルは ⚠) を済にした');
-        assert.deepEqual(st({ hpFreshMin: 29, missing: 0 }).slice(0, 2), ['✓hp', '✓result']);
-        // ⏳ (flex) の凸で届いたら、撃破の時刻は出さない (時刻を約束していない)
-        const flexRow = d.blockBoardRows({ startLevel: 1, levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'B1', targetHpB: 30, attacks: [
-            { memberId: 1, memberName: 'あ', dmgB: 20, hourIdx: 13, loadoutSlot: 1 }, { memberId: 2, memberName: 'い', dmgB: 15, hourIdx: 14, flex: true, loadoutSlot: 1 }] }] }] }, { fromIdx: 13, toIdx: 15 })[0];
-        assert.deepEqual([flexRow.killed, flexRow.killHourIdx], [true, null], '⏳ の凸の仮の時刻を撃破の時刻にした');
     });
     test('★ 🧱 段階 8 planChainDomain.projectBoard: ブロックの凸を実行したことにして盤面を進める — 残 HP は min(ダメージ, 残り) / 5 体倒れたら次のレベル (HP は表) / Lv3 踏破で Lv4 はボス 5 無限 / 済んだ凸と使ったキャラを人に足す / 予想の報告時刻はその時刻', () => {
         const d = globalThis.planChainDomain;
@@ -13783,7 +13400,7 @@ console.log('\n🧱 ブロックの設定 (👑 マスター・2026-10-30: 文�
         assert.match(String(r.err?.message), /dup \(参加可能時間はもう空にしてあります\)/, '作れなかったときに「もう空にしてある」と言っていない');
     });
     test('★ 見張り: name から文を組まない (label.slice 0 件) / ブロックを写す所が 5 つの欄を持つ (決定の控え・時間割・blockScope 3 か所・〆・blockStates / todayRows)', () => {
-        const dom = ['decidePlan', 'raidBlocks', 'mockIntake', 'reservations', 'blockBuild', 'resultIntake', 'planBoard', 'publishedPlans'].map(n => _fs9.readFileSync(`js/domain/${n}.js`, 'utf8').replace(/\r\n/g, '\n')).join('\n');
+        const dom = ['decidePlan', 'raidBlocks', 'mockIntake', 'reservations', 'blockBuild', 'resultIntake', 'publishedPlans'].map(n => _fs9.readFileSync(`js/domain/${n}.js`, 'utf8').replace(/\r\n/g, '\n')).join('\n');
         assert.equal((html.match(/label\.slice\(/g) || []).length + (dom.match(/label\.slice\(/g) || []).length, 0, 'label.slice が残っている (先頭に文字が付くと崩れる)');
         const dp = _fs9.readFileSync('js/domain/decidePlan.js', 'utf8').replace(/\r\n/g, '\n');
         assert.equal((dp.match(/letter: blk\.letter \|\| null, name: blk\.name \|\| null, short: blk\.short \|\| blk\.name \|\| null, range: blk\.range \|\| null, label: blk\.label \|\| key/g) || []).length, 2, '決定の控え・時間割に 5 つの欄を写していない');
@@ -15559,7 +15176,7 @@ console.log('\n🧹 ボタンの監査 (2026-10-29): 同じ意味のボタンは
         const hr = fnB('async function handleHeaderReload()', '\n        }\n');
     });
     test('★ 運営タブ: 従来の算出・配信はシンプルな画面で出さない / ⏳ は外に / ヒーローは同じタブのカードなら文だけ / 🔔 疎通確認の入口がいつもある', () => {
-        const hero = fnB('        function _opsStageHeroHtml(h, stage) {', '        function _opsStageListHtml(');
+        const hero = fnB('        function _opsStageHeroHtml(h, stage) {', '        // ===== 🧱 段階 2.5: 運営タブのサブタブ');
         assert.ok(/const here = !!\(card && lay && typeof lay\.tabOf === 'function' && typeof _opsTabNow === 'function' && lay\.tabOf\(card\) === _opsTabNow\(stage\)\);/.test(hero) && /hp: 'opsSecBoss'/.test(hero) && /pushcheck: 'opsSecPush'/.test(hero), 'ヒーローが同じタブのカードのボタンと 2 つになる');
         assert.ok(/if \(masterAct && !isMaster\) \{/.test(hero), '運営担当にマスターの作業のボタンを出す (押してもトーストだけ)');
         assert.equal((after.match(/onclick="openOpsPushCheckModal\(\)"/g) || []).length, 1, '🔔 疎通確認のいつもある入口が無い');
