@@ -14809,7 +14809,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/const pieceKey = escapeHtml\(`\$\{a\.memberId\}:\$\{r\.weakness\}:\$\{Number\(a\.loadoutSlot\) \|\| 1\}`\);/.test(r), '駒の鍵がピースの鍵と違う');
         assert.ok(/aria-label="\$\{nm\} の駒の詳細"/.test(r) && /押すと詳細 \(外すのは ✕\)/.test(r) && !/押すと外れます/.test(r), '本体の読み上げ・説明が「外す」のまま');
         assert.ok(/const pinHint = o\.rows\.some\(r => r\.pieces\.length\)/.test(r) && r.includes('駒の本体を押すと詳細 (外れません)・✕ で 1 個ずつ外せます') && /const howBody = \[[^\n]*pinHint[,\]]/.test(r) && /_qh\('ob-board', stateNote \? '駒の外し方' : \(pinHint \? '幅 = ダメージ · 押すと詳細 · ✕ で外す'/.test(r) && /\$\{boardHelp\}/.test(r), '盤の近くの案内が無い (段階 3 続き: 盤のすぐ上の「？」の中)');
-        assert.ok(/\.obpc\.pin \{ min-width: 44px; padding: 0; \}/.test(html) && /\.obpc\.pin\.hand \{ border-bottom:/.test(html) && /\.obpc-x \{[^}]*min-width: 22px;/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
+        assert.ok(/\.obpc\.pin \{ min-width: 52px; padding: 0; \}/.test(html) && /\.obpc\.pin\.hand \{ border-bottom:/.test(html) && /\.obpc-x \{[^}]*min-width: 28px;/.test(html), '細い駒で ✕ が押せない / 手で置いた駒と自動の駒が見分けられない');
         // 最小幅の駒が並ぶと行の右で切れて ✕ に届かない (overflow: hidden) → 🧱 組む の盤だけ折り返す (Codex 指摘)
         assert.ok(/#opsBuild \.obr-bar \{ flex-wrap: wrap; height: auto; min-height: 28px; \}/.test(html) && /#opsBuild \.obpc \{ height: 28px; \}/.test(html), '行に収まらない駒が切れて ✕ を押せない');
         const d = fnU('function _obDelegate(host)', "host.addEventListener('dragstart'");
@@ -14878,6 +14878,12 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.deepEqual(keys(m._obTrayTiles(ctx)), ['a', 'c', 'd'], '属性を 2 つ押したら両方を出す');
         m._obTray.attrs.clear(); m._obTray.min = 20; m._obTray.max = 28.4;
         assert.deepEqual(keys(m._obTrayTiles(ctx)), ['a', 'c', 'd', 'e'], 'ダメージの範囲を画面の 1 桁 (19.96 → 20.0・28.4) で比べていない');
+        // 0.15 は画面では「0.1B」(toFixed) — Math.round(x × 10) だと 0.2 になって、下限 0.2 で残っていた (Codex 監査)
+        m._obTray.min = 0.2; m._obTray.max = null;
+        assert.deepEqual(keys(m._obTrayTiles({ ...ctx, tray: [P('x', 'fire', 0.15)] })), [], '画面に「0.1B」と出す値を下限 0.2 で残した (表示と違う丸め)');
+        m._obTray.min = null; m._obTray.max = 0.1;
+        assert.deepEqual(keys(m._obTrayTiles({ ...ctx, tray: [P('x', 'fire', 0.15)] })), ['x'], '画面に「0.1B」と出す値を上限 0.1 で外した');
+        m._obTray.max = null;
         m._obTray.min = null; m._obTray.max = 19;
         t = m._obTrayTiles(ctx);
         assert.deepEqual([keys(t), /絞り込みに合うピースがありません/.test(t.html)], [[], true], '合うピースが無いときに理由を言わない');
@@ -14915,7 +14921,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
             const _ob = { plans: new Map(o.plans || []), skip: new Map(o.skip || []), stale: new Set(), pins: o.pins === undefined ? [] : o.pins, peers: o.peers || [], busy: false, sel: null, pinsSeason: 47,
                 idx: 1, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, openKey: null, openAt: 0 };
             const w = { planChainDomain: { attacksIn: () => [1, 2, 3] },
-                supabaseSaveBuildDraft: async (...a) => { env.saves.push(a); return true; },
+                supabaseSaveBuildDraft: async (...a) => { env.saves.push(a); if (o.saveGate && env.saves.length === 1) await o.saveGate; return true; },
                 supabaseLoadBuildDrafts: async () => (o.load === undefined ? (o.peers || []) : o.load) };
             const ctx = { first: o.first ?? 0, blocks, idx: 1, tray: [] };
             const doc = { getElementById: () => ({ offsetParent: {} }) };
@@ -14959,6 +14965,17 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })], [1, P('t1', 'fp1')]], skip: [[0, new Set(['x'])], [1, new Set(['y'])]] });
         await m._obDraftPush();
         assert.deepEqual([Object.keys(m.env.saves[0][3].plans), Object.keys(m.env.saves[0][3].skip), m.env.saves[0][2]], [['1'], ['1'], 'draft'], '決定から読み戻したブロックまで載せた');
+        // ★ 保存は 1 本ずつ: 走っている間の保存は終わってから最新でもう一度 (古い保存が新しい保存のあとに着いて上書きしない: Codex 監査)
+        {
+            let release; const gate = new Promise(r => { release = r; });
+            const m2 = mk({ plans: [[1, P('t1', 'fp1')]], saveGate: gate });
+            const p1 = m2._obDraftPush();   // 1 本目は通信の途中で止まる
+            m2._ob.plans.set(1, P('t2', 'fp1'));
+            await m2._obDraftPush();        // 走っている間に頼む → 終わってから最新でもう一度
+            assert.equal(m2.env.saves.length, 1, '走っている間に 2 本目を同時に送った (古い保存があとに着いて上書きし得る)');
+            release(); await p1;
+            assert.deepEqual(m2.env.saves.map(x => x[3].plans[1].builtAt), ['t1', 't2'], '保存の間に頼んだ最新の下書きを置いていない');
+        }
         // 指紋: 決定から読み戻しただけなら '' (置かない)・プランを入れ替えたら変わる
         m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })]] });
         assert.equal(m._obDraftSig(), '');
@@ -15225,11 +15242,12 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
             const w = {
                 raidBlocksDomain: rb, decidePlanDomain: dp, attackCheckDomain: ac, opsStageDomain: globalThis.opsStageDomain, ...(o.noBb ? {} : { blockBuildDomain: globalThis.blockBuildDomain }),
                 supabaseClaimRaidNotice: async (sid, kind, ref) => { claims.push(`${kind}:${ref}`); return o.claim || 'claimed'; },
-                supabaseMarkRaidNoticeSent: async () => {}, supabaseReleaseRaidNotice: async (sid, kind, ref) => { released.push(ref); },
+                supabaseMarkRaidNoticeSent: async () => (o.markFail ? false : true), supabaseReleaseRaidNotice: async (sid, kind, ref) => { released.push(ref); },
                 supabaseGetPublishedPlans: async () => (o.pubs || [pub]),
                 supabaseLoadAttackSkips: async () => (o.skips === undefined ? new Set() : o.skips),
                 supabaseLoadRaidNotices: async () => (o.sentRows === undefined ? [] : o.sentRows),
-                supabaseLoadMyAttacks: async (id) => ((o.my && o.my[id]) || players.find(p => String(p.id) === String(id))?.attacks || []),
+                // myAfter = 確認 (プレビュー) のあとに読み直したときの凸 (確認を開いている間に ✓ が付いた)
+                supabaseLoadMyAttacks: async (id) => ((previews.length && o.myAfter && o.myAfter[id]) || (o.my && o.my[id]) || players.find(p => String(p.id) === String(id))?.attacks || []),
                 sendPushNotification: async (m) => { if (o.sendFail) throw new Error('x'); sent.push(m); },
             };
             const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', 'showNotification', 'showPushPreview', 'PT_ATTRS',
@@ -15279,8 +15297,21 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { pubs: [pubB] })).sent, [], '決めていないブロックで送っている');
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { pubs: [pub, { id: 91, season_id: 47, plan: { levels: [] } }] })).sent, [], '最新が従来の配信なのに送っている');
         // ★ 送った人には送らない (もう一度押すと、まだの人にだけ)・送った記録が読めなければ送らない
-        r = await run('2026-11-28T08:43:00+09:00', { sentRows: [{ kind: 'rebuild_start', ref: '5-8|1' }] });
+        r = await run('2026-11-28T08:43:00+09:00', { sentRows: [{ kind: 'rebuild_start', ref: '5-8|1', sent: true }] });
         assert.deepEqual([r.sent, r.previews.length], [[], 0], '送った人にもう一度送っている');
+        // ★ 確保しただけの行 (sent:false = 送る前に落ちた端末) は送っていない — 確保に任せる (リースの間は held で飛ばす・切れたら引き継ぐ: Codex 監査)
+        r = await run('2026-11-28T08:43:00+09:00', { sentRows: [{ kind: 'rebuild_start', ref: '5-8|1', sent: false }] });
+        assert.deepEqual([r.sent.map(m => m.playerIds), r.claims], [[['1']], ['rebuild_start:5-8|1']], '確保しただけの行を「送った」に数えた (送る前に落ちた人に二度と送れない)');
+        r = await run('2026-11-28T08:43:00+09:00', { sentRows: [{ kind: 'rebuild_start', ref: '5-8|1', sent: false }], claim: 'held' });
+        assert.deepEqual([r.sent, /送っている途中の 1 人は飛ばしました/.test(r.notes.join())], [[], true]);
+        // ★ 確認を開いている間に凸を済ませた人には送らない・数が変わったら文を作り直す (Codex 監査)
+        r = await run('2026-11-28T08:43:00+09:00', { myAfter: { 1: [{ plan_key: pk(1, 1), boss_number: 1, level: 1 }, { plan_key: pk(1, 2, 2), boss_number: 2, level: 1 }] } });
+        assert.deepEqual([r.sent, r.claims, /確かめている間に凸が済んだ 1 人には送っていません/.test(r.notes.join())], [[], [], true], '確認のあとに済んだ人に「まだ」と送った');
+        r = await run('2026-11-28T08:43:00+09:00', { myAfter: { 1: [{ plan_key: pk(1, 1), boss_number: 1, level: 1 }] } });
+        assert.match(r.sent[0].body, /A 朝 の凸が 1 凸あります/, '確認のあとに数が変わったのに前の文のまま');
+        // ★ 完了の記録に失敗したら言う (2 通目が届くことがある)
+        r = await run('2026-11-28T08:43:00+09:00', { markFail: true });
+        assert.ok(r.sent.length === 1 && /送った記録を残せませんでした/.test(r.notes.join()), '記録の失敗を言わない');
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { sentRows: null })).sent, [], '送った記録が読めないのに送っている');
         // ★ 確認でやめたら送らない・確保もしない
         r = await run('2026-11-28T08:43:00+09:00', { cancel: true });
@@ -15297,7 +15328,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         r = await run('2026-11-28T06:00:00+09:00', { mode: 'block' });
         assert.deepEqual(r.sent.map(m => m.playerIds), [['1']]);
         assert.equal(r.sent[0].body, 'あなたの凸: A 朝 5〜8:40 Lv1 B1 編成① / A 朝 5〜8:40 Lv1 B2 編成②。レイド予定表で確認できます。');
-        assert.deepEqual((await run('2026-11-28T09:05:00+09:00', { mode: 'block', sentRows: [{ kind: 'block_start', ref: '9-12|4' }] })).sent, [], 'ブロックの始まりを送った人にもう一度送っている');
+        assert.deepEqual((await run('2026-11-28T09:05:00+09:00', { mode: 'block', sentRows: [{ kind: 'block_start', ref: '9-12|4', sent: true }] })).sent, [], 'ブロックの始まりを送った人にもう一度送っている');
         // ★ 自動では送らない: 見回りから呼ばない・時間で送る関数が無い
         assert.ok(!/_checkRebuildStart|REBUILD_NOTICE_DELAY/.test(html), '自動の再編成の知らせが残っている');
         assert.ok(/if \(_opsMode && document\.getElementById\('opsSecNotify'\)\?\.offsetParent != null && typeof renderOpsNotify === 'function'\) renderOpsNotify\(\);/.test(html), '見回りで 📣 当日の知らせ を描き直していない (時間で変わる)');

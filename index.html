@@ -2974,12 +2974,12 @@
         #opsBuild .obr-bar { flex-wrap: wrap; height: auto; min-height: 28px; }
         #opsBuild .obpc { height: 28px; }
         /* ① 2026-11-27 ふるり「置いたピースの詳細を外さずに見たい」: 駒 = 本体 (押すと 🧭 詳細・外れない) + ✕ (外す) の 2 つのボタン。外すのは ✕ だけ */
-        .obpc.pin { min-width: 44px; padding: 0; }
+        .obpc.pin { min-width: 52px; padding: 0; }
         .obpc.pin.hand { border-bottom: 3px solid rgba(var(--ink-rgb), 0.6); }   /* 手で置いた駒の印 (🧮 でも動かない)。自動の駒と見分ける */
         .obpc-b { flex: 1 1 auto; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0 2px 0 5px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
         .obpc-b.peek { box-shadow: inset 0 0 0 2px currentColor; }   /* 🧭 にいま詳細を出している駒 */
         .obpc-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        .obpc-x { flex: none; height: 100%; display: inline-flex; align-items: center; justify-content: center; min-width: 22px; padding: 0 5px; border: 0; background: rgba(var(--ink-rgb), 0.16); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+        .obpc-x { flex: none; height: 100%; display: inline-flex; align-items: center; justify-content: center; min-width: 28px; padding: 0 6px; border: 0; background: rgba(var(--ink-rgb), 0.16); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
         /* 決定の盤 (⚔️ ✓ 凸の記録・📅 レイド予定表・2026-10-28): 組むと同じ部品。過ぎたブロックも押せる (.was)・行は押せない (.ro)・
            完了の駒は濃く (.ok)・自分の駒は太い枠 (.me)・押すのは帯の下の名前の札 (.db-tag) */
         .obb.was { opacity: .8; }
@@ -7481,7 +7481,7 @@
         // その kind で送った (確保した) ref の Set。読めていなければ null (= 分からない)
         function _opsNtfSentRefs(kind, sid) {
             if (!Array.isArray(_opsNtf.sent) || Number(_opsNtf.sentSeason) !== Number(sid)) return null;
-            return new Set(_opsNtf.sent.filter(r => r.kind === kind).map(r => r.ref));
+            return new Set(_opsNtf.sent.filter(r => r.kind === kind && r.sent).map(r => r.ref));   // 確保しただけ (sent:false) は送っていない (リースが切れたら引き継げる: Codex 監査)
         }
         // 📊 戦況のまとめの文面 (盤面そのもの = raidEventsDomain.digestText。時刻は押したいま)
         function _opsDigestMsg(snap) {
@@ -7613,6 +7613,8 @@
             showNotification(`📊 戦況のまとめを送りました${Number.isFinite(Number(res?.sent)) ? ` (${res.sent} 端末)` : ''}`);
         }
         // ⏱ 再編成の始まり (mode 'rebuild'・Q13 / 第46回の反省 ⑥) / 🧱 ブロックの始まり (mode 'block') を、そのブロックの決定で凸がまだの人へ 1 通ずつ
+        //   ★ 送ったことにするのは sent = true の行だけ (確保しただけの行は、送る前に落ちた端末のもの = リースが切れたら引き継いで送る: Codex 監査 ③ 高)
+        //   ★ 確認 (showPushPreview) のあとにも本人の凸を読み直す — 確認を開いている間に凸を済ませた人に「まだ」と送らない・凸の数が変わったら文を作り直す (Codex 監査 ③ 中)
         async function _opsSendBlockNotice(mode) {
             const rbd = window.raidBlocksDomain, dp = window.decidePlanDomain;
             const board = opsStore.get(), season = board?.season;
@@ -7630,23 +7632,21 @@
             if (!(skips instanceof Set)) { showNotification('⚠️ 「凸していない」の印を読めませんでした (片付けた人にも送ってしまうので止めました)。もう一度押してください'); return; }
             const sentRows = await window.supabaseLoadRaidNotices?.(season.id, [kindKey]);
             if (!Array.isArray(sentRows)) { showNotification('⚠️ 送った記録を読めませんでした (同じ人に 2 回送らないように止めました)。もう一度押してください'); return; }
-            const sentRefs = new Set(sentRows.map(r => r.ref));
+            const sentRefs = new Set(sentRows.filter(r => r.sent).map(r => r.ref));
             const planned = _opsNtfPlanned(season, pub, bkey);
             const rowsBy = dp.rowsOf(pub.plan, blocks);
             const next = blocks[c0.ph.attackIdx];
             const ptName = (w) => PT_ATTRS.find(x => x.key === w)?.name || '';
-            const targets = [];
-            for (const [memberId] of _opsNtfLeft(planned, _raidDoneKeys(board, blocks, pub.plan), skips, pub.id)) {
-                const ref = `${bkey}|${memberId}`;
-                if (sentRefs.has(ref)) continue;   // もう送った (同じブロックで同じ人に 2 回送らない)
-                // 送る直前に本人の凸で決め直す (別の端末で ✓ / 報告が入ったかもしれない)。読めなければ送らない (済んだ人に「まだ」と送らない側)
+            // 本人の凸を読み直して、まだの凸 (planned の行) を返す。読めなければ null (= 送らない側)
+            const mineOf = async (memberId) => {
                 let atks = null;
                 try { atks = await window.supabaseLoadMyAttacks?.(memberId, season.id, season.hard_date); } catch { atks = null; }
-                if (!Array.isArray(atks)) continue;
-                const mine = (_opsNtfLeft(planned, _raidDoneKeys({ players: [{ id: memberId, attacks: atks }] }, blocks, pub.plan), skips, pub.id).get(memberId) || []);
-                if (!mine.length) continue;
+                if (!Array.isArray(atks)) return null;
+                return _opsNtfLeft(planned, _raidDoneKeys({ players: [{ id: memberId, attacks: atks }] }, blocks, pub.plan), skips, pub.id).get(memberId) || [];
+            };
+            // 文面 (まだの凸から作る — 確認のあとに数が変わったら作り直す)
+            const msgOf = (memberId, mine) => {
                 const pl = board.players.find(x => String(x.id) === memberId);
-                const name = pl?.name || String(memberId);
                 if (rebuild) {
                     // 後ろのブロックに出られるか (⑥ レビュー notify-1 / flow-5: 「このブロックのみ」の人にも「組み直します」と約束していた)。分からなければ言い切らない
                     const later = (pl && window.blockBuildDomain?.availableBlocks) ? window.blockBuildDomain.availableBlocks(pl, blocks).some(i => i > c0.ph.idx) : null;
@@ -7659,18 +7659,26 @@
                         : (later === true || (hasCounts && aheadIdx.length)) ? `残りは運営が ${nx} 以降で組み直します。`
                         : later === false ? `${nx} 以降に出られる時間が登録されていないので、残りは組まれません (出られるなら Discord で運営へ)。`
                         : `残りは、${nx} 以降に出られれば運営が組み直します。`;
-                    targets.push({ memberId, name, ref, url: './?tab=raid', tag: `rebuild-${season.id}-${bkey}-${memberId}`,
+                    return { url: './?tab=raid', tag: `rebuild-${season.id}-${bkey}-${memberId}`,
                         title: `⏱ ${blk.short} の凸は ${blk.rebuild.from} まで`,
-                        body: `いまから ${blk.rebuild.to} までは再編成時間です (凸しない時間)。運営の記録ではまだ ✓ の無い ${blk.short} の凸が ${mine.length} 凸あります。もう凸して Discord に貼ったなら、そのままで大丈夫です (運営が ✓ を付けます)。まだなら、${rest}` });
-                } else {
-                    // あなたの凸の行 (決定の通知と同じ言い方 = decidePlanDomain.lineText)。まだの凸だけ
-                    const keys = new Set(mine.map(p => p.planKey));
-                    const lines = (rowsBy.get(memberId) || []).filter(r => r.block === bkey && keys.has(dp.planKey({ block: r.block, level: r.level, bossNumber: r.bossNumber, memberId, loadoutSlot: r.slot })))
-                        .map(r => dp.lineText(r, ptName));
-                    targets.push({ memberId, name, ref, url: './?tab=raid', tag: `block-start-${season.id}-${bkey}-${memberId}`,
-                        title: `🧱 ${blk.short} が始まりました`,
-                        body: `あなたの凸: ${lines.length ? lines.join(' / ') : `${mine.length} 凸`}。レイド予定表で確認できます。` });
+                        body: `いまから ${blk.rebuild.to} までは再編成時間です (凸しない時間)。運営の記録ではまだ ✓ の無い ${blk.short} の凸が ${mine.length} 凸あります。もう凸して Discord に貼ったなら、そのままで大丈夫です (運営が ✓ を付けます)。まだなら、${rest}` };
                 }
+                // あなたの凸の行 (決定の通知と同じ言い方 = decidePlanDomain.lineText)。まだの凸だけ
+                const keys = new Set(mine.map(p => p.planKey));
+                const lines = (rowsBy.get(memberId) || []).filter(r => r.block === bkey && keys.has(dp.planKey({ block: r.block, level: r.level, bossNumber: r.bossNumber, memberId, loadoutSlot: r.slot })))
+                    .map(r => dp.lineText(r, ptName));
+                return { url: './?tab=raid', tag: `block-start-${season.id}-${bkey}-${memberId}`,
+                    title: `🧱 ${blk.short} が始まりました`,
+                    body: `あなたの凸: ${lines.length ? lines.join(' / ') : `${mine.length} 凸`}。レイド予定表で確認できます。` };
+            };
+            const targets = [];
+            for (const [memberId] of _opsNtfLeft(planned, _raidDoneKeys(board, blocks, pub.plan), skips, pub.id)) {
+                const ref = `${bkey}|${memberId}`;
+                if (sentRefs.has(ref)) continue;   // もう送った (同じブロックで同じ人に 2 回送らない)
+                const mine = await mineOf(memberId);   // 送る直前に本人の凸で決め直す (別の端末で ✓ / 報告が入ったかもしれない)
+                if (!mine || !mine.length) continue;
+                const pl = board.players.find(x => String(x.id) === memberId);
+                targets.push({ memberId, name: pl?.name || String(memberId), ref, ...msgOf(memberId, mine) });
             }
             if (!targets.length) { showNotification(sentRefs.size ? '送る人はいません (まだの人には送ってあります)' : '送る人はいません'); return; }
             // 宛先と文面を見せてから (同じ文面はまとめる)
@@ -7682,23 +7690,33 @@
             if (!(await showPushPreview(groups))) return;
             if (!phaseOk(_opsNtfPhase(season)) || _opsNtfPhase(season).ph.idx !== c0.ph.idx) { showNotification('⏱ 確かめている間に時間が進みました。送っていません (画面を合わせたので、もう一度押してください)'); return; }
             const me = getCurrentIdentity();
-            let sent = 0, skipped = 0, failed = 0;
+            let sent = 0, skipped = 0, failed = 0, doneMeanwhile = 0, unmarked = 0;
             for (const t of targets) {
                 try {
+                    // 確認のあとにも読み直す: 確認を開いている間に凸を済ませた人には送らない・数が変わったら文を作り直す
+                    const mine = await mineOf(t.memberId);
+                    if (!mine || !mine.length) { doneMeanwhile += 1; continue; }
+                    const m = msgOf(t.memberId, mine);
                     const st = await window.supabaseClaimRaidNotice(season.id, kindKey, t.ref, me?.id);
                     if (st !== 'claimed') { skipped += 1; continue; }   // 'done' = 送信済み / 'held' = 別の端末が送信中
                     try {
-                        await window.sendPushNotification({ title: t.title, body: t.body, url: t.url, tag: t.tag, ignoreAvailability: true, playerIds: [t.memberId] }, { senderPlayerId: me?.id || null });
-                        await window.supabaseMarkRaidNoticeSent(season.id, kindKey, t.ref);
-                        sent += 1;
+                        await window.sendPushNotification({ title: m.title, body: m.body, url: m.url, tag: m.tag, ignoreAvailability: true, playerIds: [t.memberId] }, { senderPlayerId: me?.id || null });
                     } catch (e) {
                         console.warn('[ops notify] 送信失敗 (確保を戻す):', e?.message || e);
                         failed += 1;
                         await window.supabaseReleaseRaidNotice(season.id, kindKey, t.ref);
+                        continue;
                     }
+                    sent += 1;
+                    // 完了の記録に失敗した人は言う (記録が無いと、リースが切れたあとにもう一度押すとその人に 2 通目が届く: Codex 監査 ③ 高)
+                    if ((await window.supabaseMarkRaidNoticeSent(season.id, kindKey, t.ref)) === false) unmarked += 1;
                 } catch (e) { failed += 1; console.warn('[ops notify] 1人分をskip:', t.memberId, e?.message || e); }
             }
-            showNotification(`${rebuild ? '⏱ 再編成の始まり' : `🧱 ${blk.short} の始まり`}を ${sent} 人に送りました${skipped ? ` (ほかの運営が送った ${skipped} 人は飛ばしました)` : ''}${failed ? ` — ⚠ ${failed} 人は送れませんでした (もう一度押すと送り直します)` : ''}`);
+            showNotification(`${rebuild ? '⏱ 再編成の始まり' : `🧱 ${blk.short} の始まり`}を ${sent} 人に送りました`
+                + `${doneMeanwhile ? ` (確かめている間に凸が済んだ ${doneMeanwhile} 人には送っていません)` : ''}`
+                + `${skipped ? ` (ほかの運営が送った / 送っている途中の ${skipped} 人は飛ばしました)` : ''}`
+                + `${failed ? ` — ⚠ ${failed} 人は送れませんでした (もう一度押すと送り直します)` : ''}`
+                + `${unmarked ? ` — ⚠ ${unmarked} 人は送りましたが、送った記録を残せませんでした (2 分ほどあとにもう一度押すと、その人にもう一度届きます)` : ''}`);
         }
 
         // ---- GB比較 (しりすこPAD GB のシーズン凍結スナップショット) ----
@@ -15483,7 +15501,7 @@
             skip: new Map(),   // ブロックの添字 → 外した駒の鍵 (人:属性:編成) の Set。🧮 で戻さない (端末のメモリだけ・置き直すか やり直す で消える: 2026-10-31 ふるり)
             notifySame: false,   // 「変更なしでも割当のある人に通知する」(2026-11-02 ふるり Q1 のスイッチ・既定 OFF・端末のメモリだけ)
             lockOpen: null,   // 「このブロックのみ / 最後」の段を開いているか (null = 既定で開く・畳んだら覚える・端末のメモリだけ)
-            peers: null, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, openKey: null, openAt: 0 };   // ② 📝 ほかの運営の下書きと札 (SQL 60)・自分の下書きを置く
+            peers: null, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, draftBusy: false, draftAgain: false, openKey: null, openAt: 0 };   // ② 📝 ほかの運営の下書きと札 (SQL 60)・自分の下書きを置く
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
@@ -16006,6 +16024,12 @@
             _ob.draftTimer = setTimeout(() => { _obDraftPush().catch(() => { /* 次に変わったとき */ }); }, 1500);
         }
         async function _obDraftPush() {
+            if (_ob.draftBusy) { _ob.draftAgain = true; return; }   // 走っている保存のあとに最新でもう一度 (Codex 監査: 通信の順が逆転すると古い下書きが残った)
+            _ob.draftBusy = true;
+            try { do { _ob.draftAgain = false; await _obDraftPushOnce(); } while (_ob.draftAgain); }
+            finally { _ob.draftBusy = false; }
+        }
+        async function _obDraftPushOnce() {
             const sid = _ob.pinsSeason, me = getCurrentIdentity();
             if (!sid || !me?.id || !_opsMode || typeof window.supabaseSaveBuildDraft !== 'function') return;
             const plans = {}, skip = {};
@@ -16138,7 +16162,7 @@
             const bossNo = new Map((opsStore.get()?.bosses || []).map(b => [b.weakness, Number(b.boss_number)]));
             const viewKey = (_ob.view && _ob.view.idx === idx) ? _ob.view.key : null;   // 🧭 見ているだけのピース (選べないピースを押した) に印
             const f = _obTray, filtered = f.attrs.size > 0 || f.min != null || f.max != null;
-            const dmg1 = (p) => Math.round((Number(p.dmgB) || 0) * 10) / 10;   // 画面の 1 桁で比べる (28.04B を「28.0B」と出して 28 で外さない)
+            const dmg1 = (p) => Number((Number(p.dmgB) || 0).toFixed(1));   // 画面の表示 (toFixed(1)) と同じ値で比べる (1.15 を「1.1B」と出して下限 1.2 で残さない: Codex 監査)
             let list = tray.filter(p => (!f.attrs.size || f.attrs.has(p.attr)) && (f.min == null || dmg1(p) >= f.min) && (f.max == null || dmg1(p) <= f.max));
             const byIdx = (arr, cmp) => arr.map((p, i) => [p, i]).sort((x, y) => cmp(x[0], y[0]) || (x[1] - y[1])).map(x => x[0]);   // 同じなら いつもの順 (安定)
             if (f.sort === 'dmg') list = byIdx(list, (x, y) => dmg1(y) - dmg1(x));

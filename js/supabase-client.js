@@ -2964,13 +2964,14 @@ window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId
     return 'held';
 };
 
-// 送信まで完了したことを記録する (これが立つと以後は誰も引き継がない)
+// 送信まで完了したことを記録する (これが立つと以後は誰も引き継がない)。戻り値: true = 記録した / false = 記録できなかった (📣 当日の知らせ が言う・2026-11-27)
 window.supabaseMarkRaidNoticeSent = async function (seasonId, kind, ref) {
-    if (!seasonId || !kind || !ref) return;
+    if (!seasonId || !kind || !ref) return false;
     const { error } = await supabase.from('raid_event_notices')
         .update({ sent: true })
         .eq('season_id', seasonId).eq('kind', kind).eq('ref', ref);
-    if (error) console.warn('[raid notice] 送信済みの記録に失敗:', error.message);
+    if (error) { console.warn('[raid notice] 送信済みの記録に失敗:', error.message); return false; }
+    return true;
 };
 
 // 確保の取り消し。
