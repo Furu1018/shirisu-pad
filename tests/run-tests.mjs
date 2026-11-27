@@ -14976,6 +14976,17 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
             release(); await p1;
             assert.deepEqual(m2.env.saves.map(x => x[3].plans[1].builtAt), ['t1', 't2'], '保存の間に頼んだ最新の下書きを置いていない');
         }
+        // ★ 走っている間にシーズンが変わったら、前のシーズンの「もう一度」は捨てる (新しいシーズンの下書きを空で上書きしない: Codex 再監査)
+        {
+            let release; const gate = new Promise(r => { release = r; });
+            const m3 = mk({ plans: [[1, P('t1', 'fp1')]], saveGate: gate });
+            const p1 = m3._obDraftPush();
+            m3._ob.plans.set(1, P('t2', 'fp1'));
+            await m3._obDraftPush();   // 前のシーズン (47) の「もう一度」
+            m3._ob.pinsSeason = 48; m3._ob.plans.clear();   // シーズンが変わった (renderOpsBuild が手元を空にする)
+            release(); await p1;
+            assert.deepEqual(m3.env.saves.map(x => x[0]), [47], '前のシーズンの「もう一度」が新しいシーズンの下書きを空で上書きした');
+        }
         // 指紋: 決定から読み戻しただけなら '' (置かない)・プランを入れ替えたら変わる
         m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })]] });
         assert.equal(m._obDraftSig(), '');
@@ -15011,7 +15022,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/\$\{_obDraftBannerHtml\(ctx, idx\)\}\$\{_obGapNoteHtml\(snap\)\}\$\{boardHelp\}/.test(r) && /peerOpen\.has\(i\) \? `<span class="obb-who">👤 /.test(r), '下書きの知らせ / 👤 の札を描いていない');
         assert.ok(/const ds = _obDraftSig\(\); if \(ds !== _ob\.draftSig\) \{ const first = _ob\.draftSig == null; _ob\.draftSig = ds; if \(!first \|\| ds !== ''\) _obDraftSchedule\(\); \}/.test(r), '自分の 🧮 の結果が変わっても下書きを置き直さない');
         assert.ok(/const dft = e\.target\.closest\('\[data-ob-draft\]'\); if \(dft\) \{ _obDraftImport\(dft\.dataset\.obDraft\); return; \}/.test(html), '取り込むボタンが効かない');
-        assert.ok(/_ob\.peers = null; _ob\.peersSig = null; _ob\.draftSig = null; _ob\.openKey = null; clearTimeout\(_ob\.draftTimer\);/.test(html), 'シーズンが変わっても前の下書き・札を持ち越す');
+        assert.ok(/_ob\.peers = null; _ob\.peersSig = null; _ob\.draftSig = null; _ob\.draftAgain = null; _ob\.openKey = null; clearTimeout\(_ob\.draftTimer\);/.test(html), 'シーズンが変わっても前の下書き・札・「もう一度」を持ち越す');
     });
     test('★ 手で置いただけのブロックも ✅ 決定できる (🧮 を押さなくてよい) / 空のブロックは飛ばす / 決定のあとは読み戻した扱い / 凸が減ると確認で言う', () => {
         const rg = fnU('function _obDecideRange(first, count, ov)', '// 範囲のうち、今回決めるブロック');

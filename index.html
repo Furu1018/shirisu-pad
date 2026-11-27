@@ -15501,7 +15501,7 @@
             skip: new Map(),   // ブロックの添字 → 外した駒の鍵 (人:属性:編成) の Set。🧮 で戻さない (端末のメモリだけ・置き直すか やり直す で消える: 2026-10-31 ふるり)
             notifySame: false,   // 「変更なしでも割当のある人に通知する」(2026-11-02 ふるり Q1 のスイッチ・既定 OFF・端末のメモリだけ)
             lockOpen: null,   // 「このブロックのみ / 最後」の段を開いているか (null = 既定で開く・畳んだら覚える・端末のメモリだけ)
-            peers: null, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, draftBusy: false, draftAgain: false, openKey: null, openAt: 0 };   // ② 📝 ほかの運営の下書きと札 (SQL 60)・自分の下書きを置く
+            peers: null, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, draftBusy: false, draftAgain: null, openKey: null, openAt: 0 };   // draftAgain = もう一度保存するシーズン (null = 無し)   // ② 📝 ほかの運営の下書きと札 (SQL 60)・自分の下書きを置く
         // 操作の途中でシーズンが変わったら (epoch が進む)、古いシーズンの結果を _ob に書かない (Codex 監査)
         const _obSame = (epoch, sid) => _ob.epoch === epoch && _ob.pinsSeason === sid;
         // ブロックの駒 (📌・約束) の指紋。自動で組んだときの指紋と違えば、その自動の結果は古い (別の端末が置いた / 外した)
@@ -15851,7 +15851,7 @@
                 _ob.pinsSeason = snap.season.id; _ob.epoch++; _ob.pins = null; _ob.pinsErr = null; _ob.plans.clear(); _ob.stale.clear(); _ob.skip.clear(); _ob.sel = null; _ob.idx = null;
                 _ob.dec = null; _ob.decErr = null; _ob.seededFrom = null; _ob.notifySame = false;
                 _ob.syncPending = null; _ob.syncNote = null; _ob.flash = null; _ob.view = null;   // 🔄 前のシーズンの知らせ・🧭 見ているだけのピースを持ち越さない (選んだピース _ob.sel は上で外している)
-                _ob.peers = null; _ob.peersSig = null; _ob.draftSig = null; _ob.openKey = null; clearTimeout(_ob.draftTimer);   // ② 前のシーズンの下書き・札を持ち越さない
+                _ob.peers = null; _ob.peersSig = null; _ob.draftSig = null; _ob.draftAgain = null; _ob.openKey = null; clearTimeout(_ob.draftTimer);   // ② 前のシーズンの下書き・札・「もう一度」を持ち越さない
                 _obLoadPins(snap.season.id);
                 _obLoadDecided(snap.season.id);
             } else {
@@ -16024,14 +16024,21 @@
             _ob.draftTimer = setTimeout(() => { _obDraftPush().catch(() => { /* 次に変わったとき */ }); }, 1500);
         }
         async function _obDraftPush() {
-            if (_ob.draftBusy) { _ob.draftAgain = true; return; }   // 走っている保存のあとに最新でもう一度 (Codex 監査: 通信の順が逆転すると古い下書きが残った)
+            // 走っている保存のあとに最新でもう一度 (Codex 監査: 通信の順が逆転すると古い下書きが残った)。
+            // ★「もう一度」は頼んだときのシーズンを覚える — 走っている間にシーズンが変わったら、前のシーズンの「もう一度」は捨てる (新しいシーズンの下書きを空で上書きしない: Codex 再監査)
+            if (_ob.draftBusy) { _ob.draftAgain = _ob.pinsSeason; return; }
             _ob.draftBusy = true;
-            try { do { _ob.draftAgain = false; await _obDraftPushOnce(); } while (_ob.draftAgain); }
-            finally { _ob.draftBusy = false; }
+            try {
+                let sid = _ob.pinsSeason;
+                while (sid != null) {
+                    if (sid === _ob.pinsSeason) await _obDraftPushOnce(sid);
+                    sid = _ob.draftAgain; _ob.draftAgain = null;
+                }
+            } finally { _ob.draftBusy = false; }
         }
-        async function _obDraftPushOnce() {
+        async function _obDraftPushOnce(sid0) {
             const sid = _ob.pinsSeason, me = getCurrentIdentity();
-            if (!sid || !me?.id || !_opsMode || typeof window.supabaseSaveBuildDraft !== 'function') return;
+            if (!sid || sid !== sid0 || !me?.id || !_opsMode || typeof window.supabaseSaveBuildDraft !== 'function') return;
             const plans = {}, skip = {};
             for (const [k, p] of _ob.plans) if (p && p.fromDecided == null) plans[k] = p;
             for (const [k, set] of _ob.skip) if (plans[k] && set && set.size) skip[k] = [...set];
