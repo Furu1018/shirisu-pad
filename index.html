@@ -4792,7 +4792,7 @@
                     </section>
                     <section id="help-notify" class="help-section" data-sum="端末ごとの設定・届く通知・来ないとき">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
-                        <p>運営が決定した「あなたの凸」(決まりました / 変わりました / 外れました)・参加可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
+                        <p>運営が決定した「あなたの凸」(決まりました / 変わりました / 外れました)・ブロックの始まり などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
                             <span class="ico">📲</span>
                             <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取るなら、それぞれで設定してください。</p>
@@ -7461,7 +7461,7 @@
         //   ★ 宛先と文面は送信の確認 (showPushPreview) で見せてから。送る直前に本人の凸を読み直す (別の端末で ✓ が付いた人に「まだ」と送らない)
         //   ★ 戦況のまとめは送った記録を 1 行 (kind digest_m / ref m<時刻>) — 「前回 12:03 (しずく)」を出す (ほかの運営が送ったのも見える)
         const _opsNtf = { busy: null, sent: null, sentSeason: null, triedAt: 0, loading: false, seq: 0, bound: false };
-        const _OPS_NTF_KINDS = ['digest_m', 'rebuild_start', 'block_start'];
+        const _OPS_NTF_KINDS = ['digest_m', 'rebuild_start', 'block_start', 'rebuild_start_nd', 'block_start_nd'];   // _nd = 送ったが届いていない人の印 (通知が無効など・同じ ref: Fable 監査 2026-11-27)
         // 送った記録を読み直す (30 秒に 1 回まで・force で今すぐ)。読めなければ前の値のまま (null = 分からない)
         function _opsNtfLoadSent(force = false) {
             const sid = opsStore.get()?.season?.id;
@@ -7537,15 +7537,21 @@
             const hm = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d) : ''; };
             const pub = _opsDecidedPub(s.id);
             const skips = (Number(_atkCheck.skipsSeason) === Number(s.id) && _atkCheck.skips instanceof Set) ? _atkCheck.skips : null;
-            // ブロックの知らせの行: 決定していない / まだの人 n 人 (送った m 人) / 全員に送った
+            // ブロックの知らせの行: 決定を読めていない / 決定していない / まだの人 n 人 (送った m 人・🔕 届いていない k 人) / 送り終えた
             const blockRow = (kind, blk, what) => {
                 const bkey = dp.keyOf(blk);
+                // 決定を読む前・読めなかったときに「まだ決定していません」と言わない (✓ 凸の記録と同じ言い分け: Fable 監査 2026-11-27)
+                if (!_opsPublishedKnown) return { d: _opsPublishedFailed ? '決定を読み込めませんでした。通信を確かめて ↻ で取り直してください' : '決定を読み込んでいます…', act: wait('') };
                 if (!pub || !dp.decidedBlocks(pub.plan).has(bkey)) return { d: `${esc(blk.short)} はまだ決定していません`, act: wait('決定のあとに押せます') };
                 const by = _opsNtfLeft(_opsNtfPlanned(s, pub, bkey), _raidDoneKeys(snap, c.blocks, pub.plan), skips, pub.id);
-                const ids = [...by.keys()], sentRefs = _opsNtfSentRefs(kind, s.id);
-                const sentN = sentRefs ? ids.filter(id => sentRefs.has(`${bkey}|${id}`)).length : 0;
-                const left = ids.length - sentN;
-                return { d: `${what} <b>${left} 人</b>${sentN ? ` (送った ${sentN} 人)` : ''}`, act: left > 0 ? btn(kind === 'rebuild_start' ? 'rebuild' : 'block') : wait(ids.length ? '全員に送りました' : '送る人はいません') };
+                const ids = [...by.keys()], sentRefs = _opsNtfSentRefs(kind, s.id), ndRefs = _opsNtfSentRefs(`${kind}_nd`, s.id);
+                const doneIds = sentRefs ? ids.filter(id => sentRefs.has(`${bkey}|${id}`)) : [];
+                // 🔕 送ったが届いていない人 (通知が無効・宛先から外れた = 印 <種類>_nd)。「送った」に数えず、名前で言い続ける (Discord で声をかける相手: Fable 監査 2026-11-27)
+                const ndNames = (ndRefs ? doneIds.filter(id => ndRefs.has(`${bkey}|${id}`)) : []).map(id => nameOf(id) || String(id));
+                const okN = doneIds.length - ndNames.length, left = ids.length - doneIds.length;
+                const ndTxt = ndNames.length ? `<br>🔕 届いていない <b>${ndNames.length} 人</b>: ${esc(ndNames.slice(0, 8).join('・'))}${ndNames.length > 8 ? ` ほか ${ndNames.length - 8} 人` : ''} (通知が無効など — Discord で声を)` : '';
+                return { d: `${what} <b>${left} 人</b>${okN ? ` (送った ${okN} 人)` : ''}${ndTxt}`,
+                    act: left > 0 ? btn(kind === 'rebuild_start' ? 'rebuild' : 'block') : wait(!ids.length ? '送る人はいません' : (ndNames.length ? '送り終えました' : '全員に送りました')) };
             };
             const rows = [];
             // 📊 戦況のまとめ → 全員
@@ -7690,7 +7696,8 @@
             if (!(await showPushPreview(groups))) return;
             if (!phaseOk(_opsNtfPhase(season)) || _opsNtfPhase(season).ph.idx !== c0.ph.idx) { showNotification('⏱ 確かめている間に時間が進みました。送っていません (画面を合わせたので、もう一度押してください)'); return; }
             const me = getCurrentIdentity();
-            let sent = 0, skipped = 0, failed = 0, doneMeanwhile = 0, unmarked = 0;
+            let sent = 0, skipped = 0, failed = 0, doneMeanwhile = 0, unmarked = 0, outside = 0;
+            const noDevice = [];   // 送信はできたが 0 端末だった人の名前 (通知が無効 = 届いていない)
             for (const t of targets) {
                 try {
                     // 確認のあとにも読み直す: 確認を開いている間に凸を済ませた人には送らない・数が変わったら文を作り直す
@@ -7699,24 +7706,34 @@
                     const m = msgOf(t.memberId, mine);
                     const st = await window.supabaseClaimRaidNotice(season.id, kindKey, t.ref, me?.id);
                     if (st !== 'claimed') { skipped += 1; continue; }   // 'done' = 送信済み / 'held' = 別の端末が送信中
+                    let res = null;
                     try {
-                        await window.sendPushNotification({ title: m.title, body: m.body, url: m.url, tag: m.tag, ignoreAvailability: true, playerIds: [t.memberId] }, { senderPlayerId: me?.id || null });
+                        res = await window.sendPushNotification({ title: m.title, body: m.body, url: m.url, tag: m.tag, ignoreAvailability: true, playerIds: [t.memberId] }, { senderPlayerId: me?.id || null });
                     } catch (e) {
                         console.warn('[ops notify] 送信失敗 (確保を戻す):', e?.message || e);
                         failed += 1;
                         await window.supabaseReleaseRaidNotice(season.id, kindKey, t.ref);
                         continue;
                     }
-                    sent += 1;
+                    // ★ 「送りました」に数えるのは、端末が 1 つ以上あった人だけ (Fable 監査 2026-11-27: 通知が無効の人も数えていた = Discord で声をかける相手が分からない)。
+                    //   0 端末 = 通知が無効 (名前で言う) / 相手 0 人 (skipped) = テスト回の方針・書庫で宛先から外れた (数だけ言う)。
+                    //   どちらも確保は送信済みにする (もう一度押しても届かない人を、押すたびに確認に並べない) + 届いていない印 (kind <種類>_nd・同じ ref) を残す = カードが言い続ける
+                    const delivered = !res?.skipped && Number(res?.sent) > 0;
+                    if (delivered) sent += 1; else if (res?.skipped) outside += 1; else noDevice.push(t.name);
                     // 完了の記録に失敗した人は言う (記録が無いと、リースが切れたあとにもう一度押すとその人に 2 通目が届く: Codex 監査 ③ 高)
                     if ((await window.supabaseMarkRaidNoticeSent(season.id, kindKey, t.ref)) === false) unmarked += 1;
+                    if (!delivered) { try { await window.supabaseRecordRaidNotice(season.id, `${kindKey}_nd`, t.ref, me?.id || null); } catch (e) { console.warn('[ops notify] 届いていない印を残せませんでした:', e?.message || e); } }
                 } catch (e) { failed += 1; console.warn('[ops notify] 1人分をskip:', t.memberId, e?.message || e); }
             }
-            showNotification(`${rebuild ? '⏱ 再編成の始まり' : `🧱 ${blk.short} の始まり`}を ${sent} 人に送りました`
+            const head = `${rebuild ? '⏱ 再編成の始まり' : `🧱 ${blk.short} の始まり`}を ${sent} 人に送りました`
                 + `${doneMeanwhile ? ` (確かめている間に凸が済んだ ${doneMeanwhile} 人には送っていません)` : ''}`
                 + `${skipped ? ` (ほかの運営が送った / 送っている途中の ${skipped} 人は飛ばしました)` : ''}`
+                + `${outside ? ` (🧪 テスト回の方針・書庫で宛先から外れた ${outside} 人には届いていません)` : ''}`
                 + `${failed ? ` — ⚠ ${failed} 人は送れませんでした (もう一度押すと送り直します)` : ''}`
-                + `${unmarked ? ` — ⚠ ${unmarked} 人は送りましたが、送った記録を残せませんでした (2 分ほどあとにもう一度押すと、その人にもう一度届きます)` : ''}`);
+                + `${unmarked ? ` — ⚠ ${unmarked} 人は、送った記録を残せませんでした (2 分ほどあとにもう一度押すと、その人にもう一度送ります)` : ''}`;
+            // 通知が無効で届いていない人は名前で言う — 流れて消える知らせでなく、閉じるまで出す (待たない: 押せる状態に戻してから読んでもらう)
+            if (noDevice.length) void padAlert(`${head}\n\n🔕 通知が無効で届いていない ${noDevice.length} 人:\n${noDevice.join('・')}\n\nDiscord で声をかけてください。`, { title: '届いていない人がいます' });
+            else showNotification(head);
         }
 
         // ---- GB比較 (しりすこPAD GB のシーズン凍結スナップショット) ----
@@ -12127,6 +12144,7 @@
                 //   ここで呼ばないと「準備」の段階でカードの中身が「運営ONで読み込みます…」のまま止まる (2026-11-01 ふるり「入り口がなくなっています」)
                 if (typeof renderOpsGrowth === 'function') renderOpsGrowth();
                 if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();               // 📸 も準備の段階に出るので「アクティブシーズンがありません」に (Codex指摘)
+                if (typeof renderOpsNotify === 'function') renderOpsNotify();                       // 📣 当日の知らせ も「アクティブシーズンがありません」に
                 _applyOpsCardStates();     // シーズン終了直後も前シーズンの開閉状態を残さない (Codex指摘)
                 _renderOpsCockpitSoon();   // コックピット・見出しサマリーを「シーズン無し」に
                 return;
@@ -12159,6 +12177,7 @@
             renderOpsMockIntake();                 // 📸 模擬の取り込み (③-e・同上)
             renderOpsBuild();                      // ▶︎ 凸プランを組む (シンプル化 S2)
             _syncOpsUnpublishBtn();
+            if (typeof renderOpsNotify === 'function') renderOpsNotify();   // 📣 当日の知らせ: 開いてすぐ出す (決定を読み終えると _syncOpsUnpublishBtn がもう一度描く。以前は最初の見回りまで最大 10 秒空だった: Fable 監査 2026-11-27)
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:var(--t-body);font-size:14px;">ボス状況カードから対象ボスをタップしてください。</p>';
             _opsFinSync();
@@ -16012,6 +16031,26 @@
         const _OB_PEER_FRESH_MS = 45000;
         const _obPlanIds = new WeakMap(); let _obPlanIdSeq = 0;
         const _obPlanId = (p) => { if (!_obPlanIds.has(p)) _obPlanIds.set(p, ++_obPlanIdSeq); return _obPlanIds.get(p); };
+        // ★ 手前のブロックの組み方の札 (Fable 監査 2026-11-27): 決定のまま = d<決定の id> / 🧮 の結果 = a<組んだ時刻> / 何も無い (空・手で置いただけ) = p。
+        //   🧮 の結果は「手前のブロックをこう組んだ」前提で組んである。この端末では手前を変えると後ろは要組み直しになるが、下書きは別の端末で組んだもの —
+        //   駒の指紋だけで取り込ませると、自分が A を組み直したあとに、決定の A を前提にした相手の B を「要組み直し」なしで取り込めた。
+        //   🧮 のときに手前 (いまのブロック〜そのブロックの手前) の札を plan.obBase に控え、取り込む側の手前のブロックが同じ札のときだけ取り込ませる (_obDraftPick)
+        const _obTag = (p) => !p ? 'p' : (p.fromDecided != null ? `d${Number(p.fromDecided)}` : `a${p.builtAt || ''}`);
+        const _obBaseTags = (first, idx) => { const out = []; for (let k = first; k < idx; k++) out.push([k, _obTag(_ob.plans.get(k))]); return out; };
+        // 下書き (plans = { ブロックの添字: プラン }) をいま取り込めるか。idxs = 取り込むブロック (いまより後ろ・全部そろったときだけ = 一部だけは取り込まない)。
+        //   why: 'pins' = 手で置いた駒が違う / 'base' = 手前のブロック (baseIdx) の組み方が違う・札を持たない古い下書き / 'none' = 取り込むブロックが無い。知らせ (_obPeerDrafts) と取り込み (_obDraftImport) が同じ判定を使う
+        function _obDraftPick(plans, ctx, sid) {
+            const src = (plans && typeof plans === 'object') ? plans : {};
+            const idxs = Object.keys(src).map(Number).filter(k => Number.isInteger(k) && k >= ctx.first && k < ctx.blocks.length && src[k] && Array.isArray(src[k].levels) && Number(src[k].seasonId) === Number(sid)).sort((a, b) => a - b);
+            if (!idxs.length) return { idxs: [], why: 'none' };
+            if (_ob.pins == null || !idxs.every(k => src[k].obPinsFp === _obPinsFp(_ob.pins, ctx.blocks, k))) return { idxs: [], why: 'pins' };
+            const tagOf = (j) => idxs.includes(j) ? _obTag(src[j]) : _obTag(_ob.plans.get(j));   // 取り込んだあとの手前のブロックの札 (下書きに入っているブロックは下書きのもの)
+            for (const k of idxs) {
+                const base = new Map((Array.isArray(src[k].obBase) ? src[k].obBase : []).filter(x => Array.isArray(x)).map(x => [Number(x[0]), String(x[1])]));
+                for (let j = ctx.first; j < k; j++) if (base.get(j) !== tagOf(j)) return { idxs: [], why: 'base', baseIdx: j };
+            }
+            return { idxs, why: null };
+        }
         // 自分の 🧮 の結果の指紋 (組んだ・外した・やり直した・取り込んだで変わる = プランの入れ替え)。何も無ければ ''
         function _obDraftSig() {
             const mine = [..._ob.plans].filter(([, p]) => p && p.fromDecided == null).map(([k, p]) => `${k}:${_obPlanId(p)}`).sort();
@@ -16071,9 +16110,8 @@
                 const p = plans ? plans[idx] : null;
                 if (!p || typeof p !== 'object' || !Array.isArray(p.levels) || Number(p.seasonId) !== Number(sid)) continue;
                 if (mine && mine.builtAt && mine.builtAt === p.builtAt) continue;   // もう同じ結果を持っている (取り込んだ)
-                const ks = Object.keys(plans).map(Number).filter(k => Number.isInteger(k) && k >= ctx.first && k < ctx.blocks.length && plans[k] && Array.isArray(plans[k].levels));
-                const ok = _ob.pins != null && ks.length > 0 && ks.every(k => plans[k].obPinsFp === _obPinsFp(_ob.pins, ctx.blocks, k));
-                out.push({ playerId: r.playerId, who: _obPeerName(r), at: p.builtAt || r.updatedAt, n: pc ? pc.attacksIn(p, ctx.blocks[idx]).length : 0, ok });
+                const pick = _obDraftPick(plans, ctx, sid);   // 取り込めるのは、駒も手前のブロックの組み方も同じときだけ (取り込むボタンと同じ判定)
+                out.push({ playerId: r.playerId, who: _obPeerName(r), at: p.builtAt || r.updatedAt, n: pc ? pc.attacksIn(p, ctx.blocks[idx]).length : 0, ok: pick.idxs.length > 0, why: pick.why, baseIdx: pick.baseIdx });
             }
             return out.sort((x, y) => String(y.at || '').localeCompare(String(x.at || '')));
         }
@@ -16096,7 +16134,7 @@
             const ds = blk ? _obPeerDrafts(ctx, idx).slice(0, 2) : [];
             return ds.map(d => d.ok
                 ? `<div class="ob-draft"><span>📝 <b>${escapeHtml(d.who)} さんの下書き</b> — ${escapeHtml(blk.short)} を 🧮 で組みました (${d.n} 凸 · ${escapeHtml(_obAgo(d.at))})。取り込むと、あなたの 🧮 の結果はこの下書きに置き換わります (✅ 決定はまだされません)</span><button type="button" class="ob-draft-btn" data-ob-draft="${escapeHtml(String(d.playerId))}"${_ob.busy ? ' disabled' : ''}>取り込む</button></div>`
-                : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、手で置いた駒が変わったので取り込めません (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)</div>`).join('');
+                : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、${d.why === 'base' ? `手前の ${escapeHtml(ctx.blocks[d.baseIdx]?.short || 'ブロック')} の組み方があなたの画面と違うので取り込めません` : '手で置いた駒が変わったので取り込めません'} (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)</div>`).join('');
         }
         // ほかの運営の下書きを取り込む (確かめてから・指紋が合うブロックだけ)。後ろのブロックで取り込まなかった自分の結果は前提が変わった = 要組み直し
         async function _obDraftImport(playerId) {
@@ -16105,15 +16143,15 @@
             const row = (_ob.peers || []).find(r => r.kind === 'draft' && String(r.playerId) === String(playerId));
             if (!ctx || !row) { showNotification('下書きが見つかりません (取り消された・組み直された)。少し待ってからもう一度'); return; }
             const who = _obPeerName(row), plans = (row.payload && row.payload.plans) || {};
-            const pick = (c) => Object.keys(plans).map(Number).filter(k => Number.isInteger(k) && k >= c.first && k < c.blocks.length && plans[k] && Array.isArray(plans[k].levels)
-                && Number(plans[k].seasonId) === Number(snap.season.id) && plans[k].obPinsFp === _obPinsFp(_ob.pins, c.blocks, k)).sort((a, b) => a - b);
-            const idxs = pick(ctx);
-            if (!idxs.length) { showNotification('手で置いた駒が変わったので、この下書きは取り込めません'); renderOpsBuild(); return; }
+            // 取り込めるか (駒の指紋 + 手前のブロックの組み方) は、知らせと同じ判定 _obDraftPick。全部そろったときだけ取り込む
+            const pick = (c) => _obDraftPick(plans, c, snap.season.id);
+            const pk0 = pick(ctx), idxs = pk0.idxs;
+            if (!idxs.length) { showNotification(pk0.why === 'base' ? '手前のブロックの組み方があなたの画面と違うので、この下書きは取り込めません' : '手で置いた駒が変わったので、この下書きは取り込めません'); renderOpsBuild(); return; }
             const names = idxs.map(k => ctx.blocks[k].short).join('・');
             if (!(await padConfirm(`${who} さんの下書きを取り込みますか？\n\n・あなたの ${names} の 🧮 の結果は、この下書きに置き換わります\n・✅ 決定はまだされません (メンバーには何も届きません)`, { ok: '取り込む' }))) return;
             // 答えを待つ間に変わった (処理が始まった・シーズン・いまのブロック・駒) → 確かめた中身と違うので止める
             const s2 = opsStore.get(), c2 = s2 ? _obCtx(s2) : null;
-            if (_ob.busy || !c2 || String(s2.season?.id) !== String(snap.season.id) || c2.first !== ctx.first || pick(c2).join() !== idxs.join()) {
+            if (_ob.busy || !c2 || String(s2.season?.id) !== String(snap.season.id) || c2.first !== ctx.first || pick(c2).idxs.join() !== idxs.join()) {
                 renderOpsBuild(); showNotification('確かめている間に画面が変わりました。もう一度押してください'); return;
             }
             const got = new Set(idxs);
@@ -16810,6 +16848,7 @@
                 plan.blockScope = { idx, letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                 plan.builtAt = new Date().toISOString();
                 plan.obPinsFp = _obPinsFp(rows, blocks, idx);   // 駒・拘束が変わったら古い (Codex 監査)
+                plan.obBase = _obBaseTags(ctx2.first, idx);   // 手前のブロックの組み方の札 (下書きを取り込む側が、同じ前提かを確かめる: Fable 監査 2026-11-27)
                 if (!_obSame(epoch, sid)) return;
                 _ob.plans.set(idx, plan);
                 _ob.stale.delete(idx);
@@ -16942,6 +16981,7 @@
             _opsPublishedFailed = failed;   // ✓ 凸の記録が「読み込み中」と「読めなかった」を言い分ける (S5 レビュー TP-12)
             if (typeof renderOpsAttackCheck === 'function') renderOpsAttackCheck();   // ✅ 凸報告の確認 (③-f) は配信プランと突き合わせる — 取り直したら描き直す
             if (typeof renderOpsAttackTap === 'function') renderOpsAttackTap();   // ✓ 凸の記録 (S5) も決定と盤面から描く
+            if (typeof renderOpsNotify === 'function') renderOpsNotify();         // 📣 当日の知らせ も決定から描く (読み終えたら「決定を読み込んでいます…」を置き換える)
             _renderOpsCockpitSoon();
         }
 

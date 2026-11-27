@@ -14915,7 +14915,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         const code = fnU('        // ===== ② 📝 🧮 の下書きの共有', '        // ⑥ 🧩 ピース置き場の札と');
         assert.ok(code && /async function _obDraftImport\(playerId\)/.test(code), '下書きの関数が無い');
         const blocks = [{ short: 'A 朝' }, { short: 'B 午前' }, { short: 'C 午後' }];
-        const P = (built, fp, extra = {}) => ({ seasonId: 47, builtAt: built, obPinsFp: fp, levels: [], ...extra });
+        const P = (built, fp, extra = {}) => ({ seasonId: 47, builtAt: built, obPinsFp: fp, levels: [], obBase: [[0, 'p']], ...extra });   // obBase = 手前のブロックの札 (A = 何も無い)
         const mk = (o = {}) => {
             const env = { notes: [], saves: [], renders: 0, confirm: o.confirm !== false, fp: o.fp || ((k) => `fp${k}`) };
             const _ob = { plans: new Map(o.plans || []), skip: new Map(o.skip || []), stale: new Set(), pins: o.pins === undefined ? [] : o.pins, peers: o.peers || [], busy: false, sel: null, pinsSeason: 47,
@@ -14926,7 +14926,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
             const ctx = { first: o.first ?? 0, blocks, idx: 1, tray: [] };
             const doc = { getElementById: () => ({ offsetParent: {} }) };
             const fns = new Function('window', 'opsStore', '_ob', '_obPinsFp', '_obCtx', 'padConfirm', 'showNotification', 'renderOpsBuild', '_obHandOnly', 'escapeHtml', 'getCurrentIdentity', 'document', '_opsMode', 'setTimeout', 'clearTimeout',
-                `${code}\nreturn { _obDraftSig, _obDraftPush, _obPeerDrafts, _obDraftImport, _obPeerOpen, _obPeersTick, _obDraftBannerHtml };`)(
+                `${code}\nreturn { _obDraftSig, _obDraftPush, _obPeerDrafts, _obDraftImport, _obPeerOpen, _obPeersTick, _obDraftBannerHtml, _obDraftPick, _obBaseTags, _obTag };`)(
                 w, { get: () => ({ season: { id: 47 }, players: [{ id: 1, name: 'ふるり' }, { id: 2, name: 'しずく' }] }) }, _ob, (pins, bl, k) => env.fp(k), () => ctx,
                 async () => env.confirm, (m) => env.notes.push(m), () => { env.renders++; }, () => false, (x) => String(x), () => ({ id: 1, name: 'ふるり' }), doc, true, () => 0, () => {});
             return { ...fns, _ob, env, ctx };
@@ -14961,6 +14961,30 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         m = mk({ peers: [peer({ 0: P('t0', 'fp0'), 1: P('t1', 'fp1') })], first: 1 });
         await m._obDraftImport(2);
         assert.deepEqual([m._ob.plans.has(0), m._ob.plans.has(1)], [false, true], '過ぎたブロックの下書きを取り込んだ');
+        // ★ 手前のブロックの組み方が違えば取り込めない (Fable 監査 2026-11-27: 駒の指紋だけ見ていた = 自分が A を組み直したあとに、別の A を前提にした B を「要組み直し」なしで取り込めた)
+        m = mk({ peers: [peer({ 1: P('t1', 'fp1') })], plans: [[0, P('mineA', 'fp0')]] });   // 相手は「A は何も無い」前提で B を組んだ・自分は A を 🧮 で組んである
+        assert.deepEqual(m._obPeerDrafts(m.ctx, 1).map(d => [d.ok, d.why, d.baseIdx]), [[false, 'base', 0]], '手前のブロックの組み方が違う下書きを取り込めることにした');
+        assert.ok(!/data-ob-draft=/.test(m._obDraftBannerHtml(m.ctx, 1)) && /手前の A 朝 の組み方があなたの画面と違うので取り込めません/.test(m._obDraftBannerHtml(m.ctx, 1)), '手前のブロックが違う理由を言っていない / 押せるボタンを出した');
+        await m._obDraftImport(2);
+        assert.deepEqual([m._ob.plans.has(1), m._ob.plans.get(0).builtAt, m.env.notes.some(n => /手前のブロックの組み方があなたの画面と違う/.test(n))], [false, 'mineA', true], '手前のブロックの組み方が違うのに取り込んだ');
+        const pickOf = (o, plans) => { const x = mk(o); return x._obDraftPick(plans, x.ctx, 47); };
+        // 決定のままの A を前提にした下書き: 自分の A も同じ決定のままなら取り込める・別の決定 / 外した (何も無い) なら取り込めない
+        const onDec = { 1: P('t1', 'fp1', { obBase: [[0, 'd9']] }) };
+        assert.deepEqual(pickOf({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })]] }, onDec), { idxs: [1], why: null });
+        assert.equal(pickOf({ plans: [[0, P('d0', 'fp0', { fromDecided: 8 })]] }, onDec).why, 'base', '別の決定を前提にした下書きを取り込める');
+        assert.equal(pickOf({}, onDec).why, 'base', '自分は A を外したのに、決定の A を前提にした下書きを取り込める');
+        // 下書きに手前のブロックも入っていれば、それごと取り込む (自分の A は置き換わる) = 札は下書きの A で比べる
+        assert.deepEqual(pickOf({ plans: [[0, P('mineA', 'fp0')]] }, { 0: P('tA', 'fp0', { obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, 'atA']] }) }).idxs, [0, 1], '手前のブロックごとの下書きを取り込めない');
+        assert.equal(pickOf({}, { 0: P('tA', 'fp0', { obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, 'aOLD']] }) }).why, 'base', '下書きの中で前提が食い違うのに取り込める');
+        // 札を持たない下書き (前の版で組んだ) は、手前にブロックがあれば取り込めない / いまのブロックだけなら取り込める・過ぎたブロックの札は見ない
+        assert.equal(pickOf({}, { 1: P('t1', 'fp1', { obBase: undefined }) }).why, 'base', '手前の札が無い下書きを取り込める');
+        assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: undefined }) }).idxs, [1]);
+        assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: [[0, 'aX']] }) }).idxs, [1], '過ぎたブロックの札まで比べている');
+        // 駒が違えば、手前を見る前に取り込めない (理由は駒)
+        assert.equal(pickOf({ plans: [[0, P('mineA', 'fp0')]] }, { 1: P('t1', 'old') }).why, 'pins');
+        // 札: 決定のまま d<決定の id> / 🧮 の結果 a<組んだ時刻> / 何も無い p
+        m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })], [1, P('t1', 'fp1')]] });
+        assert.deepEqual(m._obBaseTags(0, 3), [[0, 'd9'], [1, 'at1'], [2, 'p']]);
         // 自分の下書き: 🧮 の結果だけ (決定から読み戻したブロックは載せない)・外した駒は載せたブロックのぶんだけ
         m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })], [1, P('t1', 'fp1')]], skip: [[0, new Set(['x'])], [1, new Set(['y'])]] });
         await m._obDraftPush();
@@ -15022,6 +15046,10 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/\$\{_obDraftBannerHtml\(ctx, idx\)\}\$\{_obGapNoteHtml\(snap\)\}\$\{boardHelp\}/.test(r) && /peerOpen\.has\(i\) \? `<span class="obb-who">👤 /.test(r), '下書きの知らせ / 👤 の札を描いていない');
         assert.ok(/const ds = _obDraftSig\(\); if \(ds !== _ob\.draftSig\) \{ const first = _ob\.draftSig == null; _ob\.draftSig = ds; if \(!first \|\| ds !== ''\) _obDraftSchedule\(\); \}/.test(r), '自分の 🧮 の結果が変わっても下書きを置き直さない');
         assert.ok(/const dft = e\.target\.closest\('\[data-ob-draft\]'\); if \(dft\) \{ _obDraftImport\(dft\.dataset\.obDraft\); return; \}/.test(html), '取り込むボタンが効かない');
+        // 🧮 のときに手前のブロックの札を控える (下書きを取り込む側が、同じ前提かを確かめる)・取り込みは知らせと同じ判定で、確認のあとにも照合し直す
+        assert.ok(/plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);[^\n]*\n\s*plan\.obBase = _obBaseTags\(ctx2\.first, idx\);/.test(html), '🧮 のときに手前のブロックの札を控えていない (下書きが取り込めなくなる)');
+        const di = fnU('async function _obDraftImport(playerId)', '// 10 秒の見回り (🧱 組む が見えている間だけ)');
+        assert.ok(/const pick = \(c\) => _obDraftPick\(plans, c, snap\.season\.id\);/.test(di) && /pick\(c2\)\.idxs\.join\(\) !== idxs\.join\(\)/.test(di), '取り込みが知らせと別の判定 / 確認のあとに照合し直していない');
         assert.ok(/_ob\.peers = null; _ob\.peersSig = null; _ob\.draftSig = null; _ob\.draftAgain = null; _ob\.openKey = null; clearTimeout\(_ob\.draftTimer\);/.test(html), 'シーズンが変わっても前の下書き・札・「もう一度」を持ち越す');
     });
     test('★ 手で置いただけのブロックも ✅ 決定できる (🧮 を押さなくてよい) / 空のブロックは飛ばす / 決定のあとは読み戻した扱い / 凸が減ると確認で言う', () => {
@@ -15247,26 +15275,28 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         const run = async (iso, o = {}) => {
             const t = Date.parse(iso), R0 = Date;
             const FD = class extends R0 { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } };
-            const sent = [], claims = [], released = [], notes = [], previews = [];
+            const sent = [], claims = [], released = [], notes = [], previews = [], alerts = [], recorded = [], marks = [];
             // 2 は ✓ 済み (plan_key)・3 は数字の報告 (人|レベル|ボス) で済み・1 は A に 2 凸残り・4 は B だけ
-            const players = [{ id: 1, attacks: [], availableSlots: ['h05', 'h10'], ...(o.p1 || {}) }, { id: 2, attacks: [{ plan_key: pk(2, 1), boss_number: 1, level: 1 }] }, { id: 3, attacks: [{ boss_number: 1, level: 1 }] }, { id: 4, attacks: [] }];
+            const players = [{ id: 1, name: 'みかん', attacks: [], availableSlots: ['h05', 'h10'], ...(o.p1 || {}) }, { id: 2, attacks: [{ plan_key: pk(2, 1), boss_number: 1, level: 1 }] }, { id: 3, attacks: [{ boss_number: 1, level: 1 }] }, { id: 4, attacks: [] }];
             const w = {
                 raidBlocksDomain: rb, decidePlanDomain: dp, attackCheckDomain: ac, opsStageDomain: globalThis.opsStageDomain, ...(o.noBb ? {} : { blockBuildDomain: globalThis.blockBuildDomain }),
                 supabaseClaimRaidNotice: async (sid, kind, ref) => { claims.push(`${kind}:${ref}`); return o.claim || 'claimed'; },
-                supabaseMarkRaidNoticeSent: async () => (o.markFail ? false : true), supabaseReleaseRaidNotice: async (sid, kind, ref) => { released.push(ref); },
+                supabaseMarkRaidNoticeSent: async (sid, kind, ref) => { marks.push(`${kind}:${ref}`); return o.markFail ? false : true; }, supabaseReleaseRaidNotice: async (sid, kind, ref) => { released.push(ref); },
+                supabaseRecordRaidNotice: async (sid, kind, ref) => { if (o.ndFail) throw new Error('x'); recorded.push(`${kind}:${ref}`); },
                 supabaseGetPublishedPlans: async () => (o.pubs || [pub]),
                 supabaseLoadAttackSkips: async () => (o.skips === undefined ? new Set() : o.skips),
                 supabaseLoadRaidNotices: async () => (o.sentRows === undefined ? [] : o.sentRows),
                 // myAfter = 確認 (プレビュー) のあとに読み直したときの凸 (確認を開いている間に ✓ が付いた)
                 supabaseLoadMyAttacks: async (id) => ((previews.length && o.myAfter && o.myAfter[id]) || (o.my && o.my[id]) || players.find(p => String(p.id) === String(id))?.attacks || []),
-                sendPushNotification: async (m) => { if (o.sendFail) throw new Error('x'); sent.push(m); },
+                // 送信の結果: 既定は 1 端末に届いた。sendRes = { sent: 0 } は通知が無効 (0 端末)・{ skipped: true } は宛先から外れた (テスト回の方針・書庫)
+                sendPushNotification: async (m) => { if (o.sendFail) throw new Error('x'); sent.push(m); return o.sendRes === undefined ? { ok: true, sent: 1, target: 1 } : o.sendRes; },
             };
-            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', 'showNotification', 'showPushPreview', 'PT_ATTRS',
+            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', 'showNotification', 'showPushPreview', 'PT_ATTRS', 'padAlert',
                 `${ad}\n${dk}\n${mod}\nreturn _opsSendBlockNotice;`)(
                 w, { get: () => ({ season: o.season || s20, players }) }, () => ({ id: 99 }), FD, { warn() {}, log() {} },
-                (m) => { notes.push(m); }, async (g) => { previews.push(g); return !o.cancel; }, []);
+                (m) => { notes.push(m); }, async (g) => { previews.push(g); return !o.cancel; }, [], (m, opt) => { alerts.push([m, opt]); });
             await f(o.mode || 'rebuild');
-            return { sent, claims, released, notes, previews };
+            return { sent, claims, released, notes, previews, alerts, recorded, marks };
         };
         let r = await run('2026-11-28T08:43:00+09:00');
         assert.deepEqual(r.sent.map(m => m.playerIds), [['1']], '凸がまだの人 (1) だけに送っていない');
@@ -15324,6 +15354,20 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         r = await run('2026-11-28T08:43:00+09:00', { markFail: true });
         assert.ok(r.sent.length === 1 && /送った記録を残せませんでした/.test(r.notes.join()), '記録の失敗を言わない');
         assert.deepEqual((await run('2026-11-28T08:43:00+09:00', { sentRows: null })).sent, [], '送った記録が読めないのに送っている');
+        // ★ 「送りました」に数えるのは端末が 1 つ以上あった人だけ (Fable 監査 2026-11-27: 通知が無効の人も数えていた)。届いた人は知らせ (流れる) で・印は付けない
+        r = await run('2026-11-28T08:43:00+09:00');
+        assert.deepEqual([/を 1 人に送りました/.test(r.notes.join()), r.alerts.length, r.recorded, r.marks], [true, 0, [], ['rebuild_start:5-8|1']], '届いた人を数えていない / 届いたのに届いていない印を付けた');
+        // 0 端末 = 通知が無効: 数えない・名前で言う (閉じるまで出す)・届いていない印 (_nd・同じ ref) を残す・確保は送信済みに (押すたびに確認に並べない)
+        r = await run('2026-11-28T08:43:00+09:00', { sendRes: { ok: true, sent: 0, target: 0 } });
+        assert.deepEqual([r.notes.length, r.alerts.length, r.recorded, r.marks, r.released], [0, 1, ['rebuild_start_nd:5-8|1'], ['rebuild_start:5-8|1'], []], '通知が無効で届いていない人を「送りました」に数えた / 印を残していない / 確保を送信済みにしていない');
+        assert.ok(/を 0 人に送りました/.test(r.alerts[0][0]) && /🔕 通知が無効で届いていない 1 人:\nみかん\n/.test(r.alerts[0][0]) && /Discord で声をかけてください/.test(r.alerts[0][0]), '届いていない人を名前で言っていない');
+        // 宛先から外れた (テスト回の方針・書庫 = skipped): 数だけ言う (名前を並べない)・印は残す
+        r = await run('2026-11-28T08:43:00+09:00', { sendRes: { ok: true, sent: 0, target: 0, skipped: true } });
+        assert.deepEqual([r.alerts.length, /を 0 人に送りました \(🧪 テスト回の方針・書庫で宛先から外れた 1 人には届いていません\)/.test(r.notes.join()), r.recorded], [0, true, ['rebuild_start_nd:5-8|1']], '宛先から外れた人を「送りました」に数えた');
+        // 印を残せなくても、送信の結果は言う (止まらない)。ブロックの始まりの印は block_start_nd
+        r = await run('2026-11-28T08:43:00+09:00', { sendRes: { ok: true, sent: 0, target: 0 }, ndFail: true });
+        assert.deepEqual([r.alerts.length, r.recorded], [1, []], '印を残せないと結果を言わない');
+        assert.deepEqual((await run('2026-11-28T09:05:00+09:00', { mode: 'block', sendRes: { ok: true, sent: 0, target: 0 } })).recorded, ['block_start_nd:9-12|4'], 'ブロックの始まりの届いていない印の種類が違う');
         // ★ 確認でやめたら送らない・確保もしない
         r = await run('2026-11-28T08:43:00+09:00', { cancel: true });
         assert.deepEqual([r.sent, r.claims], [[], []], '確認でやめたのに送った / 確保した');
@@ -15359,6 +15403,61 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         // 二重押しよけ: 押している間は 3 つとも押せない・終わったら記録を読み直す
         const sd = html.match(/async function _opsNtfSend\(kind\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(_opsNtf\.busy\) return;\s*_opsNtf\.busy = kind;/.test(sd) && /finally \{\s*_opsNtf\.busy = null;\s*_opsNtfLoadSent\(true\);/.test(sd), '二重押しで 2 回送る / 送ったあと記録を読み直さない');
+    });
+    await testAsync('★ 実行: 📣 当日の知らせ のカード — 届いていない人 (🔕) は「送った」に数えず名前で言い続ける / 決定を読む前・読めなかったときに「まだ決定していません」と言わない (Fable 監査 2026-11-27)', async () => {
+        const mod = fnR('        // ===== 📣 当日の知らせ (2026-11-27', '        // ---- GB比較');
+        const ad = fnOf('function _atkCheckDecidedPlan(plan, season)'), dk = fnOf('function _raidDoneKeys(board, blocks, plan)'), rn = fnOf('function _raidRebuildNow(season, blocks, nowMs = Date.now())');
+        assert.ok(mod && ad && dk && rn, '関数が見つからない');
+        const kA = '5-8', kB = '9-12';
+        const at = (memberId, block = kA) => ({ memberId, memberName: `m${memberId}`, block, hourIdx: block === kA ? 0 : 4, loadoutSlot: 1, dmgB: 10 });
+        // A: 1・5・6 が ✓ まだ (2 は ✓ 済み) / B: 4
+        const pub = { id: 90, season_id: 47, plan: { decided: { blocks: [{ key: kA }, { key: kB }] }, levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [at(1), at(2), at(5), at(6), at(4, kB)] }] }] } };
+        const players = [{ id: 1, name: 'みかん', attacks: [] }, { id: 2, name: 'に', attacks: [{ plan_key: dp.planKey({ block: kA, level: 1, bossNumber: 1, memberId: 2, loadoutSlot: 1 }), boss_number: 1, level: 1 }] },
+            { id: 4, name: 'よん', attacks: [] }, { id: 5, name: 'ご', attacks: [] }, { id: 6, name: 'り<んご', attacks: [] }];
+        const paint = async (iso, o = {}) => {
+            const t = Date.parse(iso), R0 = Date;
+            const FD = class extends R0 { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } };
+            const body = { innerHTML: '', addEventListener() {} };
+            const w = { raidBlocksDomain: rb, decidePlanDomain: dp, attackCheckDomain: ac, opsStageDomain: globalThis.opsStageDomain, raidEventsDomain: globalThis.raidEventsDomain,
+                supabaseLoadRaidNotices: async () => (o.sentRows === undefined ? [] : o.sentRows) };
+            const render = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', 'showNotification', 'showPushPreview', 'PT_ATTRS', 'padAlert',
+                'document', '_opsMode', 'escapeHtml', '_opsDecidedPub', '_atkCheck', 'getCurrentSlotJST', '_opsPublishedKnown', '_opsPublishedFailed',
+                `${ad}\n${dk}\n${rn}\n${mod}\nreturn renderOpsNotify;`)(
+                w, { get: () => ({ season: s20, players, bosses: [] }) }, () => ({ id: 99 }), FD, { warn() {}, log() {} }, () => {}, async () => false, [], () => {},
+                { getElementById: (id) => (id === 'opsNotifyBody' ? body : null) }, true, (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+                () => (o.pub === undefined ? pub : o.pub), { skipsSeason: 47, skips: new Set() }, () => 'h08', o.known !== false, !!o.failed);
+            render();
+            await new Promise(r => setTimeout(r, 0));   // 送った記録を読み終えて、もう一度描く
+            return body.innerHTML;
+        };
+        const sentRow = (ref, kind = 'rebuild_start') => ({ kind, ref, sent: true, claimed_at: '2026-11-27T23:41:00Z', notified_by: 99 });
+        // 再編成時間 (8:43): 5 と 6 には送った・6 は届いていない → 「まだ 1 人 (送った 1 人)」+ 🔕 6 の名前 (HTML にせず文字で)・1 が残るので「送る」
+        let h = await paint('2026-11-28T08:43:00+09:00', { sentRows: [sentRow('5-8|5'), sentRow('5-8|6'), sentRow('5-8|6', 'rebuild_start_nd')] });
+        assert.match(h, /A 朝 で ✓ がまだ <b>1 人<\/b> \(送った 1 人\)<br>🔕 届いていない <b>1 人<\/b>: り&lt;んご \(通知が無効など — Discord で声を\)/, '届いていない人を「送った」に数えた / 名前で言っていない / 名前を HTML に入れた');
+        assert.match(h, /data-ntf="rebuild"/, 'まだの人がいるのに送れない');
+        // 全員に送り終えた: 届いていない人がいれば「全員に送りました」と言わない (🔕 を出したまま)
+        h = await paint('2026-11-28T08:43:00+09:00', { sentRows: [sentRow('5-8|1'), sentRow('5-8|5'), sentRow('5-8|6'), sentRow('5-8|6', 'rebuild_start_nd')] });
+        assert.ok(/<span class="ntf-wait">送り終えました<\/span>/.test(h) && !/全員に送りました/.test(h) && /🔕 届いていない <b>1 人<\/b>/.test(h) && !/data-ntf="rebuild"/.test(h), '届いていない人がいるのに「全員に送りました」と言った');
+        h = await paint('2026-11-28T08:43:00+09:00', { sentRows: [sentRow('5-8|1'), sentRow('5-8|5'), sentRow('5-8|6')] });
+        assert.ok(/<span class="ntf-wait">全員に送りました<\/span>/.test(h) && !/🔕/.test(h), '全員に届いたのに 🔕 を出した');
+        // 別の種類の印 (ブロックの始まりの _nd) を再編成の行に数えない
+        h = await paint('2026-11-28T08:43:00+09:00', { sentRows: [sentRow('5-8|6'), sentRow('5-8|6', 'block_start_nd')] });
+        assert.ok(/A 朝 で ✓ がまだ <b>2 人<\/b> \(送った 1 人\)/.test(h) && !/🔕/.test(h), '別の種類の届いていない印を数えた');
+        // ★ 決定を読む前・読めなかった: 「まだ決定していません」と言わない (✓ 凸の記録と同じ言い分け)。読めて決定が無ければ「まだ決定していません」
+        h = await paint('2026-11-28T09:05:00+09:00', { known: false });
+        assert.ok(/決定を読み込んでいます…/.test(h) && !/まだ決定していません/.test(h) && !/data-ntf="block"/.test(h), '決定を読む前に「まだ決定していません」と言った / 押せるボタンを出した');
+        h = await paint('2026-11-28T09:05:00+09:00', { known: false, failed: true });
+        assert.ok(/決定を読み込めませんでした/.test(h) && !/まだ決定していません/.test(h), '決定を読めなかったのに「まだ決定していません」と言った');
+        h = await paint('2026-11-28T09:05:00+09:00', { pub: null });
+        assert.match(h, /B 午前 はまだ決定していません/);
+        h = await paint('2026-11-28T09:05:00+09:00');
+        assert.match(h, /B 午前 \(9〜12:40\) に凸がある <b>1 人<\/b>[\s\S]*?data-ntf="block"/);
+        // 運営タブを開いたとき・決定を読み終えたときにも描く (以前は最初の見回りまで最大 10 秒空だった)・印の種類を読む
+        assert.ok(/_syncOpsUnpublishBtn\(\);\n\s*if \(typeof renderOpsNotify === 'function'\) renderOpsNotify\(\);/.test(html), '運営タブを開いたときに 📣 を描いていない (最初の見回りまで空)');
+        assert.ok(/renderOpsAttackTap\(\);[^\n]*\n\s*if \(typeof renderOpsNotify === 'function'\) renderOpsNotify\(\);/.test(html), '決定を読み終えたときに 📣 を描き直していない (「読み込んでいます…」のまま)');
+        assert.ok(/const _OPS_NTF_KINDS = \['digest_m', 'rebuild_start', 'block_start', 'rebuild_start_nd', 'block_start_nd'\];/.test(html), '届いていない印を読んでいない');
+        // ヘルプの言い残し: 撤去した「参加可能時間の開始」の通知を言わない
+        assert.ok(!/参加可能時間の開始/.test(html), 'ヘルプに撤去した通知 (参加可能時間の開始) が残っている');
     });
     await testAsync('★ 実行: 再編成時間の保存 — RPC (59) が本線 / 59 未適用 (51 の断り文・PGRST202) だけ読んで混ぜて書く / ほかの P0001 は投げる / 不正な値は通信の前に断る / null で鍵を消す', async () => {
         const client = rd('js/supabase-client.js');
