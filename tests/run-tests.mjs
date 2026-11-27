@@ -14934,15 +14934,16 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
             const env = { notes: [], saves: [], renders: 0, confirm: o.confirm !== false, fp: o.fp || ((k) => `fp${k}`) };
             const _ob = { plans: new Map(o.plans || []), skip: new Map(o.skip || []), stale: new Set(), pins: o.pins === undefined ? [] : o.pins, peers: o.peers || [], busy: false, sel: null, pinsSeason: 47,
                 idx: 1, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, openKey: null, openAt: 0 };
-            const w = { blockBuildDomain: bb, planChainDomain: { attacksIn: (p) => p.atk || ATK3 },
+            const w = { blockBuildDomain: bb, decidePlanDomain: globalThis.decidePlanDomain, planChainDomain: { attacksIn: (p) => p.atk || ATK3 },
                 supabaseSaveBuildDraft: async (...a) => { env.saves.push(a); if (o.saveGate && env.saves.length === 1) await o.saveGate; return true; },
                 supabaseLoadBuildDrafts: async () => (o.load === undefined ? (o.peers || []) : o.load) };
             const ctx = { first: o.first ?? 0, blocks, idx: 1, tray: [] };
             const doc = { getElementById: () => ({ offsetParent: {} }) };
-            const fns = new Function('window', 'opsStore', '_ob', '_obPinsFp', '_obCtx', 'padConfirm', 'showNotification', 'renderOpsBuild', '_obHandOnly', 'escapeHtml', 'getCurrentIdentity', 'document', '_opsMode', 'setTimeout', 'clearTimeout', '_obFpRows',
+            const fns = new Function('window', 'opsStore', '_ob', '_obPinsFp', '_obCtx', 'padConfirm', 'showNotification', 'renderOpsBuild', '_obHandOnly', 'escapeHtml', 'getCurrentIdentity', 'document', '_opsMode', 'setTimeout', 'clearTimeout', '_obFpRows', '_obDoneKeys',
                 `${code}\nreturn { _obDraftSig, _obDraftPush, _obPeerDrafts, _obDraftImport, _obPeerOpen, _obPeersTick, _obDraftBannerHtml, _obDraftPick, _obBaseTags, _obBlockSig };`)(
                 w, { get: () => ({ season: { id: 47 }, players: [{ id: 1, name: 'ふるり' }, { id: 2, name: 'しずく' }] }) }, _ob, (pins, bl, k) => env.fp(k), () => ctx,
-                async () => env.confirm, (m) => env.notes.push(m), () => { env.renders++; }, () => false, (x) => String(x), () => ({ id: 1, name: 'ふるり' }), doc, true, () => 0, () => {}, (r) => (Array.isArray(r) ? r : []));
+                async () => env.confirm, (m) => env.notes.push(m), () => { env.renders++; }, () => false, (x) => String(x), () => ({ id: 1, name: 'ふるり' }), doc, true, () => 0, () => {}, (r) => (Array.isArray(r) ? r : []),
+                () => (o.done || new Set()));   // _obDoneKeys = 済んだ凸の鍵 (ブロック|L|B|人|S)
             return { ...fns, _ob, env, ctx };
         };
         const now = new Date().toISOString();
@@ -15008,7 +15009,17 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         // 下書きの最初のブロックより手前は、取り込んでも自分のまま = 自分のいまの中身で比べる (B に何かあれば C は取り込めない)
         assert.equal(pickOf({ plans: [[1, P('d1', 'fp1', { fromDecided: 9 })]] }, { 2: P('tC', 'fp2', { obBase: [[0, ''], [1, '']] }) }).why, 'base', '手前の自分の結果を、消えるものとして比べた');
         // 札を持たない下書き (前の版で組んだ) は、手前にブロックがあれば取り込めない / いまのブロックだけなら取り込める・過ぎたブロックの札は見ない
-        assert.equal(pickOf({}, { 1: P('t1', 'fp1', { obBase: undefined }) }).why, 'base', '手前の札が無い下書きを取り込める');
+        assert.equal(pickOf({}, { 1: P('t1', 'fp1', { obBase: undefined }) }).why, 'old', '手前の札が無い下書きを取り込める / 理由が「前の版」でない');
+        m = mk({ peers: [peer({ 1: P('t1', 'fp1', { obBase: undefined }) })] });
+        assert.ok(!/data-ob-draft=/.test(m._obDraftBannerHtml(m.ctx, 1)) && /前の版の PAD で組んだものなので取り込めません \(しずく さんが PAD を読み込み直して組み直すと/.test(m._obDraftBannerHtml(m.ctx, 1)), '前の版の下書きに、当たらない案内 (組み方がそろうと) を出した');
+        // ★ 済んだ凸は札から外して比べる (読み直し 2 回目の指摘): 決定した端末に残る 🧮 のプランは済んだ凸を持たず、決定を読み戻した端末のプランは済んだ凸が足し戻されている
+        //   → 同じ決定なのに札が違い、決定し直した人の後ろのブロックの下書きを取り込めなかった。相手の A = 残りの凸 (A2) だけ・自分の A = 残り (A2) + 済んだ凸 (A1)
+        const onRest = { 1: P('t1', 'fp1', { obBase: [[0, '2|8|1']] }) }, mineFull = [[0, P('d0', 'fp0', { atk: [...A1, ...A2], fromDecided: 9 })]];
+        assert.equal(pickOf({ plans: mineFull }, onRest).why, 'base', '済んでいない凸の違いを同じ組み方にした');
+        assert.deepEqual(pickOf({ plans: mineFull, done: new Set(['5-8|L1|B1|9|S1']) }, onRest).idxs, [1], '済んだ凸のぶんだけ違う札を、違う組み方として断った');
+        assert.deepEqual(pickOf({ plans: [[0, P('m', 'fp0', { atk: A2 })]], done: new Set(['5-8|L1|B1|9|S1']) }, { 1: P('t1', 'fp1', { obBase: [[0, '1|9|1,2|8|1']] }) }).idxs, [1], '逆向き (相手の札に済んだ凸・自分は持たない) を断った');
+        assert.equal(pickOf({ plans: mineFull, done: new Set(['9-12|L1|B1|9|S1']) }, onRest).why, 'base', '別のブロックの済んだ凸まで札から外した');
+        assert.equal(pickOf({ plans: mineFull, done: new Set(['5-8|L1|B1|9|S2']) }, onRest).why, 'base', '別の編成の済んだ凸で札から外した');
         assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: undefined }) }).idxs, [1]);
         assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: [[0, 'x']] }) }).idxs, [1], '過ぎたブロックの札まで比べている');
         // 駒が違えば、手前を見る前に取り込めない (理由は駒)

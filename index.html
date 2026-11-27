@@ -16047,8 +16047,22 @@
         }
         // そのブロックより手前の全部のブロックの札 (過ぎたブロックのぶんは、取り込む側が見ない)
         const _obBaseTags = (idx, blocks) => { const out = []; for (let k = 0; k < idx; k++) out.push([k, _obBlockSig(_ob.plans.get(k), blocks, k)]); return out; };
+        // ブロックごとの済んだ凸 (✓・数字の報告の消し込み = _obDoneKeys) を、札と同じ形 (ボス|人|編成) で。添字 → Set
+        function _obDoneTriples(blocks) {
+            const dp = window.decidePlanDomain, snap = opsStore.get(), out = new Map();
+            if (!dp || !snap) return out;
+            const idxOf = new Map((Array.isArray(blocks) ? blocks : []).map((b, i) => [dp.keyOf(b), i]));
+            for (const key of _obDoneKeys(snap, blocks)) {
+                const p = String(key).split('|');   // 凸の鍵 = ブロック|L<レベル>|B<ボス>|<人>|S<編成> (decidePlanDomain.planKey)
+                if (p.length !== 5 || !idxOf.has(p[0])) continue;
+                const j = idxOf.get(p[0]);
+                if (!out.has(j)) out.set(j, new Set());
+                out.get(j).add(`${Number(p[2].slice(1))}|${p[3]}|${Number(p[4].slice(1)) || 1}`);
+            }
+            return out;
+        }
         // 下書き (plans = { ブロックの添字: プラン }) をいま取り込めるか。idxs = 取り込むブロック (いまより後ろ・全部そろったときだけ = 一部だけは取り込まない)。
-        //   why: 'pins' = 手で置いた駒が違う / 'base' = 手前のブロック (baseIdx) の組み方が違う・札を持たない古い下書き / 'none' = 取り込むブロックが無い。知らせ (_obPeerDrafts) と取り込み (_obDraftImport) が同じ判定を使う
+        //   why: 'pins' = 手で置いた駒が違う / 'base' = 手前のブロック (baseIdx) の組み方が違う / 'old' = 札を持たない下書き (前の版の PAD で組んだ) / 'none' = 取り込むブロックが無い。知らせ (_obPeerDrafts) と取り込み (_obDraftImport) が同じ判定を使う
         function _obDraftPick(plans, ctx, sid) {
             const src = (plans && typeof plans === 'object') ? plans : {};
             const idxs = Object.keys(src).map(Number).filter(k => Number.isInteger(k) && k >= ctx.first && k < ctx.blocks.length && src[k] && Array.isArray(src[k].levels) && Number(src[k].seasonId) === Number(sid)).sort((a, b) => a - b);
@@ -16058,9 +16072,16 @@
             // 取り込んだあとの、そのブロックの札: 下書きに入っているブロックは下書きのプラン / 下書きの最初のブロックより後ろで下書きに無いブロックは、取り込みが自分の結果を消す (_obDraftImport)
             //   = 手で置いた駒だけ (自分のいまの結果で比べると、取り込めば相手と同じ形になるのに断る: 読み直しの指摘) / それより手前は自分のいまのまま
             const sigAfter = (j) => idxs.includes(j) ? _obBlockSig(src[j], ctx.blocks, j) : _obBlockSig(j > lo ? null : _ob.plans.get(j), ctx.blocks, j);
+            // ★ 済んだ凸 (✓・数字の報告) は札から外して比べる (読み直し 2 回目の指摘): 済んだ凸をプランに持つ端末 (決定を読み戻した = 済んだ凸が足し戻されている) と、
+            //   持たない端末 (決定した端末に残る 🧮 のプランは済んだ凸を組まない) がある → 同じ決定なのに札が違って取り込めなかった。
+            //   盤も済んだ凸をプランから外して進める (_obStripDone) ので、済んだ凸のぶんだけの違いは同じ組み方
+            const done = _obDoneTriples(ctx.blocks);
+            const live = (sig, j) => { const d = done.get(j); return (d && d.size && sig) ? sig.split(',').filter(t => !d.has(t)).join(',') : sig; };
             for (const k of idxs) {
+                // 札を持たない下書き = 前の版の PAD で組んだもの。手前にブロックがあれば前提を確かめられないので取り込まない (理由は「前の版」と言う — 「組み方がそろうと」は当たらない)
+                if (!Array.isArray(src[k].obBase) && k > ctx.first) return { idxs: [], why: 'old' };
                 const base = new Map((Array.isArray(src[k].obBase) ? src[k].obBase : []).filter(x => Array.isArray(x) && typeof x[1] === 'string').map(x => [Number(x[0]), x[1]]));
-                for (let j = ctx.first; j < k; j++) { const have = sigAfter(j); if (typeof have !== 'string' || base.get(j) !== have) return { idxs: [], why: 'base', baseIdx: j }; }
+                for (let j = ctx.first; j < k; j++) { const have = sigAfter(j), want = base.get(j); if (typeof have !== 'string' || typeof want !== 'string' || live(want, j) !== live(have, j)) return { idxs: [], why: 'base', baseIdx: j }; }
             }
             return { idxs, why: null };
         }
@@ -16149,7 +16170,8 @@
                 ? `<div class="ob-draft"><span>📝 <b>${escapeHtml(d.who)} さんの下書き</b> — ${escapeHtml(blk.short)} を 🧮 で組みました (${d.n} 凸 · ${escapeHtml(_obAgo(d.at))})。取り込むと、あなたの 🧮 の結果はこの下書きに置き換わります (✅ 決定はまだされません)</span><button type="button" class="ob-draft-btn" data-ob-draft="${escapeHtml(String(d.playerId))}"${_ob.busy ? ' disabled' : ''}>取り込む</button></div>`
                 : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、${d.why === 'base'
                     ? `手前の ${escapeHtml(ctx.blocks[d.baseIdx]?.short || 'ブロック')} の組み方があなたの画面と違うので取り込めません (${escapeHtml(ctx.blocks[d.baseIdx]?.short || '手前のブロック')} の組み方がそろうと取り込めます)`
-                    : `手で置いた駒が変わったので取り込めません (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)`}</div>`).join('');
+                    : (d.why === 'old' ? `前の版の PAD で組んだものなので取り込めません (${escapeHtml(d.who)} さんが PAD を読み込み直して組み直すと、取り込める下書きが出ます)`
+                    : `手で置いた駒が変わったので取り込めません (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)`)}</div>`).join('');
         }
         // ほかの運営の下書きを取り込む (確かめてから・指紋が合うブロックだけ)。後ろのブロックで取り込まなかった自分の結果は前提が変わった = 要組み直し
         async function _obDraftImport(playerId) {
@@ -16161,7 +16183,7 @@
             // 取り込めるか (駒の指紋 + 手前のブロックの組み方) は、知らせと同じ判定 _obDraftPick。全部そろったときだけ取り込む
             const pick = (c) => _obDraftPick(plans, c, snap.season.id);
             const pk0 = pick(ctx), idxs = pk0.idxs;
-            if (!idxs.length) { showNotification(pk0.why === 'base' ? '手前のブロックの組み方があなたの画面と違うので、この下書きは取り込めません' : '手で置いた駒が変わったので、この下書きは取り込めません'); renderOpsBuild(); return; }
+            if (!idxs.length) { showNotification(pk0.why === 'base' ? '手前のブロックの組み方があなたの画面と違うので、この下書きは取り込めません' : (pk0.why === 'old' ? '前の版の PAD で組んだ下書きなので取り込めません' : '手で置いた駒が変わったので、この下書きは取り込めません')); renderOpsBuild(); return; }
             const names = idxs.map(k => ctx.blocks[k].short).join('・');
             if (!(await padConfirm(`${who} さんの下書きを取り込みますか？\n\n・あなたの ${names} の 🧮 の結果は、この下書きに置き換わります\n・✅ 決定はまだされません (メンバーには何も届きません)`, { ok: '取り込む' }))) return;
             // 答えを待つ間に変わった (処理が始まった・シーズン・いまのブロック・駒) → 確かめた中身と違うので止める
