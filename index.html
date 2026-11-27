@@ -7697,7 +7697,7 @@
             if (!phaseOk(_opsNtfPhase(season)) || _opsNtfPhase(season).ph.idx !== c0.ph.idx) { showNotification('⏱ 確かめている間に時間が進みました。送っていません (画面を合わせたので、もう一度押してください)'); return; }
             const me = getCurrentIdentity();
             let sent = 0, skipped = 0, failed = 0, doneMeanwhile = 0, unmarked = 0, outside = 0;
-            const noDevice = [];   // 送信はできたが 0 端末だった人の名前 (通知が無効 = 届いていない)
+            const noDevice = [];   // 送信はできたが 0 端末だった人の名前 (通知が無効・端末への送信がみな失敗 = 届いていない)
             for (const t of targets) {
                 try {
                     // 確認のあとにも読み直す: 確認を開いている間に凸を済ませた人には送らない・数が変わったら文を作り直す
@@ -7716,7 +7716,7 @@
                         continue;
                     }
                     // ★ 「送りました」に数えるのは、端末が 1 つ以上あった人だけ (Fable 監査 2026-11-27: 通知が無効の人も数えていた = Discord で声をかける相手が分からない)。
-                    //   0 端末 = 通知が無効 (名前で言う) / 相手 0 人 (skipped) = テスト回の方針・書庫で宛先から外れた (数だけ言う)。
+                    //   0 端末 = 通知が無効・端末への送信がみな失敗 (どちらも res.sent が 0 で返る。名前で言う) / 相手 0 人 (skipped) = テスト回の方針・書庫で宛先から外れた (数だけ言う)。
                     //   どちらも確保は送信済みにする (もう一度押しても届かない人を、押すたびに確認に並べない) + 届いていない印 (kind <種類>_nd・同じ ref) を残す = カードが言い続ける
                     const delivered = !res?.skipped && Number(res?.sent) > 0;
                     if (delivered) sent += 1; else if (res?.skipped) outside += 1; else noDevice.push(t.name);
@@ -7731,8 +7731,8 @@
                 + `${outside ? ` (🧪 テスト回の方針・書庫で宛先から外れた ${outside} 人には届いていません)` : ''}`
                 + `${failed ? ` — ⚠ ${failed} 人は送れませんでした (もう一度押すと送り直します)` : ''}`
                 + `${unmarked ? ` — ⚠ ${unmarked} 人は、送った記録を残せませんでした (2 分ほどあとにもう一度押すと、その人にもう一度送ります)` : ''}`;
-            // 通知が無効で届いていない人は名前で言う — 流れて消える知らせでなく、閉じるまで出す (待たない: 押せる状態に戻してから読んでもらう)
-            if (noDevice.length) void padAlert(`${head}\n\n🔕 通知が無効で届いていない ${noDevice.length} 人:\n${noDevice.join('・')}\n\nDiscord で声をかけてください。`, { title: '届いていない人がいます' });
+            // 届いていない人は名前で言う — 流れて消える知らせでなく、閉じるまで出す (待たない: 押せる状態に戻してから読んでもらう)
+            if (noDevice.length) void padAlert(`${head}\n\n🔕 届いていない ${noDevice.length} 人 (通知が無効、または端末への送信に失敗):\n${noDevice.join('・')}\n\nDiscord で声をかけてください。`, { title: '届いていない人がいます' });
             else showNotification(head);
         }
 
@@ -16031,12 +16031,22 @@
         const _OB_PEER_FRESH_MS = 45000;
         const _obPlanIds = new WeakMap(); let _obPlanIdSeq = 0;
         const _obPlanId = (p) => { if (!_obPlanIds.has(p)) _obPlanIds.set(p, ++_obPlanIdSeq); return _obPlanIds.get(p); };
-        // ★ 手前のブロックの組み方の札 (Fable 監査 2026-11-27): 決定のまま = d<決定の id> / 🧮 の結果 = a<組んだ時刻> / 何も無い (空・手で置いただけ) = p。
-        //   🧮 の結果は「手前のブロックをこう組んだ」前提で組んである。この端末では手前を変えると後ろは要組み直しになるが、下書きは別の端末で組んだもの —
-        //   駒の指紋だけで取り込ませると、自分が A を組み直したあとに、決定の A を前提にした相手の B を「要組み直し」なしで取り込めた。
-        //   🧮 のときに手前 (いまのブロック〜そのブロックの手前) の札を plan.obBase に控え、取り込む側の手前のブロックが同じ札のときだけ取り込ませる (_obDraftPick)
-        const _obTag = (p) => !p ? 'p' : (p.fromDecided != null ? `d${Number(p.fromDecided)}` : `a${p.builtAt || ''}`);
-        const _obBaseTags = (first, idx) => { const out = []; for (let k = first; k < idx; k++) out.push([k, _obTag(_ob.plans.get(k))]); return out; };
+        // ★ 手前のブロックの中身の札 (Fable 監査 2026-11-27): 🧮 の結果は「手前のブロックをこう組んだ」前提で組んである。この端末では手前を変えると後ろは要組み直しになるが、
+        //   下書きは別の端末で組んだもの — 駒の指紋だけで取り込ませると、自分が A を組み直したあとに、決定の A を前提にした相手の B を「要組み直し」なしで取り込めた。
+        //   → 🧮 のとき (と、札を持たないプラン = 決定から読み戻したブロックの駒を外したとき) に、手前のブロックの札を plan.obBase に控え、取り込む側の手前のブロックが同じ札のときだけ取り込ませる (_obDraftPick)。
+        //   札 = そのブロックの凸 (ボス|人|編成) を並べたもの = **中身で比べる**: 決定のまま・🧮 の結果・取り込んだ結果のどれでも、中身が同じなら同じ札
+        //   (決定の id・組んだ時刻で比べると、相手が取り込んで ✅ 決定しただけで札が変わり、同じ中身なのに取り込めなくなる: 読み直しの指摘)。
+        //   プランの無いブロック (空・手で置いただけ) は手で置いた駒 (📌・約束) の札 = 手で置いただけで決定したブロックと同じ。✓ で済んだ凸も入れたまま (済んだかどうかで札を変えない)
+        const _obAtkSig = (list) => list.map(a => `${Number(a.bossNumber)}|${a.memberId}|${Number(a.loadoutSlot) || 1}`).sort().join(',');
+        function _obBlockSig(plan, blocks, j) {
+            const blk = (Array.isArray(blocks) ? blocks : [])[j], pc = window.planChainDomain, bb = window.blockBuildDomain, rv = window.reservationsDomain;
+            if (!blk || !pc || !bb) return null;   // 分からない = 合わない扱い (_obDraftPick)
+            if (plan) return _obAtkSig(pc.attacksIn(plan, blk));
+            return _obAtkSig(bb.blockPins(_obFpRows(_ob.pins), rv && rv.isFixed ? rv.isFixed : null).filter(r => bb.pinBlockIdx(r, blocks) === j)
+                .map(r => ({ bossNumber: r.boss_number, memberId: r.player_id, loadoutSlot: r.loadout_slot })));
+        }
+        // そのブロックより手前の全部のブロックの札 (過ぎたブロックのぶんは、取り込む側が見ない)
+        const _obBaseTags = (idx, blocks) => { const out = []; for (let k = 0; k < idx; k++) out.push([k, _obBlockSig(_ob.plans.get(k), blocks, k)]); return out; };
         // 下書き (plans = { ブロックの添字: プラン }) をいま取り込めるか。idxs = 取り込むブロック (いまより後ろ・全部そろったときだけ = 一部だけは取り込まない)。
         //   why: 'pins' = 手で置いた駒が違う / 'base' = 手前のブロック (baseIdx) の組み方が違う・札を持たない古い下書き / 'none' = 取り込むブロックが無い。知らせ (_obPeerDrafts) と取り込み (_obDraftImport) が同じ判定を使う
         function _obDraftPick(plans, ctx, sid) {
@@ -16044,10 +16054,13 @@
             const idxs = Object.keys(src).map(Number).filter(k => Number.isInteger(k) && k >= ctx.first && k < ctx.blocks.length && src[k] && Array.isArray(src[k].levels) && Number(src[k].seasonId) === Number(sid)).sort((a, b) => a - b);
             if (!idxs.length) return { idxs: [], why: 'none' };
             if (_ob.pins == null || !idxs.every(k => src[k].obPinsFp === _obPinsFp(_ob.pins, ctx.blocks, k))) return { idxs: [], why: 'pins' };
-            const tagOf = (j) => idxs.includes(j) ? _obTag(src[j]) : _obTag(_ob.plans.get(j));   // 取り込んだあとの手前のブロックの札 (下書きに入っているブロックは下書きのもの)
+            const lo = idxs[0];
+            // 取り込んだあとの、そのブロックの札: 下書きに入っているブロックは下書きのプラン / 下書きの最初のブロックより後ろで下書きに無いブロックは、取り込みが自分の結果を消す (_obDraftImport)
+            //   = 手で置いた駒だけ (自分のいまの結果で比べると、取り込めば相手と同じ形になるのに断る: 読み直しの指摘) / それより手前は自分のいまのまま
+            const sigAfter = (j) => idxs.includes(j) ? _obBlockSig(src[j], ctx.blocks, j) : _obBlockSig(j > lo ? null : _ob.plans.get(j), ctx.blocks, j);
             for (const k of idxs) {
-                const base = new Map((Array.isArray(src[k].obBase) ? src[k].obBase : []).filter(x => Array.isArray(x)).map(x => [Number(x[0]), String(x[1])]));
-                for (let j = ctx.first; j < k; j++) if (base.get(j) !== tagOf(j)) return { idxs: [], why: 'base', baseIdx: j };
+                const base = new Map((Array.isArray(src[k].obBase) ? src[k].obBase : []).filter(x => Array.isArray(x) && typeof x[1] === 'string').map(x => [Number(x[0]), x[1]]));
+                for (let j = ctx.first; j < k; j++) { const have = sigAfter(j); if (typeof have !== 'string' || base.get(j) !== have) return { idxs: [], why: 'base', baseIdx: j }; }
             }
             return { idxs, why: null };
         }
@@ -16134,7 +16147,9 @@
             const ds = blk ? _obPeerDrafts(ctx, idx).slice(0, 2) : [];
             return ds.map(d => d.ok
                 ? `<div class="ob-draft"><span>📝 <b>${escapeHtml(d.who)} さんの下書き</b> — ${escapeHtml(blk.short)} を 🧮 で組みました (${d.n} 凸 · ${escapeHtml(_obAgo(d.at))})。取り込むと、あなたの 🧮 の結果はこの下書きに置き換わります (✅ 決定はまだされません)</span><button type="button" class="ob-draft-btn" data-ob-draft="${escapeHtml(String(d.playerId))}"${_ob.busy ? ' disabled' : ''}>取り込む</button></div>`
-                : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、${d.why === 'base' ? `手前の ${escapeHtml(ctx.blocks[d.baseIdx]?.short || 'ブロック')} の組み方があなたの画面と違うので取り込めません` : '手で置いた駒が変わったので取り込めません'} (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)</div>`).join('');
+                : `<div class="ob-draft off">📝 ${escapeHtml(d.who)} さんの下書き (${escapeHtml(blk.short)}) は、${d.why === 'base'
+                    ? `手前の ${escapeHtml(ctx.blocks[d.baseIdx]?.short || 'ブロック')} の組み方があなたの画面と違うので取り込めません (${escapeHtml(ctx.blocks[d.baseIdx]?.short || '手前のブロック')} の組み方がそろうと取り込めます)`
+                    : `手で置いた駒が変わったので取り込めません (${escapeHtml(d.who)} さんが組み直すと新しい下書きが出ます)`}</div>`).join('');
         }
         // ほかの運営の下書きを取り込む (確かめてから・指紋が合うブロックだけ)。後ろのブロックで取り込まなかった自分の結果は前提が変わった = 要組み直し
         async function _obDraftImport(playerId) {
@@ -16713,6 +16728,8 @@
             if (!cur || !blk) return null;
             const { plan, removed } = window.blockBuildDomain.dropPiece(cur, { ...piece, fromIdx: blk.fromIdx, toIdx: blk.toIdx });
             const { fromDecided: _fd, obBlockFp: _fp, ...mine } = plan;
+            // 手前のブロックの札を持たないプラン (決定から読み戻したもの) は、いまの手前のブロックで控える — 無いと、駒を外したあとの下書きをほかの運営が取り込めない (読み直しの指摘)。🧮 の結果は組んだときの札のまま
+            if (!Array.isArray(mine.obBase)) mine.obBase = _obBaseTags(idx, blocks);
             _ob.plans.set(idx, mine);
             let later = false;
             for (const k of [..._ob.plans.keys()]) if (k > idx) { const hand = _obHandOnly(k); _ob.plans.delete(k); if (!hand) { _ob.stale.add(k); later = true; } }
@@ -16848,7 +16865,7 @@
                 plan.blockScope = { idx, letter: blk.letter, name: blk.name, short: blk.short, range: blk.range, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
                 plan.builtAt = new Date().toISOString();
                 plan.obPinsFp = _obPinsFp(rows, blocks, idx);   // 駒・拘束が変わったら古い (Codex 監査)
-                plan.obBase = _obBaseTags(ctx2.first, idx);   // 手前のブロックの組み方の札 (下書きを取り込む側が、同じ前提かを確かめる: Fable 監査 2026-11-27)
+                plan.obBase = _obBaseTags(idx, blocks);   // 手前のブロックの中身の札 (下書きを取り込む側が、同じ前提かを確かめる: Fable 監査 2026-11-27)
                 if (!_obSame(epoch, sid)) return;
                 _ob.plans.set(idx, plan);
                 _ob.stale.delete(idx);

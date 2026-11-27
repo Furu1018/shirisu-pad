@@ -14824,7 +14824,19 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
     });
     test('★ 外したあとも ほかの駒は残る (指紋を付け直す・決定のままでなくなる・後ろは要組み直し) / 🧮 で戻さない / 置き直す・やり直す で戻る / 置いたピースを押すと詳細 (外れない・2026-11-27)', () => {
         const rm = fnU('function _obRemoveFromPlan(idx, blocks, piece, rows)', 'const _obSkipAdd');
-        assert.ok(/const \{ fromDecided: _fd, obBlockFp: _fp, \.\.\.mine \} = plan;\s*\n\s*_ob\.plans\.set\(idx, mine\);/.test(rm), '手を入れたブロックが「決定のまま」に見える (決定し直せない)');
+        assert.ok(/const \{ fromDecided: _fd, obBlockFp: _fp, \.\.\.mine \} = plan;\s*\n[^\n]*\n\s*if \(!Array\.isArray\(mine\.obBase\)\) mine\.obBase = _obBaseTags\(idx, blocks\);\s*\n\s*_ob\.plans\.set\(idx, mine\);/.test(rm), '手を入れたブロックが「決定のまま」に見える (決定し直せない)');
+        // 実行: 札を持たないプラン (決定から読み戻したもの) の駒を外すと、手前のブロックの札を控える (無いと、その下書きをほかの運営が取り込めない: Fable 監査の読み直し) / 🧮 の結果は組んだときの札のまま
+        {
+            const drop = (plan) => {
+                const _ob = { plans: new Map([[1, plan]]), stale: new Set() };
+                new Function('_ob', 'window', '_obHandOnly', '_obPinsFp', '_obBaseTags', `${rm}\nreturn _obRemoveFromPlan;`)(
+                    _ob, { blockBuildDomain: { dropPiece: (p) => ({ plan: { ...p }, removed: 1 }) } }, () => false, () => 'fp', (idx) => [[0, `base${idx}`]])(1, [{}, { fromIdx: 4, toIdx: 7 }], {}, []);
+                return _ob.plans.get(1);
+            };
+            const fromDec = drop({ fromDecided: 9, obBlockFp: 'x', levels: [] });
+            assert.deepEqual([fromDec.obBase, fromDec.fromDecided], [[[0, 'base1']], undefined], '決定から読み戻したプランの駒を外しても、手前のブロックの札が付かない');
+            assert.deepEqual(drop({ obBase: [[0, 'kept']], levels: [] }).obBase, [[0, 'kept']], '🧮 の結果の札 (組んだときの手前のブロック) を書き換えた');
+        }
         assert.ok(/if \(k > idx\) \{ const hand = _obHandOnly\(k\); _ob\.plans\.delete\(k\); if \(!hand\) \{ _ob\.stale\.add\(k\); later = true; \} \}/.test(rm), '後ろのブロックを要組み直しにしていない / 手で置いただけのブロックまで要組み直しにする');
         assert.ok(/if \(p\.fromDecided == null\) _ob\.plans\.set\(k, \{ \.\.\.p, obPinsFp: _obPinsFp\(rows, blocks, k\) \}\);/.test(rm), '指紋を付け直さないと、外した直後に全部消える');
         const un = fnU('async function _obUnpin(resId)', 'async function _obAuto(');
@@ -14914,21 +14926,23 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
     await testAsync('★ 実行: ② 📝 🧮 の下書きの共有 — 自分の 🧮 の結果だけを載せる / 取り込めるのは駒の指紋が同じときだけ / 取り込むと置き換わる (確認つき・後ろの自分の結果は要組み直し) / 👤 開いているブロック (2026-11-27)', async () => {
         const code = fnU('        // ===== ② 📝 🧮 の下書きの共有', '        // ⑥ 🧩 ピース置き場の札と');
         assert.ok(code && /async function _obDraftImport\(playerId\)/.test(code), '下書きの関数が無い');
-        const blocks = [{ short: 'A 朝' }, { short: 'B 午前' }, { short: 'C 午後' }];
-        const P = (built, fp, extra = {}) => ({ seasonId: 47, builtAt: built, obPinsFp: fp, levels: [], obBase: [[0, 'p']], ...extra });   // obBase = 手前のブロックの札 (A = 何も無い)
+        const blocks = [{ short: 'A 朝', from: 5, to: 8, fromIdx: 0, toIdx: 3 }, { short: 'B 午前', from: 9, to: 12, fromIdx: 4, toIdx: 7 }, { short: 'C 午後', from: 13, to: 16, fromIdx: 8, toIdx: 11 }];
+        // atk = そのプランのそのブロックの凸 (planChainDomain.attacksIn の代わり)。obBase = 手前のブロックの中身の札 (既定: A は空 = '')
+        const ATK3 = [1, 2, 3].map(n => ({ bossNumber: n, memberId: n, loadoutSlot: 1 }));
+        const P = (built, fp, extra = {}) => ({ seasonId: 47, builtAt: built, obPinsFp: fp, levels: [], obBase: [[0, '']], ...extra });
         const mk = (o = {}) => {
             const env = { notes: [], saves: [], renders: 0, confirm: o.confirm !== false, fp: o.fp || ((k) => `fp${k}`) };
             const _ob = { plans: new Map(o.plans || []), skip: new Map(o.skip || []), stale: new Set(), pins: o.pins === undefined ? [] : o.pins, peers: o.peers || [], busy: false, sel: null, pinsSeason: 47,
                 idx: 1, peersSeq: 0, peersSig: null, draftTimer: null, draftSig: null, openKey: null, openAt: 0 };
-            const w = { planChainDomain: { attacksIn: () => [1, 2, 3] },
+            const w = { blockBuildDomain: bb, planChainDomain: { attacksIn: (p) => p.atk || ATK3 },
                 supabaseSaveBuildDraft: async (...a) => { env.saves.push(a); if (o.saveGate && env.saves.length === 1) await o.saveGate; return true; },
                 supabaseLoadBuildDrafts: async () => (o.load === undefined ? (o.peers || []) : o.load) };
             const ctx = { first: o.first ?? 0, blocks, idx: 1, tray: [] };
             const doc = { getElementById: () => ({ offsetParent: {} }) };
-            const fns = new Function('window', 'opsStore', '_ob', '_obPinsFp', '_obCtx', 'padConfirm', 'showNotification', 'renderOpsBuild', '_obHandOnly', 'escapeHtml', 'getCurrentIdentity', 'document', '_opsMode', 'setTimeout', 'clearTimeout',
-                `${code}\nreturn { _obDraftSig, _obDraftPush, _obPeerDrafts, _obDraftImport, _obPeerOpen, _obPeersTick, _obDraftBannerHtml, _obDraftPick, _obBaseTags, _obTag };`)(
+            const fns = new Function('window', 'opsStore', '_ob', '_obPinsFp', '_obCtx', 'padConfirm', 'showNotification', 'renderOpsBuild', '_obHandOnly', 'escapeHtml', 'getCurrentIdentity', 'document', '_opsMode', 'setTimeout', 'clearTimeout', '_obFpRows',
+                `${code}\nreturn { _obDraftSig, _obDraftPush, _obPeerDrafts, _obDraftImport, _obPeerOpen, _obPeersTick, _obDraftBannerHtml, _obDraftPick, _obBaseTags, _obBlockSig };`)(
                 w, { get: () => ({ season: { id: 47 }, players: [{ id: 1, name: 'ふるり' }, { id: 2, name: 'しずく' }] }) }, _ob, (pins, bl, k) => env.fp(k), () => ctx,
-                async () => env.confirm, (m) => env.notes.push(m), () => { env.renders++; }, () => false, (x) => String(x), () => ({ id: 1, name: 'ふるり' }), doc, true, () => 0, () => {});
+                async () => env.confirm, (m) => env.notes.push(m), () => { env.renders++; }, () => false, (x) => String(x), () => ({ id: 1, name: 'ふるり' }), doc, true, () => 0, () => {}, (r) => (Array.isArray(r) ? r : []));
             return { ...fns, _ob, env, ctx };
         };
         const now = new Date().toISOString();
@@ -14961,30 +14975,48 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         m = mk({ peers: [peer({ 0: P('t0', 'fp0'), 1: P('t1', 'fp1') })], first: 1 });
         await m._obDraftImport(2);
         assert.deepEqual([m._ob.plans.has(0), m._ob.plans.has(1)], [false, true], '過ぎたブロックの下書きを取り込んだ');
-        // ★ 手前のブロックの組み方が違えば取り込めない (Fable 監査 2026-11-27: 駒の指紋だけ見ていた = 自分が A を組み直したあとに、別の A を前提にした B を「要組み直し」なしで取り込めた)
-        m = mk({ peers: [peer({ 1: P('t1', 'fp1') })], plans: [[0, P('mineA', 'fp0')]] });   // 相手は「A は何も無い」前提で B を組んだ・自分は A を 🧮 で組んである
+        // ★ 手前のブロックの組み方 (中身) が違えば取り込めない (Fable 監査 2026-11-27: 駒の指紋だけ見ていた = 自分が A を組み直したあとに、別の A を前提にした B を「要組み直し」なしで取り込めた)
+        const A1 = [{ bossNumber: 1, memberId: 9, loadoutSlot: 1 }], A2 = [{ bossNumber: 2, memberId: 8, loadoutSlot: 1 }];   // 札は '1|9|1' / '2|8|1'
+        m = mk({ peers: [peer({ 1: P('t1', 'fp1') })], plans: [[0, P('mineA', 'fp0', { atk: A1 })]] });   // 相手は「A は空」の前提で B を組んだ・自分は A を 🧮 で組んである
         assert.deepEqual(m._obPeerDrafts(m.ctx, 1).map(d => [d.ok, d.why, d.baseIdx]), [[false, 'base', 0]], '手前のブロックの組み方が違う下書きを取り込めることにした');
-        assert.ok(!/data-ob-draft=/.test(m._obDraftBannerHtml(m.ctx, 1)) && /手前の A 朝 の組み方があなたの画面と違うので取り込めません/.test(m._obDraftBannerHtml(m.ctx, 1)), '手前のブロックが違う理由を言っていない / 押せるボタンを出した');
+        assert.ok(!/data-ob-draft=/.test(m._obDraftBannerHtml(m.ctx, 1)) && /手前の A 朝 の組み方があなたの画面と違うので取り込めません \(A 朝 の組み方がそろうと取り込めます\)/.test(m._obDraftBannerHtml(m.ctx, 1)), '手前のブロックが違う理由を言っていない / 押せるボタンを出した');
         await m._obDraftImport(2);
         assert.deepEqual([m._ob.plans.has(1), m._ob.plans.get(0).builtAt, m.env.notes.some(n => /手前のブロックの組み方があなたの画面と違う/.test(n))], [false, 'mineA', true], '手前のブロックの組み方が違うのに取り込んだ');
         const pickOf = (o, plans) => { const x = mk(o); return x._obDraftPick(plans, x.ctx, 47); };
-        // 決定のままの A を前提にした下書き: 自分の A も同じ決定のままなら取り込める・別の決定 / 外した (何も無い) なら取り込めない
-        const onDec = { 1: P('t1', 'fp1', { obBase: [[0, 'd9']] }) };
-        assert.deepEqual(pickOf({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })]] }, onDec), { idxs: [1], why: null });
-        assert.equal(pickOf({ plans: [[0, P('d0', 'fp0', { fromDecided: 8 })]] }, onDec).why, 'base', '別の決定を前提にした下書きを取り込める');
-        assert.equal(pickOf({}, onDec).why, 'base', '自分は A を外したのに、決定の A を前提にした下書きを取り込める');
-        // 下書きに手前のブロックも入っていれば、それごと取り込む (自分の A は置き換わる) = 札は下書きの A で比べる
-        assert.deepEqual(pickOf({ plans: [[0, P('mineA', 'fp0')]] }, { 0: P('tA', 'fp0', { obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, 'atA']] }) }).idxs, [0, 1], '手前のブロックごとの下書きを取り込めない');
-        assert.equal(pickOf({}, { 0: P('tA', 'fp0', { obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, 'aOLD']] }) }).why, 'base', '下書きの中で前提が食い違うのに取り込める');
+        // ★ 札は中身で比べる (読み直しの指摘): 相手が A (中身 A1) の上に組んだ B は、自分の A が 🧮 の結果でも・決定のままでも、中身が同じなら取り込める
+        //   (決定の id・組んだ時刻で比べると、相手が取り込んで ✅ 決定しただけで、同じ中身なのに取り込めなくなる)
+        const onA1 = { 1: P('t1', 'fp1', { obBase: [[0, '1|9|1']] }) };
+        assert.deepEqual(pickOf({ plans: [[0, P('mineA', 'fp0', { atk: A1 })]] }, onA1), { idxs: [1], why: null }, '同じ中身の A (自分は 🧮 の結果) の上に取り込めない');
+        assert.deepEqual(pickOf({ plans: [[0, P('d0', 'fp0', { atk: A1, fromDecided: 9 })]] }, onA1).idxs, [1], '同じ中身の A (自分は決定のまま) の上に取り込めない');
+        assert.deepEqual(pickOf({ plans: [[0, P('d0', 'fp0', { atk: A1, fromDecided: 10 })]] }, onA1).idxs, [1], '決定し直しただけ (中身は同じ) で取り込めなくなる');
+        assert.equal(pickOf({ plans: [[0, P('d0', 'fp0', { atk: A2, fromDecided: 9 })]] }, onA1).why, 'base', '中身の違う A の上に取り込める');
+        assert.equal(pickOf({}, onA1).why, 'base', '自分の A は空なのに、A を組んだ前提の下書きを取り込める');
+        // プランの無いブロックは手で置いた駒の札 = 同じ駒で決定したブロック (プランあり) と同じ
+        const pinA = [{ id: 5, status: 'pinned', time_mode: 'block', block_from: 5, block_to: 8, boss_number: 1, player_id: 9, loadout_slot: 1 }];
+        assert.deepEqual(pickOf({ pins: pinA }, onA1).idxs, [1], '手で置いた駒だけの A (プラン無し) が、同じ駒で決定した A と違う札になる');
+        assert.equal(pickOf({ pins: [{ ...pinA[0], status: 'released' }] }, onA1).why, 'base', '外した駒を札に数えた');
+        // 下書きに手前のブロックも入っていれば、それごと取り込む (自分の A は置き換わる) = 下書きの A の中身で比べる
+        assert.deepEqual(pickOf({ plans: [[0, P('mineA', 'fp0', { atk: A1 })]] }, { 0: P('tA', 'fp0', { atk: A2, obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, '2|8|1']] }) }).idxs, [0, 1], '手前のブロックごとの下書きを取り込めない');
+        assert.equal(pickOf({}, { 0: P('tA', 'fp0', { atk: A2, obBase: [] }), 1: P('t1', 'fp1', { obBase: [[0, '1|9|1']] }) }).why, 'base', '下書きの中で前提が食い違うのに取り込める');
+        // ★ 下書きの最初のブロックより後ろで下書きに無いブロックは、取り込むと自分の結果が消える = 手で置いた駒だけの札で比べる
+        //   (読み直しの指摘: 自分のいまの結果で比べると、取り込めば相手と同じ形になるのに断る)。相手は A を組み直して B を飛ばし C を組んだ・自分の B は決定のまま
+        const skipB = { 0: P('tA', 'fp0', { atk: A2, obBase: [] }), 2: P('tC', 'fp2', { obBase: [[0, '2|8|1'], [1, '']] }) };
+        m = mk({ peers: [peer(skipB)], plans: [[1, P('d1', 'fp1', { fromDecided: 9 })]] });
+        assert.deepEqual(m._obDraftPick(skipB, m.ctx, 47).idxs, [0, 2], '取り込めば相手と同じ形になるのに取り込めない');
+        await m._obDraftImport(2);
+        assert.deepEqual([m._ob.plans.has(0), m._ob.plans.has(1), m._ob.plans.has(2), [...m._ob.stale]], [true, false, true, [1]], '取り込んだあとの形が相手と違う (自分の B が残った)');
+        // 下書きの最初のブロックより手前は、取り込んでも自分のまま = 自分のいまの中身で比べる (B に何かあれば C は取り込めない)
+        assert.equal(pickOf({ plans: [[1, P('d1', 'fp1', { fromDecided: 9 })]] }, { 2: P('tC', 'fp2', { obBase: [[0, ''], [1, '']] }) }).why, 'base', '手前の自分の結果を、消えるものとして比べた');
         // 札を持たない下書き (前の版で組んだ) は、手前にブロックがあれば取り込めない / いまのブロックだけなら取り込める・過ぎたブロックの札は見ない
         assert.equal(pickOf({}, { 1: P('t1', 'fp1', { obBase: undefined }) }).why, 'base', '手前の札が無い下書きを取り込める');
         assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: undefined }) }).idxs, [1]);
-        assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: [[0, 'aX']] }) }).idxs, [1], '過ぎたブロックの札まで比べている');
+        assert.deepEqual(pickOf({ first: 1 }, { 1: P('t1', 'fp1', { obBase: [[0, 'x']] }) }).idxs, [1], '過ぎたブロックの札まで比べている');
         // 駒が違えば、手前を見る前に取り込めない (理由は駒)
-        assert.equal(pickOf({ plans: [[0, P('mineA', 'fp0')]] }, { 1: P('t1', 'old') }).why, 'pins');
-        // 札: 決定のまま d<決定の id> / 🧮 の結果 a<組んだ時刻> / 何も無い p
-        m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })], [1, P('t1', 'fp1')]] });
-        assert.deepEqual(m._obBaseTags(0, 3), [[0, 'd9'], [1, 'at1'], [2, 'p']]);
+        assert.equal(pickOf({ plans: [[0, P('mineA', 'fp0', { atk: A1 })]] }, { 1: P('t1', 'old') }).why, 'pins');
+        // 🧮 のときに控える札 = 手前の全部のブロック: プランがあればその凸・無ければ手で置いた駒
+        m = mk({ plans: [[0, P('d0', 'fp0', { atk: A1, fromDecided: 9 })]], pins: [{ id: 6, status: 'pinned', time_mode: 'block', block_from: 9, block_to: 12, boss_number: 3, player_id: 4, loadout_slot: 2 }] });
+        assert.deepEqual(m._obBaseTags(2, blocks), [[0, '1|9|1'], [1, '3|4|2']]);
+        assert.deepEqual(mk({ pins: [{ id: 6, status: 'pinned', time_mode: 'block', block_from: 9, block_to: 12, boss_number: 3, player_id: 4, loadout_slot: 2 }] })._obBaseTags(1, blocks), [[0, '']], '別のブロックに置いた駒を、そのブロックの札に入れた');
         // 自分の下書き: 🧮 の結果だけ (決定から読み戻したブロックは載せない)・外した駒は載せたブロックのぶんだけ
         m = mk({ plans: [[0, P('d0', 'fp0', { fromDecided: 9 })], [1, P('t1', 'fp1')]], skip: [[0, new Set(['x'])], [1, new Set(['y'])]] });
         await m._obDraftPush();
@@ -15047,7 +15079,7 @@ console.log('\n🧱 組む: 駒を 1 個ずつ外す (2026-10-31 ふるり「嵌
         assert.ok(/const ds = _obDraftSig\(\); if \(ds !== _ob\.draftSig\) \{ const first = _ob\.draftSig == null; _ob\.draftSig = ds; if \(!first \|\| ds !== ''\) _obDraftSchedule\(\); \}/.test(r), '自分の 🧮 の結果が変わっても下書きを置き直さない');
         assert.ok(/const dft = e\.target\.closest\('\[data-ob-draft\]'\); if \(dft\) \{ _obDraftImport\(dft\.dataset\.obDraft\); return; \}/.test(html), '取り込むボタンが効かない');
         // 🧮 のときに手前のブロックの札を控える (下書きを取り込む側が、同じ前提かを確かめる)・取り込みは知らせと同じ判定で、確認のあとにも照合し直す
-        assert.ok(/plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);[^\n]*\n\s*plan\.obBase = _obBaseTags\(ctx2\.first, idx\);/.test(html), '🧮 のときに手前のブロックの札を控えていない (下書きが取り込めなくなる)');
+        assert.ok(/plan\.obPinsFp = _obPinsFp\(rows, blocks, idx\);[^\n]*\n\s*plan\.obBase = _obBaseTags\(idx, blocks\);/.test(html), '🧮 のときに手前のブロックの札を控えていない (下書きが取り込めなくなる)');
         const di = fnU('async function _obDraftImport(playerId)', '// 10 秒の見回り (🧱 組む が見えている間だけ)');
         assert.ok(/const pick = \(c\) => _obDraftPick\(plans, c, snap\.season\.id\);/.test(di) && /pick\(c2\)\.idxs\.join\(\) !== idxs\.join\(\)/.test(di), '取り込みが知らせと別の判定 / 確認のあとに照合し直していない');
         assert.ok(/_ob\.peers = null; _ob\.peersSig = null; _ob\.draftSig = null; _ob\.draftAgain = null; _ob\.openKey = null; clearTimeout\(_ob\.draftTimer\);/.test(html), 'シーズンが変わっても前の下書き・札・「もう一度」を持ち越す');
@@ -15360,7 +15392,7 @@ console.log('\n⏱ 再編成時間 (第46回の反省 ⑥・2026-11-02 ふるり
         // 0 端末 = 通知が無効: 数えない・名前で言う (閉じるまで出す)・届いていない印 (_nd・同じ ref) を残す・確保は送信済みに (押すたびに確認に並べない)
         r = await run('2026-11-28T08:43:00+09:00', { sendRes: { ok: true, sent: 0, target: 0 } });
         assert.deepEqual([r.notes.length, r.alerts.length, r.recorded, r.marks, r.released], [0, 1, ['rebuild_start_nd:5-8|1'], ['rebuild_start:5-8|1'], []], '通知が無効で届いていない人を「送りました」に数えた / 印を残していない / 確保を送信済みにしていない');
-        assert.ok(/を 0 人に送りました/.test(r.alerts[0][0]) && /🔕 通知が無効で届いていない 1 人:\nみかん\n/.test(r.alerts[0][0]) && /Discord で声をかけてください/.test(r.alerts[0][0]), '届いていない人を名前で言っていない');
+        assert.ok(/を 0 人に送りました/.test(r.alerts[0][0]) && /🔕 届いていない 1 人 \(通知が無効、または端末への送信に失敗\):\nみかん\n/.test(r.alerts[0][0]) && /Discord で声をかけてください/.test(r.alerts[0][0]), '届いていない人を名前で言っていない / 端末への送信の失敗 (0 端末で返る) を「通知が無効」と言い切った');
         // 宛先から外れた (テスト回の方針・書庫 = skipped): 数だけ言う (名前を並べない)・印は残す
         r = await run('2026-11-28T08:43:00+09:00', { sendRes: { ok: true, sent: 0, target: 0, skipped: true } });
         assert.deepEqual([r.alerts.length, /を 0 人に送りました \(🧪 テスト回の方針・書庫で宛先から外れた 1 人には届いていません\)/.test(r.notes.join()), r.recorded], [0, true, ['rebuild_start_nd:5-8|1']], '宛先から外れた人を「送りました」に数えた');
